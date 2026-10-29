@@ -55,6 +55,7 @@ pub mod offences;
 pub mod referral;
 pub mod rehearsal;
 pub mod release_checks;
+pub mod repair_staging;
 pub mod replay;
 pub mod scheduler_controls;
 pub mod staking_controls;

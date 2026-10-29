@@ -11,7 +11,9 @@ import incoming_replay_release as incoming
 import production_build
 import release_package as release
 import hashi_codec as scale
+import repair_staging_release as staging
 from test_artifact_identity_release import ArtifactIdentityTests as Fixtures
+from test_activation_post_state_release import activation_witness
 from test_release_package import hx, policy, wasm
 
 
@@ -38,6 +40,19 @@ class ForwardRepairTests(unittest.TestCase):
         signatures = scale.compact(len(council)) + b''.join(bytes.fromhex(key) + b'\x01' + b'\x77' * 64 for key in council)
         envelope = b'snxrec01\x01\x04' + raw + signatures + (b'\0' if destination == 135 else b'\1' + self.paths['incomingActivePolicyScale'].read_bytes())
         return raw, envelope
+
+    def stage_repair(self, destination=136):
+        active = release.policy_identity(self.paths['incomingActivePolicyScale'].read_bytes())
+        raw, _ = self.auth_bytes(destination, 135, 'Hold', 1, 1, active)
+        code = self.paths['repairWasm'].read_bytes()
+        chunks = [code[offset:offset + staging.CHUNK] for offset in range(0, len(code), staging.CHUNK)]
+        manifest = raw + (0).to_bytes(8, 'little') + scale.u32(len(code))
+        manifest += scale.compact(len(chunks)) + b''.join(bytes.fromhex(identity.blake(chunk)) for chunk in chunks)
+        council = identity.policy_controls(self.paths['policyScale'].read_bytes())[1]
+        signatures = scale.compact(len(council)) + b''.join(bytes.fromhex(key) + b'\x01' + b'\x66' * 64 for key in council)
+        self.put('repairStageAuthorization', b'snxrec01\x01\x0c' + manifest + signatures)
+        self.assertEqual(len(chunks), 1)
+        self.put('repairStageCode', b'snxrec01\x01\x03\x02' + scale.u32(0) + scale.vec(chunks[0]))
 
     def prepare(self):
         original_raw = self.paths['policyScale'].read_bytes()
@@ -81,16 +96,18 @@ class ForwardRepairTests(unittest.TestCase):
         for role, destination, version, phase, counter in [('holdEscape', 135, 134, 'Applying', 0), ('repairEscape', 136, 135, 'Hold', 1)]:
             _, envelope = self.auth_bytes(destination, version, phase, counter, 1, active)
             self.put(role, envelope)
+        self.stage_repair()
         self.repair_manifest = {**{key: copy.deepcopy(value) for key, value in self.hold.items() if key not in ('steps', 'suppliedCouncil')},
             'repairs': [self.ref('repairWasm')], 'nativeOperationRecorder': configs[0], 'nativeOperationRecordersV2': configs[1:],
             'steps': [self.step(101, 'originalIncoming', 134, 'Applying'), self.step(102, 'holdEscape', 135, 'Hold'),
-                self.step(103, 'tick', 135, 'Hold'), self.step(104, 'repairEscape', 136, 'Applying'),
-                self.step(105, 'repairedIncoming', 136, 'Applying'), self.step(106, 'historicalAudit', 136, 'Auditing'),
-                self.step(107, 'terminal', 138, 'Complete'), self.step(108, None, 138, 'Complete')],
+                self.step(103, 'repairStageAuthorization', 135, 'Hold'), self.step(104, 'repairStageCode', 135, 'Hold'),
+                self.step(105, 'repairEscape', 136, 'Applying'), self.step(106, 'repairedIncoming', 136, 'Applying'),
+                self.step(107, 'historicalAudit', 136, 'Auditing'), self.step(108, 'terminal', 138, 'Complete'),
+                self.step(109, None, 138, 'Complete'), self.step(110, None, 138, 'Complete'), self.step(111, None, 138, 'Complete')],
             'suppliedCouncil': {'escapes': [{'step': 1, 'destinationSpec': 135, 'envelopeSha256': self.records['holdEscape']['sha256']},
-                {'step': 3, 'destinationSpec': 136, 'envelopeSha256': self.records['repairEscape']['sha256']}],
+                {'step': 4, 'destinationSpec': 136, 'envelopeSha256': self.records['repairEscape']['sha256']}],
                 'expectedTerminal': {'specVersion': 138, 'phase': 'Complete', 'cursor': active['workChunks'], 'auditCursor': active['auditChunks'],
-                    'operationCounter': 2, 'activePolicyCommitment': '0x' + active['commitment'], 'stateRoot': hx(97), 'ordinaryBlocks': 1,
+                    'operationCounter': 2, 'activePolicyCommitment': '0x' + active['commitment'], 'stateRoot': hx(100), 'ordinaryBlocks': 3,
                     'terminalAuditBlake2': '0x' + identity.blake(bytes.fromhex(active['commitment']) + active_raw[-32:] + scale.u32(active['workChunks']))}}}
         self.save_repair()
         return self.bind_repair()
@@ -152,7 +169,10 @@ class ForwardRepairTests(unittest.TestCase):
             row['operationCounter'] = detail['counterAfter']
             row['forbiddenExtrinsicsRejected'] = 0 if detail['executingSpec'] == 138 else 2 + detail['counterBefore']
         replay.update(automaticActivationObserved=True, councilHoldObserved=True, forwardRepairObserved=True,
-            ordinaryRuntimeBlocks=1, feeClockShiftObserved=True, nativeExecution=True)
+            ordinaryRuntimeBlocks=3, feeClockShiftObserved=True, nativeExecution=True)
+        replay['activationValidation'] = activation_witness(rows, plan['steps'],
+            context['policies']['138']['commitment'], context['wasm']['138']['blake2'])
+        replay['activationValidation']['lineagePolicyCommitment'] = context['policyCommitment']
         self.transcript(replay)
         witnesses = []
         for escape in plan['escapes']:
@@ -173,6 +193,20 @@ class ForwardRepairTests(unittest.TestCase):
         replay['suppliedCouncil'] = {'schema': 'sora-nexus-supplied-council-replay-witness-v1', 'authorizations': witnesses,
             'terminal': plan['manifest']['suppliedCouncil']['expectedTerminal'], 'signaturesVerifiedAgainstPinnedPolicy': True,
             'automaticActivationObserved': True, **{key: False for key in ('publicTestCouncilGenerated', 'councilInventoryApprovalVerified', 'sourceProvenanceVerified', 'productionReady', 'publicDynamicFixture')}}
+        replay['repairStagingAuthorizations'] = []
+        for item in plan['repairStaging']:
+            index = item['step']; row = rows[index]; prefix = f'{row["number"]}.repair-staging.'
+            raw = bytes.fromhex(item['manifestScale'])
+            witness = {key: value for key, value in item.items() if key in staging.FIELDS}
+            witness.update(schema='sora-nexus-executed-repair-staging-authorization-v1',
+                step=index, blockNumber=row['number'], blockHash=row['hash'], stateRoot=row['stateRoot'],
+                diskSnapshotManifestSha256=row['diskSnapshotManifestSha256'],
+                quorumVerified=True, productionReady=False, independentImportAndRestartVerified=True,
+                signingMessageSha256=emit(prefix + 'signing-message.scale', staging.message(raw)))
+            emit(prefix + 'manifest.scale', raw)
+            emit(prefix + 'envelope.scale', self.paths[item['recoveryRole']].read_bytes())
+            emit(prefix + 'authorization.json', witness)
+            replay['repairStagingAuthorizations'].append(witness)
         transcript = identity.sha(b'sora-nexus-maintenance-transcript-v1' + replay['manifestSha256'].encode() + replay['captureManifestSha256'].encode())
         for index, row in enumerate(rows):
             if index in plan['dynamicSteps']:
@@ -248,10 +282,46 @@ class ForwardRepairTests(unittest.TestCase):
         result, context, output, pins = self.witness()
         repair.validate(result, context, 'repair', output, pins)
 
+    def test_repair_cannot_skip_final_activation_observer(self):
+        result, context, output, pins = self.witness()
+        del result['recoveryReplay']['activationValidation']
+        with self.assertRaisesRegex(ValueError, 'repaired final runtime activation gate failed'):
+            repair.validate(result, context, 'repair', output, pins)
+
+    def test_repair_rejects_detached_final_activation_policy(self):
+        result, context, output, pins = self.witness()
+        result['recoveryReplay']['activationValidation']['policyCommitment'] = context['policyCommitment']
+        with self.assertRaisesRegex(ValueError, 'activation policy or exact runtime differs'):
+            repair.validate(result, context, 'repair', output, pins)
+
+    def test_repaired_138_requires_session_era_and_followup_execution(self):
+        result, context, output, pins = self.witness()
+        for transition_in_last_block in (False, True):
+            changed = copy.deepcopy(result)
+            witness = changed['recoveryReplay']['activationValidation']
+            initial = copy.deepcopy(witness['rows'][0])
+            for row in witness['rows']:
+                for key in ('epoch', 'session', 'currentEra', 'activeEra', 'activeEraStart',
+                            'asyncState', 'lastValidatorEra'):
+                    row[key] = copy.deepcopy(initial[key])
+            witness['transitions'] = {'firstSession': None, 'firstActiveEra': None,
+                'postFirstSessionBlocks': 0, 'postFirstActiveEraBlocks': 0}
+            if transition_in_last_block:
+                last = witness['rows'][-1]
+                last.update(epoch=3, session=101, activeEra=7, activeEraStart=last['timestamp'])
+                last['asyncState'].update(queuedSession=None, queuedEra=None)
+                last['lastValidatorEra']['queued'] = []
+                witness['transitions'].update(
+                    firstSession={'block': last['block'], 'before': 100, 'after': 101},
+                    firstActiveEra={'block': last['block'], 'before': 6, 'after': 7})
+            with self.subTest(transition_in_last_block=transition_in_last_block), self.assertRaisesRegex(
+                    ValueError, 'repaired final runtime activation gate failed'):
+                repair.validate(changed, context, 'repair', output, pins)
+
     def test_report_code_counter_policy_scope_and_historical_audit_mutations_rejected(self):
         result, context, output, pins = self.witness()
         changes = [lambda r: r['recoveryReplay']['blocks'][4].update(executingCodeBlake2=context['wasm']['134']['blake2']),
-            lambda r: r['recoveryReplay']['blocks'][3].update(operationCounter=1),
+            lambda r: r['recoveryReplay']['blocks'][4].update(operationCounter=1),
             lambda r: r['recoveryReplay'].update(productionReady=True),
             lambda r: r['recoveryReplay']['suppliedCouncil']['authorizations'][1].update(revisedPolicyCommitment=hx(1)),
             lambda r: r['recoveryReplay']['priorPolicyIncomingAudits'][0]['finalValidation'].update(pendingIncomingAudits=1),
@@ -264,21 +334,61 @@ class ForwardRepairTests(unittest.TestCase):
 
     def test_raw_authorization_message_snapshot_or_context_mutation_is_rejected(self):
         result, context, output, pins = self.witness()
-        names = [f'{scale.CHECKPOINT + 4}.supplied.authorization.scale', f'{scale.CHECKPOINT + 4}.supplied.signing-message.scale',
-            'snapshots/000004.json', f'native-operation-{scale.CHECKPOINT + 5}/recorded/snapshots/000000.json',
-            f'native-operation-{scale.CHECKPOINT + 5}/recovery-context.json']
+        names = [f'{scale.CHECKPOINT + 5}.supplied.authorization.scale', f'{scale.CHECKPOINT + 5}.supplied.signing-message.scale',
+            'snapshots/000005.json', f'native-operation-{scale.CHECKPOINT + 6}/recorded/snapshots/000000.json',
+            f'native-operation-{scale.CHECKPOINT + 6}/recovery-context.json']
         for name in names:
             path = output / name; raw = path.read_bytes(); old = pins[str(path)]
             path.write_bytes(raw + b' '); pins[str(path)] = release.digest_file(path)
             with self.assertRaises(ValueError): repair.validate(result, context, 'repair', output, pins)
             path.write_bytes(raw); pins[str(path)] = old
 
+    def test_raw_staging_outputs_and_native_acceptance_cannot_be_replaced_by_flags(self):
+        result, context, output, pins = self.witness()
+        baseline = result['recoveryReplay']['repairStagingAuthorizations'][0]
+        for key, value in [('step', 3), ('cursor', 0), ('phase', 'Applying'), ('stagingNonceBefore', 1),
+            ('stagingNonceAfter', 2), ('blockHash', hx(7)), ('stateRoot', hx(7)), ('recoveryAnchor', hx(7)),
+            ('diskSnapshotManifestSha256', '77' * 32), ('quorumVerified', False),
+            ('productionReady', True), ('independentImportAndRestartVerified', False),
+            ('signers', []), ('policyCommitment', hx(7)), ('destinationCodeBlake2', hx(7))]:
+            with self.subTest(field=key):
+                changed = copy.deepcopy(result)
+                changed['recoveryReplay']['repairStagingAuthorizations'][0][key] = value
+                with self.assertRaises(ValueError): repair.validate(changed, context, 'repair', output, pins)
+        for missing in (None, []):
+            changed = copy.deepcopy(result)
+            if missing is None: del changed['recoveryReplay']['repairStagingAuthorizations']
+            else: changed['recoveryReplay']['repairStagingAuthorizations'] = missing
+            with self.assertRaises(ValueError): repair.validate(changed, context, 'repair', output, pins)
+        for suffix in ('manifest.scale', 'signing-message.scale', 'envelope.scale', 'authorization.json'):
+            path = output / f'{baseline["blockNumber"]}.repair-staging.{suffix}'
+            raw, pin = path.read_bytes(), pins[str(path)]
+            path.write_bytes(raw + b'!'); pins[str(path)] = release.digest_file(path)
+            with self.assertRaises(ValueError): repair.validate(result, context, 'repair', output, pins)
+            path.write_bytes(raw); pins[str(path)] = pin
+
+    def test_missing_staging_or_wrong_raw_code_is_rejected_before_native_launch(self):
+        self.prepare(); original = copy.deepcopy(self.repair_manifest)
+        for index in (2, 3):
+            self.repair_manifest = copy.deepcopy(original)
+            self.repair_manifest['steps'][index]['recovery'] = self.ref('tick')
+            self.save_repair()
+            with self.assertRaisesRegex(ValueError, 'repair'):
+                self.bind_repair()
+        self.repair_manifest = copy.deepcopy(original)
+        raw = self.paths['repairStageCode'].read_bytes()
+        self.put('repairStageCode', raw[:-1] + bytes([raw[-1] ^ 1]))
+        self.repair_manifest['steps'][3]['recovery'] = self.ref('repairStageCode')
+        self.save_repair()
+        with self.assertRaisesRegex(ValueError, 'staged bytes'):
+            self.bind_repair()
+
     def test_native_handover_is_null_after_first_repaired_child(self):
         self.prepare()
-        self.repair_manifest['steps'].insert(4, self.step(105, 'tick', 136, 'Applying'))
+        self.repair_manifest['steps'].insert(5, self.step(106, 'tick', 136, 'Applying'))
         for index, step in enumerate(self.repair_manifest['steps']):
             step['slot'] = 101 + index; step['timestamp'] = step['slot'] * 6000
-        self.repair_manifest['suppliedCouncil']['expectedTerminal']['stateRoot'] = hx(98)
+        self.repair_manifest['suppliedCouncil']['expectedTerminal']['stateRoot'] = hx(101)
         self.save_repair()
         result, context, output, pins = self.witness(self.bind_repair())
         native = result['recoveryReplay']['repairedNativeOperationDerivations'][0]
@@ -416,7 +526,10 @@ class ForwardRepairTests(unittest.TestCase):
             if step['expectedSpec'] == 136: step['expectedSpec'] = 137
         _, envelope = self.auth_bytes(137, 135, 'Hold', 1, 1, release.policy_identity(self.paths['incomingActivePolicyScale'].read_bytes()))
         self.put('repairEscape', envelope)
-        self.repair_manifest['steps'][3]['recovery'] = self.ref('repairEscape')
+        self.stage_repair(137)
+        self.repair_manifest['steps'][2]['recovery'] = self.ref('repairStageAuthorization')
+        self.repair_manifest['steps'][3]['recovery'] = self.ref('repairStageCode')
+        self.repair_manifest['steps'][4]['recovery'] = self.ref('repairEscape')
         self.repair_manifest['suppliedCouncil']['escapes'][1]['destinationSpec'] = 137
         self.repair_manifest['suppliedCouncil']['escapes'][1]['envelopeSha256'] = self.records['repairEscape']['sha256']
         self.save_repair()

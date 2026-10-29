@@ -140,6 +140,21 @@ enum Command {
         #[arg(long)]
         output: PathBuf,
     },
+    /// PUBLIC FIXTURE ONLY: check a companion Wasm against exact activation state and blocks.
+    #[cfg(feature = "bridge-fixture")]
+    RehearseTryRuntimeCompanion {
+        #[arg(long)]
+        manifest: PathBuf,
+    },
+    /// Construct unsigned, domain-separated council repair-staging payloads.
+    RepairStagingPayloads {
+        #[arg(long)]
+        authorization: PathBuf,
+        #[arg(long)]
+        code: PathBuf,
+        #[arg(long)]
+        staging_nonce: u64,
+    },
     /// Fresh normal activation and read-only final typed-ownership/financial checks.
     RehearseStorageSemantics {
         #[arg(long)]
@@ -823,6 +838,29 @@ fn run() -> incident_recovery::Result<()> {
             println!(
                 "{}",
                 serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
+            );
+        }
+        #[cfg(feature = "bridge-fixture")]
+        Command::RehearseTryRuntimeCompanion { manifest } => {
+            let report = incident_recovery::maintenance::try_runtime::run(&manifest)?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
+            );
+        }
+        Command::RepairStagingPayloads {
+            authorization,
+            code,
+            staging_nonce,
+        } => {
+            let payload = incident_recovery::repair_staging::payload_files(
+                &authorization,
+                &code,
+                staging_nonce,
+            )?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&payload).map_err(|e| e.to_string())?
             );
         }
         Command::RehearseStorageSemantics { manifest, output } => {

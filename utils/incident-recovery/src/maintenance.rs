@@ -49,6 +49,8 @@ pub mod post_complete;
 #[cfg(feature = "bridge-fixture")]
 #[path = "maintenance_post_complete_channel.rs"]
 pub mod post_complete_channel;
+#[path = "maintenance_prefix.rs"]
+mod prefix;
 #[cfg(all(unix, feature = "runtime-work-types"))]
 #[path = "maintenance_process_death.rs"]
 pub mod process_death;
@@ -63,6 +65,9 @@ mod state_observer;
 mod storage_semantics;
 #[path = "maintenance_supplied_escape.rs"]
 mod supplied_escape;
+#[cfg(feature = "bridge-fixture")]
+#[path = "maintenance_try_runtime.rs"]
+pub mod try_runtime;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -168,6 +173,8 @@ pub struct Report {
     pub supplied_council: Option<supplied_escape::Report>,
     pub native_operation_derivations: Vec<native_expectations::Derivation>,
     pub repaired_native_operation_derivations: Vec<native_expectations_v2::Derivation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub repair_staging_authorizations: Vec<serde_json::Value>,
     pub replay_transcript_sha256: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub prior_policy_incoming_audits: Vec<serde_json::Value>,
@@ -533,6 +540,16 @@ fn run_inner(
         return Err("maintenance manifest exceeds 64 MiB".into());
     }
     let manifest: Manifest = serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
+    let prefix_only = manifest.schema == prefix::SCHEMA;
+    if prefix_only
+        && (request_incoming_evidence
+            || request_storage_semantics
+            || request_public_storage_semantics)
+    {
+        return Err(
+            "first-child prefix cannot certify incoming coverage or final-state semantics".into(),
+        );
+    }
     if request_storage_semantics
         && (manifest.schema != "sora-nexus-maintenance-replay-v1"
             || !manifest.repairs.is_empty()
@@ -569,6 +586,7 @@ fn run_inner(
             && manifest.native_operation_recorder.is_some()
             && !manifest.native_operation_recorders_v2.is_empty());
     if (manifest.schema != "sora-nexus-maintenance-replay-v1"
+        && !prefix_only
         && !fixture_only
         && !hashi_fixture_only
         && !supplied_council_only
@@ -634,6 +652,7 @@ fn run_inner(
     policy
         .validate()
         .map_err(|error| format!("invalid policy: {error:?}"))?;
+    let prefix_plan = prefix::Plan::load(&manifest, base, &policy)?;
     #[cfg(feature = "bridge-fixture")]
     let mut signed_session = manifest
         .fixture_signed_transactions
@@ -695,6 +714,7 @@ fn run_inner(
         verified.storage,
         StateVersion::V0,
     );
+    let mut activation_maintenance = activation::Maintenance::checkpoint(&mut ext)?;
     #[cfg(feature = "runtime-work-types")]
     let mut bridge_state = if request_storage_semantics {
         Some(bridge_state::Track::checkpoint(&mut ext, &policy)?)
@@ -899,6 +919,7 @@ fn run_inner(
     let (mut ext, mut parent_snapshot_sha256) = snapshots.persist(ext)?;
     let mut parent = H256::from(recovery::CHECKPOINT_HASH);
     let mut witnesses = Vec::new();
+    let mut repair_staging_authorizations = Vec::new();
     let mut public_post_state_semantics = None;
     let mut state_observer = if request_storage_semantics {
         Some(state_observer::Track::new_nonfixture(
@@ -954,15 +975,16 @@ fn run_inner(
         let maintenance = executing_version.spec_version != 138;
         let first_final_block = !maintenance && activation_validation.is_none();
         if first_final_block {
-            let active_policy = status(&mut ext)?.policy;
+            let lineage_policy = status(&mut ext)?.policy;
             activation_validation = Some(activation::Track::before(
                 &mut ext,
                 number,
                 parent,
                 &parent_snapshot_sha256,
-                active_policy,
+                lineage_policy,
                 code,
                 &executing_version,
+                &activation_maintenance,
             )?);
         }
         if maintenance != (step.recovery.is_some() || step.fixture_escape.is_some()) {
@@ -1018,6 +1040,7 @@ fn run_inner(
         let mut action = None;
         let mut authorization_sha256 = None;
         let mut supplied_authorization = None;
+        let mut staging_authorization = None;
         let mut native_context = None;
         let mut selected_native_lane = None;
         #[cfg(feature = "runtime-work-types")]
@@ -1208,6 +1231,17 @@ fn run_inner(
                     &by_version,
                 )?;
             }
+            staging_authorization = crate::repair_staging::Prepared::prepare(
+                &payload,
+                &policy,
+                &mut ext,
+                crate::repair_staging::Context {
+                    step: index,
+                    number,
+                    executing_spec: executing_version.spec_version,
+                    executing_code: code,
+                },
+            )?;
             let work = remark(&payload)?;
             let dynamic_native = (native_recorder.is_some() || !native_recorders_v2.is_empty())
                 && matches!(
@@ -1563,6 +1597,35 @@ fn run_inner(
             generated_authorization_sha256: authorization_sha256,
         });
 
+        if let Some(prepared) = staging_authorization {
+            repair_staging_authorizations.push(prepared.accepted(
+                &mut ext,
+                witnesses.last().ok_or("staging block witness absent")?,
+                output,
+            )?);
+        }
+
+        if maintenance {
+            activation_maintenance.accepted(
+                &mut ext,
+                witnesses
+                    .last()
+                    .ok_or("activation maintenance witness absent")?,
+                step.slot,
+            )?;
+        } else {
+            activation_validation
+                .as_mut()
+                .ok_or("activation observer absent")?
+                .accepted(
+                    &mut ext,
+                    witnesses
+                        .last()
+                        .ok_or("activation ordinary witness absent")?,
+                    step.slot,
+                )?;
+        }
+
         if let Some(observer) = &mut state_observer {
             observer.accepted(
                 &executor,
@@ -1717,6 +1780,16 @@ fn run_inner(
         {
             return Err("escape-only fixture did not preserve governance and complete its signed forward repair probe".into());
         }
+    } else if let Some(plan) = &prefix_plan {
+        plan.verify_terminal(
+            &status(&mut ext)?,
+            &policy,
+            &witnesses,
+            replay::code(&mut ext)? == deployed,
+        )?;
+        if completed || ordinary != 0 || hold_observed || repair_observed {
+            return Err("first-child prefix changed maintenance execution scope".into());
+        }
     } else if !supplied_council_only && !completed {
         return Err("rehearsal must automatically activate the pinned final code and execute an ordinary block".into());
     }
@@ -1866,7 +1939,9 @@ fn run_inner(
         .transpose()?;
     Ok((
         Report {
-            schema: if signed_fixture_only {
+            schema: if prefix_only {
+                prefix::REPORT_SCHEMA
+            } else if signed_fixture_only {
                 "sora-nexus-public-fixture-signed-maintenance-replay-witness-v1"
             } else if public_historical_audit_only {
                 historical_audit::REPORT_SCHEMA
@@ -1910,6 +1985,7 @@ fn run_inner(
             supplied_council,
             native_operation_derivations: native_derivations,
             repaired_native_operation_derivations: repaired_native_derivations,
+            repair_staging_authorizations,
             replay_transcript_sha256: replay_transcript,
             prior_policy_incoming_audits,
             #[cfg(feature = "runtime-work-types")]

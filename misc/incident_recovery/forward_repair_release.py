@@ -3,10 +3,12 @@ import json
 from pathlib import Path
 
 import artifact_identity_release as identity
+import activation_post_state_release as activation
 import hashi_codec as scale
 import history_release as history
 import incoming_release
 import incoming_replay_release as incoming
+import repair_staging_release as staging
 
 ROLE = 'forwardRepairReplay'
 GATE = 'automaticActivationEscapeAndForwardRepair'
@@ -112,7 +114,7 @@ def bind(root, records, paths, original, identity_context, incoming_context, loc
         elif next_version == 138 and version != 138:
             require(version == repairs[-1] and tag in (0, 3, 5) and step['expectedPhase'] == 'Complete' and counter == 1 + len(repairs), 'final activation must follow the complete repair branch')
         else:
-            require(next_version == version and (step['expectedPhase'] == 'Hold' and tag == 0 if version == 135 else step['expectedPhase'] in ('Applying', 'Auditing', 'Ready', 'Complete', 'Failed')), 'unapproved runtime/phase transition')
+            require(next_version == version and (step['expectedPhase'] == 'Hold' and tag in (0, 3, 12) if version == 135 else step['expectedPhase'] in ('Applying', 'Auditing', 'Ready', 'Complete', 'Failed')), 'unapproved runtime/phase transition')
             require(version != 138 or step['expectedPhase'] == 'Complete', 'ordinary final runtime phase')
         require(not step.get('rejectPreviousEscapes', False) or before_counter > 0, 'escape replay probe before an escape')
         if tag in (6, 7):
@@ -123,6 +125,7 @@ def bind(root, records, paths, original, identity_context, incoming_context, loc
             'policy': policies[str(version)], 'resultPolicy': policies[str(next_version)]})
         version = next_version
     require(counter == 1 + len(repairs) and version == 138 and {detail['executingSpec'] for detail in details} == {134, 135, 138, *repairs}, 'every approved repair runtime must execute, not merely install')
+    repair_staging = staging.bind(details, wasm, policies, original, identity_context['council'], paths)
     keys(manifest['suppliedCouncil'], {'escapes', 'expectedTerminal'})
     require(manifest['suppliedCouncil']['escapes'] == escapes, 'escape list/order/raw envelope differs')
     terminal = manifest['suppliedCouncil']['expectedTerminal']
@@ -148,7 +151,7 @@ def bind(root, records, paths, original, identity_context, incoming_context, loc
         'artifactBindings': {role: records[role]['sha256'] for role in records},
         'artifactBlakes': [record['blake2_256'] for record in records.values()],
         'scenarios': {'repair': {'manifestRole': ROLE, 'manifestSha256': records[ROLE]['sha256'], 'manifest': manifest,
-            'steps': details, 'native': native, 'dynamicSteps': dynamic, 'escapes': escapes,
+            'steps': details, 'native': native, 'dynamicSteps': dynamic, 'escapes': escapes, 'repairStaging': repair_staging,
             'expectedArtifacts': incoming_context['expectedArtifacts']}}}
     return context
 
@@ -207,7 +210,11 @@ def validate(result, context, scenario, output, pins):
     report_context = {'policy': context['originalPolicy'], 'incomingRecoveryReplay': context['incomingContext'],
         'artifacts': [{'blake2_256': value} for value in context['artifactBlakes']]}
     require(incoming_release.valid_receipt(result, report_context, context['artifactBindings'], history.ROOT), 'fresh opaque incoming certificate/coverage/retained audits failed')
-    return validate_baseline(result['recoveryReplay'], context, scenario, output, pins)
+    validate_baseline(result['recoveryReplay'], context, scenario, output, pins)
+    observed = activation.validate(result['recoveryReplay'], context, scenario)
+    require(observed['status'] == 'verified',
+        'repaired final runtime activation gate failed: ' + observed['reason'])
+    return observed
 
 
 def validate_baseline(result, context, scenario, output, pins):
@@ -224,7 +231,7 @@ def validate_baseline(result, context, scenario, output, pins):
         'consensusSealsVerified', 'operatorApprovalVerified', 'productionReady', 'publicTestCouncilFixture',
         'publicTestHashiFixture', 'fixtureGovernanceStateUnchanged', 'fixtureStateExpectationChecks',
         'nativeOperationDerivations', 'repairedNativeOperationDerivations', 'replayTranscriptSha256',
-        'suppliedCouncil', 'priorPolicyIncomingAudits', 'incomingReplayBinding'}
+        'suppliedCouncil', 'priorPolicyIncomingAudits', 'incomingReplayBinding', 'repairStagingAuthorizations'}
     if 'activationValidation' in result:
         expected_fields.add('activationValidation')
     keys(result, expected_fields)
@@ -294,6 +301,7 @@ def validate_baseline(result, context, scenario, output, pins):
     for witness, escape in zip(council['authorizations'], plan['escapes']):
         require(witness['envelopeSha256'] == escape['envelopeSha256'], 'committed escape envelope differs')
         authorization(witness, escape['step'], rows, plan, context, evidence)
+    staging.validate(result['repairStagingAuthorizations'], rows, plan, context, evidence, council['authorizations'])
     validate_native(result, context, plan, evidence, prior_transcripts, authored_blocks, council['authorizations'])
 
 
@@ -362,7 +370,7 @@ def run(report, paths, binary, expected_sha256, parent, local_file, digest_file)
     profile = {'context': 'forwardRepairReplay', 'gate': GATE, 'label': 'forward-repair',
         'schema': 'sora-nexus-forward-repair-release-v1', 'failureSchema': 'sora-nexus-forward-repair-release-failure-v1',
         'outputRole': 'forwardRepairOutput', 'directoryField': 'forwardRepairOutputDirectory', 'scenarios': ('repair',),
-        'sources': [Path(__file__).resolve(), Path(incoming_release.__file__).resolve()],
+        'sources': [Path(__file__).resolve(), Path(incoming_release.__file__).resolve(), Path(activation.__file__).resolve(), Path(staging.__file__).resolve()],
         'command': command, 'validate': validate, 'select': lambda result: result['recoveryReplay'],
         'versions': lambda context: [134, 135, *context['repairs'], 138],
         'reason': 'Fresh exact-Wasm hold, supplied-quorum forward repair and automatic final activation, with raw authorization/counter/policy joins, native comparisons and opaque historical incoming audit preservation; consensus/build/operator and other gates remain separate'}

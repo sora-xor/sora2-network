@@ -111,7 +111,8 @@ impl Track {
                     kind: RecoveryCodeKind::Repair,
                     ..
                 }
-                | RecoveryAction::Escape { .. } => {
+                | RecoveryAction::Escape { .. }
+                | RecoveryAction::AuthorizeRepairStaging { .. } => {
                     if self.audited_policy != Some(policy.commitment())
                         || state.phase != RecoveryPhase::Auditing
                         || state.next_chunk != 2

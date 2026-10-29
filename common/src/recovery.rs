@@ -492,6 +492,12 @@ pub enum RecoveryAction {
     NativeBalanceAudit(Vec<u8>),
     /// Bounded terminal-audit page; appended at index 11 for codec stability.
     TerminalAuditPage(invariants::TerminalAuditPage),
+    /// Quorum pins immutable repair chunks before any bytes may be staged.
+    /// Appended at index 12; existing action and upgrade signature codecs stay intact.
+    AuthorizeRepairStaging {
+        manifest: Box<RepairStagingManifest>,
+        signatures: Vec<(AccountId32, MultiSignature)>,
+    },
 }
 
 /// Transported as a bare System::remark only by the recovery executive, above
@@ -535,6 +541,15 @@ impl RecoveryInherent {
             | RecoveryAction::NativeBalanceAudit(_) => {}
             RecoveryAction::TerminalAudit(audit) => audit.validate_bounds()?,
             RecoveryAction::TerminalAuditPage(page) => page.validate()?,
+            RecoveryAction::AuthorizeRepairStaging {
+                manifest,
+                signatures,
+            } => {
+                manifest.validate()?;
+                if signatures.is_empty() || signatures.len() > MAX_COUNCIL_MEMBERS {
+                    return Err(RecoveryError::BadQuorum);
+                }
+            }
             RecoveryAction::Apply(chunk) => chunk.validate()?,
             RecoveryAction::StageCode { bytes, .. } => {
                 if bytes.is_empty() || bytes.len() > MAX_CODE_CHUNK_BYTES {
@@ -597,6 +612,23 @@ impl RepairAuthorization {
         expected_anchor: [u8; 32],
         signatures: &[(AccountId32, MultiSignature)],
     ) -> Result<(), RecoveryError> {
+        self.verify_quorum_message(
+            policy,
+            status,
+            expected_anchor,
+            signatures,
+            &self.signing_message(),
+        )
+    }
+
+    fn verify_quorum_message(
+        &self,
+        policy: &RecoveryPolicy,
+        status: &RecoveryStatus,
+        expected_anchor: [u8; 32],
+        signatures: &[(AccountId32, MultiSignature)],
+        message: &[u8],
+    ) -> Result<(), RecoveryError> {
         policy.validate()?;
         if self.authorization_domain != policy.authorization_domain
             || self.policy != policy.commitment()
@@ -615,17 +647,76 @@ impl RepairAuthorization {
         if signatures.len() <= policy.council.len() / 2 || signatures.len() > policy.council.len() {
             return Err(RecoveryError::BadQuorum);
         }
-        let message = self.signing_message();
         let mut signers = BTreeSet::new();
         for (account, signature) in signatures {
             if policy.council.binary_search(account).is_err()
                 || !signers.insert(account)
-                || !signature.verify(message.as_slice(), account)
+                || !signature.verify(message, account)
             {
                 return Err(RecoveryError::BadQuorum);
             }
         }
         Ok(())
+    }
+}
+
+/// Staging has its own monotonic nonce and signing domain. Accepting this
+/// manifest does not consume the subsequent code-installation authorization.
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
+pub struct RepairStagingManifest {
+    pub authorization: RepairAuthorization,
+    pub staging_nonce: u64,
+    pub code_len: u32,
+    pub chunk_hashes: Vec<[u8; 32]>,
+}
+
+impl RepairStagingManifest {
+    pub fn validate(&self) -> Result<(), RecoveryError> {
+        self.authorization.authorization_domain.validate()?;
+        let length = self.code_len as usize;
+        if length == 0
+            || length > 32 * 1024 * 1024
+            || self.chunk_hashes.len() != length.div_ceil(MAX_CODE_CHUNK_BYTES)
+            || self.chunk_hashes.contains(&[0; 32])
+            || self.authorization.destination_code_hash == [0; 32]
+            || !matches!(self.authorization.destination_spec, 136 | 137)
+            || self.authorization.revised_policy == [0; 32]
+            || self.staging_nonce == u64::MAX
+        {
+            return Err(RecoveryError::BadCode);
+        }
+        Ok(())
+    }
+
+    pub fn signing_message(&self) -> Vec<u8> {
+        (
+            b"sora-nexus/recovery-repair-staging/v1".as_slice(),
+            GENESIS_HASH,
+            CHECKPOINT_HASH,
+            self,
+        )
+            .encode()
+    }
+
+    pub fn verify_quorum(
+        &self,
+        policy: &RecoveryPolicy,
+        status: &RecoveryStatus,
+        anchor: [u8; 32],
+        expected_nonce: u64,
+        signatures: &[(AccountId32, MultiSignature)],
+    ) -> Result<(), RecoveryError> {
+        self.validate()?;
+        if self.staging_nonce != expected_nonce {
+            return Err(RecoveryError::Replay);
+        }
+        self.authorization.verify_quorum_message(
+            policy,
+            status,
+            anchor,
+            signatures,
+            &self.signing_message(),
+        )
     }
 }
 
@@ -782,6 +873,68 @@ mod tests {
             auth.verify_quorum(&policy, &status, [0x42; 32], &signatures),
             Ok(())
         );
+        let staging = RepairStagingManifest {
+            authorization: RepairAuthorization {
+                destination_spec: 136,
+                revised_policy: policy.commitment(),
+                ..auth.clone()
+            },
+            staging_nonce: 0,
+            code_len: 1,
+            chunk_hashes: vec![[8; 32]],
+        };
+        let staging_signatures: Vec<_> = keys
+            .iter()
+            .take(2)
+            .map(|key| {
+                (
+                    AccountId32::from(key.public().0),
+                    MultiSignature::from(key.sign(&staging.signing_message())),
+                )
+            })
+            .collect();
+        assert_eq!(
+            staging.verify_quorum(&policy, &status, [0x42; 32], 0, &staging_signatures),
+            Ok(())
+        );
+        assert_eq!(
+            staging.verify_quorum(&policy, &status, [0x42; 32], 1, &staging_signatures),
+            Err(RecoveryError::Replay)
+        );
+        assert_eq!(
+            staging.verify_quorum(&policy, &status, [0x42; 32], 0, &signatures),
+            Err(RecoveryError::BadQuorum)
+        );
+        assert_eq!(
+            staging
+                .authorization
+                .verify_quorum(&policy, &status, [0x42; 32], &staging_signatures),
+            Err(RecoveryError::BadQuorum)
+        );
+        let mut changed_chunks = staging.clone();
+        changed_chunks.chunk_hashes[0] = [9; 32];
+        assert_eq!(
+            changed_chunks.verify_quorum(&policy, &status, [0x42; 32], 0, &staging_signatures),
+            Err(RecoveryError::BadQuorum)
+        );
+        let envelope = RecoveryInherent {
+            format_version: 1,
+            action: RecoveryAction::AuthorizeRepairStaging {
+                manifest: Box::new(staging.clone()),
+                signatures: staging_signatures,
+            },
+        };
+        assert_eq!(envelope.action.encode()[0], 12);
+        assert_eq!(
+            RecoveryInherent::decode_remark(&envelope.encode_remark()),
+            Ok(envelope)
+        );
+        let mut invalid = staging;
+        invalid.code_len = MAX_CODE_CHUNK_BYTES as u32 + 1;
+        assert_eq!(invalid.validate(), Err(RecoveryError::BadCode));
+        invalid.code_len = 1;
+        invalid.staging_nonce = u64::MAX;
+        assert_eq!(invalid.validate(), Err(RecoveryError::BadCode));
         assert_eq!(
             auth.verify_quorum(
                 &policy,

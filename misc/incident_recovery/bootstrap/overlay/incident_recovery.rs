@@ -7,7 +7,7 @@ use crate::{
     UncheckedExtrinsic,
 };
 use alloc::{vec, vec::Vec};
-use codec::{DecodeAll, Encode};
+use codec::{DecodeAll, DecodeWithMemLimit, Encode};
 use common::recovery::{
     self, RecoveryAction, RecoveryCodeKind, RecoveryError, RecoveryInherent, RecoveryPhase,
     RecoveryPolicy, CHECKPOINT_HASH, CHECKPOINT_NUMBER, CHECKPOINT_STATE_ROOT,
@@ -29,6 +29,8 @@ mod generated;
 const APPLIED: &[u8] = b":sora-nexus:recovery:inherent-applied:v1";
 const STAGE_PREFIX: &[u8] = b":sora-nexus:recovery:code-stage:v1:";
 const REPAIR_AUTH: &[u8] = b":sora-nexus:recovery:repair-authorization:v1";
+const REPAIR_STAGE_AUTH: &[u8] = b":sora-nexus:recovery:repair-stage-authorization:v1";
+const REPAIR_STAGE_NONCE: &[u8] = b":sora-nexus:recovery:repair-stage-nonce:v1";
 pub const CHECKPOINT_TIME: &[u8] = b":sora-nexus:recovery:checkpoint-time:v1";
 pub const ACTIVATION_TIME: &[u8] = b":sora-nexus:recovery:activation-time:v1";
 const MAX_CODE_BYTES: usize = 32 * 1024 * 1024;
@@ -150,7 +152,8 @@ pub fn initialize_block(header: &Header) -> ExtrinsicInclusionMode {
         } else {
             recovery::storage::recovery_anchor().expect("missing recovery branch anchor");
         }
-        accept_forward_repair(&policy).expect("invalid forward repair handover");
+        recover_forward_repair_at(&policy, crate::VERSION.spec_version)
+            .expect("unrecoverable recovery status or original policy lineage");
         assert_eq!(
             sp_io::storage::get(recovery::POLICY_STORAGE_KEY).as_deref(),
             Some(original.commitment().as_slice()),
@@ -291,6 +294,15 @@ fn committed_storage_weight(action: &RecoveryAction) -> Weight {
         },
     );
     let (items, reads, writes) = match action {
+        RecoveryAction::AuthorizeRepairStaging { signatures, .. } => {
+            return <Runtime as frame_system::Config>::DbWeight::get()
+                .reads_writes(16, 3)
+                .saturating_add(Weight::from_parts(
+                    500_000_000u64.saturating_mul(signatures.len() as u64 + 1),
+                    recovery::MAX_INHERENT_BYTES as u64,
+                ));
+        }
+        RecoveryAction::StageCode { .. } => (1, 12, 2),
         RecoveryAction::Incoming(payload) => {
             // The executable path uses checked_storage_weight to reject malformed
             // envelopes; this estimator remains conservative on decode errors.
@@ -508,6 +520,10 @@ fn apply_action_with_artifacts(
             }
             hold_wasm.to_vec()
         } else {
+            let staged = active_repair_staging(executing_spec)?;
+            if staged.authorization != *authorization {
+                return Err(RecoveryError::BadCode);
+            }
             assembled(
                 RecoveryCodeKind::Repair,
                 Some(authorization.destination_code_hash),
@@ -557,7 +573,13 @@ fn apply_action_with_artifacts(
     let allow_new_failure = |error| allow_frozen_failure(before.as_ref(), error);
     match action {
         RecoveryAction::Tick => Ok(()),
-        RecoveryAction::StageCode { kind, index, bytes } => stage(kind, index, &bytes),
+        RecoveryAction::AuthorizeRepairStaging {
+            manifest,
+            signatures,
+        } => authorize_repair_staging(&manifest, &signatures, executing_spec),
+        RecoveryAction::StageCode { kind, index, bytes } => {
+            stage_at(kind, index, &bytes, executing_spec)
+        }
         RecoveryAction::Apply(chunk) => recovery::storage::apply_chunk(policy, &chunk)
             .map(|_| ())
             .or_else(allow_new_failure),
@@ -626,6 +648,7 @@ fn allow_frozen_failure(
     }
 }
 
+#[cfg(test)]
 fn stage_key(kind: RecoveryCodeKind, index: Option<u32>) -> Vec<u8> {
     let mut key = STAGE_PREFIX.to_vec();
     key.extend((kind, index).encode());
@@ -635,14 +658,41 @@ fn stage_key(kind: RecoveryCodeKind, index: Option<u32>) -> Vec<u8> {
 // artifact's cursor and chunks in a separate namespace so an old, fully staged
 // final runtime cannot lock out a corrected final runtime or contaminate it.
 fn artifact_stage_key(kind: RecoveryCodeKind, hash: [u8; 32], index: Option<u32>) -> Vec<u8> {
-    if kind == RecoveryCodeKind::Repair {
-        return stage_key(kind, index);
-    }
     let mut key = STAGE_PREFIX.to_vec();
     key.extend((b"artifact-v2".as_slice(), kind, hash, index).encode());
     key
 }
+#[cfg(test)]
 fn stage(kind: RecoveryCodeKind, index: u32, bytes: &[u8]) -> Result<(), RecoveryError> {
+    stage_at(kind, index, bytes, crate::VERSION.spec_version)
+}
+fn stage_at(
+    kind: RecoveryCodeKind,
+    index: u32,
+    bytes: &[u8],
+    executing_spec: u32,
+) -> Result<(), RecoveryError> {
+    if kind == RecoveryCodeKind::Repair {
+        let manifest = active_repair_staging(executing_spec)?;
+        if index as usize >= manifest.chunk_hashes.len() {
+            return Err(RecoveryError::ChunkBounds);
+        }
+        let expected_len = if index as usize + 1 == manifest.chunk_hashes.len() {
+            manifest.code_len as usize - index as usize * recovery::MAX_CODE_CHUNK_BYTES
+        } else {
+            recovery::MAX_CODE_CHUNK_BYTES
+        };
+        if bytes.len() != expected_len {
+            return Err(RecoveryError::ChunkBounds);
+        }
+        return stage_with_commitments(
+            kind,
+            manifest.authorization.destination_code_hash,
+            index,
+            bytes,
+            Some(&manifest.chunk_hashes),
+        );
+    }
     let (hash, committed) = match kind {
         RecoveryCodeKind::Final => (
             generated::FINAL_CODE_HASH,
@@ -652,7 +702,7 @@ fn stage(kind: RecoveryCodeKind, index: u32, bytes: &[u8]) -> Result<(), Recover
             generated::HOLD_CODE_HASH,
             Some(generated::HOLD_CHUNK_HASHES),
         ),
-        RecoveryCodeKind::Repair => ([0; 32], None),
+        RecoveryCodeKind::Repair => unreachable!(),
     };
     stage_with_commitments(kind, hash, index, bytes, committed)
 }
@@ -670,7 +720,7 @@ fn stage_with_commitments(
     {
         return Err(RecoveryError::ChunkBounds);
     }
-    if kind != RecoveryCodeKind::Repair && (artifact_hash == [0; 32] || committed.is_none()) {
+    if artifact_hash == [0; 32] || committed.is_none() {
         return Err(RecoveryError::BadCode);
     }
     let cursor = stage_count(kind, artifact_hash)?.unwrap_or(0);
@@ -679,8 +729,6 @@ fn stage_with_commitments(
         {
             return Err(RecoveryError::WrongChunk);
         }
-    } else if index > cursor {
-        return Err(RecoveryError::WrongChunk);
     }
     if index > 0
         && sp_io::storage::read(
@@ -692,11 +740,7 @@ fn stage_with_commitments(
         return Err(RecoveryError::ChunkBounds);
     }
     sp_io::storage::set(&artifact_stage_key(kind, artifact_hash, Some(index)), bytes);
-    let next = if kind == RecoveryCodeKind::Repair && index == 0 {
-        1
-    } else {
-        core::cmp::max(cursor, index + 1)
-    };
+    let next = index + 1;
     sp_io::storage::set(
         &artifact_stage_key(kind, artifact_hash, None),
         &next.encode(),
@@ -721,6 +765,106 @@ fn stage_count(
     }
     Ok(Some(count))
 }
+
+fn repair_staging_nonce() -> Result<u64, RecoveryError> {
+    let Some(bytes) = sp_io::storage::get(REPAIR_STAGE_NONCE) else {
+        return Ok(0);
+    };
+    u64::decode_all(&mut bytes.as_ref()).map_err(|_| RecoveryError::Replay)
+}
+
+fn read_repair_staging() -> Result<recovery::RepairStagingManifest, RecoveryError> {
+    let length =
+        sp_io::storage::read(REPAIR_STAGE_AUTH, &mut [], 0).ok_or(RecoveryError::BadCode)?;
+    if length > 64 * 1024 {
+        return Err(RecoveryError::ChunkBounds);
+    }
+    let bytes = sp_io::storage::get(REPAIR_STAGE_AUTH).ok_or(RecoveryError::BadCode)?;
+    let mut input = bytes.as_ref();
+    let manifest = recovery::RepairStagingManifest::decode_with_mem_limit(&mut input, 128 * 1024)
+        .map_err(|_| RecoveryError::BadCode)?;
+    if !input.is_empty() {
+        return Err(RecoveryError::BadCode);
+    }
+    manifest.validate()?;
+    Ok(manifest)
+}
+
+fn repair_stage_context(
+    authorization: &recovery::RepairAuthorization,
+    executing_spec: u32,
+) -> Result<recovery::RecoveryStatus, RecoveryError> {
+    let original = original_policy()?;
+    let status = recovery::storage::status()?.ok_or(RecoveryError::WrongPolicy)?;
+    let code_hash =
+        sp_io::hashing::blake2_256(&sp_io::storage::get(b":code").ok_or(RecoveryError::BadCode)?);
+    if System::block_number() <= CHECKPOINT_NUMBER + 1
+        || !matches!(executing_spec, 135 | 136)
+        || authorization.destination_spec <= executing_spec
+        || status.phase == RecoveryPhase::Complete
+        || status.policy != original.commitment()
+        || sp_io::storage::get(recovery::POLICY_STORAGE_KEY).as_deref()
+            != Some(original.commitment().as_slice())
+        || authorization.policy != status.policy
+        || authorization.authorization_domain != original.authorization_domain
+        || authorization.recovery_anchor != recovery::storage::recovery_anchor()?
+        || authorization.phase != status.phase
+        || authorization.cursor != status.next_chunk
+        || authorization.operation_counter != status.operation_counter
+        || authorization.current_code_hash != code_hash
+        || authorization.current_executor_hash != code_hash
+    {
+        return Err(RecoveryError::Replay);
+    }
+    Ok(status)
+}
+
+fn active_repair_staging(
+    executing_spec: u32,
+) -> Result<recovery::RepairStagingManifest, RecoveryError> {
+    let manifest = read_repair_staging()?;
+    repair_stage_context(&manifest.authorization, executing_spec)?;
+    if manifest.staging_nonce.checked_add(1) != Some(repair_staging_nonce()?) {
+        return Err(RecoveryError::Replay);
+    }
+    Ok(manifest)
+}
+
+fn authorize_repair_staging(
+    manifest: &recovery::RepairStagingManifest,
+    signatures: &[(sp_runtime::AccountId32, sp_runtime::MultiSignature)],
+    executing_spec: u32,
+) -> Result<(), RecoveryError> {
+    manifest.validate()?;
+    let status = repair_stage_context(&manifest.authorization, executing_spec)?;
+    manifest.verify_quorum(
+        &original_policy()?,
+        &status,
+        recovery::storage::recovery_anchor()?,
+        repair_staging_nonce()?,
+        signatures,
+    )?;
+    let mut identity_key = STAGE_PREFIX.to_vec();
+    identity_key.extend(
+        (
+            b"repair-manifest-v1".as_slice(),
+            manifest.authorization.destination_code_hash,
+        )
+            .encode(),
+    );
+    let identity = (manifest.code_len, &manifest.chunk_hashes).encode();
+    if sp_io::storage::get(&identity_key)
+        .is_some_and(|stored| stored.as_ref() != identity.as_slice())
+    {
+        return Err(RecoveryError::BadCode);
+    }
+    // All checks precede these infallible writes. Reauthorization may resume a
+    // previously approved artifact, but never resets its immutable chunk cursor.
+    sp_io::storage::set(&identity_key, &identity);
+    sp_io::storage::set(REPAIR_STAGE_AUTH, &manifest.encode());
+    sp_io::storage::set(REPAIR_STAGE_NONCE, &(manifest.staging_nonce + 1).encode());
+    Ok(())
+}
 fn assembled(
     kind: RecoveryCodeKind,
     authorized: Option<[u8; 32]>,
@@ -728,7 +872,14 @@ fn assembled(
     let (hash, len) = match kind {
         RecoveryCodeKind::Final => (generated::FINAL_CODE_HASH, Some(generated::FINAL_CODE_LEN)),
         RecoveryCodeKind::Hold => (generated::HOLD_CODE_HASH, Some(generated::HOLD_CODE_LEN)),
-        RecoveryCodeKind::Repair => (authorized.ok_or(RecoveryError::BadCode)?, None),
+        RecoveryCodeKind::Repair => {
+            let manifest = read_repair_staging()?;
+            let hash = authorized.ok_or(RecoveryError::BadCode)?;
+            if hash != manifest.authorization.destination_code_hash {
+                return Err(RecoveryError::BadCode);
+            }
+            (hash, Some(manifest.code_len))
+        }
     };
     assembled_with_commitment(kind, hash, len)
 }
@@ -853,8 +1004,29 @@ fn complete_and_install(policy: &RecoveryPolicy, code: &[u8]) -> Result<(), Reco
     sp_io::storage::commit_transaction();
     Ok(())
 }
-fn accept_forward_repair(policy: &RecoveryPolicy) -> Result<(), RecoveryError> {
-    accept_forward_repair_at(policy, crate::VERSION.spec_version)
+// A mismatched repair must still initialize its maintenance executive so the
+// original recovered council can authorize the next reserved repair. Retain the
+// rejected handover and first failure; never reset a cursor, counter or lineage.
+fn recover_forward_repair_at(
+    policy: &RecoveryPolicy,
+    executing_spec: u32,
+) -> Result<(), RecoveryError> {
+    if let Err(error) = accept_forward_repair_at(policy, executing_spec) {
+        let original = original_policy()?;
+        let mut status = recovery::storage::status()?.ok_or(RecoveryError::WrongPolicy)?;
+        if status.format_version != 1
+            || status.policy != original.commitment()
+            || sp_io::storage::get(recovery::POLICY_STORAGE_KEY).as_deref()
+                != Some(original.commitment().as_slice())
+            || status.phase == RecoveryPhase::Complete
+        {
+            return Err(RecoveryError::WrongPolicy);
+        }
+        status.phase = RecoveryPhase::Failed;
+        status.failure = Some(status.failure.unwrap_or(error));
+        sp_io::storage::set(recovery::STATUS_STORAGE_KEY, &status.encode());
+    }
+    Ok(())
 }
 
 fn accept_forward_repair_at(
@@ -1657,45 +1829,75 @@ mod tests {
     #[test]
     fn staging_rejects_corrupted_lengths_and_nonfinal_short_chunks_before_assembly() {
         sp_io::TestExternalities::default().execute_with(|| {
-            let cursor = stage_key(RecoveryCodeKind::Repair, None);
-            let zero = stage_key(RecoveryCodeKind::Repair, Some(0));
+            let hash = [1; 32];
+            let cursor = artifact_stage_key(RecoveryCodeKind::Repair, hash, None);
+            let zero = artifact_stage_key(RecoveryCodeKind::Repair, hash, Some(0));
             sp_io::storage::set(&cursor, &[0; 5]);
             assert_eq!(
-                stage(RecoveryCodeKind::Repair, 0, b"x"),
+                stage_with_commitments(
+                    RecoveryCodeKind::Repair,
+                    hash,
+                    0,
+                    b"x",
+                    Some(&[sp_io::hashing::blake2_256(b"x")])
+                ),
                 Err(RecoveryError::ChunkBounds)
             );
             assert_eq!(
-                assembled(RecoveryCodeKind::Repair, Some([1; 32])),
+                assembled_with_commitment(RecoveryCodeKind::Repair, hash, None),
                 Err(RecoveryError::ChunkBounds)
             );
             sp_io::storage::set(&cursor, &513u32.encode());
             assert_eq!(
-                assembled(RecoveryCodeKind::Repair, Some([1; 32])),
+                assembled_with_commitment(RecoveryCodeKind::Repair, hash, None),
                 Err(RecoveryError::ChunkBounds)
             );
             sp_io::storage::set(&cursor, &1u32.encode());
             sp_io::storage::set(&zero, &vec![0; recovery::MAX_CODE_CHUNK_BYTES + 1]);
             assert_eq!(
-                assembled(RecoveryCodeKind::Repair, Some([1; 32])),
+                assembled_with_commitment(RecoveryCodeKind::Repair, hash, None),
                 Err(RecoveryError::ChunkBounds)
             );
             sp_io::storage::set(&zero, b"short");
             sp_io::storage::set(&cursor, &2u32.encode());
-            sp_io::storage::set(&stage_key(RecoveryCodeKind::Repair, Some(1)), b"tail");
+            sp_io::storage::set(
+                &artifact_stage_key(RecoveryCodeKind::Repair, hash, Some(1)),
+                b"tail",
+            );
             assert_eq!(
-                assembled(RecoveryCodeKind::Repair, Some([1; 32])),
+                assembled_with_commitment(RecoveryCodeKind::Repair, hash, None),
                 Err(RecoveryError::ChunkBounds)
             );
             sp_io::storage::clear(&cursor);
             let first = vec![1; recovery::MAX_CODE_CHUNK_BYTES];
-            stage(RecoveryCodeKind::Repair, 0, &first).unwrap();
-            stage(RecoveryCodeKind::Repair, 1, b"tail").unwrap();
-            let mut expected = first;
+            let mut expected = first.clone();
             expected.extend_from_slice(b"tail");
+            let good_hash = sp_io::hashing::blake2_256(&expected);
+            let chunks = [
+                sp_io::hashing::blake2_256(&first),
+                sp_io::hashing::blake2_256(b"tail"),
+            ];
+            stage_with_commitments(
+                RecoveryCodeKind::Repair,
+                good_hash,
+                0,
+                &first,
+                Some(&chunks),
+            )
+            .unwrap();
+            stage_with_commitments(
+                RecoveryCodeKind::Repair,
+                good_hash,
+                1,
+                b"tail",
+                Some(&chunks),
+            )
+            .unwrap();
             assert_eq!(
-                assembled(
+                assembled_with_commitment(
                     RecoveryCodeKind::Repair,
-                    Some(sp_io::hashing::blake2_256(&expected))
+                    good_hash,
+                    Some(expected.len() as u32)
                 )
                 .unwrap(),
                 expected
@@ -1896,8 +2098,26 @@ mod tests {
                     destination_spec: 136,
                     revised_policy: revised.commitment(),
                 };
-                sp_io::storage::clear(&stage_key(RecoveryCodeKind::Repair, None));
-                stage(RecoveryCodeKind::Repair, 0, &repair).unwrap();
+                let staging = recovery::RepairStagingManifest {
+                    authorization: forward.clone(),
+                    staging_nonce: 0,
+                    code_len: repair.len() as u32,
+                    chunk_hashes: vec![sp_io::hashing::blake2_256(&repair)],
+                };
+                let staging_signatures: Vec<_> = pairs
+                    .iter()
+                    .take(2)
+                    .map(|pair| {
+                        (
+                            sp_runtime::AccountId32::new(pair.public().0),
+                            sp_runtime::MultiSignature::Ed25519(
+                                pair.sign(&staging.signing_message()),
+                            ),
+                        )
+                    })
+                    .collect();
+                authorize_repair_staging(&staging, &staging_signatures, 135).unwrap();
+                stage_at(RecoveryCodeKind::Repair, 0, &repair, 135).unwrap();
                 let repair_action = RecoveryAction::Escape {
                     authorization: alloc::boxed::Box::new(forward.clone()),
                     signatures: sign(&forward),
@@ -2170,24 +2390,246 @@ mod tests {
         });
     }
     #[test]
-    fn repair_staging_is_bounded_and_can_replace_a_bad_untrusted_chunk() {
-        sp_io::TestExternalities::default().execute_with(|| {
-            assert!(stage(RecoveryCodeKind::Repair, 1, b"gap").is_err());
-            stage(RecoveryCodeKind::Repair, 0, b"wrong").unwrap();
-            stage(RecoveryCodeKind::Repair, 0, b"correct").unwrap();
-            assert_eq!(
-                sp_io::storage::get(&stage_key(RecoveryCodeKind::Repair, Some(0)))
-                    .unwrap()
-                    .as_ref(),
-                b"correct"
-            );
-            assert!(assembled(RecoveryCodeKind::Repair, Some([0; 32])).is_err());
-            assert!(stage(
-                RecoveryCodeKind::Repair,
-                0,
-                &vec![0; recovery::MAX_CODE_CHUNK_BYTES + 1]
-            )
-            .is_err());
+    fn repair_staging_requires_quorum_and_preserves_each_artifacts_immutable_chunks() {
+        use sp_core::Pair;
+        let pair = sp_core::ed25519::Pair::from_seed(&[31; 32]);
+        let (mut policy, _, _, _) = fixture();
+        policy.council = vec![sp_runtime::AccountId32::new(pair.public().0)];
+        let mut ext = maintenance_fixture(&policy);
+        ext.execute_with(|| {
+            with_test_policy(&policy, || {
+                System::set_block_number(CHECKPOINT_NUMBER + 2);
+                recovery::storage::record_recovery_anchor([0x42; 32]).unwrap();
+                let state = recovery::storage::status().unwrap().unwrap();
+                let stored_hash =
+                    sp_io::hashing::blake2_256(&sp_io::storage::get(b":code").unwrap());
+                let make_manifest = |code: &[u8], nonce| recovery::RepairStagingManifest {
+                    authorization: recovery::RepairAuthorization {
+                        policy: policy.commitment(),
+                        phase: state.phase,
+                        cursor: state.next_chunk,
+                        operation_counter: state.operation_counter,
+                        current_code_hash: stored_hash,
+                        current_executor_hash: stored_hash,
+                        destination_code_hash: sp_io::hashing::blake2_256(code),
+                        destination_spec: 136,
+                        revised_policy: policy.commitment(),
+                        authorization_domain: policy.authorization_domain.clone(),
+                        recovery_anchor: [0x42; 32],
+                    },
+                    staging_nonce: nonce,
+                    code_len: code.len() as u32,
+                    chunk_hashes: code
+                        .chunks(recovery::MAX_CODE_CHUNK_BYTES)
+                        .map(sp_io::hashing::blake2_256)
+                        .collect(),
+                };
+                let sign = |manifest: &recovery::RepairStagingManifest| {
+                    vec![(
+                        sp_runtime::AccountId32::new(pair.public().0),
+                        sp_runtime::MultiSignature::Ed25519(pair.sign(&manifest.signing_message())),
+                    )]
+                };
+                let first = make_manifest(b"approved-first", 0);
+                let before = sp_io::storage::root(sp_runtime::StateVersion::V0);
+                assert!(stage_at(RecoveryCodeKind::Repair, 0, b"poison", 135).is_err());
+                assert!(authorize_repair_staging(&first, &[], 135).is_err());
+                let upgrade_signatures = vec![(
+                    sp_runtime::AccountId32::new(pair.public().0),
+                    sp_runtime::MultiSignature::Ed25519(
+                        pair.sign(&first.authorization.signing_message()),
+                    ),
+                )];
+                assert!(authorize_repair_staging(&first, &upgrade_signatures, 135).is_err());
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V0), before);
+                authorize_repair_staging(&first, &sign(&first), 135).unwrap();
+                let authorized = sp_io::storage::root(sp_runtime::StateVersion::V0);
+                assert!(stage_at(RecoveryCodeKind::Repair, 0, b"wrong-first!!!", 135).is_err());
+                assert!(stage_at(RecoveryCodeKind::Repair, 1, b"gap", 135).is_err());
+                assert!(stage_at(RecoveryCodeKind::Repair, u32::MAX, b"overflow", 135).is_err());
+                assert_eq!(
+                    sp_io::storage::root(sp_runtime::StateVersion::V0),
+                    authorized
+                );
+                stage_at(RecoveryCodeKind::Repair, 0, b"approved-first", 135).unwrap();
+                let complete = sp_io::storage::root(sp_runtime::StateVersion::V0);
+                assert!(stage_at(RecoveryCodeKind::Repair, 0, b"approved-first", 135).is_err());
+                assert!(authorize_repair_staging(&first, &sign(&first), 135).is_err());
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V0), complete);
+                let second = make_manifest(b"approved-second", 1);
+                authorize_repair_staging(&second, &sign(&second), 135).unwrap();
+                stage_at(RecoveryCodeKind::Repair, 0, b"approved-second", 135).unwrap();
+                for (manifest, bytes) in [
+                    (&first, b"approved-first".as_slice()),
+                    (&second, b"approved-second".as_slice()),
+                ] {
+                    assert_eq!(
+                        assembled_with_commitment(
+                            RecoveryCodeKind::Repair,
+                            manifest.authorization.destination_code_hash,
+                            Some(manifest.code_len)
+                        )
+                        .unwrap(),
+                        bytes
+                    );
+                }
+                let mut resume = first.clone();
+                resume.staging_nonce = 2;
+                authorize_repair_staging(&resume, &sign(&resume), 135).unwrap();
+                assert_eq!(
+                    stage_count(
+                        RecoveryCodeKind::Repair,
+                        first.authorization.destination_code_hash
+                    )
+                    .unwrap(),
+                    Some(1)
+                );
+                assert!(stage_at(RecoveryCodeKind::Repair, 0, b"approved-first", 135).is_err());
+                let mut contradictory = resume.clone();
+                contradictory.staging_nonce = 3;
+                contradictory.chunk_hashes[0] = [9; 32];
+                let before = sp_io::storage::root(sp_runtime::StateVersion::V0);
+                assert!(
+                    authorize_repair_staging(&contradictory, &sign(&contradictory), 135).is_err()
+                );
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V0), before);
+                assert_eq!(recovery::storage::status().unwrap().unwrap(), state);
+            })
+        });
+    }
+
+    #[test]
+    fn invalid_forward_handover_freezes_work_and_still_accepts_a_fresh_council_repair() {
+        use sp_core::Pair;
+        let pair = sp_core::ed25519::Pair::from_seed(&[32; 32]);
+        let (mut original, chunk, _, _) = fixture();
+        original.council = vec![sp_runtime::AccountId32::new(pair.public().0)];
+        let mut mismatched_compiled = original.clone();
+        mismatched_compiled.evidence_commitment = [93; 32];
+        let installed = version_fixture(136, 132);
+        let repaired = version_fixture(137, 132);
+        let mut ext = maintenance_fixture(&original);
+        ext.register_extension(sp_core::traits::ReadRuntimeVersionExt::new(FixtureVersions));
+        ext.execute_with(|| {
+            with_test_policy(&original, || {
+                System::set_block_number(CHECKPOINT_NUMBER + 2);
+                recovery::storage::record_recovery_anchor([0x42; 32]).unwrap();
+                sp_io::storage::set(b":code", &installed);
+                let before = recovery::storage::status().unwrap().unwrap();
+                let pending = recovery::RepairAuthorization {
+                    policy: original.commitment(),
+                    phase: RecoveryPhase::Hold,
+                    cursor: 0,
+                    operation_counter: 0,
+                    current_code_hash: [9; 32],
+                    current_executor_hash: [9; 32],
+                    destination_code_hash: sp_io::hashing::blake2_256(&installed),
+                    destination_spec: 136,
+                    revised_policy: original.commitment(),
+                    authorization_domain: original.authorization_domain.clone(),
+                    recovery_anchor: [0x42; 32],
+                }
+                .encode();
+                sp_io::storage::set(REPAIR_AUTH, &pending);
+                recover_forward_repair_at(&mismatched_compiled, 136).unwrap();
+                let failed = recovery::storage::status().unwrap().unwrap();
+                assert_eq!(failed.phase, RecoveryPhase::Failed);
+                assert_eq!(failed.failure, Some(RecoveryError::BadCode));
+                assert_eq!(
+                    (failed.policy, failed.next_chunk, failed.operation_counter),
+                    (before.policy, before.next_chunk, before.operation_counter)
+                );
+                assert_eq!(
+                    sp_io::storage::get(REPAIR_AUTH).unwrap().as_ref(),
+                    pending.as_slice()
+                );
+                let frozen = sp_io::storage::root(sp_runtime::StateVersion::V0);
+                recover_forward_repair_at(&mismatched_compiled, 136).unwrap();
+                assert!(apply_action_with_artifacts(
+                    &mismatched_compiled,
+                    RecoveryAction::Apply(chunk),
+                    136,
+                    &[],
+                    [0; 32],
+                    0
+                )
+                .is_err());
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V0), frozen);
+                apply_action_with_artifacts(
+                    &mismatched_compiled,
+                    RecoveryAction::Tick,
+                    136,
+                    &[],
+                    [0; 32],
+                    0,
+                )
+                .unwrap();
+                let code_hash = sp_io::hashing::blake2_256(&installed);
+                let authorization = recovery::RepairAuthorization {
+                    policy: original.commitment(),
+                    phase: failed.phase,
+                    cursor: failed.next_chunk,
+                    operation_counter: failed.operation_counter,
+                    current_code_hash: code_hash,
+                    current_executor_hash: code_hash,
+                    destination_code_hash: sp_io::hashing::blake2_256(&repaired),
+                    destination_spec: 137,
+                    revised_policy: original.commitment(),
+                    authorization_domain: original.authorization_domain.clone(),
+                    recovery_anchor: [0x42; 32],
+                };
+                let staging = recovery::RepairStagingManifest {
+                    authorization: authorization.clone(),
+                    staging_nonce: 0,
+                    code_len: repaired.len() as u32,
+                    chunk_hashes: vec![sp_io::hashing::blake2_256(&repaired)],
+                };
+                let sign = |message: &[u8]| {
+                    vec![(
+                        sp_runtime::AccountId32::new(pair.public().0),
+                        sp_runtime::MultiSignature::Ed25519(pair.sign(message)),
+                    )]
+                };
+                authorize_repair_staging(&staging, &sign(&staging.signing_message()), 136).unwrap();
+                stage_at(RecoveryCodeKind::Repair, 0, &repaired, 136).unwrap();
+                let escape = RecoveryAction::Escape {
+                    authorization: alloc::boxed::Box::new(authorization.clone()),
+                    signatures: sign(&authorization.signing_message()),
+                    work_policy: Some(original.clone()),
+                };
+                apply_action_with_artifacts(
+                    &mismatched_compiled,
+                    escape.clone(),
+                    136,
+                    &[],
+                    [0; 32],
+                    0,
+                )
+                .unwrap();
+                recover_forward_repair_at(&original, 137).unwrap();
+                let accepted = recovery::storage::status().unwrap().unwrap();
+                assert_eq!(
+                    (
+                        accepted.phase,
+                        accepted.next_chunk,
+                        accepted.operation_counter,
+                        accepted.failure
+                    ),
+                    (
+                        RecoveryPhase::Applying,
+                        0,
+                        before.operation_counter + 1,
+                        None
+                    )
+                );
+                assert!(!sp_io::storage::exists(REPAIR_AUTH));
+                assert_eq!(sp_io::storage::get(b":code").unwrap().as_ref(), repaired);
+                let root = sp_io::storage::root(sp_runtime::StateVersion::V0);
+                assert!(
+                    apply_action_with_artifacts(&original, escape, 137, &[], [0; 32], 0).is_err()
+                );
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V0), root);
+            })
         });
     }
 }

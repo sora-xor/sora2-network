@@ -75,6 +75,18 @@ halt and a unique lineage digest. The sequence must install the exact pinned
 whether hold, forward repair, liveness grace and fee-clock shifting were actually
 observed; omitted paths do not become passing gates.
 
+To establish the first recovery child's hash before signing an escape, use the
+separate `sora-nexus-maintenance-prefix-v1` manifest schema with the same command.
+It accepts exactly one first child containing either `Tick` or the committed
+`Apply` chunk at index zero. It rejects repairs, signing, native recorders,
+fixture overrides, staging and final-state evidence requests. Checkpoint,
+exact-Wasm execution, independent import, persisted restart and frozen-session
+checks still run. The terminal must retain deployed code at spec 134, the
+original policy and operation counter zero, with cursor zero or one as specified
+by that first action. Its report uses
+`sora-nexus-maintenance-prefix-witness-v1`; it is not an activation or release
+certificate. The normal replay schema still requires automatic final activation.
+
 The generated blocks have no validator seals. This exercise does not establish
 full/warp client synchronization, network finality, operator control, signing-stop
 evidence, or production release readiness. Authenticated incoming applications

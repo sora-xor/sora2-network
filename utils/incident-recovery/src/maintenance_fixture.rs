@@ -245,7 +245,9 @@ pub fn prepare(
 /// cannot install final138, alter observed Council.Members or touch finances.
 pub fn admitted_action(action: &RecoveryAction) -> bool {
     match action {
-        RecoveryAction::Tick | RecoveryAction::Escape { .. } => true,
+        RecoveryAction::Tick
+        | RecoveryAction::Escape { .. }
+        | RecoveryAction::AuthorizeRepairStaging { .. } => true,
         RecoveryAction::StageCode {
             kind: recovery::RecoveryCodeKind::Repair,
             ..

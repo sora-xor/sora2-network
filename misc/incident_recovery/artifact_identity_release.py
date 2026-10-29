@@ -65,7 +65,7 @@ def policy_controls(raw):
 def action(raw):
     require(10 <= len(raw) <= MAX_ENVELOPE and raw[:9] == b'snxrec01\x01', 'recovery envelope identity/size')
     tag = raw[9]
-    require(tag <= 11, 'unknown recovery action')
+    require(tag <= 12, 'unknown recovery action')
     index = None
     if tag in (6, 7):
         reader = scale.Reader(raw[10:])
@@ -190,7 +190,7 @@ def bind(root, records, paths, local_file, digest_file):
             if scenario == 'activation':
                 require(step['expectedSpec'] in (134, 138) and (prior_version != 138 or step['expectedSpec'] == 138)
                     and step['expectedPhase'] in ('Applying', 'Auditing', 'Ready', 'Complete')
-                    and (recovery_role is not None) == (prior_version == 134) and tag != 4, 'normal activation path changed')
+                    and (recovery_role is not None) == (prior_version == 134) and tag not in (4, 12), 'normal activation path changed')
             else:
                 require(step['expectedSpec'] == (134 if index == 0 else 135)
                     and step['expectedPhase'] == ('Applying' if index == 0 else 'Hold')
