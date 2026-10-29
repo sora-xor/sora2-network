@@ -146,9 +146,13 @@ above are examples. Version 2 intake contains no new-key proof and remains
 rejected. An old-key signature alone never establishes replacement ownership.
 
 For every mapped owner, all 65,536 `utility::as_derivative` indices are checked
-against the checkpoint's native and token account keys. Any discovered account
-must appear both in the mapping and in the verified derived-control graph.
-A direct signature from its proposed destination does not waive that graph.
+against the checkpoint's `System.Account`, `Tokens.Accounts` and
+`VestedRewards.CrowdloanUserInfos` owner keys. Crowdloan registration can create
+an entitlement without funding the contributor's account. Any derivative found
+in these maps must appear both in the mapping and in the verified derived-control
+graph. A direct signature from its proposed destination does not waive that
+graph. Derivatives absent from these maps remain allowed by this check; this
+bounded storage scan does not establish complete derived-control discovery.
 
 `substitution_semantics::compile` requires replacement ownership proofs and exact
 reviewed row/value hashes. It can reset `Staking.Payee` to the replacement account.

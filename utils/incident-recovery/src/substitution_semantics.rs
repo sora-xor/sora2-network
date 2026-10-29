@@ -267,16 +267,21 @@ pub fn bridge_multisig_account(creator: [u8; 32], block: u32, nonce: u32) -> [u8
     digest(&(b"modlpy/utilisuba", creator, block, nonce).encode())
 }
 
-/// Owners of a native or token balance, read from the reversible owner key of
-/// System.Account and Tokens.Accounts. Unit fixtures without those maps
-/// contribute no holders; the checkpoint metadata always has both.
-fn balance_holders(
+/// Owners discoverable from account rows and crowdloan entitlements. Crowdloan
+/// registration can create an entitlement without either account row. This
+/// explicit prefix list does not establish complete derived-control discovery.
+/// A prefix absent from the supplied metadata contributes no owners.
+fn discoverable_utility_state_owners(
     schema: &MetadataSchema,
     storage: &Storage,
 ) -> Result<std::collections::HashSet<[u8; 32]>> {
     use crate::inventory::Hasher;
     let mut holders = std::collections::HashSet::new();
-    for name in ["System.Account", "Tokens.Accounts"] {
+    for name in [
+        "System.Account",
+        "Tokens.Accounts",
+        "VestedRewards.CrowdloanUserInfos",
+    ] {
         let Ok(d) = descriptor(schema, name) else {
             continue;
         };
@@ -309,15 +314,16 @@ fn balance_holders(
 }
 
 /// A utility derivative is controlled only through its owner's key, so one left
-/// out of the mapping would stay bound to the retired identity. Every funded
-/// derivative of a mapped account must be mapped and proven like any other.
+/// out of the mapping would stay bound to the retired identity. Derivatives
+/// with a discovered account row or crowdloan entitlement must be mapped and
+/// proven like any other; other control discovery remains a separate gate.
 fn reject_unmapped_derivatives(
     schema: &MetadataSchema,
     storage: &Storage,
     mappings: &BTreeMap<[u8; 32], [u8; 32]>,
     verified_derived: &BTreeMap<[u8; 32], [u8; 32]>,
 ) -> Result<()> {
-    let holders = balance_holders(schema, storage)?;
+    let holders = discoverable_utility_state_owners(schema, storage)?;
     if holders.is_empty() {
         return Ok(());
     }
@@ -329,7 +335,7 @@ fn reject_unmapped_derivatives(
                     || verified_derived.get(&derived) != mappings.get(&derived))
             {
                 return Err(format!(
-                    "utility derivative {} (index {index}) of replaced account {} holds a balance; add it to the mapping and derived inventory",
+                    "utility derivative {} (index {index}) of replaced account {} has account or crowdloan state; add it to the mapping and derived inventory",
                     hx(&derived),
                     hx(owner)
                 ));
@@ -1295,7 +1301,7 @@ mod tests {
         assert!(reject_unmapped_derivatives(&schema, &storage, &both, &BTreeMap::new()).is_err());
         let verified = BTreeMap::from([(derived, [3; 32])]);
         reject_unmapped_derivatives(&schema, &storage, &both, &verified).unwrap();
-        // An unfunded derivative needs no mapping.
+        // A derivative with no discovered state needs no mapping here.
         reject_unmapped_derivatives(&schema, &Storage::default(), &only_owner, &BTreeMap::new())
             .unwrap();
         // A corrupted owner key is rejected rather than skipped.
@@ -1307,6 +1313,169 @@ mod tests {
         assert!(
             reject_unmapped_derivatives(&schema, &corrupt, &only_owner, &BTreeMap::new()).is_err()
         );
+    }
+
+    fn crowdloan_entitlement_fixture(owner: [u8; 32]) -> (MetadataSchema, Storage, Vec<u8>) {
+        use crate::inventory::Hasher;
+        // The pallet's CrowdloanUserInfo encoding: contribution followed by
+        // already-paid (AssetId, Balance) pairs. No balance account is created.
+        #[derive(Encode, TypeInfo)]
+        struct Entitlement {
+            contribution: u128,
+            rewarded: Vec<(common::AssetId32<common::PredefinedAssetId>, u128)>,
+        }
+        let mut registry = Registry::new();
+        let account = registry.register_type(&meta_type::<AccountId32>()).id;
+        let tag = registry
+            .register_type(&meta_type::<common::CrowdloanTag>())
+            .id;
+        let entitlement = registry.register_type(&meta_type::<Entitlement>()).id;
+        let descriptor = Descriptor {
+            trie: "top".into(),
+            name: "VestedRewards.CrowdloanUserInfos".into(),
+            prefix: [
+                sp_io::hashing::twox_128(b"VestedRewards"),
+                sp_io::hashing::twox_128(b"CrowdloanUserInfos"),
+            ]
+            .concat(),
+            key_types: vec![account, tag],
+            hashers: vec![Hasher::Blake2_128Concat, Hasher::Blake2_128Concat],
+            value_type: entitlement,
+        };
+        let tag = common::CrowdloanTag(b"unfunded-derivative".to_vec().try_into().unwrap());
+        let mut key = descriptor.prefix.clone();
+        key.extend(Hasher::Blake2_128Concat.apply(&owner));
+        key.extend(Hasher::Blake2_128Concat.apply(&tag.encode()));
+        let mut storage = Storage::default();
+        storage.top.insert(
+            key.clone(),
+            Entitlement {
+                contribution: 123_456,
+                rewarded: vec![(common::XOR, 789), (common::PSWAP, 456)],
+            }
+            .encode(),
+        );
+        (
+            MetadataSchema {
+                registry: registry.into(),
+                descriptors: vec![descriptor],
+                metadata_hash: hx(&[1; 32]),
+            },
+            storage,
+            key,
+        )
+    }
+
+    #[test]
+    fn unfunded_crowdloan_derivative_requires_mapping_and_verified_control_graph() {
+        use crate::inventory::{self, Disposition, InventoryOptions, StorageDisposition};
+        use sp_core::Pair;
+        let old_controller = [1; 32];
+        let new_controller = sp_core::ed25519::Pair::from_seed(&[93; 32]);
+        let old_derived = derivative_account(old_controller, 7);
+        let new_derived = derivative_account(new_controller.public().0, 7);
+        let (schema, storage, key) = crowdloan_entitlement_fixture(old_derived);
+        assert_eq!(storage.top.len(), 1);
+        let mut mapping = BTreeMap::from([(old_controller, new_controller.public().0)]);
+        let replacements = |mapping: &BTreeMap<[u8; 32], [u8; 32]>| {
+            mapping
+                .iter()
+                .map(|(old, new)| AccountReplacement {
+                    old: (*old).into(),
+                    new: (*new).into(),
+                })
+                .collect::<Vec<_>>()
+        };
+        let proofs = vec![control_proof(old_controller, &new_controller)];
+        let error = verify_account_ownership(
+            &schema,
+            &storage,
+            &replacements(&mapping),
+            &proofs,
+            &SemanticPlan::default(),
+        )
+        .err()
+        .expect("unmapped entitlement owner must fail");
+        assert!(error.contains("(index 7)"), "{error}");
+        assert!(error.contains("crowdloan state"), "{error}");
+
+        mapping.insert(old_derived, new_derived);
+        assert!(verify_account_ownership(
+            &schema,
+            &storage,
+            &replacements(&mapping),
+            &proofs,
+            &SemanticPlan::default(),
+        )
+        .is_err());
+        let plan = SemanticPlan {
+            derived_accounts: vec![DerivedAccount {
+                old: hx(&old_derived),
+                new: hx(&new_derived),
+                derivation: DerivedKind::Utility {
+                    controller: hx(&old_controller),
+                    index: 7,
+                },
+            }],
+            ..Default::default()
+        };
+        let verified =
+            verify_account_ownership(&schema, &storage, &replacements(&mapping), &proofs, &plan)
+                .unwrap();
+        assert_eq!(
+            verified.derived.controls.get(&old_derived),
+            Some(&new_derived)
+        );
+
+        let options = InventoryOptions {
+            dispositions: vec![StorageDisposition {
+                trie: "top".into(),
+                storage: "VestedRewards.CrowdloanUserInfos".into(),
+                action: Disposition::MutableOwnership,
+                reason: "move fixture entitlement owner, preserving paid rewards".into(),
+                evidence_hash: hx(&[7; 32]),
+            }],
+            ..Default::default()
+        };
+        let report = inventory::inventory(&schema, &storage, &mapping, &options).unwrap();
+        assert!(report.semantic_dispositions_complete);
+        assert!(report.unused_destinations_verified);
+        assert_eq!(report.candidates.len(), 1);
+        let candidate = &report.candidates[0];
+        let (_, _, new_key) = crowdloan_entitlement_fixture(new_derived);
+        assert_eq!(candidate.source_key, hx(&key));
+        assert_eq!(candidate.destination_key, hx(&new_key));
+        assert_eq!(candidate.replacement_value, hx(&storage.top[&key]));
+        assert_eq!(
+            candidate.expected_source_value_hash,
+            hx(&digest(&storage.top[&key]))
+        );
+        assert!(candidate.require_destination_absent);
+    }
+
+    #[test]
+    fn crowdloan_derivative_discovery_rejects_malformed_owner_keys_and_codecs() {
+        use crate::inventory::Hasher;
+        let (schema, storage, key) = crowdloan_entitlement_fixture(derivative_account([1; 32], 7));
+        let prefix_len = schema.descriptors[0].prefix.len();
+        let mut bad_hasher = schema.clone();
+        bad_hasher.descriptors[0].hashers[0] = Hasher::Identity;
+        assert!(discoverable_utility_state_owners(&bad_hasher, &storage).is_err());
+        let mut bad_owner_type = schema.clone();
+        bad_owner_type.descriptors[0].key_types[0] = schema.descriptors[0].key_types[1];
+        assert!(discoverable_utility_state_owners(&bad_owner_type, &storage).is_err());
+        for bad_key in [key[..prefix_len + 47].to_vec(), {
+            let mut corrupt = key.clone();
+            corrupt[prefix_len] ^= 1;
+            corrupt
+        }] {
+            let mut corrupt = Storage::default();
+            corrupt.top.insert(bad_key, storage.top[&key].clone());
+            assert!(discoverable_utility_state_owners(&schema, &corrupt).is_err());
+        }
+        let mapping = BTreeMap::from([([1; 32], [2; 32])]);
+        reject_unmapped_derivatives(&schema, &Storage::default(), &mapping, &BTreeMap::new())
+            .unwrap();
     }
 
     fn utility_chain(
