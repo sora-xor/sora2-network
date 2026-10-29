@@ -1022,6 +1022,91 @@ pub(super) fn run(evidence_output: &Path, output_dir: &Path, mode: OutputMode) -
     )
 }
 
+/// BABE imports a block only when its parent has a recorded chain weight. The SDK's
+/// state import records weight 0 where it resets the epoch cache; the reconstruction
+/// performs that reset at the parent without the weight, so the checkpoint cannot be
+/// imported. Run on an owned copy of a completed reconstruction, this adds only that
+/// entry. Fork choice compares descendants of the parent, so the base value never
+/// changes a choice.
+pub(super) fn seed_state_sync_weight(db_path: &Path) -> Result<Value> {
+    // A writable SDK open creates a missing database, so require the existing one first.
+    owned_directory(db_path)?;
+    need(
+        read(&db_path.join("db_version"), 16)? == b"4",
+        "predecessor SDK schema differs",
+    )?;
+    let parent = h256(PARENT_HASH)?;
+    let backend = open_backend(db_path)?;
+    let info = backend.blockchain().info();
+    need(
+        info.genesis_hash == h256(GENESIS)?
+            && info.best_hash == parent
+            && info.best_number == CHECKPOINT - 1
+            && info.finalized_hash == parent
+            && info.finalized_number == CHECKPOINT - 1
+            && info.block_gap.is_none()
+            && backend.blockchain().leaves().map_err(|e| e.to_string())? == vec![parent],
+        "database is not a completed predecessor",
+    )?;
+    need(
+        backend
+            .blockchain()
+            .hash(CHECKPOINT)
+            .map_err(|e| e.to_string())?
+            .is_none()
+            && backend
+                .blockchain()
+                .header(h256(CHECKPOINT_HASH)?)
+                .map_err(|e| e.to_string())?
+                .is_none(),
+        "checkpoint already imported",
+    )?;
+    let header = backend
+        .blockchain()
+        .header(parent)
+        .map_err(|e| e.to_string())?
+        .ok_or("parent header missing")?;
+    need(
+        *header.state_root() == h256(PARENT_ROOT)?,
+        "parent state root differs",
+    )?;
+    need(
+        AuxStore::get_aux(&backend, b"babe_epoch_changes_version").map_err(|e| e.to_string())?
+            == Some(3u32.encode()),
+        "BABE epoch cache schema differs",
+    )?;
+    let cache = AuxStore::get_aux(&backend, b"babe_epoch_changes")
+        .map_err(|e| e.to_string())?
+        .ok_or("BABE epoch cache missing")?;
+    let _: BabeCache = decode(&cache)?;
+    need(
+        sc_consensus_babe::block_weight(&backend, parent)
+            .map_err(|e| e.to_string())?
+            .is_none(),
+        "parent BABE weight already recorded",
+    )?;
+    let key = sc_consensus_babe::aux_schema::block_weight_key(parent);
+    AuxStore::insert_aux(&backend, &[(key.as_slice(), 0u32.encode().as_slice())], &[])
+        .map_err(|e| e.to_string())?;
+    drop(backend);
+    let reopened = open_backend(db_path)?;
+    let info = reopened.blockchain().info();
+    need(
+        sc_consensus_babe::block_weight(&reopened, parent).map_err(|e| e.to_string())? == Some(0)
+            && info.best_hash == parent
+            && info.finalized_hash == parent
+            && AuxStore::get_aux(&reopened, b"babe_epoch_changes").map_err(|e| e.to_string())?
+                == Some(cache),
+        "SDK does not read the seeded parent weight beside the unchanged epoch cache",
+    )?;
+    Ok(
+        json!({"schema":"sora-nexus-predecessor-babe-state-sync-weight-v1","database":db_path,
+        "parentHash":format!("{parent:#x}"),"auxKey":format!("0x{}",hex::encode(&key)),"weight":0,
+        "method":"SDK BabeBlockImport::import_state weight reset, beside the reconstruction's EpochChanges::reset",
+        "readBackThroughSdk":true,"checkpointAbsent":true,"productionReady":false}),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1532,5 +1617,22 @@ mod tests {
             .top
             .insert(storage_key("Grandpa", "CurrentSetId"), 3u64.encode());
         assert!(unchanged_parent_grandpa(&raw, &state).is_err());
+    }
+    #[test]
+    fn weight_seed_never_creates_or_writes_a_foreign_database() {
+        let directory = TestDirectory::new();
+        let missing = directory.0.join("missing");
+        assert!(seed_state_sync_weight(&missing).is_err());
+        assert!(!missing.exists());
+        let foreign = directory.0.join("foreign");
+        drop(open_backend(&foreign).unwrap());
+        assert!(seed_state_sync_weight(&foreign)
+            .unwrap_err()
+            .contains("not a completed predecessor"));
+        let reopened = open_backend(&foreign).unwrap();
+        assert_eq!(
+            sc_consensus_babe::block_weight(&reopened, h256(PARENT_HASH).unwrap()).unwrap(),
+            None
+        );
     }
 }

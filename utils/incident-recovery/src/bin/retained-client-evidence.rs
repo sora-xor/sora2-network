@@ -572,8 +572,10 @@ fn main() {
                     &PathBuf::from(&args[2]),
                     predecessor::OutputMode::Resume,
                 )
+            } else if args.len() == 2 && args[0] == "--seed-predecessor-babe-weight" {
+                predecessor::seed_state_sync_weight(&PathBuf::from(&args[1]))
             } else {
-                Err("expected --output <fresh evidence attempt>, or --verify-authority-chain <fresh evidence attempt> <fresh authority attempt>, or --reconstruct-predecessor <fresh evidence attempt> <fresh reconstruction attempt>, or --resume-predecessor <fresh evidence attempt> <owned partial reconstruction attempt>".into())
+                Err("expected --output <fresh evidence attempt>, or --verify-authority-chain <fresh evidence attempt> <fresh authority attempt>, or --reconstruct-predecessor <fresh evidence attempt> <fresh reconstruction attempt>, or --resume-predecessor <fresh evidence attempt> <owned partial reconstruction attempt>, or --seed-predecessor-babe-weight <owned completed predecessor database copy>".into())
             }
         }
         #[cfg(not(feature = "retained-predecessor"))]
