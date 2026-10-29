@@ -48,6 +48,8 @@ pub struct Report {
     pub suspended_grants: Vec<String>,
     pub preserved_direct_votes: usize,
     pub changed_keys: usize,
+    pub atomic_groups: usize,
+    pub largest_atomic_group_edits: usize,
     pub released_locks: u32,
     pub production_ready: bool,
 }
@@ -298,7 +300,49 @@ fn reconcile(votings: &BTreeMap<AccountId32, Voting>) -> Result<()> {
     Ok(())
 }
 
-/// Requires the separately verified complete checkpoint and signed mapping.
+/// Removing a grant changes its target's aggregate; moving a target changes
+/// innocent inbound pointers. Keep the whole original undirected delegation
+/// component together. Recovery only removes edges or renames their endpoints,
+/// so it cannot create dependencies between these components.
+fn delegation_components(
+    votings: &BTreeMap<AccountId32, Voting>,
+) -> Result<BTreeMap<AccountId32, AccountId32>> {
+    let mut neighbours: BTreeMap<_, BTreeSet<_>> = votings
+        .keys()
+        .map(|owner| (owner.clone(), BTreeSet::new()))
+        .collect();
+    for (owner, voting) in votings {
+        if let Voting::Delegating { target, .. } = voting {
+            neighbours
+                .get_mut(owner)
+                .ok_or("missing Democracy component owner")?
+                .insert(target.clone());
+            neighbours
+                .get_mut(target)
+                .ok_or("missing Democracy component target")?
+                .insert(owner.clone());
+        }
+    }
+    let mut components = BTreeMap::new();
+    for root in votings.keys() {
+        if components.contains_key(root) {
+            continue;
+        }
+        components.insert(root.clone(), root.clone());
+        let mut pending = vec![root.clone()];
+        while let Some(owner) = pending.pop() {
+            for neighbour in &neighbours[&owner] {
+                if !components.contains_key(neighbour) {
+                    components.insert(neighbour.clone(), root.clone());
+                    pending.push(neighbour.clone());
+                }
+            }
+        }
+    }
+    Ok(components)
+}
+
+/// Requires the separately verified complete checkpoint and trusted mapping.
 /// Ongoing referenda need a different tally-aware adapter and fail closed here.
 pub fn compile(
     schema: &MetadataSchema,
@@ -436,6 +480,7 @@ fn compile_inner(
         witness_map.insert(key, None);
     }
     reconcile(&original)?;
+    let components = delegation_components(&original)?;
     let mut projected = original.clone();
     let mut suspended = Vec::new();
     for (owner, voting) in &original {
@@ -494,7 +539,8 @@ fn compile_inner(
     }
     reconcile(&transformed)?;
     let mut edits = Vec::new();
-    let mut resolutions = Vec::new();
+    let mut component_edits = BTreeMap::<AccountId32, Vec<GuardedStorageEdit>>::new();
+    let mut component_resolutions = BTreeMap::<AccountId32, Vec<AdapterResolution>>::new();
     let mut required_moves = Vec::new();
     let mut required_absences = BTreeSet::new();
     for (owner, voting) in &original {
@@ -536,7 +582,7 @@ fn compile_inner(
             if let Voting::Delegating { target, .. } = voting {
                 observed.insert(id(target));
             }
-            resolutions.push(AdapterResolution {
+            let resolution = AdapterResolution {
                 storage: voting_d.name.clone(),
                 key: hx(&old_key),
                 expected_before_hash: hx(&hash(before)),
@@ -545,7 +591,16 @@ fn compile_inner(
                 action: ResolutionAction::ReplaceControl,
                 validated_edits: vec![],
                 observed_accounts: observed,
-            });
+            };
+            let component = components.get(owner).ok_or("missing Democracy component")?;
+            component_resolutions
+                .entry(component.clone())
+                .or_default()
+                .push(resolution);
+            component_edits
+                .entry(component.clone())
+                .or_default()
+                .extend(row_edits.iter().cloned());
             edits.extend(row_edits);
         }
         if !mappings.contains_key(owner) {
@@ -635,23 +690,32 @@ fn compile_inner(
         return Err("unused Democracy review with no affected voting state".into());
     }
     edits.sort_by(|a, b| a.key.cmp(&b.key));
-    if !edits.is_empty() {
+    let mut groups = Vec::new();
+    let mut resolutions = Vec::new();
+    for (component, mut group) in component_edits {
+        group.sort_by(|a, b| a.key.cmp(&b.key));
         RecoveryChunk {
             index: 0,
-            edits: edits.clone(),
+            edits: group.clone(),
         }
         .validate()
-        .map_err(|_| "coupled Democracy voting changes exceed one atomic recovery chunk")?;
+        .map_err(|_| {
+            format!(
+                "coupled Democracy component {} ({} edits) exceeds one atomic recovery chunk",
+                hx(component.as_ref()),
+                group.len()
+            )
+        })?;
+        for mut resolution in component_resolutions.remove(&component).unwrap_or_default() {
+            resolution.validated_edits = group.clone();
+            resolutions.push(resolution);
+        }
+        groups.push(group);
     }
-    for resolution in &mut resolutions {
-        resolution.validated_edits = edits.clone();
-    }
+    let atomic_groups = groups.len();
+    let largest_atomic_group_edits = groups.iter().map(Vec::len).max().unwrap_or(0);
     Ok(Compilation {
-        groups: if edits.is_empty() {
-            vec![]
-        } else {
-            vec![edits.clone()]
-        },
+        groups,
         report: Report {
             evidence_hash: review.evidence_hash.clone(),
             voting_rows: original.len(),
@@ -660,6 +724,8 @@ fn compile_inner(
             suspended_grants: suspended,
             preserved_direct_votes: direct_votes,
             changed_keys: edits.len(),
+            atomic_groups,
+            largest_atomic_group_edits,
             released_locks: 0,
             production_ready: false,
         },
@@ -690,6 +756,11 @@ mod tests {
     }
     fn account(n: u8) -> AccountId32 {
         AccountId32::new([n; 32])
+    }
+    fn indexed_account(n: u32) -> AccountId32 {
+        let mut bytes = [0; 32];
+        bytes[..4].copy_from_slice(&n.to_be_bytes());
+        AccountId32::new(bytes)
     }
     fn direct(delegations: Delegations) -> Voting {
         Voting::Direct {
@@ -1257,22 +1328,168 @@ mod tests {
     }
 
     #[test]
-    fn no_saturating_weight_arithmetic_or_oversized_atomic_work() {
+    fn independent_direct_votes_use_bounded_groups_without_changing_locks_or_expiry() {
+        let (schema, mut storage, mut map) = fixture();
+        let independent = 204u32;
+        for n in 0..independent {
+            let owner = indexed_account(1000 + n);
+            let amount = u128::from(n) + 1;
+            insert(
+                &mut storage,
+                &schema,
+                "Democracy.VotingOf",
+                owner.as_ref(),
+                &Voting::Direct {
+                    votes: vec![(
+                        0,
+                        AccountVote::Standard {
+                            vote: Vote(128),
+                            balance: amount,
+                        },
+                    )],
+                    delegations: Delegations::default(),
+                    prior: Prior(recovery::CHECKPOINT_NUMBER + n + 1, amount),
+                },
+            );
+            insert(
+                &mut storage,
+                &schema,
+                "Balances.Locks",
+                owner.as_ref(),
+                &vec![Lock {
+                    id: *b"democrac",
+                    amount,
+                    reasons: Reasons::Misc,
+                }],
+            );
+            insert(
+                &mut storage,
+                &schema,
+                "System.Account",
+                owner.as_ref(),
+                &amount,
+            );
+            map.push(AccountReplacement {
+                old: owner,
+                new: indexed_account(2000 + n),
+            });
+        }
+        map.sort_by(|a, b| a.old.cmp(&b.old));
+        let result = compile(&schema, &storage, &map, &review(&schema, &storage, &map)).unwrap();
+        assert!(result.edits.len() > 2 * recovery::MAX_EDITS_PER_CHUNK);
+        assert_eq!(result.groups.len(), independent as usize + 1);
+        assert_eq!(result.report.atomic_groups, result.groups.len());
+        assert_eq!(result.report.largest_atomic_group_edits, 4);
+        assert_eq!(result.report.released_locks, 0);
+        let voting_d = descriptor(&schema, "Democracy.VotingOf").unwrap();
+        let mut projected = storage.clone();
+        for group in &result.groups {
+            RecoveryChunk {
+                index: 0,
+                edits: group.clone(),
+            }
+            .validate()
+            .unwrap();
+            for edit in group {
+                assert_eq!(projected.top.get(&edit.key).map(|b| hash(b)), edit.before);
+                if let Some(after) = &edit.after {
+                    projected.top.insert(edit.key.clone(), after.clone());
+                } else {
+                    projected.top.remove(&edit.key);
+                }
+            }
+            // Every crash/restart boundary still has a complete valid graph,
+            // not a half-applied delegation or stale target aggregate.
+            let graph = rows(&projected, voting_d, 32)
+                .unwrap()
+                .into_iter()
+                .map(|(owner, bytes)| {
+                    (
+                        AccountId32::new(owner.try_into().unwrap()),
+                        decode(&schema, voting_d, bytes).unwrap(),
+                    )
+                })
+                .collect();
+            reconcile(&graph).unwrap();
+        }
+        for n in 0..independent {
+            let source = key(voting_d, indexed_account(1000 + n).as_ref()).unwrap();
+            let destination = key(voting_d, indexed_account(2000 + n).as_ref()).unwrap();
+            assert_eq!(projected.top[&destination], storage.top[&source]);
+        }
+        let mut flattened: Vec<_> = result.groups.iter().flatten().cloned().collect();
+        flattened.sort_by(|a, b| a.key.cmp(&b.key));
+        assert_eq!(flattened, result.edits);
+        for resolution in &result.resolutions {
+            assert_eq!(
+                result
+                    .groups
+                    .iter()
+                    .filter(|group| **group == resolution.validated_edits)
+                    .count(),
+                1
+            );
+        }
+        result
+            .verify_backing_moves(std::slice::from_ref(&result.required_moves))
+            .unwrap();
+    }
+
+    #[test]
+    fn oversized_connected_delegations_fail_without_splitting_shared_aggregates() {
         assert!(Conviction::Locked6x.delegated(u128::MAX).is_err());
         let (schema, mut storage, mut map) = fixture();
+        let Voting::Direct {
+            votes,
+            mut delegations,
+            prior,
+        } = project(&schema, &storage, &[], 2)
+        else {
+            panic!()
+        };
         for n in 20..90 {
             insert(
                 &mut storage,
                 &schema,
                 "Democracy.VotingOf",
                 account(n).as_ref(),
-                &direct(Delegations::default()),
+                &Voting::Delegating {
+                    balance: 1,
+                    target: account(2),
+                    conviction: Conviction::Locked1x,
+                    delegations: Delegations::default(),
+                    prior: Prior(0, 0),
+                },
             );
+            insert(
+                &mut storage,
+                &schema,
+                "Balances.Locks",
+                account(n).as_ref(),
+                &vec![Lock {
+                    id: *b"democrac",
+                    amount: 1,
+                    reasons: Reasons::All,
+                }],
+            );
+            delegations.votes += 1;
+            delegations.capital += 1;
             map.push(AccountReplacement {
                 old: account(n),
                 new: account(n + 100),
             });
         }
+        insert(
+            &mut storage,
+            &schema,
+            "Democracy.VotingOf",
+            account(2).as_ref(),
+            &Voting::Direct {
+                votes,
+                delegations,
+                prior,
+            },
+        );
         assert!(
             compile(&schema, &storage, &map, &review(&schema, &storage, &map))
                 .err()
