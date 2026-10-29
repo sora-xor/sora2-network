@@ -4272,6 +4272,18 @@ impl_runtime_apis! {
         >)>, DispatchError> {
             EthBridge::get_registered_assets(network_id)
         }
+
+        fn recovery_hashi_prepare(
+            parent_header: Vec<u8>, operation: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiPreparation, DispatchError> {
+            incident_recovery_incoming::witness::prepare(parent_header, operation)
+        }
+
+        fn recovery_hashi_admit(
+            parent_header: Vec<u8>, operation: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiAdmission, DispatchError> {
+            incident_recovery_incoming::witness::admit(parent_header, operation)
+        }
     }
 
     impl iroha_migration_runtime_api::IrohaMigrationAPI<Block> for Runtime {

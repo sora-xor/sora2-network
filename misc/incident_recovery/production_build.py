@@ -555,8 +555,9 @@ def normalize_lock(source, reference, legacy):
     path = source / 'Cargo.lock'
     before, after = read(path), read(reference)
     if legacy:
-        # Exact existing review: package identities unchanged; only the direct
-        # runtime sp-trie/sp-externalities edges may be added by the old-SDK overlay.
+        # Package identities stay unchanged. The old-SDK overlay may add only
+        # runtime sp-trie/sp-externalities and the HASHI API's already locked
+        # scale-info metadata dependency; the shared resolver records each edge.
         evidence = build_helpers.resolve_legacy_lock(source, reference, {'specVersion': 134})
     else:
         require(tomllib.loads(before.decode()) == tomllib.loads(after.decode()), 'final lock amendment changes dependencies')

@@ -18,6 +18,8 @@ mod audit;
 mod balance_audit;
 #[path = "incident_recovery_incoming_issuance.rs"]
 mod issuance_journal;
+#[path = "incident_recovery_hashi_witness.rs"]
+pub mod witness;
 pub use audit::{
     audit_dynamic_keys, audit_encoded_with_policy, audit_marker_key, audit_request_key,
     audit_targets, expected_requests, incoming_audit_weight, validate_incoming_audit,

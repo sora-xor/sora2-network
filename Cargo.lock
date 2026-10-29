@@ -4463,6 +4463,7 @@ name = "eth-bridge-runtime-api"
 version = "0.1.0"
 dependencies = [
  "parity-scale-codec",
+ "scale-info",
  "sp-api",
  "sp-runtime",
  "sp-std",

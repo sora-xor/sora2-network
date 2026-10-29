@@ -36,6 +36,8 @@ use codec::Codec;
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
+pub mod recovery;
+
 sp_api::decl_runtime_apis! {
     pub trait EthBridgeRuntimeApi<
         Hash,
@@ -67,5 +69,13 @@ sp_api::decl_runtime_apis! {
         fn get_approvals(hashes: Vec<Hash>, network_id: Option<NetworkId>) -> Result<Vec<Vec<Approval>>, DispatchError>;
         fn get_account_requests(account_id: AccountId, status_filter: Option<RequestStatus>) -> Result<Vec<(NetworkId, Hash)>, DispatchError>;
         fn get_registered_assets(network_id: Option<NetworkId>) -> Result<Vec<(AssetKind, (AssetId, BalancePrecision), Option<(EthAddress, BalancePrecision)>)>, DispatchError>;
+
+        /// Available only in the exact release-bound recovery executor. The
+        /// deployed API identifier/version is intentionally unchanged; callers
+        /// MUST authenticate executing code, not infer support from API v1.
+        fn recovery_hashi_prepare(parent_header: Vec<u8>, operation: Vec<u8>) -> Result<recovery::RecoveryHashiPreparation, DispatchError>;
+        /// Native admission in a discarded storage overlay; no source-finality
+        /// or whole-block validity claim, and no persistent credit or nonce write.
+        fn recovery_hashi_admit(parent_header: Vec<u8>, operation: Vec<u8>) -> Result<recovery::RecoveryHashiAdmission, DispatchError>;
     }
 }

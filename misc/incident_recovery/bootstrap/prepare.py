@@ -61,10 +61,32 @@ def patch_runtime(source: str, spec: int) -> str:
     source = replace_once(source, "type MessageDispatch = Dispatch;", "type MessageDispatch = incident_recovery_incoming::RecoveryGenericMessageDispatch;")
     source = replace_once(source, "type MessageDispatch = SubstrateDispatch;", "type MessageDispatch = incident_recovery_incoming::RecoverySubstrateMessageDispatch;")
     source = replace_once(source, "    type BridgeAssetLockChecker = BridgeProxy;", "    type BridgeAssetLockChecker = BridgeProxy;\n    type IncomingAccountResolver = incident_recovery_incoming::PersistentAccountResolver;")
+    source = replace_once(source, "            EthBridge::get_registered_assets(network_id)\n        }", """            EthBridge::get_registered_assets(network_id)
+        }
+
+        fn recovery_hashi_prepare(
+            parent_header: Vec<u8>, operation: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiPreparation, DispatchError> {
+            incident_recovery_incoming::witness::prepare(parent_header, operation)
+        }
+
+        fn recovery_hashi_admit(
+            parent_header: Vec<u8>, operation: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiAdmission, DispatchError> {
+            incident_recovery_incoming::witness::admit(parent_header, operation)
+        }""")
+    if spec == 134:
+        source += '\n#[cfg(test)]\nmod incident_recovery_hashi_legacy_tests;\n'
     if spec != 134:
         source = re.sub(r"spec_version:\s*134,", f"spec_version: {spec},", source, count=1)
         source = re.sub(r"transaction_version:\s*131,", "transaction_version: 132,", source, count=1)
     return source
+
+def patch_bridge_api_manifest(source: str) -> str:
+    # Keep the deployed SDK references. Only the response-type metadata derive
+    # dependency is added; its existing locked version is reused by Cargo.
+    source = replace_once(source, "[dependencies]", '[dependencies]\nscale-info = { version = "2", default-features = false, features = ["derive"] }')
+    return replace_once(source, "std = [", 'std = [\n    "scale-info/std",')
 
 def patch_consensus(destination: Path) -> None:
     for pallet, anchor in [("babe", "mod randomness;"), ("grandpa", "pub mod migrations;")]:
@@ -196,12 +218,19 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
     text = replace_once(text, "[dependencies]", '[dependencies]\nrlp = { version = "0.5.2", default-features = false }')
     text = replace_once(text, "std = [", 'std = [\n    "rlp/std",')
     manifest.write_text(text)
+    bridge_api_manifest = destination / "pallets/eth-bridge/runtime-api/Cargo.toml"
+    bridge_api_manifest.write_text(patch_bridge_api_manifest(bridge_api_manifest.read_text()))
     for source, relative in [(HERE / "overlay/incident_recovery.rs", "runtime/src/incident_recovery.rs"),
+        (ROOT / "pallets/eth-bridge/runtime-api/src/lib.rs", "pallets/eth-bridge/runtime-api/src/lib.rs"),
+        (ROOT / "pallets/eth-bridge/runtime-api/src/recovery.rs", "pallets/eth-bridge/runtime-api/src/recovery.rs"),
         (ROOT / "runtime/src/incident_recovery_consensus.rs", "runtime/src/incident_recovery_consensus.rs"),
         (ROOT / "runtime/src/incident_recovery_babe_reports.rs", "runtime/src/incident_recovery_babe_reports.rs"),
         (ROOT / "runtime/src/incident_recovery_evm_source.rs", "runtime/src/incident_recovery_evm_source.rs"),
         (ROOT / "runtime/src/incident_recovery_evm_source_tests.rs", "runtime/src/incident_recovery_evm_source_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming.rs", "runtime/src/incident_recovery_incoming.rs"),
+        (ROOT / "runtime/src/incident_recovery_hashi_witness.rs", "runtime/src/incident_recovery_hashi_witness.rs"),
+        (ROOT / "runtime/src/incident_recovery_hashi_witness_tests.rs", "runtime/src/incident_recovery_hashi_witness_tests.rs"),
+        (ROOT / "runtime/src/incident_recovery_hashi_legacy_tests.rs", "runtime/src/incident_recovery_hashi_legacy_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming_audit.rs", "runtime/src/incident_recovery_incoming_audit.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming_balance.rs", "runtime/src/incident_recovery_incoming_balance.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming_issuance.rs", "runtime/src/incident_recovery_incoming_issuance.rs"),
@@ -226,7 +255,9 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
         evidence = None
     # Record every overlay file, including source files shared with runtime 138.
     overlays = ["runtime/src/lib.rs", "runtime/src/incident_recovery.rs", "runtime/src/incident_recovery_consensus.rs", "runtime/src/incident_recovery_babe_reports.rs",
-        "runtime/src/incident_recovery/generated.rs", "runtime/Cargo.toml", "common/src/lib.rs", "common/src/recovery.rs"]
+        "runtime/src/incident_recovery/generated.rs", "runtime/Cargo.toml", "common/src/lib.rs", "common/src/recovery.rs",
+        "pallets/eth-bridge/runtime-api/Cargo.toml", "pallets/eth-bridge/runtime-api/src/lib.rs", "pallets/eth-bridge/runtime-api/src/recovery.rs",
+        "runtime/src/incident_recovery_hashi_witness.rs", "runtime/src/incident_recovery_hashi_witness_tests.rs", "runtime/src/incident_recovery_hashi_legacy_tests.rs"]
     overlays += [str(path.relative_to(destination)) for path in (destination / "common/src/recovery").rglob("*.rs")]
     overlays += [f"vendor/polkadot-sdk/frame/{pallet}/src/{file}" for pallet in ["babe", "grandpa"] for file in ["lib.rs", "recovery.rs"]]
     overlays.append("vendor/polkadot-sdk/frame/grandpa/src/equivocation.rs")

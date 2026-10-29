@@ -308,6 +308,20 @@ class ProductionBuildTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build.normalize_lock(source, reference, True)
 
+    def test_production_legacy_lock_records_the_narrow_hashi_metadata_edge(self):
+        from test_build_fixture_wasm import BuildFixtureTests
+        source = self.root / 'source'
+        source.mkdir()
+        data = BuildFixtureTests.hashi_legacy_lock(self).encode()
+        (source / 'Cargo.lock').write_bytes(data)
+        reference = self.artifact('lock', data.replace(b'dependencies = ["parity-scale-codec"]',
+            b'dependencies = ["parity-scale-codec", "scale-info"]', 1))
+        report = build.normalize_lock(source, reference, True)
+        self.assertEqual(report['addedPackageDependencies'], {'eth-bridge-runtime-api': ['scale-info']})
+        self.assertEqual(report['kind'], 'legacy-reviewed-direct-dependencies')
+        self.assertFalse(report['rootLockChanged'])
+        self.assertFalse(report['packageIdentityDrift'])
+
     def test_fresh_python_process_receipts_and_retention_only(self):
         executable = str(Path(os.sys.executable).resolve())
         retained = {}

@@ -35,6 +35,32 @@ class LegacyOverlayTests(unittest.TestCase):
         self.assertIn("pub fn replacement(", overlay)
         self.assertIn("Err(RecoveryError::WrongPhase)", overlay)
 
+    def test_hashi_api_keeps_version_inventory_and_existing_methods(self):
+        result = prepare.patch_runtime(self.legacy, 134)
+        start = self.legacy.index("pub const VERSION:")
+        end = self.legacy.index("\n};", start) + len("\n};")
+        patched_start = result.index("pub const VERSION:")
+        patched_end = result.index("\n};", patched_start) + len("\n};")
+        self.assertEqual(self.legacy[start:end], result[patched_start:patched_end])
+        self.assertEqual(result.count("eth_bridge_runtime_api::EthBridgeRuntimeApi<"), 1)
+        self.assertEqual(result.count("fn recovery_hashi_prepare("), 1)
+        self.assertEqual(result.count("fn recovery_hashi_admit("), 1)
+        self.assertIn("mod incident_recovery_hashi_legacy_tests;", result)
+        for spec in (135, 136, 137):
+            self.assertNotIn("mod incident_recovery_hashi_legacy_tests;", prepare.patch_runtime(self.legacy, spec))
+        api = (prepare.ROOT / "pallets/eth-bridge/runtime-api/src/lib.rs").read_text()
+        self.assertNotIn("api_version", api)
+        for method in ("get_requests", "get_approved_requests", "get_approvals", "get_account_requests", "get_registered_assets"):
+            self.assertEqual(api.count(f"fn {method}("), 1)
+
+    def test_hashi_api_manifest_retains_deployed_sdk_references(self):
+        original = subprocess.check_output(["git", "show", f"{prepare.LEGACY_TREE}:pallets/eth-bridge/runtime-api/Cargo.toml"], cwd=prepare.ROOT, text=True)
+        patched = prepare.patch_bridge_api_manifest(original)
+        self.assertIn('scale-info = { version = "2",', patched)
+        self.assertIn('"scale-info/std",', patched)
+        self.assertEqual([row for row in original.splitlines() if "polkadot-sdk" in row],
+                         [row for row in patched.splitlines() if "polkadot-sdk" in row])
+
     def test_only_repair_identity_changes_in_hold_export(self):
         result = prepare.patch_runtime(self.legacy, 135)
         self.assertIn("spec_version: 135,", result)
@@ -82,6 +108,11 @@ class LegacyOverlayTests(unittest.TestCase):
             # Both maintenance and final runtimes must test the same authenticated
             # incoming path, including exact checkpoint-pending HASHI loads.
             for relative in ["runtime/src/incident_recovery_babe_reports.rs",
+                             "pallets/eth-bridge/runtime-api/src/lib.rs",
+                             "pallets/eth-bridge/runtime-api/src/recovery.rs",
+                             "runtime/src/incident_recovery_hashi_witness.rs",
+                             "runtime/src/incident_recovery_hashi_witness_tests.rs",
+                             "runtime/src/incident_recovery_hashi_legacy_tests.rs",
                              "runtime/src/incident_recovery_evm_source.rs",
                              "runtime/src/incident_recovery_evm_source_tests.rs",
                              "runtime/src/incident_recovery_incoming_hashi_source_tests.rs",
