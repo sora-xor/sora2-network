@@ -1588,7 +1588,7 @@ fn run() -> incident_recovery::Result<()> {
                 report["stakingControls"] =
                     serde_json::to_value(staking.report).map_err(|e| e.to_string())?;
             }
-            report["irohaPendingCancellation"] =
+            report["irohaPendingApprovers"] =
                 serde_json::to_value(iroha_pending.report).map_err(|e| e.to_string())?;
             report["sessionControls"] =
                 serde_json::to_value(session_controls.report).map_err(|e| e.to_string())?;

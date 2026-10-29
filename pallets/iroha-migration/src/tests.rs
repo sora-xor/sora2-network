@@ -377,6 +377,54 @@ fn test_migrate_multi_sig() {
 }
 
 #[test]
+fn consumed_key_cannot_displace_a_replacement_pending_approver() {
+    new_test_ext().execute_with(|| {
+        let address = "did_sora_multi_sig@sora".to_string();
+        let consumed_key = test_keypair(1);
+        let remaining_key = test_keypair(2);
+        install_public_keys(&address, &[&consumed_key, &remaining_key]);
+        assert_ok!(migrate_with_key(ALICE, &address, &consumed_key));
+        let key_flags = PublicKeys::<Runtime>::get(&address);
+        assert_eq!(
+            key_flags.iter().map(|(used, _)| *used).collect::<Vec<_>>(),
+            vec![true, false]
+        );
+
+        // The recovery adapter changes only the already-owned approval slot.
+        assert!(PendingMultiSigAccounts::<Runtime>::contains_key(&address));
+        PendingMultiSigAccounts::<Runtime>::mutate(&address, |pending| {
+            assert_eq!(pending.approving_accounts, vec![ALICE]);
+            assert_eq!(pending.migrate_at, None);
+            pending.approving_accounts[0] = CHARLIE;
+        });
+        assert_eq!(PublicKeys::<Runtime>::get(&address), key_flags);
+        let other_account = AccountId32::new([99; 32]);
+        // Even a valid signature from the consumed Iroha key cannot take a
+        // second slot by naming another SORA Nexus account.
+        assert_noop!(
+            migrate_with_key(other_account.clone(), &address, &consumed_key),
+            Error::<Runtime>::PublicKeyAlreadyUsed
+        );
+        assert_ok!(migrate_with_key(BOB, &address, &remaining_key));
+        let multi = |mut accounts: [AccountId32; 2]| {
+            accounts.sort();
+            pallet_multisig::Pallet::<Runtime>::multi_account_id(&accounts, 2)
+        };
+        assert_eq!(
+            Assets::free_balance(&VAL, &multi([CHARLIE, BOB])).unwrap(),
+            1000
+        );
+        assert_eq!(
+            Assets::free_balance(&VAL, &multi([other_account, BOB])).unwrap(),
+            0
+        );
+        assert_eq!(Assets::free_balance(&VAL, &multi([ALICE, BOB])).unwrap(), 0);
+        assert!(MigratedAccounts::<Runtime>::contains_key(&address));
+        assert!(!PendingMultiSigAccounts::<Runtime>::contains_key(&address));
+    });
+}
+
+#[test]
 fn test_migrate_multi_sig_after_timeout() {
     new_test_ext().execute_with(|| {
         let iroha_address = "did_sora_multi_sig@sora".to_string();

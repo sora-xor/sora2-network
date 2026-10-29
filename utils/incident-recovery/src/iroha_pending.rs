@@ -1,8 +1,10 @@
-//! Cancel changed Iroha migration approvals without moving their claim backing.
+//! Move pending Iroha multisig approvals to the replacement accounts.
 //!
-//! An approval records a previously signed destination, not transferable owner
-//! state. Reset the entire affected approval attempt, keeping the Iroha keys,
-//! quorum, balance and referral records for fresh native reapproval.
+//! A replaced account's approval slot passes to its replacement in place. The
+//! consumed Iroha key flags, quorum, timer, balance and referral records stay,
+//! so a key already used for the claim cannot approve it again. Resetting the
+//! flags instead would let anyone holding a reused key (for example one derived
+//! from a stolen mnemonic) re-approve from a fresh account and take the slot.
 use crate::{
     inventory::{
         AdapterId, AdapterResolution, Descriptor, Hasher, MetadataSchema, ResolutionAction,
@@ -40,9 +42,9 @@ struct Pending {
 pub struct Report {
     pub schema: &'static str,
     pub mapping_commitment: String,
-    pub cancelled_iroha_accounts: Vec<String>,
-    pub cleared_key_approvals: usize,
-    pub fresh_native_approvals_required: bool,
+    pub remapped_iroha_accounts: Vec<String>,
+    pub remapped_approvals: usize,
+    pub consumed_keys_quorum_and_timer_preserved: bool,
     pub financial_backing_preserved: bool,
     pub refunds: usize,
     pub production_ready: bool,
@@ -106,15 +108,15 @@ fn required<'a>(storage: &'a Storage, key: &[u8]) -> Result<&'a [u8]> {
         .ok_or_else(|| "missing Iroha pending cross-record".into())
 }
 impl Compilation {
-    /// Cancellation/reset is one atomic group, and no composed operation may
-    /// change its backing or revive another pending approval under these keys.
+    /// Each remap is one exact edit, and no composed operation may change its
+    /// backing, re-open a consumed key or revive another pending approval.
     pub fn verify_groups(
         &self,
         groups: &[Vec<GuardedStorageEdit>],
         mapping: &[AccountReplacement],
     ) -> Result<()> {
         if hash(&mapping.encode()) != self.mapping_hash {
-            return Err("Iroha cancellation mapping differs".into());
+            return Err("Iroha approver mapping differs".into());
         }
         let controlled = [prefix("PendingMultiSigAccounts"), prefix("PublicKeys")];
         let mut actual = Vec::new();
@@ -131,21 +133,21 @@ impl Compilation {
                     expected.iter().all(|e| touched.contains(e)) && expected.len() == touched.len()
                 })
             {
-                return Err("Iroha approval reset split, altered or unapproved".into());
+                return Err("Iroha approver remap split, altered or unapproved".into());
             }
             actual.extend(touched);
             if group
                 .iter()
                 .any(|e| e.scope == StorageScope::Top && self.preserved.contains_key(&e.key))
             {
-                return Err("Iroha cancellation backing or completed guard changed".into());
+                return Err("Iroha approver backing or completed guard changed".into());
             }
         }
         actual.sort_by(|a, b| a.key.cmp(&b.key));
         let mut expected = self.edits.clone();
         expected.sort_by(|a, b| a.key.cmp(&b.key));
         if actual != expected {
-            return Err("Iroha cancellation edits missing or duplicated".into());
+            return Err("Iroha approver remaps missing or duplicated".into());
         }
         Ok(())
     }
@@ -158,9 +160,12 @@ pub fn compile(
     recovery::validate_replacements(replacements)
         .map_err(|e| format!("invalid Iroha mapping: {e:?}"))?;
     if schema.metadata_hash != METADATA {
-        return Err("Iroha cancellation requires deployed checkpoint metadata".into());
+        return Err("Iroha approver remap requires deployed checkpoint metadata".into());
     }
-    let mapping: BTreeSet<_> = replacements.iter().map(|p| p.old.clone()).collect();
+    let mapping: BTreeMap<_, _> = replacements
+        .iter()
+        .map(|p| (p.old.clone(), p.new.clone()))
+        .collect();
     let descriptors: BTreeMap<_, _> = ITEMS
         .iter()
         .map(|item| Ok((*item, descriptor(schema, item)?)))
@@ -176,11 +181,11 @@ pub fn compile(
         mapping_hash,
         preserved: BTreeMap::new(),
         report: Report {
-            schema: "sora-nexus-iroha-pending-cancellation-v1",
+            schema: "sora-nexus-iroha-pending-approver-remap-v1",
             mapping_commitment: hx(&mapping_hash),
-            cancelled_iroha_accounts: vec![],
-            cleared_key_approvals: 0,
-            fresh_native_approvals_required: true,
+            remapped_iroha_accounts: vec![],
+            remapped_approvals: 0,
+            consumed_keys_quorum_and_timer_preserved: true,
             financial_backing_preserved: true,
             refunds: 0,
             production_ready: false,
@@ -204,12 +209,16 @@ pub fn compile(
             return Err("noncanonical Iroha pending address/key".into());
         }
         let state: Pending = decode(schema, pending.value_type, bytes)?;
-        if !state.approving_accounts.iter().any(|a| mapping.contains(a)) {
+        if !state
+            .approving_accounts
+            .iter()
+            .any(|a| mapping.contains_key(a))
+        {
             continue;
         }
         let public_key = key(public, &address);
         let old_public = required(storage, &public_key)?;
-        let mut keys: Vec<(bool, String)> = decode(schema, public.value_type, old_public)?;
+        let keys: Vec<(bool, String)> = decode(schema, public.value_type, old_public)?;
         let approved = keys.iter().filter(|(yes, _)| *yes).count();
         let unique: BTreeSet<_> = keys.iter().map(|(_, k)| k).collect();
         if !(2..=1000).contains(&keys.len())
@@ -256,6 +265,7 @@ pub fn compile(
             return Err("Iroha pending record is already migrated".into());
         }
         for item in [
+            "PublicKeys",
             "Quorums",
             "Balances",
             "Referrers",
@@ -275,63 +285,49 @@ pub fn compile(
             });
             out.preserved.insert(record_key, value);
         }
-        for (yes, _) in &mut keys {
-            *yes = false;
-        }
-        let reset = keys.encode();
-        let group = vec![
-            GuardedStorageEdit {
-                scope: StorageScope::Top,
-                key: pending_key.clone(),
-                before: Some(hash(bytes)),
-                after: None,
-            },
-            GuardedStorageEdit {
-                scope: StorageScope::Top,
-                key: public_key.clone(),
-                before: Some(hash(old_public)),
-                after: Some(reset.clone()),
-            },
-        ];
-        let observed_accounts = state
+        let remapped = state
             .approving_accounts
             .iter()
-            .map(|a| *AsRef::<[u8; 32]>::as_ref(a))
-            .collect();
-        for (d, edit, action, owners) in [
-            (
-                pending,
-                &group[0],
-                ResolutionAction::CancelPending,
-                observed_accounts,
-            ),
-            (
-                public,
-                &group[1],
-                ResolutionAction::ReplaceControl,
-                BTreeSet::new(),
-            ),
-        ] {
-            out.resolutions.push(AdapterResolution {
-                storage: d.name.clone(),
-                key: hx(&edit.key),
-                expected_before_hash: hx(&edit.before.expect("existing row")),
-                expected_after_hash: edit.after.as_ref().map(|v| hx(&hash(v))),
-                adapter: AdapterId::IrohaPendingCancellationV1,
-                action,
-                validated_edits: group.clone(),
-                observed_accounts: owners,
-            });
-            out.witnesses.push(StorageWitness {
-                scope: StorageScope::Top,
-                key: edit.key.clone(),
-                value_hash: edit.after.as_ref().map(|v| hash(v)),
-            });
+            .filter(|a| mapping.contains_key(*a))
+            .count();
+        let after = Pending {
+            approving_accounts: state
+                .approving_accounts
+                .iter()
+                .map(|a| mapping.get(a).unwrap_or(a).clone())
+                .collect(),
+            migrate_at: state.migrate_at,
         }
-        out.report.cancelled_iroha_accounts.push(address);
-        out.report.cleared_key_approvals += approved;
-        out.edits.extend(group.clone());
-        out.groups.push(group);
+        .encode();
+        let edit = GuardedStorageEdit {
+            scope: StorageScope::Top,
+            key: pending_key.clone(),
+            before: Some(hash(bytes)),
+            after: Some(after.clone()),
+        };
+        out.resolutions.push(AdapterResolution {
+            storage: pending.name.clone(),
+            key: hx(pending_key),
+            expected_before_hash: hx(&hash(bytes)),
+            expected_after_hash: Some(hx(&hash(&after))),
+            adapter: AdapterId::IrohaPendingApproverV1,
+            action: ResolutionAction::ReplaceControl,
+            validated_edits: vec![edit.clone()],
+            observed_accounts: state
+                .approving_accounts
+                .iter()
+                .map(|a| *AsRef::<[u8; 32]>::as_ref(a))
+                .collect(),
+        });
+        out.witnesses.push(StorageWitness {
+            scope: StorageScope::Top,
+            key: pending_key.clone(),
+            value_hash: Some(hash(&after)),
+        });
+        out.report.remapped_iroha_accounts.push(address);
+        out.report.remapped_approvals += remapped;
+        out.edits.push(edit.clone());
+        out.groups.push(vec![edit]);
     }
     Ok(out)
 }
@@ -406,36 +402,63 @@ mod tests {
         }
         (schema, storage, map)
     }
+    fn remapped(c: &Compilation, s: &MetadataSchema) -> Pending {
+        decode(
+            s,
+            descriptor(s, "PendingMultiSigAccounts").unwrap().value_type,
+            c.edits[0].after.as_ref().unwrap(),
+        )
+        .unwrap()
+    }
     #[test]
-    fn cancels_authorization_and_preserves_claim_backing_without_refund() {
+    fn moves_the_approval_slot_and_keeps_consumed_keys_and_backing() {
         let (s, storage, map) = fixture(1, 2);
         let c = compile(&s, &storage, &map).unwrap();
         c.verify_groups(&c.groups, &map).unwrap();
         assert_eq!(c.groups.len(), 1);
-        assert_eq!(c.edits.len(), 2);
-        assert_eq!(c.report.cleared_key_approvals, 1);
+        assert_eq!(c.edits.len(), 1);
+        assert_eq!(c.report.remapped_approvals, 1);
         assert_eq!(c.report.refunds, 0);
-        assert_eq!(c.preserved.len(), 5);
-        let reset: Vec<(bool, String)> = decode(
-            &s,
-            descriptor(&s, "PublicKeys").unwrap().value_type,
-            c.edits[1].after.as_ref().unwrap(),
-        )
-        .unwrap();
-        assert!(reset.iter().all(|(approved, _)| !approved));
-        assert_eq!(
-            reset.iter().map(|(_, key)| key.clone()).collect::<Vec<_>>(),
-            (0..4).map(|i| format!("{i:064x}")).collect::<Vec<_>>()
-        );
-        assert!(c.edits[0].after.is_none());
+        assert_eq!(c.preserved.len(), 6);
+        let pending = remapped(&c, &s);
+        assert_eq!(pending.approving_accounts, vec![map[0].new.clone()]);
+        assert_eq!(pending.migrate_at, None);
+        // The used key stays consumed, so it cannot approve the claim again.
+        let keys = key(descriptor(&s, "PublicKeys").unwrap(), "claim@sora");
+        assert!(c.preserved[&keys].as_ref() == storage.top.get(&keys));
     }
     #[test]
-    fn quorum_and_above_quorum_native_states_are_supported() {
+    fn quorum_and_above_quorum_native_states_keep_their_timer() {
         for approved in [2, 3] {
             let (s, storage, map) = fixture(approved, 2);
             let c = compile(&s, &storage, &map).unwrap();
-            assert_eq!(c.report.cleared_key_approvals, approved);
+            let pending = remapped(&c, &s);
+            assert_eq!(pending.approving_accounts, vec![map[0].new.clone(); 2]);
+            assert_eq!(pending.migrate_at, Some(recovery::CHECKPOINT_NUMBER + 50));
+            assert_eq!(c.report.remapped_approvals, 2);
         }
+    }
+    #[test]
+    fn only_replaced_approvers_move_and_their_order_is_kept() {
+        let (s, mut storage, map) = fixture(2, 3);
+        let foreign = AccountId32::new([5; 32]);
+        storage.top.insert(
+            key(
+                descriptor(&s, "PendingMultiSigAccounts").unwrap(),
+                "claim@sora",
+            ),
+            Pending {
+                approving_accounts: vec![foreign.clone(), map[0].old.clone()],
+                migrate_at: None,
+            }
+            .encode(),
+        );
+        let c = compile(&s, &storage, &map).unwrap();
+        assert_eq!(
+            remapped(&c, &s).approving_accounts,
+            vec![foreign, map[0].new.clone()]
+        );
+        assert_eq!(c.report.remapped_approvals, 1);
     }
     #[test]
     fn unmodified_pending_destinations_keep_their_exact_approvals() {
@@ -507,15 +530,19 @@ mod tests {
         }
     }
     #[test]
-    fn reset_must_remain_atomic_and_backing_is_not_editable() {
+    fn remap_is_exact_and_keys_and_backing_are_not_editable() {
         let (s, storage, map) = fixture(1, 2);
         let c = compile(&s, &storage, &map).unwrap();
-        assert!(c
-            .verify_groups(
-                &c.edits.iter().cloned().map(|e| vec![e]).collect::<Vec<_>>(),
-                &map
-            )
-            .is_err());
+        // Re-opening the consumed key alongside the remap is rejected.
+        let keys = key(descriptor(&s, "PublicKeys").unwrap(), "claim@sora");
+        let mut reopened = c.groups.clone();
+        reopened[0].push(GuardedStorageEdit {
+            scope: StorageScope::Top,
+            key: keys.clone(),
+            before: Some(hash(&storage.top[&keys])),
+            after: Some(vec![(false, format!("{:064x}", 0))].encode()),
+        });
+        assert!(c.verify_groups(&reopened, &map).is_err());
         let mut groups = c.groups.clone();
         groups.push(vec![GuardedStorageEdit {
             scope: StorageScope::Top,

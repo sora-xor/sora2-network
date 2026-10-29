@@ -309,7 +309,7 @@ pub enum AdapterId {
     SessionControlV1,
     PermissionControlV1,
     PreimageOwnershipV1,
-    IrohaPendingCancellationV1,
+    IrohaPendingApproverV1,
     StakingHistoryV1,
     DemocracyV1,
     SchedulerCancellationV1,
@@ -1024,17 +1024,11 @@ pub fn inventory_with_resolutions(
                     && resolution.action == ResolutionAction::ReplaceControl
                     && resolution.expected_after_hash.is_some()
             }
-            AdapterId::IrohaPendingCancellationV1 => match resolution.storage.as_str() {
-                "IrohaMigration.PendingMultiSigAccounts" => {
-                    resolution.action == ResolutionAction::CancelPending
-                        && resolution.expected_after_hash.is_none()
-                }
-                "IrohaMigration.PublicKeys" => {
-                    resolution.action == ResolutionAction::ReplaceControl
-                        && resolution.expected_after_hash.is_some()
-                }
-                _ => false,
-            },
+            AdapterId::IrohaPendingApproverV1 => {
+                resolution.storage == "IrohaMigration.PendingMultiSigAccounts"
+                    && resolution.action == ResolutionAction::ReplaceControl
+                    && resolution.expected_after_hash.is_some()
+            }
             AdapterId::SessionControlV1 => {
                 crate::session_controls::ITEMS.contains(&resolution.storage.as_str())
                     && resolution.action == ResolutionAction::ReplaceControl
