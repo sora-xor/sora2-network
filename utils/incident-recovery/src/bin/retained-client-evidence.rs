@@ -1,6 +1,7 @@
 //! Read-only, capture-anchored consensus evidence from one owned SORA Nexus DB copy.
 //! Default evidence mode never opens a writable backend. Optional explicitly selected
-//! predecessor reconstruction writes only a fresh owned SDK database; no node/service,
+//! predecessor reconstruction writes a fresh owned SDK database, or explicitly
+//! resumes an owned partial output after full canonical-prefix verification; no node/service,
 //! signing, network, or runtime execution is started.
 #[path = "retained_client/authority_chain.rs"]
 mod authority_chain;
@@ -560,9 +561,19 @@ fn main() {
         #[cfg(feature = "retained-predecessor")]
         {
             if args.len() == 3 && args[0] == "--reconstruct-predecessor" {
-                predecessor::run(&PathBuf::from(&args[1]), &PathBuf::from(&args[2]))
+                predecessor::run(
+                    &PathBuf::from(&args[1]),
+                    &PathBuf::from(&args[2]),
+                    predecessor::OutputMode::Fresh,
+                )
+            } else if args.len() == 3 && args[0] == "--resume-predecessor" {
+                predecessor::run(
+                    &PathBuf::from(&args[1]),
+                    &PathBuf::from(&args[2]),
+                    predecessor::OutputMode::Resume,
+                )
             } else {
-                Err("expected --output <fresh evidence attempt>, or --verify-authority-chain <fresh evidence attempt> <fresh authority attempt>, or --reconstruct-predecessor <fresh evidence attempt> <fresh reconstruction attempt>".into())
+                Err("expected --output <fresh evidence attempt>, or --verify-authority-chain <fresh evidence attempt> <fresh authority attempt>, or --reconstruct-predecessor <fresh evidence attempt> <fresh reconstruction attempt>, or --resume-predecessor <fresh evidence attempt> <owned partial reconstruction attempt>".into())
             }
         }
         #[cfg(not(feature = "retained-predecessor"))]

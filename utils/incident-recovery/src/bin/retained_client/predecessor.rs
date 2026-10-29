@@ -1,4 +1,5 @@
-//! Fixed, fresh-output predecessor reconstruction. Never rewinds or edits the source DB.
+//! Fixed predecessor reconstruction, with explicit verification before resuming an
+//! owned partial output. Never rewinds or edits the source DB.
 use super::*;
 use sc_client_api::backend::{
     AuxStore, Backend as _, BlockImportOperation as _, NewBlockState, TrieCacheContext,
@@ -12,6 +13,370 @@ use sp_state_machine::{Backend as _, IterArgs};
 
 const GENESIS: &str = "7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5";
 const MAX_BODY: usize = 16 * 1024 * 1024;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum OutputMode {
+    Fresh,
+    Resume,
+}
+
+fn owned_directory(directory: &Path) -> Result<()> {
+    need(
+        fs::symlink_metadata(directory)
+            .map_err(|e| e.to_string())?
+            .is_dir()
+            && fs::canonicalize(directory).map_err(|e| e.to_string())? == directory,
+        "independent canonical reconstruction directory required",
+    )
+}
+
+/// Only the output shape made by this tool may be resumed. In particular an
+/// existing (even truncated) receipt is never authorization to reopen a result.
+fn partial_output_layout(output_dir: &Path) -> Result<()> {
+    owned_directory(output_dir)?;
+    for relative in [
+        "",
+        "chains",
+        "chains/sora-nexus-recovery-predecessor",
+        "chains/sora-nexus-recovery-predecessor/db",
+    ] {
+        let directory = output_dir.join(relative);
+        owned_directory(&directory)?;
+        let expected: BTreeSet<&str> = match relative {
+            "" => BTreeSet::from(["chains", "source-read-only-logs"]),
+            "chains" => BTreeSet::from(["sora-nexus-recovery-predecessor"]),
+            "chains/sora-nexus-recovery-predecessor" => BTreeSet::from(["db"]),
+            _ => BTreeSet::from(["full"]),
+        };
+        let names = fs::read_dir(&directory)
+            .map_err(|e| e.to_string())?
+            .map(|entry| {
+                entry
+                    .map_err(|e| e.to_string())?
+                    .file_name()
+                    .into_string()
+                    .map_err(|_| "nonutf8 reconstruction entry".to_string())
+            })
+            .collect::<Result<BTreeSet<_>>>()?;
+        need(
+            names.iter().map(String::as_str).collect::<BTreeSet<_>>() == expected,
+            "partial reconstruction contains foreign entries or a completion receipt",
+        )?;
+    }
+    let db_path = output_dir.join("chains/sora-nexus-recovery-predecessor/db/full");
+    owned_directory(&db_path)?;
+    let mut count = 0;
+    for entry in fs::read_dir(&db_path).map_err(|e| e.to_string())? {
+        regular(&entry.map_err(|e| e.to_string())?.path())?;
+        count += 1;
+        need(count <= 100_000, "output database file count bound")?;
+    }
+    need(count > 0, "missing partial database")?;
+    owned_directory(&output_dir.join("source-read-only-logs"))
+}
+
+fn readonly_output(path: &Path, logs: &Path) -> Result<DB> {
+    need(
+        read(&path.join("db_version"), 16)? == b"4",
+        "partial SDK schema differs",
+    )?;
+    let mut options = Options::default();
+    options.create_if_missing(false);
+    options.create_missing_column_families(false);
+    options.set_db_log_dir(logs);
+    let mut families = DB::list_cf(&options, path).map_err(|e| e.to_string())?;
+    families.sort();
+    let mut expected = (0..13).map(|i| format!("col{i}")).collect::<Vec<_>>();
+    expected.push("default".into());
+    expected.sort();
+    need(families == expected, "partial database columns differ")?;
+    DB::open_cf_for_read_only(&options, path, families, false).map_err(|e| e.to_string())
+}
+
+/// Raw metadata is checked before the writable SDK open (which can repair old
+/// missing fstate metadata). A cursor is never taken from a progress JSON file.
+fn raw_cursor(db: &DB, genesis: H256, end: u32) -> Result<Option<(u32, H256)>> {
+    need(
+        get(db, 0, b"type")? == b"full",
+        "partial database type differs",
+    )?;
+    // ArchiveAll in the pinned SDK writes only this state metadata key; pending
+    // noncanonical/pruning journals cannot belong to this reconstruction lane.
+    need(
+        get(db, 2, b"mode")? == b"archive" && column_count(db, "col2", 1)? == 1,
+        "partial state metadata differs from ArchiveAll reconstruction",
+    )?;
+    need(
+        optional(db, 0, b"gap")?.is_none(),
+        "partial database has a block gap",
+    )?;
+    let gen = optional(db, 0, b"gen")?;
+    let best = optional(db, 0, b"best")?;
+    let finalized = optional(db, 0, b"final")?;
+    let state = optional(db, 0, b"fstate")?;
+    let leaves: Vec<(u32, Vec<H256>)> = optional(db, 0, b"leaf")?
+        .map(|raw| decode(&raw))
+        .transpose()?
+        .unwrap_or_default();
+    match gen {
+        None => {
+            need(
+                best.is_none() && finalized.is_none() && state.is_none() && leaves.is_empty(),
+                "empty partial metadata differs",
+            )?;
+            Ok(None)
+        }
+        Some(gen) => {
+            need(gen == genesis.as_bytes(), "partial genesis differs")?;
+            let best = best.ok_or("partial best metadata missing")?;
+            need(
+                finalized.as_ref() == Some(&best),
+                "partial best/final metadata differ",
+            )?;
+            let (number, hash) = number_lookup(&best)?;
+            need(
+                number <= end,
+                "partial database contains checkpoint or abandoned descendants",
+            )?;
+            let (header, _) = header_at(db, number)?;
+            need(header.hash() == hash, "partial tip lookup differs")?;
+            need(
+                leaves == vec![(number, vec![hash])],
+                "partial encoded leaf set differs",
+            )?;
+            need(
+                if number == end {
+                    state.as_ref() == Some(&best)
+                } else {
+                    state.is_none()
+                },
+                "partial finalized state transaction is incomplete or unexpected",
+            )?;
+            Ok(Some((number, hash)))
+        }
+    }
+}
+
+fn sdk_cursor(
+    info: &sp_blockchain::Info<ChainBlock>,
+    genesis: H256,
+    end: u32,
+) -> Result<Option<(u32, H256)>> {
+    need(info.block_gap.is_none(), "partial SDK block gap")?;
+    if info.genesis_hash == H256::zero() {
+        need(
+            info.best_hash == H256::zero()
+                && info.finalized_hash == H256::zero()
+                && info.best_number == 0
+                && info.finalized_number == 0
+                && info.finalized_state.is_none()
+                && info.number_leaves == 0,
+            "empty partial SDK metadata differs",
+        )?;
+        return Ok(None);
+    }
+    need(
+        info.genesis_hash == genesis
+            && info.best_number <= end
+            && info.best_number == info.finalized_number
+            && info.best_hash == info.finalized_hash
+            && info.number_leaves == 1,
+        "partial SDK tip is foreign, unfinalized or forked",
+    )?;
+    let tip = (info.best_hash, info.best_number);
+    need(
+        if info.best_number == end {
+            info.finalized_state == Some(tip)
+        } else {
+            info.finalized_state.is_none()
+        },
+        "partial SDK finalized state differs",
+    )?;
+    Ok(Some((info.best_number, info.best_hash)))
+}
+
+fn column_count(db: &DB, column: &str, max: u64) -> Result<u64> {
+    let cf = db.cf_handle(column).ok_or("missing partial column")?;
+    let mut iter = db.raw_iterator_cf(cf);
+    iter.seek_to_first();
+    let mut count = 0u64;
+    while iter.valid() {
+        count += 1;
+        need(count <= max, "partial database contains extra records")?;
+        iter.next();
+    }
+    iter.status().map_err(|e| e.to_string())?;
+    Ok(count)
+}
+
+/// Exact canonical point reads plus these column cardinalities exclude hidden
+/// forks, orphan bodies/indices, local signing and offchain/transaction state.
+fn prefix_shape(
+    db: &DB,
+    records: u64,
+    justifications: u64,
+    final_state: bool,
+    aux_count: u64,
+) -> Result<()> {
+    for (column, expected) in [
+        (3, records * 2),
+        (4, records),
+        (5, records),
+        (6, justifications),
+        (8, aux_count),
+    ] {
+        need(
+            column_count(db, &format!("col{column}"), expected)? == expected,
+            "partial database record coverage differs",
+        )?;
+    }
+    for column in ["default", "col7", "col9", "col10", "col11", "col12"] {
+        need(
+            column_count(db, column, 0)? == 0,
+            "foreign partial database state",
+        )?;
+    }
+    if !final_state {
+        need(
+            column_count(db, "col1", 0)? == 0,
+            "state exists before final predecessor transaction",
+        )?;
+    }
+    let cf = db.cf_handle("col0").ok_or("missing partial metadata")?;
+    let mut iter = db.raw_iterator_cf(cf);
+    iter.seek_to_first();
+    let mut children = 0;
+    while let Some(key) = iter.key() {
+        if key.starts_with(b"children") && key.len() == 40 {
+            children += 1;
+            need(children <= records, "extra partial child index")?;
+        } else {
+            need(
+                [
+                    b"type".as_slice(),
+                    b"best",
+                    b"final",
+                    b"fstate",
+                    b"gen",
+                    b"leaf",
+                ]
+                .contains(&key),
+                "unknown partial SDK metadata",
+            )?;
+        }
+        iter.next();
+    }
+    iter.status().map_err(|e| e.to_string())?;
+    need(children == records, "partial child index coverage differs")
+}
+
+#[derive(Default)]
+struct HistoryProgress {
+    previous: H256,
+    digest: Sha256,
+    bodies: u64,
+    justifications: u64,
+    last_justification: Option<Vec<u8>>,
+}
+
+impl HistoryProgress {
+    fn observe(
+        &mut self,
+        number: u32,
+        record: &HistoryRecord,
+        genesis: H256,
+        set: u64,
+        keys: &AuthorityList,
+        last_boundary: u32,
+    ) -> Result<()> {
+        let (header, body, just) = record;
+        need(
+            u64::from(number) == self.bodies
+                && *header.number() == number
+                && *header.parent_hash() == self.previous
+                && (number != 0 || header.hash() == genesis),
+            "canonical retained history ancestry mismatch",
+        )?;
+        if let Some(proofs) = just {
+            self.justifications += 1;
+            if number > last_boundary {
+                if let Some(raw) = proofs.get(sp_consensus_grandpa::GRANDPA_ENGINE_ID) {
+                    let proof: GrandpaJustification<ChainBlock> = decode(raw)?;
+                    need(
+                        proof.target() == (number, header.hash()),
+                        "stored justification target differs",
+                    )?;
+                    proof.verify(set, keys).map_err(|e| e.to_string())?;
+                    self.last_justification = Some(raw.clone());
+                }
+            }
+        }
+        record_digest(
+            &mut self.digest,
+            number,
+            &header.encode(),
+            &body.encode(),
+            just.as_ref().map(Encode::encode).as_deref(),
+        );
+        self.previous = header.hash();
+        self.bodies += 1;
+        Ok(())
+    }
+}
+
+fn compare_record(expected: &HistoryRecord, actual: &HistoryRecord) -> Result<()> {
+    need(
+        expected.0.encode() == actual.0.encode()
+            && expected.1.encode() == actual.1.encode()
+            && expected.2.as_ref().map(Encode::encode) == actual.2.as_ref().map(Encode::encode),
+        "persisted canonical prefix differs from authenticated source",
+    )
+}
+
+struct PrefixContext<'a> {
+    genesis: H256,
+    set: u64,
+    authorities: &'a AuthorityList,
+    last_boundary: u32,
+}
+
+fn rebuild_prefix(
+    partial: &DB,
+    tip: Option<(u32, H256)>,
+    source_record: impl Fn(u32) -> Result<HistoryRecord>,
+    context: PrefixContext<'_>,
+) -> Result<HistoryProgress> {
+    let mut progress = HistoryProgress::default();
+    if let Some((tip_number, tip_hash)) = tip {
+        for number in 0..=tip_number {
+            let expected = source_record(number)?;
+            let actual = history_record(partial, number)?;
+            compare_record(&expected, &actual)?;
+            let mut child_key = b"children".to_vec();
+            child_key.extend(expected.0.parent_hash().as_bytes());
+            need(
+                decode::<Vec<H256>>(&get(partial, 0, &child_key)?)? == vec![expected.0.hash()],
+                "partial child index differs",
+            )?;
+            progress.observe(
+                number,
+                &expected,
+                context.genesis,
+                context.set,
+                context.authorities,
+                context.last_boundary,
+            )?;
+            if number % 100_000 == 0 {
+                eprintln!("retained predecessor resume: verified existing prefix {number}/{tip_number}; no blocks appended");
+            }
+        }
+        need(
+            progress.previous == tip_hash,
+            "verified prefix tip differs from SDK metadata",
+        )?;
+    }
+    Ok(progress)
+}
 
 fn optional(db: &DB, column: u32, key: &[u8]) -> Result<Option<Vec<u8>>> {
     let cf = db
@@ -231,7 +596,7 @@ fn history_record(db: &DB, number: u32) -> Result<HistoryRecord> {
     Ok((header, body, just))
 }
 
-pub(super) fn run(evidence_output: &Path, output_dir: &Path) -> Result<Value> {
+pub(super) fn run(evidence_output: &Path, output_dir: &Path, mode: OutputMode) -> Result<Value> {
     let root = Path::new(ROOT);
     let allowed = root.join("fixtures/retained-predecessor-reconstruction-v1");
     need(
@@ -243,9 +608,12 @@ pub(super) fn run(evidence_output: &Path, output_dir: &Path) -> Result<Value> {
                     s.strip_prefix("attempt-")
                         .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
                 })
-            && !output_dir.exists(),
-        "fresh fixed reconstruction attempt required",
+            && (mode == OutputMode::Resume || !output_dir.exists()),
+        "fixed reconstruction attempt required (existing outputs need explicit resume mode)",
     )?;
+    if mode == OutputMode::Resume {
+        partial_output_layout(output_dir)?;
+    }
     // Actual proof verification remains in this process. No serialized success
     // report or archived receipt authorizes any database writes.
     let evidence = inspect(evidence_output)?;
@@ -294,10 +662,23 @@ pub(super) fn run(evidence_output: &Path, output_dir: &Path) -> Result<Value> {
         .and_then(|n| n.checked_add(8 * 1024 * 1024 * 1024))
         .ok_or("space estimate overflow")?;
     let available = fs2::available_space(&allowed).map_err(|e| e.to_string())?;
-    need(available>=required,&format!("fresh reconstruction needs {required} available bytes including compaction margin; found {available}"))?;
-    fs::create_dir(output_dir).map_err(|e| e.to_string())?;
-    let logs = output_dir.join("source-read-only-logs");
-    fs::create_dir(&logs).map_err(|e| e.to_string())?;
+    need(available>=required,&format!("reconstruction needs {required} available bytes including compaction margin; found {available}"))?;
+    let mut logs = output_dir.join("source-read-only-logs");
+    if mode == OutputMode::Fresh {
+        fs::create_dir(output_dir).map_err(|e| e.to_string())?;
+        fs::create_dir(&logs).map_err(|e| e.to_string())?;
+    } else {
+        // Preserve earlier read-only logs, including those of an interrupted run.
+        logs = logs.join(format!(
+            "resume-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|e| e.to_string())?
+                .as_nanos()
+        ));
+        fs::create_dir(&logs).map_err(|e| e.to_string())?;
+    }
     let mut options = Options::default();
     options.create_if_missing(false);
     options.create_missing_column_families(false);
@@ -322,52 +703,88 @@ pub(super) fn run(evidence_output: &Path, output_dir: &Path) -> Result<Value> {
     // No old voter rounds, local signing state, offchain storage, recovery marker,
     // descendant best-justification or arbitrary auxiliary key is copied.
     let db_path = output_dir.join("chains/sora-nexus-recovery-predecessor/db/full");
-    fs::create_dir_all(db_path.parent().ok_or("output database parent")?)
-        .map_err(|e| e.to_string())?;
-    need(!db_path.exists(), "database output already exists")?;
+    let genesis = h256(GENESIS)?;
+    let raw_tip = if mode == OutputMode::Resume {
+        let partial = readonly_output(&db_path, &logs)?;
+        let cursor = raw_cursor(&partial, genesis, CHECKPOINT - 1)?;
+        drop(partial);
+        cursor
+    } else {
+        fs::create_dir_all(db_path.parent().ok_or("output database parent")?)
+            .map_err(|e| e.to_string())?;
+        need(!db_path.exists(), "database output already exists")?;
+        None
+    };
+    // This obtains the SDK/RocksDB exclusive writer lock. An active reconstruction
+    // cannot be resumed or interfered with by this process.
     let backend = open_backend(&db_path)?;
     let initial = backend.blockchain().info();
+    let initial_tip = sdk_cursor(&initial, genesis, CHECKPOINT - 1)?;
     need(
-        initial.best_hash == H256::zero() && initial.finalized_hash == H256::zero(),
-        "SDK output was not empty",
+        initial_tip == raw_tip,
+        "partial metadata changed before exclusive SDK open",
     )?;
-    let mut previous = H256::zero();
-    let mut digest = Sha256::new();
-    let mut bodies = 0u64;
-    let mut justifications = 0u64;
-    let mut last_justification = None;
-    let mut state = Some(parent_state);
-    for number in 0..CHECKPOINT {
-        let (header, body, just) = history_record(&source, number)?;
+    let mut progress = HistoryProgress::default();
+    if mode == OutputMode::Resume {
+        // No writes occur while this read-only snapshot is open. SDK metadata is
+        // checked again, then every persisted record is compared with source.
+        let partial = readonly_output(&db_path, &logs)?;
         need(
-            *header.parent_hash() == previous && (number != 0 || header.hash() == h256(GENESIS)?),
-            "canonical retained history ancestry mismatch",
+            raw_cursor(&partial, genesis, CHECKPOINT - 1)? == initial_tip,
+            "partial raw/SDK metadata differ",
         )?;
-        if let Some(proofs) = &just {
-            justifications += 1;
-            if number > last_boundary {
-                if let Some(raw) = proofs.get(sp_consensus_grandpa::GRANDPA_ENGINE_ID) {
-                    let proof: GrandpaJustification<ChainBlock> = decode(raw)?;
-                    need(
-                        proof.target() == (number, header.hash()),
-                        "stored justification target differs",
-                    )?;
-                    proof.verify(set, &keys).map_err(|e| e.to_string())?;
-                    last_justification = Some(raw.clone());
-                }
+        if let Some((_, tip_hash)) = initial_tip {
+            need(
+                backend.blockchain().leaves().map_err(|e| e.to_string())? == vec![tip_hash],
+                "partial leaf set differs",
+            )?;
+        }
+        progress = rebuild_prefix(
+            &partial,
+            initial_tip,
+            |number| history_record(&source, number),
+            PrefixContext {
+                genesis,
+                set,
+                authorities: &keys,
+                last_boundary,
+            },
+        )?;
+        let completed = initial_tip.is_some_and(|(number, _)| number == CHECKPOINT - 1);
+        let mut expected_aux = auxiliary.clone();
+        if let Some(raw) = progress.last_justification.as_ref() {
+            expected_aux.push((b"grandpa_best_justification".to_vec(), Some(raw.clone())));
+        }
+        if completed {
+            for (key, value) in &expected_aux {
+                need(
+                    optional(&partial, 8, key)? == *value,
+                    "completed partial auxiliary bytes differ",
+                )?;
             }
         }
-        let raw_header = header.encode();
-        let raw_body = body.encode();
-        let raw_just = just.as_ref().map(Encode::encode);
-        record_digest(
-            &mut digest,
-            number,
-            &raw_header,
-            &raw_body,
-            raw_just.as_deref(),
+        prefix_shape(
+            &partial,
+            progress.bodies,
+            progress.justifications,
+            completed,
+            if completed {
+                expected_aux.len() as u64
+            } else {
+                0
+            },
+        )?;
+        drop(partial);
+        eprintln!(
+            "retained predecessor resume: full existing prefix authenticated; next block {}",
+            progress.bodies
         );
-        bodies += 1;
+    }
+    let mut state = Some(parent_state);
+    for number in (progress.bodies as u32)..CHECKPOINT {
+        let record = history_record(&source, number)?;
+        progress.observe(number, &record, genesis, set, &keys, last_boundary)?;
+        let (header, body, just) = record;
         let mut operation = backend.begin_operation().map_err(|e| e.to_string())?;
         if number == CHECKPOINT - 1 {
             need(
@@ -381,14 +798,13 @@ pub(super) fn run(evidence_output: &Path, output_dir: &Path) -> Result<Value> {
                 root == *header.state_root(),
                 "SDK reset_storage parent root differs",
             )?;
-            if let Some(raw) = last_justification.take() {
-                auxiliary.push((b"grandpa_best_justification".to_vec(), Some(raw)));
+            if let Some(raw) = progress.last_justification.as_ref() {
+                auxiliary.push((b"grandpa_best_justification".to_vec(), Some(raw.clone())));
             }
             operation
                 .insert_aux(auxiliary.clone())
                 .map_err(|e| e.to_string())?;
         }
-        previous = header.hash();
         operation
             .set_block_data(header, Some(body), None, just, NewBlockState::Final, true)
             .map_err(|e| e.to_string())?;
@@ -399,7 +815,16 @@ pub(super) fn run(evidence_output: &Path, output_dir: &Path) -> Result<Value> {
             eprintln!("retained predecessor reconstruction: imported {number}/{}, no consensus or runtime replay",CHECKPOINT-1);
         }
     }
-    let imported_digest = hex::encode(digest.finalize());
+    // When the final transaction already committed, preserve it and re-run all
+    // persisted-state checks below instead of resetting or silently repairing it.
+    if initial_tip.is_some_and(|(number, _)| number == CHECKPOINT - 1) {
+        if let Some(raw) = progress.last_justification.as_ref() {
+            auxiliary.push((b"grandpa_best_justification".to_vec(), Some(raw.clone())));
+        }
+    }
+    let bodies = progress.bodies;
+    let justifications = progress.justifications;
+    let imported_digest = hex::encode(progress.digest.finalize());
     drop(backend);
     // Reopen using the SDK and verify every stored canonical record. This checks
     // persisted history, not merely the import loop's in-memory inputs.
@@ -550,6 +975,11 @@ pub(super) fn run(evidence_output: &Path, output_dir: &Path) -> Result<Value> {
     verify_files(&evidence_pins)?;
     let output_inventory = inventory(&db_path)?;
     let receipt = json!({"schema":"sora-nexus-retained-predecessor-reconstruction-v1","database":db_path,
+        "resume":{"requested":mode == OutputMode::Resume,"initialBestNumber":initial_tip.map(|(n,_)|n),
+            "initialBestHash":initial_tip.map(|(_,h)|format!("{h:#x}")),
+            "existingPrefixComparedWithAuthenticatedSource":mode == OutputMode::Resume,
+            "cursorFromPersistedSdkMetadata":mode == OutputMode::Resume,
+            "finalStateTransactionReused":initial_tip.is_some_and(|(n,_)|n == CHECKPOINT-1)},
         "evidence":evidence,"sourceDatabaseUnchanged":true,"sourceDatabaseFiles":before,
         "outputDatabaseFiles":output_inventory,"canonicalHistorySha256":imported_digest,
         "historicalHeaderBodyCount":bodies,"retainedJustificationRecords":justifications,
@@ -595,6 +1025,350 @@ pub(super) fn run(evidence_output: &Path, output_dir: &Path) -> Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct TestDirectory(PathBuf);
+    impl TestDirectory {
+        fn new() -> Self {
+            let directory = std::env::temp_dir().join(format!(
+                "sora-nexus-predecessor-resume-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ));
+            fs::create_dir(&directory).unwrap();
+            Self(fs::canonicalize(directory).unwrap())
+        }
+    }
+    impl Drop for TestDirectory {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn signed_proof(
+        header: &ChainHeader,
+        set: u64,
+        pair: &sp_consensus_grandpa::AuthorityPair,
+    ) -> Vec<u8> {
+        let precommit = sp_consensus_grandpa::Precommit::<ChainHeader> {
+            target_hash: header.hash(),
+            target_number: *header.number(),
+        };
+        let message = sp_consensus_grandpa::Message::<ChainHeader>::Precommit(precommit.clone());
+        let signature = pair.sign(&sp_consensus_grandpa::localized_payload(5, set, &message));
+        let commit = decode::<sp_consensus_grandpa::Commit<ChainHeader>>(
+            &(
+                header.hash(),
+                *header.number(),
+                vec![(precommit, signature, pair.public())],
+            )
+                .encode(),
+        )
+        .unwrap();
+        sp_consensus_grandpa::GrandpaJustification::<ChainHeader> {
+            round: 5,
+            commit,
+            votes_ancestries: Vec::new(),
+        }
+        .encode()
+    }
+
+    fn prefix_fixture() -> (Vec<HistoryRecord>, Storage, AuthorityList) {
+        let state = Storage {
+            top: BTreeMap::from([(b"key".to_vec(), b"value".to_vec())]),
+            ..Default::default()
+        };
+        let root =
+            sp_io::trie::blake2_256_root(state.top.clone().into_iter().collect(), StateVersion::V0);
+        let body_root = sp_io::trie::blake2_256_ordered_root(Vec::new(), StateVersion::V0);
+        let pair = sp_consensus_grandpa::AuthorityPair::from_seed(&[31; 32]);
+        let mut parent = H256::zero();
+        let records = (0..3)
+            .map(|number| {
+                let header = ChainHeader::new(
+                    number,
+                    body_root,
+                    if number == 2 {
+                        root
+                    } else {
+                        H256::repeat_byte(7)
+                    },
+                    parent,
+                    Default::default(),
+                );
+                parent = header.hash();
+                let proofs = (number > 0).then(|| {
+                    Justifications::from((
+                        sp_consensus_grandpa::GRANDPA_ENGINE_ID,
+                        signed_proof(&header, 8, &pair),
+                    ))
+                });
+                (header, Vec::new(), proofs)
+            })
+            .collect();
+        (records, state, vec![(pair.public(), 1)])
+    }
+
+    fn import_fixture(
+        backend: &Backend<ChainBlock>,
+        record: &HistoryRecord,
+        state: Option<Storage>,
+        aux: Option<Vec<u8>>,
+    ) {
+        let mut operation = backend.begin_operation().unwrap();
+        if let Some(state) = state {
+            assert_eq!(
+                operation.reset_storage(state, StateVersion::V0).unwrap(),
+                *record.0.state_root()
+            );
+        }
+        if let Some(raw) = aux {
+            operation
+                .insert_aux(vec![(b"grandpa_best_justification".to_vec(), Some(raw))])
+                .unwrap();
+        }
+        operation
+            .set_block_data(
+                record.0.clone(),
+                Some(record.1.clone()),
+                None,
+                record.2.clone(),
+                NewBlockState::Final,
+                true,
+            )
+            .unwrap();
+        backend.commit_operation(operation).unwrap();
+    }
+
+    #[test]
+    fn resume_rebuilds_digest_and_latest_proof_before_finishing_atomic_state_transaction() {
+        let directory = TestDirectory::new();
+        let db_path = directory.0.join("db");
+        let logs = directory.0.join("logs");
+        fs::create_dir(&logs).unwrap();
+        let (records, state, keys) = prefix_fixture();
+        let genesis = records[0].0.hash();
+        let backend = open_backend(&db_path).unwrap();
+        import_fixture(&backend, &records[0], None, None);
+        import_fixture(&backend, &records[1], None, None);
+        // Interrupt before committing the last state+block operation. It must not
+        // advance the stored cursor or make any partial state visible.
+        let mut abandoned = backend.begin_operation().unwrap();
+        abandoned
+            .reset_storage(state.clone(), StateVersion::V0)
+            .unwrap();
+        abandoned
+            .set_block_data(
+                records[2].0.clone(),
+                Some(Vec::new()),
+                None,
+                records[2].2.clone(),
+                NewBlockState::Final,
+                true,
+            )
+            .unwrap();
+        drop(abandoned);
+        drop(backend);
+        let backend = open_backend(&db_path).unwrap();
+        let tip = sdk_cursor(&backend.blockchain().info(), genesis, 2).unwrap();
+        assert_eq!(tip, Some((1, records[1].0.hash())));
+        let raw = readonly_output(&db_path, &logs).unwrap();
+        assert_eq!(raw_cursor(&raw, genesis, 2).unwrap(), tip);
+        let mut progress = rebuild_prefix(
+            &raw,
+            tip,
+            |n| Ok(records[n as usize].clone()),
+            PrefixContext {
+                genesis,
+                set: 8,
+                authorities: &keys,
+                last_boundary: 0,
+            },
+        )
+        .unwrap();
+        prefix_shape(&raw, 2, 1, false, 0).unwrap();
+        let first_proof = records[1]
+            .2
+            .as_ref()
+            .unwrap()
+            .get(sp_consensus_grandpa::GRANDPA_ENGINE_ID)
+            .unwrap();
+        assert_eq!(progress.last_justification.as_ref(), Some(first_proof));
+        assert_eq!(progress.bodies, 2);
+        assert!(rebuild_prefix(
+            &raw,
+            tip,
+            |n| Ok(records[n as usize].clone()),
+            PrefixContext {
+                genesis,
+                set: 9,
+                authorities: &keys,
+                last_boundary: 0
+            }
+        )
+        .is_err());
+        drop(raw);
+        progress
+            .observe(2, &records[2], genesis, 8, &keys, 0)
+            .unwrap();
+        import_fixture(
+            &backend,
+            &records[2],
+            Some(state.clone()),
+            progress.last_justification.clone(),
+        );
+        drop(backend);
+        // An interruption after final commit is verification-only: all records,
+        // final state and recomputed proof survive without another reset_storage.
+        let backend = open_backend(&db_path).unwrap();
+        let tip = sdk_cursor(&backend.blockchain().info(), genesis, 2).unwrap();
+        assert_eq!(tip, Some((2, records[2].0.hash())));
+        let raw = readonly_output(&db_path, &logs).unwrap();
+        assert_eq!(raw_cursor(&raw, genesis, 2).unwrap(), tip);
+        let rebuilt = rebuild_prefix(
+            &raw,
+            tip,
+            |n| Ok(records[n as usize].clone()),
+            PrefixContext {
+                genesis,
+                set: 8,
+                authorities: &keys,
+                last_boundary: 0,
+            },
+        )
+        .unwrap();
+        prefix_shape(&raw, 3, 2, true, 1).unwrap();
+        assert_eq!(rebuilt.digest.finalize(), progress.digest.finalize());
+        assert_eq!(
+            optional(&raw, 8, b"grandpa_best_justification").unwrap(),
+            rebuilt.last_justification
+        );
+        let restored = backend
+            .state_at(records[2].0.hash(), TrieCacheContext::Untrusted)
+            .unwrap();
+        assert_eq!(
+            restored
+                .pairs(IterArgs::default())
+                .unwrap()
+                .collect::<std::result::Result<BTreeMap<_, _>, _>>()
+                .unwrap(),
+            state.top
+        );
+        drop(restored);
+        drop(raw);
+        drop(backend);
+    }
+
+    #[test]
+    fn resume_rejects_gaps_foreign_rows_and_nonatomic_final_metadata() {
+        let directory = TestDirectory::new();
+        let db_path = directory.0.join("db");
+        let logs = directory.0.join("logs");
+        fs::create_dir(&logs).unwrap();
+        let (records, _, keys) = prefix_fixture();
+        let genesis = records[0].0.hash();
+        let backend = open_backend(&db_path).unwrap();
+        import_fixture(&backend, &records[0], None, None);
+        import_fixture(&backend, &records[1], None, None);
+        drop(backend);
+        let options = Options::default();
+        let families = DB::list_cf(&options, &db_path).unwrap();
+        let writable = DB::open_cf(&options, &db_path, families).unwrap();
+        for column in [3, 4, 5, 6, 8, 9, 11, 12] {
+            let cf = writable.cf_handle(&format!("col{column}")).unwrap();
+            writable.put_cf(cf, b"foreign", b"record").unwrap();
+            assert!(prefix_shape(&writable, 2, 1, false, 0).is_err());
+            writable.delete_cf(cf, b"foreign").unwrap();
+        }
+        let cf = writable.cf_handle("col0").unwrap();
+        writable.put_cf(cf, b"gap", [0]).unwrap();
+        assert!(raw_cursor(&writable, genesis, 2).is_err());
+        writable.delete_cf(cf, b"gap").unwrap();
+        assert!(raw_cursor(&writable, H256::repeat_byte(1), 2).is_err());
+        assert!(raw_cursor(&writable, genesis, 0).is_err());
+        let mut lookup = 1u32.to_be_bytes().to_vec();
+        lookup.extend(records[1].0.hash().as_bytes());
+        writable.put_cf(cf, b"fstate", &lookup).unwrap();
+        assert!(raw_cursor(&writable, genesis, 2).is_err());
+        writable.delete_cf(cf, b"fstate").unwrap();
+        let body_cf = writable.cf_handle("col5").unwrap();
+        writable.delete_cf(body_cf, &lookup).unwrap();
+        assert!(rebuild_prefix(
+            &writable,
+            Some((1, records[1].0.hash())),
+            |n| Ok(records[n as usize].clone()),
+            PrefixContext {
+                genesis,
+                set: 8,
+                authorities: &keys,
+                last_boundary: 0
+            }
+        )
+        .is_err());
+        writable
+            .put_cf(body_cf, &lookup, records[1].1.encode())
+            .unwrap();
+        drop(writable);
+        let backend = open_backend(&db_path).unwrap();
+        import_fixture(&backend, &records[2], None, None);
+        assert!(sdk_cursor(&backend.blockchain().info(), genesis, 2).is_err());
+        let raw = readonly_output(&db_path, &logs).unwrap();
+        assert!(raw_cursor(&raw, genesis, 2).is_err());
+        drop(raw);
+        drop(backend);
+    }
+
+    #[test]
+    fn prefix_comparison_does_not_trust_a_matching_header_alone() {
+        let (records, _, _) = prefix_fixture();
+        let expected = &records[1];
+        let mut changed = expected.clone();
+        changed.2 = None;
+        assert!(compare_record(expected, &changed).is_err());
+        changed = expected.clone();
+        changed.0.set_state_root(H256::repeat_byte(92));
+        assert!(compare_record(expected, &changed).is_err());
+    }
+
+    #[test]
+    fn resume_layout_rejects_completion_receipts_and_foreign_or_aliased_paths() {
+        let directory = TestDirectory::new();
+        fs::create_dir_all(
+            directory
+                .0
+                .join("chains/sora-nexus-recovery-predecessor/db/full"),
+        )
+        .unwrap();
+        fs::create_dir(directory.0.join("source-read-only-logs")).unwrap();
+        fs::write(
+            directory
+                .0
+                .join("chains/sora-nexus-recovery-predecessor/db/full/db_version"),
+            b"4",
+        )
+        .unwrap();
+        partial_output_layout(&directory.0).unwrap();
+        fs::write(directory.0.join("RECONSTRUCTION.json"), b"{").unwrap();
+        assert!(partial_output_layout(&directory.0).is_err());
+        fs::remove_file(directory.0.join("RECONSTRUCTION.json")).unwrap();
+        fs::write(
+            directory.0.join("untrusted-progress.json"),
+            b"{\"success\":true}",
+        )
+        .unwrap();
+        assert!(partial_output_layout(&directory.0).is_err());
+        fs::remove_file(directory.0.join("untrusted-progress.json")).unwrap();
+        let real = directory
+            .0
+            .join("chains/sora-nexus-recovery-predecessor/db/full/db_version");
+        let link = directory
+            .0
+            .join("chains/sora-nexus-recovery-predecessor/db/full/aliased");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        assert!(partial_output_layout(&directory.0).is_err());
+    }
 
     #[test]
     fn sdk_can_import_state_only_at_end_of_a_complete_block_prefix() {
