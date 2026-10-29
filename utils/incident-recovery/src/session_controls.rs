@@ -64,6 +64,7 @@ pub struct Report {
     pub authorization_policy: &'static str,
     pub mapping_commitment: String,
     pub checkpoint_session_records: usize,
+    pub checkpoint_historical_records: usize,
     pub next_key_owners: usize,
     pub key_registrations: usize,
     pub queued_validators: usize,
@@ -225,7 +226,7 @@ impl Compilation {
         Ok(())
     }
 
-    /// Check the complete Session namespace and exact existing backing moves.
+    /// Check the complete Session/Historical namespaces and exact backing moves.
     /// Other adapters cannot alter historical roots, key material or refcounts.
     pub fn verify_groups(
         &self,
@@ -236,17 +237,17 @@ impl Compilation {
             return Err("Session mapping certificate mismatch".into());
         }
         let session = sp_io::hashing::twox_128(b"Session");
+        let historical = sp_io::hashing::twox_128(b"Historical");
         let mut actual = self.before.clone();
         let mut seen = BTreeSet::new();
-        for edit in groups
-            .iter()
-            .flatten()
-            .filter(|e| e.scope == StorageScope::Top && e.key.starts_with(&session))
-        {
+        for edit in groups.iter().flatten().filter(|e| {
+            e.scope == StorageScope::Top
+                && (e.key.starts_with(&session) || e.key.starts_with(&historical))
+        }) {
             if !seen.insert(edit.key.clone())
                 || self.before.get(&edit.key).map(|v| hash(v)) != edit.before
             {
-                return Err("overlapping or stale Session projection".into());
+                return Err("overlapping or stale Session/Historical projection".into());
             }
             if let Some(value) = &edit.after {
                 actual.insert(edit.key.clone(), value.clone());
@@ -255,7 +256,9 @@ impl Compilation {
             }
         }
         if actual != self.expected {
-            return Err("Session projection changes keys/history or omits owner moves".into());
+            return Err(
+                "Session/Historical projection changes keys/history or omits owner moves".into(),
+            );
         }
         for required in &self.required_moves {
             let found: Vec<_> = groups
@@ -295,15 +298,22 @@ pub fn compile(
         .map(|p| (p.old.clone(), p.new.clone()))
         .collect();
     let session = sp_io::hashing::twox_128(b"Session");
-    let before: BTreeMap<_, _> = storage
-        .top
-        .range(session.to_vec()..)
-        .take_while(|(k, _)| k.starts_with(&session))
-        .take(MAX_ROWS + 1)
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-    if before.len() > MAX_ROWS || before.values().any(|v| v.len() > typed::MAX_TYPED_BYTES) {
-        return Err("Session namespace exceeds bounded checkpoint inventory".into());
+    let historical = sp_io::hashing::twox_128(b"Historical");
+    // Historical is a separate pallet, not an item within Session. Preserve its
+    // entire namespace, including StoredRange, storage version and unknown rows.
+    let mut before = BTreeMap::new();
+    for namespace in [session, historical] {
+        let records: BTreeMap<_, _> = storage
+            .top
+            .range(namespace.to_vec()..)
+            .take_while(|(k, _)| k.starts_with(&namespace))
+            .take(MAX_ROWS + 1)
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        if records.len() > MAX_ROWS || records.values().any(|v| v.len() > typed::MAX_TYPED_BYTES) {
+            return Err("Session/Historical namespace exceeds bounded checkpoint inventory".into());
+        }
+        before.extend(records);
     }
     let next = descriptor(schema, "Session.NextKeys")?;
     account_map(schema, next, Hasher::Twox64Concat)?;
@@ -436,6 +446,7 @@ pub fn compile(
             authorization_policy: crate::trusted_mapping::AUTHORIZATION_POLICY,
             mapping_commitment: hx(&mapping_hash),
             checkpoint_session_records: 0,
+            checkpoint_historical_records: 0,
             next_key_owners: next_rows.len(),
             key_registrations: registrations.len(),
             queued_validators: queued_rows.len(),
@@ -564,7 +575,16 @@ pub fn compile(
             value_hash: out.expected.get(key).map(|v| hash(v)),
         });
     }
-    out.report.checkpoint_session_records = out.before.len();
+    out.report.checkpoint_session_records = out
+        .before
+        .keys()
+        .filter(|k| k.starts_with(&session))
+        .count();
+    out.report.checkpoint_historical_records = out
+        .before
+        .keys()
+        .filter(|k| k.starts_with(&historical))
+        .count();
     out.report.changed_keys = out.edits.len();
     Ok(out)
 }
@@ -581,6 +601,17 @@ mod tests {
         providers: u32,
         sufficients: u32,
         data: (u128, u128, u128, u128),
+    }
+
+    fn historical_key(item: &str) -> Vec<u8> {
+        let mut key = sp_io::hashing::twox_128(b"Historical").to_vec();
+        key.extend(sp_io::hashing::twox_128(item.as_bytes()));
+        if item == "HistoricalSessions" {
+            let index = 7u32.encode();
+            key.extend(sp_io::hashing::twox_64(&index));
+            key.extend(index);
+        }
+        key
     }
 
     fn fixture(external: bool) -> (MetadataSchema, Storage, Vec<AccountReplacement>) {
@@ -686,9 +717,16 @@ mod tests {
         storage
             .top
             .insert(prefix("Validators"), vec![old.clone(), untouched].encode());
+        storage.top.insert(
+            historical_key("HistoricalSessions"),
+            ([4u8; 32], 2u32).encode(),
+        );
         storage
             .top
-            .insert(prefix("HistoricalSessions"), vec![4, 5, 6]);
+            .insert(historical_key("StoredRange"), (7u32, 8u32).encode());
+        storage
+            .top
+            .insert(historical_key("__STORAGE_VERSION__"), 1u16.encode());
         if external {
             storage.top.insert(
                 map_key(
@@ -761,9 +799,10 @@ mod tests {
         assert_eq!(after[1].0, mapping[0].new);
         assert_eq!(after[1].1, before[1].1);
         assert_eq!(
-            compiled.expected[&prefix("HistoricalSessions")],
-            storage.top[&prefix("HistoricalSessions")]
+            compiled.expected[&historical_key("HistoricalSessions")],
+            storage.top[&historical_key("HistoricalSessions")]
         );
+        assert_eq!(compiled.report.checkpoint_historical_records, 3);
         assert!(!compiled
             .resolutions
             .iter()
@@ -811,8 +850,8 @@ mod tests {
         let mut groups = complete_groups(&compiled);
         groups.push(vec![GuardedStorageEdit {
             scope: StorageScope::Top,
-            key: prefix("HistoricalSessions"),
-            before: Some(hash(&storage.top[&prefix("HistoricalSessions")])),
+            key: historical_key("HistoricalSessions"),
+            before: Some(hash(&storage.top[&historical_key("HistoricalSessions")])),
             after: Some(vec![0]),
         }]);
         assert!(compiled.verify_groups(&groups, &mapping).is_err());
@@ -823,6 +862,37 @@ mod tests {
                 descriptor(&schema, "Balances.Reserves").unwrap(),
                 &mapping[0].new.encode(),
             ),
+            before: None,
+            after: Some(vec![0]),
+        }]);
+        assert!(compiled.verify_groups(&groups, &mapping).is_err());
+    }
+
+    #[test]
+    fn historical_namespace_rejects_deletion_insertion_range_and_version_changes() {
+        let (schema, storage, mapping) = fixture(true);
+        let compiled = compile(&schema, &storage, &mapping).unwrap();
+        for item in ["HistoricalSessions", "StoredRange", "__STORAGE_VERSION__"] {
+            let key = historical_key(item);
+            for after in [None, Some(vec![0])] {
+                let mut groups = complete_groups(&compiled);
+                groups.push(vec![GuardedStorageEdit {
+                    scope: StorageScope::Top,
+                    key: key.clone(),
+                    before: Some(hash(&storage.top[&key])),
+                    after,
+                }]);
+                assert!(compiled.verify_groups(&groups, &mapping).is_err());
+            }
+            assert!(compiled
+                .witnesses
+                .iter()
+                .any(|w| w.key == key && w.value_hash == Some(hash(&storage.top[&key]))));
+        }
+        let mut groups = complete_groups(&compiled);
+        groups.push(vec![GuardedStorageEdit {
+            scope: StorageScope::Top,
+            key: historical_key("UnexpectedItem"),
             before: None,
             after: Some(vec![0]),
         }]);

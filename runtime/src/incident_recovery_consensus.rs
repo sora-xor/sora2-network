@@ -167,7 +167,7 @@ impl<D: AsRef<[u8]>> KeyOwnerProofSystem<(KeyTypeId, D)> for RecoveryOwnership {
                 });
             }
         }
-        Historical::prove(key)
+        prove_current_session(key)
     }
 
     fn check_proof(key: (KeyTypeId, D), proof: Self::Proof) -> Option<Identification> {
@@ -198,11 +198,14 @@ impl<D: AsRef<[u8]>> KeyOwnerProofSystem<(KeyTypeId, D)> for RecoveryOwnership {
                 }
             }
         }
-        // Session::check_proof regenerates the current session's trie from
-        // NextKeys. Keep accepting its independently stored historical root
-        // during the frozen session, even if a queued key change means that
-        // root differs from the checkpoint's regenerated NextKeys root.
-        if pallet_grandpa::recovery::load().is_some_and(|set| set.session == proof.session) {
+        // Native current-session verification regenerates a trie from NextKeys.
+        // After remapping, c+1 (and roots copied from it) still commit the old
+        // identities. Verify against the unchanged stored root so the same proof
+        // remains valid after the next rotation. Frozen-session certificates and
+        // the independently captured c trie were handled above.
+        if recovery_proof_context().is_some_and(|set| {
+            proof.session >= set.session && proof.session == Session::current_index()
+        }) {
             if let Some((root, count)) =
                 pallet_session::historical::HistoricalSessions::<Runtime>::get(proof.session)
             {
@@ -214,9 +217,135 @@ impl<D: AsRef<[u8]>> KeyOwnerProofSystem<(KeyTypeId, D)> for RecoveryOwnership {
                     }
                 }
             }
+            return None;
         }
         Historical::check_proof(key, proof).and_then(effective_identification)
     }
+}
+
+fn recovery_proof_context() -> Option<pallet_grandpa::recovery::RecoverySet> {
+    let set = pallet_grandpa::recovery::load()?;
+    let policy = crate::incident_recovery::compiled_policy().ok()?;
+    (set.checkpoint == CHECKPOINT_HASH && set.policy == policy.commitment()).then_some(set)
+}
+
+type OwnershipDb = sp_trie::MemoryDB<sp_runtime::traits::BlakeTwo256>;
+type OwnershipLayout = sp_trie::LayoutV0<sp_runtime::traits::BlakeTwo256>;
+
+/// Reconstruct only the checkpoint's queued ownership. Both deployed spec 134
+/// and runtime 138 use DefaultExposureOf; a non-default historical exposure will
+/// fail the exact root comparison below, never be replaced with invented data.
+fn queued_ownership_trie(
+    queued: &[(AccountId, crate::opaque::SessionKeys)],
+) -> Option<(OwnershipDb, H256)> {
+    use sp_trie::TrieMut;
+    if queued.is_empty() || queued.len() > 1000 {
+        return None;
+    }
+    let mut owners = BTreeSet::new();
+    let mut keys_seen = BTreeSet::new();
+    let mut db = OwnershipDb::new(&[0]);
+    let mut root = H256::zero();
+    {
+        let mut trie =
+            sp_trie::TrieDBMutBuilder::<OwnershipLayout>::new(&mut db, &mut root).build();
+        for (index, (owner, keys)) in queued.iter().enumerate() {
+            if !owners.insert(owner) {
+                return None;
+            }
+            let index = (index as u32).encode();
+            let identification: Identification = (owner.clone(), Default::default());
+            trie.insert(&index, &identification.encode()).ok()?;
+            for key_type in crate::opaque::SessionKeys::key_ids() {
+                let key = (*key_type, keys.get_raw(*key_type)).encode();
+                if !keys_seen.insert(key.clone()) {
+                    return None;
+                }
+                trie.insert(&key, &index).ok()?;
+            }
+        }
+    }
+    Some((db, root))
+}
+
+/// Return only proofs which verify against the session's durable Historical
+/// root. No Historical row is written. The fallback uses the authenticated
+/// first-child snapshot, not current NextKeys or caller-supplied ownership.
+fn prove_current_session<D: AsRef<[u8]>>(key: (KeyTypeId, D)) -> Option<MembershipProof> {
+    if !sp_io::storage::exists(POLICY_STORAGE_KEY) {
+        return Historical::prove(key);
+    }
+    let set = recovery_proof_context()?;
+    let session = Session::current_index();
+    if session <= set.session {
+        return Historical::prove(key);
+    }
+    let (root, count) = pallet_session::historical::HistoricalSessions::<Runtime>::get(session)?;
+    if let Some(proof) = Historical::prove((key.0, key.1.as_ref())) {
+        if proof.validator_count == count
+            && check_root_proof(root, key.0, key.1.as_ref(), &proof).is_some()
+        {
+            return Some(proof);
+        }
+    }
+    // NoteHistoricalRoot copies the queued root into later sessions until an
+    // election supplies a new roster. Require equality with that exact c+1 root
+    // as well as the current stored root; never treat arbitrary drift as repair.
+    let queued_session = set.session.checked_add(1)?;
+    if pallet_session::historical::HistoricalSessions::<Runtime>::get(queued_session)
+        != Some((root, count))
+    {
+        return None;
+    }
+    let encoded = sp_io::storage::get(KEYS_SNAPSHOT)?;
+    if encoded.len() > MAX_RECORD_BYTES {
+        return None;
+    }
+    type Rows = Vec<(AccountId, crate::opaque::SessionKeys)>;
+    let mut input = encoded.as_ref();
+    let snapshot = <(Rows, Rows, Vec<(GrandpaId, u64)>)>::decode_with_mem_limit(
+        &mut input,
+        MAX_RECORD_BYTES * 2,
+    )
+    .ok()?;
+    if !input.is_empty()
+        || snapshot.0.len() > 1000
+        || snapshot.2.len() > 1000
+        || snapshot.1.len() != count as usize
+        || snapshot.encode() != encoded.as_ref()
+    {
+        return None;
+    }
+    let (db, candidate) = queued_ownership_trie(&snapshot.1)?;
+    if candidate != root {
+        return None;
+    }
+    use sp_trie::recorder_ext::RecorderExt;
+    let mut recorder = sp_trie::Recorder::<OwnershipLayout>::new();
+    let index = sp_trie::read_trie_value::<OwnershipLayout, _>(
+        &db,
+        &root,
+        &(key.0, key.1.as_ref()).encode(),
+        Some(&mut recorder),
+        None,
+    )
+    .ok()??;
+    let index = u32::decode_all(&mut index.as_slice()).ok()?;
+    sp_trie::read_trie_value::<OwnershipLayout, _>(
+        &db,
+        &root,
+        &index.encode(),
+        Some(&mut recorder),
+        None,
+    )
+    .ok()??;
+    let proof = MembershipProof {
+        session,
+        validator_count: count,
+        trie_nodes: recorder.into_raw_storage_proof(),
+    };
+    check_root_proof(root, key.0, key.1.as_ref(), &proof)?;
+    Some(proof)
 }
 
 fn effective_identification(mut value: Identification) -> Option<Identification> {
@@ -316,7 +445,7 @@ pub fn prove_grandpa(set_id: u64, authority: GrandpaId) -> Option<MembershipProo
             }
         }
     }
-    Historical::prove((sp_consensus_grandpa::KEY_TYPE, authority))
+    prove_current_session((sp_consensus_grandpa::KEY_TYPE, authority))
 }
 
 /// Generate maintenance BABE proofs from the preserved root, even after normal
@@ -356,7 +485,7 @@ pub fn prove_babe(
             });
         }
     }
-    Historical::prove((sp_consensus_babe::KEY_TYPE, authority))
+    prove_current_session((sp_consensus_babe::KEY_TYPE, authority))
 }
 
 /// Versioned, public data derived from the authenticated checkpoint. No operator
@@ -1216,6 +1345,232 @@ pub(crate) mod tests {
         assert_eq!(
             check_preserved_proof(&record, key_type, &key, &duplicate),
             None
+        );
+    }
+
+    fn enter_remapped_queued_session(
+        policy: &common::recovery::RecoveryPolicy,
+    ) -> crate::opaque::SessionKeys {
+        let operator = pending_key_fixture(policy);
+        let queued = pallet_session::QueuedKeys::<Runtime>::get();
+        let (_, root) = queued_ownership_trie(&queued).unwrap();
+        install(policy.commitment(), LAST_ABANDONED_GRANDPA_SET, &[operator]).unwrap();
+        let replacement = &policy.replacements[0];
+        let next = pallet_session::NextKeys::<Runtime>::take(&replacement.old).unwrap();
+        assert_ne!(queued[0].1.grandpa, next.grandpa);
+        pallet_session::NextKeys::<Runtime>::insert(&replacement.new, next);
+        pallet_session::Validators::<Runtime>::put(vec![replacement.new.clone()]);
+        pallet_session::CurrentIndex::<Runtime>::put(8);
+        for session in 8..=10 {
+            pallet_session::historical::HistoricalSessions::<Runtime>::insert(session, (root, 1));
+        }
+        pallet_session::historical::StoredRange::<Runtime>::put((7, 11));
+        queued[0].1.clone()
+    }
+
+    fn remapping_policy() -> common::recovery::RecoveryPolicy {
+        let mut policy = policy();
+        policy
+            .replacements
+            .push(common::recovery::AccountReplacement {
+                old: AccountId::new([1; 32]),
+                new: AccountId::new([2; 32]),
+            });
+        policy
+    }
+
+    #[test]
+    fn queued_root_proofs_survive_remapping_and_two_delayed_sessions_without_root_changes() {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let policy = remapping_policy();
+            crate::incident_recovery::with_test_policy(&policy, || {
+                let queued = enter_remapped_queued_session(&policy);
+                let roots = pallet_session::historical::HistoricalSessions::<Runtime>::iter()
+                    .collect::<Vec<_>>();
+                let range = pallet_session::historical::StoredRange::<Runtime>::get();
+                for key in [
+                    (
+                        sp_consensus_grandpa::KEY_TYPE,
+                        queued.grandpa.as_slice().to_vec(),
+                    ),
+                    (sp_consensus_babe::KEY_TYPE, queued.babe.as_slice().to_vec()),
+                ] {
+                    pallet_session::CurrentIndex::<Runtime>::put(8);
+                    let proof = prove_current_session((key.0, &key.1)).unwrap();
+                    assert_eq!(proof.session, 8);
+                    let before = sp_io::storage::root(sp_runtime::StateVersion::V0);
+                    assert_eq!(
+                        RecoveryOwnership::check_proof((key.0, &key.1), proof.clone())
+                            .unwrap()
+                            .0,
+                        policy.replacements[0].new,
+                    );
+                    assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V0), before);
+                    // This is an ordinary stored-root proof, not a new certificate.
+                    for session in [9, 10] {
+                        pallet_session::CurrentIndex::<Runtime>::put(session);
+                        assert_eq!(
+                            Historical::check_proof((key.0, &key.1), proof.clone())
+                                .unwrap()
+                                .0,
+                            policy.replacements[0].old
+                        );
+                        assert_eq!(
+                            RecoveryOwnership::check_proof((key.0, &key.1), proof.clone())
+                                .unwrap()
+                                .0,
+                            policy.replacements[0].new
+                        );
+                        let current = prove_current_session((key.0, &key.1)).unwrap();
+                        assert_eq!(current.session, session);
+                        assert!(RecoveryOwnership::check_proof((key.0, &key.1), current).is_some());
+                    }
+                }
+                assert_eq!(
+                    pallet_session::historical::HistoricalSessions::<Runtime>::iter()
+                        .collect::<Vec<_>>(),
+                    roots
+                );
+                assert_eq!(
+                    pallet_session::historical::StoredRange::<Runtime>::get(),
+                    range
+                );
+                pallet_session::CurrentIndex::<Runtime>::put(8);
+                assert_eq!(
+                    prove_grandpa(LAST_ABANDONED_GRANDPA_SET + 2, queued.grandpa)
+                        .unwrap()
+                        .session,
+                    8
+                );
+                assert_eq!(prove_babe(0u64.into(), queued.babe).unwrap().session, 8);
+            });
+        });
+    }
+
+    #[test]
+    fn queued_root_proofs_reject_wrong_key_count_nodes_and_snapshot_drift() {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let policy = remapping_policy();
+            crate::incident_recovery::with_test_policy(&policy, || {
+                let queued = enter_remapped_queued_session(&policy);
+                let key = (sp_consensus_grandpa::KEY_TYPE, queued.grandpa.as_slice());
+                let proof = prove_current_session(key).unwrap();
+                let next = Session::load_keys(&policy.replacements[0].new).unwrap();
+                let next_key = (sp_consensus_grandpa::KEY_TYPE, next.grandpa.as_slice());
+                let regenerated = Historical::prove(next_key).unwrap();
+                assert!(Historical::check_proof(next_key, regenerated.clone()).is_some());
+                // A current-only proof is unsafe to emit: it would fail after
+                // rotation because the retained root commits the queued keys.
+                assert!(RecoveryOwnership::check_proof(next_key, regenerated).is_none());
+                let mut wrong = proof.clone();
+                wrong.validator_count += 1;
+                assert!(RecoveryOwnership::check_proof(key, wrong).is_none());
+                let mut duplicate = proof.clone();
+                duplicate.trie_nodes.push(duplicate.trie_nodes[0].clone());
+                assert!(RecoveryOwnership::check_proof(key, duplicate).is_none());
+                let mut malformed = proof.clone();
+                malformed.trie_nodes = vec![vec![255]];
+                assert!(RecoveryOwnership::check_proof(key, malformed).is_none());
+                assert!(
+                    RecoveryOwnership::check_proof((key.0, &[88u8; 32]), proof.clone()).is_none()
+                );
+                assert!(RecoveryOwnership::check_proof(
+                    (sp_consensus_babe::KEY_TYPE, key.1),
+                    proof
+                )
+                .is_none());
+                assert!(prove_current_session((key.0, &[88u8; 32])).is_none());
+                let snapshot = sp_io::storage::get(KEYS_SNAPSHOT).unwrap();
+                let mut corrupt = snapshot.to_vec();
+                *corrupt.last_mut().unwrap() ^= 1;
+                // An irrelevant authority-weight change does not alter ownership;
+                // a truncated/noncanonical snapshot is nevertheless rejected.
+                corrupt.pop();
+                sp_io::storage::set(KEYS_SNAPSHOT, &corrupt);
+                assert!(prove_current_session(key).is_none());
+                sp_io::storage::set(KEYS_SNAPSHOT, &snapshot);
+                type Rows = Vec<(AccountId, crate::opaque::SessionKeys)>;
+                let (next_rows, mut queued_rows, authorities) =
+                    <(Rows, Rows, Vec<(GrandpaId, u64)>)>::decode_all(&mut snapshot.as_ref())
+                        .unwrap();
+                queued_rows[0].1.babe =
+                    sp_consensus_babe::AuthorityId::from_slice(&[77; 32]).unwrap();
+                sp_io::storage::set(
+                    KEYS_SNAPSHOT,
+                    &(next_rows, queued_rows, authorities).encode(),
+                );
+                assert!(prove_current_session(key).is_none());
+                sp_io::storage::set(KEYS_SNAPSHOT, &snapshot);
+                pallet_session::historical::HistoricalSessions::<Runtime>::insert(
+                    8,
+                    (H256::repeat_byte(9), 1),
+                );
+                assert!(prove_current_session(key).is_none());
+            });
+        });
+    }
+
+    #[test]
+    fn newly_elected_root_uses_native_proofs_and_keeps_queued_history() {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let policy = remapping_policy();
+            crate::incident_recovery::with_test_policy(&policy, || {
+                let queued = enter_remapped_queued_session(&policy);
+                let old = prove_current_session((sp_consensus_grandpa::KEY_TYPE, &queued.grandpa))
+                    .unwrap();
+                let owner = policy.replacements[0].new.clone();
+                let next = Session::load_keys(&owner).unwrap();
+                let (_, root) = queued_ownership_trie(&[(owner.clone(), next.clone())]).unwrap();
+                pallet_session::CurrentIndex::<Runtime>::put(9);
+                pallet_session::historical::HistoricalSessions::<Runtime>::insert(9, (root, 1));
+                let key = (sp_consensus_grandpa::KEY_TYPE, &next.grandpa);
+                let native = Historical::prove(key).unwrap();
+                let repaired = prove_current_session(key).unwrap();
+                assert_eq!(repaired.encode(), native.encode());
+                assert_eq!(
+                    RecoveryOwnership::check_proof(key, repaired).unwrap().0,
+                    owner
+                );
+                assert!(
+                    prove_current_session((sp_consensus_grandpa::KEY_TYPE, &queued.grandpa))
+                        .is_none()
+                );
+                assert_eq!(
+                    RecoveryOwnership::check_proof(
+                        (sp_consensus_grandpa::KEY_TYPE, &queued.grandpa),
+                        old
+                    )
+                    .unwrap()
+                    .0,
+                    owner
+                );
+            });
+        });
+    }
+
+    #[test]
+    #[ignore = "requires the retained, hash-bound checkpoint queued-key fixture"]
+    fn captured_checkpoint_queued_root_matches_the_retained_historical_root() {
+        let path = std::env::var("SORA_NEXUS_CHECKPOINT_QUEUED_KEYS").unwrap();
+        let bytes = std::fs::read(path).unwrap();
+        assert_eq!(
+            sp_io::hashing::blake2_256(&bytes),
+            hex_literal::hex!("f66db75fe52e06d0f19d217fac9ad72ea17dbeee73cf206c4699c317a2370212")
+        );
+        let queued =
+            Vec::<(AccountId, crate::opaque::SessionKeys)>::decode_all(&mut bytes.as_slice())
+                .unwrap();
+        assert_eq!(queued.len(), 15);
+        assert_eq!(queued.encode(), bytes);
+        let (_, root) = queued_ownership_trie(&queued).unwrap();
+        // Captured block 28191817, session48165 and its precomputed session48166.
+        // Page72 SHA256 f1e5c4f2cd77a9dcf77290de6b53d133ed5a1e9efe9a5392239d974781d89fd1;
+        // page2263 SHA256 76da76c7277e69b66fb848e317aa59ca9a9d13561c4036e906967c9b46183d74.
+        assert_eq!(
+            root,
+            H256::from_slice(&hex_literal::hex!(
+                "3999c360cadc3f33c4daa9b454bcf5a9c1d371b3815a13777ba8e2de9cd0d123"
+            ))
         );
     }
 
