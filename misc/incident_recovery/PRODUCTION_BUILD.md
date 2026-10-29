@@ -11,6 +11,22 @@ public test council, replacement destination and GRANDPA keys with labels remove
 The node remains 4.8.13. This corridor builds runtime Wasm only; native recorder
 engines and the node have their own build and execution evidence.
 
+Every new policy uses format 2 and an explicit `authorizationDomain`. Choose a
+fresh nonzero 32-byte public release nonce before compiling anything, retain it
+in the input manifest, and use a different nonce for each independent rehearsal
+or release network. No private key is involved. The composer requires
+`--chain-spec-id` and `--release-nonce`; neither has a default. Production admission
+requires the production chain ID and rejects the reserved public fixture nonce.
+A repair preserves the original domain. Exact-artifact offline rehearsals share
+production artifact bytes and therefore also bind every escape to their observed
+unsealed first-child hash, which differs from the sealed production block hash.
+The production first child normally carries Tick; it cannot execute Escape.
+Collect production repair signatures only after that actual block is known, and
+never treat signatures over the rehearsal anchor as production authorizations.
+Policy-v1 artifacts and v1 council
+signatures are retained as historical test evidence and must be rebuilt/re-signed;
+there is no implicit conversion or reuse of their verification results.
+
 The data commitment is the Blake2-256 of the canonical input-manifest JSON
 (sorted keys, two-space indentation and one final newline). That manifest binds
 raw input file hashes, compiler argument selection, optional mixed-work layout
@@ -37,6 +53,10 @@ fields (all paths relative to its directory):
     "semantic": "semantic-plan.json",
     "council": "recovered-council.json",
     "staking-roles": "staking-roles.json"
+  },
+  "authorizationDomain": {
+    "chainSpecId": "sora-nexus-recovery-28191817",
+    "releaseNonce": "0x<64 lowercase hexadecimal digits; unique nonzero public nonce>"
   },
   "operatorsScale": "operators.scale",
   "derivedInventory": "derived-accounts.json",

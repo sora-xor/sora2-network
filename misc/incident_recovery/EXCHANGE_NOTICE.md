@@ -38,6 +38,11 @@ will expose recovered entitlements. New TS/SS payout contracts and claim website
 are outside this restart. Linked SORA Nexus XOR claims involving replaced accounts
 require replacement-key authorization of the payout recipient.
 
+Soratopia activity and account-age records through the checkpoint are also being
+recovered for the effective replacement owner. Post-checkpoint activity on the
+abandoned branch does not earn recovered points. This does not introduce a new
+points claim contract or change the existing scoring rules.
+
 Keep deposits and withdrawals coordinated with the recovery operators until the
 final release, reconciliation and restart criteria are met. Retain abandoned-
 branch records for customer reconciliation and incident evidence.

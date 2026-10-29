@@ -28,13 +28,23 @@ Run only after the active source/replay guards permit local preparation. Supply:
   Linux installer/checksum and the exact source-nightly manifest/checksum from
   `static.rust-lang.org`. It rejects redirects and ambient proxies. Rustup's
   automatic self-update is disabled. Installed channel metadata must match the
-  pinned manifest, allowing only Rustup's omitted package commit field, added
-  empty component arrays and explicit derived extension flags. Archive URLs and
+  pinned manifest, allowing only Rustup's omitted package commit field, reviewed
+  standalone installer/source archive index, added empty component arrays and
+  explicit derived extension flags. Component archive URLs and
   hashes, versions, targets, ordering and profiles remain exact; the offline
   rustc check also binds its reported full commit to the original public manifest.
 - A canonical local **public PEM CA certificate bundle**, never private keys.
-  Its exact bytes are copied and hashed. It bootstraps HTTPS in the minimal Debian
-  base before the signed snapshot supplies Debian's certificate package.
+  The resolver validates each complete X.509 CA certificate and emits only
+  canonical PEM certificates in original order, preserving duplicate entries.
+  Ordinary PEM/comments and macOS/OpenBSD annotation frames with matching SHA-1
+  and SHA-256 fingerprints are accepted; other PEM blocks, malformed DER,
+  contradictory fingerprints and unframed text are rejected. Annotation text
+  is discarded rather than interpreted as trust data. `PUBLIC-RESOLUTION.json`
+  records the original bundle path/hash, ordered source byte spans, DER hashes
+  and normalized payload hash. The original bundle remains unchanged and its
+  pin is rechecked after resolution. Only normalized certificates enter TLS
+  and the image. They bootstrap HTTPS in the minimal Debian base before the
+  signed snapshot supplies Debian's certificate package.
 - For preparation, canonical Docker and Buildx executable paths and SHA-256 pins,
   plus the explicitly approved canonical local Unix socket. Neither the current
   Docker context nor environment chooses the daemon.
@@ -88,6 +98,11 @@ preparer copies both executable pins, installs Buildx only into its owned empty
 configuration, selects the local default builder, and supplies an empty owned
 home. Proxy variables, credential helpers, SSH agents and user contexts are not
 inherited. No private directory or Docker socket is mounted in an image build.
+BuildKit may create a local `.token_seed` and an empty lock in that fresh
+configuration. Only its exact public Docker registry entry, canonical 16-byte
+entropy and private file permissions are accepted; other registries, credentials
+and builder configurations remain rejected. This format follows
+[BuildKit's token-seed implementation](https://github.com/moby/buildkit/blob/master/session/auth/authprovider/tokenseed.go).
 
 The exact source, recipe and scripts form an owned build context. The immutable
 official Debian base is pulled explicitly, then both fixed Dockerfile targets are
@@ -100,7 +115,9 @@ preparation phase has public network access. The release image driver stays
 offline and accepts only resulting image IDs.
 
 Each build, pull, inspect, smoke and cleanup command has a 24-hour bound and
-retained actual process receipts/stdout/stderr. A fresh owned container runs with
+retained actual process receipts/stdout/stderr. Builds retain full plain progress
+and admit the resulting image from a separately hashed IID file, so failed
+installation steps retain their diagnostics. A fresh owned container runs with
 `--network none`; it checks source bytes, the exact nightly/target, compiler,
 libclang, CMake, protobuf, OpenSSL and `cargo metadata --offline --locked --frozen`.
 The Docker CLI exit and the container exit are both checked. Cleanup targets only

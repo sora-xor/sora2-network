@@ -93,13 +93,27 @@ The copied binary must be a matching ELF64 and report version 4.8.13 with the
 source-inventory fingerprint and Linux target. A smoke run in the pinned base
 checks the loader/library compatibility needed by that command.
 
-The pinned base is exported locally, and every saved uncompressed layer is
-checked against the pinned base configuration's diff ID. The driver adds only a
-deterministic layer containing the exact node binary and constructs Docker and
-OCI archives with fixed metadata. It loads the Docker archive locally, checks its
-configuration-derived image ID, independently copies the image binary back out
-and compares all bytes by hash, then runs the loaded image's version command.
-The final image runs as user/group 10000 and contains no recovery policy or keys.
+The pinned base is exported locally. A legacy configuration-ID archive must
+match that exact configuration digest and its uncompressed layer diff IDs. An
+OCI export instead authenticates the pinned index or manifest digest, selects
+exactly one Linux image for the requested architecture, and verifies every
+selected config/layer descriptor hash, size and saved-manifest ordering. Only
+uncompressed tar and gzip layer formats are accepted; gzip output is bounded
+before writing and must match the configuration's uncompressed diff ID. Unknown
+compression, ambiguous platform selection and external descriptor URLs fail.
+Layer tar entries are never extracted into the host filesystem.
+
+The driver adds only a deterministic layer containing the exact node binary and
+constructs Docker and OCI archives with fixed metadata. It loads the OCI archive
+locally and requires exact inspection of the generated manifest digest before
+using that reference for container creation. `imageId` and `loadedImageReference`
+name that manifest; `configId`, `ociManifestDigest` and `ociIndexDigest` preserve
+the distinct content identities. A daemon that cannot resolve that exact manifest
+fails admission; no tag/config/index fallback is used. The Docker archive is
+emitted for portability, but its import path is not separately smoke-tested.
+The driver independently copies the loaded image binary back out, compares all
+bytes by hash, then runs its version command. The final image runs as user/group
+10000 and contains no recovery policy or keys.
 
 `BUILD-MANIFEST.json` binds the source, toolchain, actual Cargo artifact, node
 digest, base/builder inspection receipts, image ID, OCI manifest digest, archive

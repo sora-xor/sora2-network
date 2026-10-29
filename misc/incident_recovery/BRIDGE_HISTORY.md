@@ -1,5 +1,16 @@
 # SORA Nexus bridge ownership, custody and signing cancellation
 
+The current release implementation cancels and quarantines outgoing liabilities;
+it has no executable safe-refund adapter. Even a liability later proven safe to
+refund remains reserved under its effective owner. This is an outstanding part
+of the agreed recovery policy, not evidence that the liability was repaid or
+extinguished. Release reconciliation must identify every such liability and must
+not claim the refund requirement complete until its native, exactly-once refund
+path and external authorization evidence have been verified. Missing local
+signatures are insufficient. Post-checkpoint debits undone by rollback never
+receive a second refund, and attacker refund entitlements must never become
+spendable.
+
 The `bridge_history` compiler pairs the complete checkpoint `BridgeProxy.Senders`
 and `BridgeProxy.Transactions` inventories. It requires canonical native and
 checkpoint-metadata decoding, both map hashers, unique network/message identities,

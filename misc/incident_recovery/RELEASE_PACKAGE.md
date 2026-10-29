@@ -9,6 +9,26 @@ execution, full/warp sync and recovery-scenario verification remain required.
 Historical replay and recovery Wasm identity have the narrow optional
 fresh-execution hooks described below. There is no force, skip, or promotion flag.
 
+`finalRuntimeActivationPostState` is a separate mandatory gate. Its fresh native
+driver replays every committed maintenance operation under the real release
+policy, then executes the exact final Wasm on that resulting state. Before the
+first final-runtime initialization it records the completed maintenance parent
+hash, state root and persisted snapshot, the pre-upgrade runtime marker and
+staking version 16. After initialization it requires runtime 138, staking version
+18, the expected legacy cutoff/first-execution eras and incentive start marker.
+At least two ordinary final-runtime blocks must then pass independent Wasm import
+and persisted-state restoration. A migration panic, mismatched policy/artifact,
+missing observer, one-block sample or mere `set_code` installation cannot clear
+this gate. The successful observation is registered only after the entire fresh
+process and its artifacts pass the final input/output guard.
+
+This executes the production `on_runtime_upgrade` through `Core_initialize_block`
+and `Core_execute_block`. It explicitly does not claim that the separately
+compiled `try-runtime` feature checks ran against that exact production Wasm.
+Those supporting checks and later custom staking/election/reward scenarios
+remain separate requirements. No corrective spec-134 substitute is permitted
+after activation; passing this gate is required before the restart is authorized.
+
 A candidate JSON uses this exact shape (replace the illustrative paths and
 hashes with actual public release inputs):
 
@@ -33,6 +53,14 @@ hashes with actual public release inputs):
   ]
 }
 ```
+
+The recovery chain extension uses schema version 2 and carries `policyScale` as
+hexadecimal bytes in addition to `policyCommitment`. Node admission decodes the
+bounded policy, checks its hash and evidence commitment, and requires its
+`authorizationDomain.chainSpecId` to match the recovery network ID. The packager
+requires identical policy bytes in the chain extension and the bound policy
+artifact. Policy format 2 also commits the release nonce; recovery signatures from
+another network or nonce are invalid. All repair policies retain this domain.
 
 Every evidence reference must name an artifact in the inventory. Evidence entries
 bind raw files; they cannot assert a pass result. Top-level readiness fields and

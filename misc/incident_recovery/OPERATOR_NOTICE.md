@@ -77,3 +77,10 @@ the immutable 134 substitute. Confirm TS/SS entitlement queries use the original
 Burn-event identity and the effective replacement owner. Linked SORA Nexus XOR
 claims for replaced accounts remain held until replacement-key recipient
 authorization is verified.
+
+Soratopia points also follow the replacement owner. Preserve checkpoint activity,
+account creation age and each existing points era in the recovery indexer. Do not
+copy present-day totals from the abandoned branch or add the old and replacement
+totals together. Keep original records as evidence; retired identities must not
+retain a second spendable or queryable entitlement. Check the separate Soratopia
+replay and conservation gate before admitting the recovered rewards service.

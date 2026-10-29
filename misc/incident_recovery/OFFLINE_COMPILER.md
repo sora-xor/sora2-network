@@ -23,6 +23,14 @@ It also rejects sorted/bounded account collections without a dedicated ordering
 adapter; an exact SCALE roundtrip does not prove that binary-search or BTree ordering
 is preserved after changing an account key.
 
+`PoolXYK.AccountPools` and `VestedRewards.Rewards` may receive reviewed
+`mutable_ownership` dispositions: their asset/reward collections contain no
+AccountIds, so the value moves unchanged with the owner key. The exact
+`Farming.PoolFarmers` roster is an unordered-owner exception: the pallet uses
+linear lookup and rebuilds the roster. Other account-bearing ordered collections
+still require an adapter. These dispositions need real checkpoint review evidence;
+the compiler does not manufacture that approval or infer it from a sample account.
+
 `includePinnedCheckpointLegacy: true` is an explicit, exact-metadata opt-in for the
 removed storage codecs in `checkpoint_legacy_schema.json`. That file records source
 revisions/hashes and 19 descriptors, including old ReferralSystem ownership pointers,
@@ -117,6 +125,30 @@ with a burn/extinction or duplicate backing is rejected. Custody enforcement is 
 proven merely by recording a collateral hash.
 
 ## Account-control adapters
+
+Each `ownershipProofs` entry contains `old`, `new` and `signature`. The default
+signature is a SCALE `MultiSignature` over the checkpoint-bound replacement
+message. A Polkaswap migration v1 submission may instead include:
+
+```json
+"intake": {
+  "version": 1,
+  "nonce": "123e4567-e89b-42d3-a456-426614174000",
+  "createdAt": "2026-10-27T01:02:03.004Z"
+}
+```
+
+The verifier reconstructs the exact UTF-8 migration request, binding the
+Polkaswap domain, SORA Nexus mainnet genesis, checkpoint and old/new pair. It
+accepts the new key's raw or `<Bytes>`-wrapped signature, with or without the
+scheme prefix. The nonce and timestamp must be those actually signed; the values
+above are examples. Version 2 intake contains no new-key proof and remains
+rejected. An old-key signature alone never establishes replacement ownership.
+
+For every mapped owner, all 65,536 `utility::as_derivative` indices are checked
+against the checkpoint's native and token account keys. Any discovered account
+must appear both in the mapping and in the verified derived-control graph.
+A direct signature from its proposed destination does not waive that graph.
 
 `substitution_semantics::compile` requires replacement ownership proofs and exact
 reviewed row/value hashes. It can reset `Staking.Payee` to the replacement account.

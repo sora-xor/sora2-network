@@ -27,13 +27,38 @@ Refresh verifies previous overlay hashes before replacing the explicit overlay f
 
 ## Binding and build order
 
+Policy format 2 binds a bounded ASCII chain-spec ID and a nonzero 32-byte public
+release nonce before any Wasm is built. Forward-upgrade signatures use the v2
+message domain and include this identity in the authorization. Runtime and native
+verification reject a different network, nonce or original policy; authorized
+repairs cannot change the identity. Production and rehearsal signatures are never
+interchangeable. Old policy-v1 artifacts require a fresh build, not a byte patch.
+The ordinary executive through the checkpoint is unchanged.
+
+The first recovery child normally carries Tick and cannot execute Escape. Its
+hash is only available afterward. On initializing the second child, the executive
+persists the first child's full parent hash under a protected recovery key. Every
+escape/forward-repair authorization additionally signs that exact `recoveryAnchor`;
+zero, missing or different anchors fail. A frozen first-child chunk can therefore
+be rescued from its second child. A first-child failure before producing a valid
+block remains outside this escape mechanism's protection.
+
+Exact-artifact offline rehearsals have the same policy/domain as the intended
+release, so domain separation alone is insufficient. Their unsigned first-child
+headers deliberately contain no BABE seal; any valid production first-child
+header contains its seal and has a different hash. Rehearsal signatures must bind
+only the observed unsealed rehearsal anchor. Never collect or reuse rehearsal
+signatures for the sealed production anchor. Production authorizations are signed
+only after the actual first recovery block is known. The native replay and release
+verifier derive the anchor from executed block bytes and reject first-child escapes.
+
 The public binding JSON has exactly these fields: `policyScale`, `policyCommitment`, `operatorsScale`, `previousGrandpaSetId`, `firstRecoverySlot`, `finalWasm`; spec 134 additionally requires `holdWasm`. Policy/operator values are SCALE bytes encoded as hexadecimal. Artifact paths are relative to the binding file. The release compiler must validate their schemas, signatures, complete storage coverage, all authority inventories and all required release evidence before providing this binding. Source preparation checks the binding hash but is not a substitute for that compiler.
 
 `operatorsScale` encodes `Vec<OperatorReplacement>` from `incident_recovery_consensus.rs`. Each record contains its owner, a sorted `retired_grandpa` bounded vector of at most three keys (the exact union of active, queued and NextKeys GRANDPA keys), and one fresh GRANDPA key, followed by sorted approved BABE and im-online key unions (each bounded to three). The runtime verifies ownership in each checkpoint roster, rejects omitted or unused retirement keys, requires the retained-key unions to match the approved inventory exactly, and replaces all three GRANDPA paths. Approved independent session keys remain intact. The chain specification's complete retired/approved inventories must match these records, including queued operators absent from the active GRANDPA set.
 
-Build final 138 from its own bound stable2609 source, then hold 135, then bootstrap 134. The bootstrap embeds the already-built hold bytes, so an escape does not depend on earlier successful staging. Hold does not embed its own hash. Final bytes are delivered in 64 KiB chunks, each checked against a compiled hash list before writing. Repair-code staging is bounded and replaceable; only the full council-signed code hash can authorize installation. The outer manifest binds all artifacts and avoids a circular Wasm hash.
+Build final 138 from its own bound stable2609 source, then hold 135, then bootstrap 134. The bootstrap embeds the already-built hold bytes, so an escape does not depend on earlier successful staging. Hold does not embed its own hash. Final bytes are delivered in 64 KiB chunks, each checked against a compiled hash list before writing. Final/hold cursors and chunks are keyed by the compiled artifact hash: a quorum-authorized repair that pins a corrected 138 gets a separate empty cursor, and cannot assemble leftover bytes from a previous final artifact. Ordinary envelopes cannot choose that hash or reset a pinned artifact cursor. Repair-code staging is bounded and replaceable; only the full council-signed code hash can authorize installation. The outer manifest binds all artifacts and avoids a circular Wasm hash.
 
-For repair exports 136/137, also provide `originalPolicyScale` and `originalPolicyCommitment`. Forward repair may revise committed work/audit data while preserving the original checkpoint, account mapping, recovered council and permanent lineage. `Escape.work_policy` carries the revised policy, bound by the signed action. The original council authorizes a monotonic destination version and current stored/executing code hashes. Installing the revised work policy, incrementing its replay counter and installing the destination code occur in one transaction.
+For repair exports 136/137, also provide `originalPolicyScale` and `originalPolicyCommitment`. Forward repair may revise committed work/audit data while preserving the original checkpoint, account mapping, recovered council, authorization domain and permanent lineage. `Escape.work_policy` carries the revised policy, bound by the signed action. The original council authorizes a monotonic destination version and current stored/executing code hashes. Installing the revised work policy, incrementing its replay counter and installing the destination code occur in one transaction.
 
 Automatic activation requires the independent terminal audit to reach Ready, the complete pinned final bytes, valid runtime 138 / transaction 134 identity, preserved fresh-key ownership and maintenance epoch attribution, and the bounded Kensetsu fee-clock preconditions. It records Complete before installing 138, so the next block's authoring provider stops inserting maintenance envelopes. Millisecond checkpoint/activation timestamps are retained for the final runtime's one-time fee-clock shift.
 
