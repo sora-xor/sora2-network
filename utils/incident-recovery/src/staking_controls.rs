@@ -53,6 +53,23 @@ pub struct PairReport {
     pub unlocking_chunks: usize,
     pub claimed_eras: usize,
     pub ledger_financial_bytes_hash: String,
+    pub backing: BackingReport,
+}
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BackingKind {
+    NativeHold,
+    LegacyLock,
+    ZeroStake,
+}
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackingReport {
+    pub kind: BackingKind,
+    pub staking_hold: Option<String>,
+    /// Preserved verbatim, including a stale lock after native hold migration.
+    /// This amount is neither extra stake nor permission to release a lock.
+    pub retained_legacy_staking_lock: Option<String>,
 }
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -301,12 +318,12 @@ fn staking_backing(
     storage: &Storage,
     stash: &[u8; 32],
     total: u128,
-) -> Result<()> {
+) -> Result<BackingReport> {
     let system = descriptor(schema, "System.Account")?;
     let account = storage
         .top
         .get(&key(system, stash))
-        .ok_or("mapped staking stash has no System.Account")?;
+        .ok_or_else(|| format!("mapped staking stash {} has no System.Account", hx(stash)))?;
     let value = typed::decode_exact(account, system.value_type, &schema.registry)?;
     let data = field(&value, "data")?;
     let free = field(data, "free")?.as_u128().ok_or("free balance codec")?;
@@ -317,7 +334,10 @@ fn staking_backing(
         .checked_add(reserved)
         .is_none_or(|balance| balance < total)
     {
-        return Err("staking ledger is not backed by its stash balance".into());
+        return Err(format!(
+            "staking ledger is not backed by its stash balance: stash={}, ledger_total={total}, free={free}, reserved={reserved}",
+            hx(stash)
+        ));
     }
     let mut held = None;
     let mut locked = None;
@@ -356,22 +376,67 @@ fn staking_backing(
                     &mut locked
                 };
                 if slot.replace(amount).is_some() {
-                    return Err("duplicate staking hold/lock".into());
+                    return Err(format!(
+                        "duplicate staking hold/lock: stash={}, storage={name}, ledger_total={total}",
+                        hx(stash)
+                    ));
                 }
             }
         }
     }
-    if (held.is_some() && locked.is_some()) || held.or(locked).unwrap_or(0) != total {
-        return Err("stash must have exactly its ledger backing in one native hold/lock".into());
-    }
+    let providers = field(&value, "providers")?
+        .as_u128()
+        .ok_or("staking stash providers codec")?;
+    let consumers = field(&value, "consumers")?
+        .as_u128()
+        .ok_or("staking stash consumers codec")?;
+    let diagnostic = || {
+        format!(
+            "stash={}, ledger_total={total}, free={free}, reserved={reserved}, staking_hold={held:?}, legacy_staking_lock={locked:?}, providers={providers}, consumers={consumers}",
+            hx(stash)
+        )
+    };
+    // The deployed ledger::update writes a hold without removing a legacy lock.
+    // Its inspect_bond_state consequently prefers a nonzero hold; the native
+    // remove_old_lock_when_stake_already_on_hold test covers coexistence. An old
+    // lock can exceed current free funds after stake has moved into reserved.
+    // Never count that retained restriction as another liability or release it.
+    let kind = if held.is_some_and(|amount| amount != 0) {
+        if held != Some(total) {
+            return Err(format!(
+                "staking hold must exactly back the ledger: {}",
+                diagnostic()
+            ));
+        }
+        BackingKind::NativeHold
+    } else if total == 0 {
+        // A zero ledger has no financial liability. Native hold updates can
+        // reach zero while the pre-migration lock remains. Preserve that lock
+        // and its references rather than manufacturing stake or unlocking it.
+        BackingKind::ZeroStake
+    } else if locked == Some(total) {
+        BackingKind::LegacyLock
+    } else {
+        return Err(format!(
+            "positive staking ledger must have exact native hold or legacy lock backing: {}",
+            diagnostic()
+        ));
+    };
     if held.is_some_and(|amount| amount > reserved)
-        || locked.is_some_and(|amount| amount > free)
-        || (total != 0 && field(&value, "providers")?.as_u128() == Some(0))
-        || (locked.is_some() && field(&value, "consumers")?.as_u128() == Some(0))
+        || (kind == BackingKind::LegacyLock && total > free)
+        || (total != 0 && providers == 0)
+        || (locked.is_some() && consumers == 0)
     {
-        return Err("staking balance or System references do not back the native hold/lock".into());
+        return Err(format!(
+            "staking balance or System references do not back the native hold/lock: {}",
+            diagnostic()
+        ));
     }
-    Ok(())
+    Ok(BackingReport {
+        kind,
+        staking_hold: held.map(|amount| amount.to_string()),
+        retained_legacy_staking_lock: locked.map(|amount| amount.to_string()),
+    })
 }
 
 pub fn compile(
@@ -510,7 +575,8 @@ pub fn compile(
         {
             return Err("staking review does not match the exact paired preimages".into());
         }
-        staking_backing(schema, storage, &old, ledger.total)?;
+        let backing = staking_backing(schema, storage, &old, ledger.total)
+            .map_err(|error| format!("{error}; controller={}", hx(&controller)))?;
         let mut changed = ledger.clone();
         changed.stash = AccountId32::new(new);
         let after = changed.encode();
@@ -616,6 +682,7 @@ pub fn compile(
             unlocking_chunks: ledger.unlocking.len(),
             claimed_eras: ledger.legacy_claimed_rewards.len(),
             ledger_financial_bytes_hash: hx(&hash(&original[32..])),
+            backing,
         });
         out.edits.extend(group.clone());
         out.groups.push(group);
@@ -935,6 +1002,204 @@ mod tests {
             .verify_backing_moves(std::slice::from_ref(&compiled.required_moves))
             .unwrap();
         assert_eq!(compiled.report.controller_reference_changes, 0);
+    }
+    #[test]
+    fn exact_native_hold_preserves_stale_legacy_locks_even_above_free_balance() {
+        for legacy_amount in [0, 50, 150, 300] {
+            let (schema, mut storage, mapping, review) = fixture();
+            let holds_key = key(descriptor(&schema, "Balances.Holds").unwrap(), &[1; 32]);
+            storage.top.insert(
+                holds_key.clone(),
+                vec![Hold {
+                    id: RuntimeHoldReason::Staking(HoldReason::Staking),
+                    amount: 150,
+                }]
+                .encode(),
+            );
+            let locks_key = key(descriptor(&schema, "Balances.Locks").unwrap(), &[1; 32]);
+            storage.top.insert(
+                locks_key.clone(),
+                vec![Lock {
+                    id: *b"staking ",
+                    amount: legacy_amount,
+                    reasons: 2,
+                }]
+                .encode(),
+            );
+            let account_key = key(descriptor(&schema, "System.Account").unwrap(), &[1; 32]);
+            storage.top.insert(
+                account_key.clone(),
+                AccountInfo {
+                    nonce: 10,
+                    consumers: 2,
+                    providers: 1,
+                    sufficients: 0,
+                    data: AccountData {
+                        free: 50,
+                        reserved: 150,
+                        frozen: legacy_amount,
+                        flags: 0,
+                    },
+                }
+                .encode(),
+            );
+            let compiled = compile(&schema, &storage, &mapping, &review).unwrap();
+            let backing = &compiled.report.pairs[0].backing;
+            assert_eq!(backing.kind, BackingKind::NativeHold);
+            assert_eq!(backing.staking_hold, Some("150".into()));
+            assert_eq!(
+                backing.retained_legacy_staking_lock,
+                Some(legacy_amount.to_string())
+            );
+            // Composition must move both encumbrances and the full account
+            // bytes, never remove the stale lock or adjust reference counts.
+            for source in [holds_key, locks_key, account_key] {
+                assert!(compiled.required_moves.iter().any(|edit| {
+                    edit.after.as_ref() == Some(&storage.top[&source])
+                        && edit.key.ends_with(&[9; 32])
+                }));
+            }
+            compiled
+                .verify_backing_moves(std::slice::from_ref(&compiled.required_moves))
+                .unwrap();
+        }
+    }
+    #[test]
+    fn zero_ledger_preserves_residual_lock_without_creating_or_releasing_stake() {
+        let (schema, mut storage, mapping, _) = fixture();
+        let d = descriptor(&schema, "Staking.Ledger").unwrap();
+        let ledger_key = key(d, &[7; 32]);
+        let mut value = ledger(&schema, d, &storage.top[&ledger_key]).unwrap();
+        value.total = 0;
+        value.active = 0;
+        value.unlocking.clear();
+        storage.top.insert(ledger_key.clone(), value.encode());
+        let reviewed = review(&schema, &storage);
+        let compiled = compile(&schema, &storage, &mapping, &reviewed).unwrap();
+        let backing = &compiled.report.pairs[0].backing;
+        assert_eq!(backing.kind, BackingKind::ZeroStake);
+        assert_eq!(backing.staking_hold, None);
+        assert_eq!(backing.retained_legacy_staking_lock, Some("150".into()));
+        let moved_ledger = compiled
+            .edits
+            .iter()
+            .find(|edit| edit.key == key(d, &[9; 32]))
+            .unwrap()
+            .after
+            .as_ref()
+            .unwrap();
+        assert_eq!(&moved_ledger[32..], &storage.top[&ledger_key][32..]);
+        compiled
+            .verify_backing_moves(std::slice::from_ref(&compiled.required_moves))
+            .unwrap();
+        assert_eq!(compiled.report.controller_reference_changes, 0);
+    }
+    #[test]
+    fn positive_hold_mismatch_cannot_fall_back_to_an_exact_legacy_lock() {
+        for held in [1, 149, 151] {
+            let (schema, mut storage, mapping, review) = fixture();
+            storage.top.insert(
+                key(descriptor(&schema, "Balances.Holds").unwrap(), &[1; 32]),
+                vec![Hold {
+                    id: RuntimeHoldReason::Staking(HoldReason::Staking),
+                    amount: held,
+                }]
+                .encode(),
+            );
+            let error = compile(&schema, &storage, &mapping, &review).err().unwrap();
+            assert!(error.contains("staking hold must exactly back the ledger"));
+            assert!(error.contains(&format!("staking_hold=Some({held})")));
+            assert!(error.contains("ledger_total=150"));
+            assert!(error.contains(&format!("stash={}", hx(&[1; 32]))));
+            assert!(error.contains(&format!("controller={}", hx(&[7; 32]))));
+        }
+    }
+    #[test]
+    fn positive_backing_still_requires_reserved_or_free_funds_and_references() {
+        for (hold, free, reserved, providers, consumers) in [
+            (true, 200, 149, 1, 2),
+            (false, 149, 200, 1, 2),
+            (true, 50, 150, 0, 2),
+            (true, 50, 150, 1, 0),
+        ] {
+            let (schema, mut storage, mapping, review) = fixture();
+            if hold {
+                storage.top.insert(
+                    key(descriptor(&schema, "Balances.Holds").unwrap(), &[1; 32]),
+                    vec![Hold {
+                        id: RuntimeHoldReason::Staking(HoldReason::Staking),
+                        amount: 150,
+                    }]
+                    .encode(),
+                );
+            }
+            storage.top.insert(
+                key(descriptor(&schema, "System.Account").unwrap(), &[1; 32]),
+                AccountInfo {
+                    nonce: 10,
+                    consumers,
+                    providers,
+                    sufficients: 0,
+                    data: AccountData {
+                        free,
+                        reserved,
+                        frozen: 150,
+                        flags: 0,
+                    },
+                }
+                .encode(),
+            );
+            assert!(compile(&schema, &storage, &mapping, &review)
+                .err()
+                .unwrap()
+                .contains("staking balance or System references"));
+        }
+    }
+    #[test]
+    fn zero_ledger_does_not_waive_a_positive_hold_or_duplicate_encumbrances() {
+        let (schema, mut storage, mapping, _) = fixture();
+        let d = descriptor(&schema, "Staking.Ledger").unwrap();
+        let ledger_key = key(d, &[7; 32]);
+        let mut value = ledger(&schema, d, &storage.top[&ledger_key]).unwrap();
+        value.total = 0;
+        value.active = 0;
+        value.unlocking.clear();
+        storage.top.insert(ledger_key, value.encode());
+        let reviewed = review(&schema, &storage);
+        let holds_key = key(descriptor(&schema, "Balances.Holds").unwrap(), &[1; 32]);
+        storage.top.insert(
+            holds_key.clone(),
+            vec![Hold {
+                id: RuntimeHoldReason::Staking(HoldReason::Staking),
+                amount: 1,
+            }]
+            .encode(),
+        );
+        assert!(compile(&schema, &storage, &mapping, &reviewed)
+            .err()
+            .unwrap()
+            .contains("staking hold must exactly back the ledger"));
+        storage.top.remove(&holds_key);
+        storage.top.insert(
+            key(descriptor(&schema, "Balances.Locks").unwrap(), &[1; 32]),
+            vec![
+                Lock {
+                    id: *b"staking ",
+                    amount: 150,
+                    reasons: 2,
+                },
+                Lock {
+                    id: *b"staking ",
+                    amount: 0,
+                    reasons: 2,
+                },
+            ]
+            .encode(),
+        );
+        assert!(compile(&schema, &storage, &mapping, &reviewed)
+            .err()
+            .unwrap()
+            .contains("duplicate staking hold/lock"));
     }
     #[test]
     fn rejects_changed_ledger_shape_financial_sum_and_claim_history_bounds() {

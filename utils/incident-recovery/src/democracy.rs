@@ -568,14 +568,19 @@ fn compile_inner(
         }
         let lock = locks.iter().find(|lock| lock.id == *b"democrac");
         let required_lock = voting.required_lock()?;
+        // Historical democracy locks can retain Misc: it restricts transfers
+        // and other non-fee withdrawals. Deployed balances also derives the
+        // account's frozen amount from every lock irrespective of its reasons.
+        // Preserve these exact bytes, rather than rewriting history to All.
         if required_lock > 0
             && lock.is_none_or(|lock| {
-                lock.amount < required_lock || !matches!(lock.reasons, Reasons::All)
+                lock.amount < required_lock || !matches!(lock.reasons, Reasons::Misc | Reasons::All)
             })
         {
-            return Err(
-                "Democracy voting capital is not covered by its original native lock".into(),
-            );
+            return Err(format!(
+                "Democracy voting capital is not covered by its original native lock: owner={}, required={required_lock}, lock={lock:?}",
+                hx(owner.as_ref())
+            ));
         }
         for d in [locks_d, accounts_d] {
             let source = key(d, owner.as_ref())?;
@@ -1004,6 +1009,78 @@ mod tests {
     }
 
     #[test]
+    fn legacy_misc_governance_lock_preserves_amount_expiry_and_account_bytes() {
+        let (schema, mut storage, _) = fixture();
+        let map = vec![AccountReplacement {
+            old: account(2),
+            new: account(12),
+        }];
+        let Voting::Direct {
+            votes, delegations, ..
+        } = project(&schema, &storage, &[], 2)
+        else {
+            panic!()
+        };
+        let before = Voting::Direct {
+            votes,
+            delegations,
+            prior: Prior(recovery::CHECKPOINT_NUMBER + 1234, 40),
+        };
+        insert(
+            &mut storage,
+            &schema,
+            "Democracy.VotingOf",
+            account(2).as_ref(),
+            &before,
+        );
+        let locks = vec![Lock {
+            id: *b"democrac",
+            amount: 50,
+            reasons: Reasons::Misc,
+        }];
+        insert(
+            &mut storage,
+            &schema,
+            "Balances.Locks",
+            account(2).as_ref(),
+            &locks,
+        );
+        let result = compile(&schema, &storage, &map, &review(&schema, &storage, &map)).unwrap();
+        assert_eq!(project(&schema, &storage, &result.edits, 12), before);
+        assert_eq!(result.report.released_locks, 0);
+        let destination = key(
+            descriptor(&schema, "Balances.Locks").unwrap(),
+            account(12).as_ref(),
+        )
+        .unwrap();
+        let mut moved = result.required_moves.clone();
+        assert_eq!(
+            moved
+                .iter()
+                .find(|edit| edit.key == destination)
+                .unwrap()
+                .after,
+            Some(locks.encode())
+        );
+        result
+            .verify_backing_moves(std::slice::from_ref(&moved))
+            .unwrap();
+        moved
+            .iter_mut()
+            .find(|edit| edit.key == destination)
+            .unwrap()
+            .after = Some(
+            vec![Lock {
+                id: *b"democrac",
+                amount: 49,
+                reasons: Reasons::Misc,
+            }]
+            .encode(),
+        );
+        assert!(result.verify_backing_moves(&[moved]).is_err());
+    }
+
+    #[test]
     fn all_convictions_preserve_positive_and_zero_lock_obligations() {
         for conviction in [
             Conviction::None,
@@ -1161,7 +1238,7 @@ mod tests {
                     &vec![Lock {
                         id: *b"democrac",
                         amount: 100,
-                        reasons: Reasons::Misc,
+                        reasons: Reasons::Fee,
                     }],
                 ),
                 _ => insert(
