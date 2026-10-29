@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
-import {generate,mappingRows,directVoteIndices,mergeDerived,MUTABLE,GOVERNANCE,ELECTIONS,ROLES,HISTORY,ASYNC_ABSENT,OFFENCES} from './prepare_checkpoint_reviews.mjs';
+import {generate,mappingRows,directVoteIndices,mergeDerived,MUTABLE,GOVERNANCE,ELECTIONS,ROLES,HISTORY,ASYNC_ABSENT,OFFENCES,STAKING_HISTORY_MARKER} from './prepare_checkpoint_reviews.mjs';
 const hx=n=>'0x'+n.toString(16).padStart(2,'0').repeat(32);
 const hash=bytes=>'0x'+createHash('sha256').update(bytes).digest('hex'); // Synthetic row labels, never native evidence.
 const prefix=name=>hash(Buffer.from(name));
@@ -14,6 +14,7 @@ function voting(indices=[]) {
 }
 function fixture() {
   const rows=new Map(),descriptors=new Map();
+  rows.set(STAKING_HISTORY_MARKER.key,{...STAKING_HISTORY_MARKER,value:'0x01',valueHash:hash(Buffer.from([1]))});
   for(const name of [...GOVERNANCE,...ELECTIONS,...ROLES,...HISTORY,...OFFENCES])descriptors.set(name,{hashers:[]});
   for(const name of GOVERNANCE.filter(name=>/ProposalOf|Voting|CostOf/.test(name)))descriptors.get(name).hashers=['Identity'];
   const add=(name,owner,value='0x00',extra={})=>{
@@ -37,6 +38,27 @@ test('review family constants stay aligned with native complete inventories',asy
     assert.ok(body,`${file} ${constant}`);
     const names=[...body.matchAll(/"([A-Za-z_.]+)"/g)].map(match=>prefixName+match[1]);assert.deepEqual(expected,names);
   }
+  const history=await readFile(new URL('../../utils/incident-recovery/src/staking_history.rs',import.meta.url),'utf8');
+  const marker=history.match(/const MARKER: &\[u8\] = b"([^"]+)";/)?.[1];
+  assert.ok(marker);assert.equal(STAKING_HISTORY_MARKER.key,'0x'+Buffer.from(marker).toString('hex'));
+  assert.ok(history.includes(`("${STAKING_HISTORY_MARKER.storage}".into(), hash(&[1]))`));
+});
+test('staking history includes the authenticated raw normalization marker beside metadata rows',()=>{
+  const f=fixture(),row=f.add('Staking.BondedEras',null,'0x00'),marker=f.rows.get(STAKING_HISTORY_MARKER.key);
+  const review=generate(f.options).reviews['staking-history'];
+  assert.deepEqual(review.records,[{storage:row.storage,key:row.key,valueHash:row.valueHash},
+    {storage:marker.storage,key:marker.key,valueHash:marker.valueHash}]);
+  assert.equal(review.absentPrefixes.includes('Staking.BondedEras'),false);
+  assert.equal(review.absentPrefixes.includes(STAKING_HISTORY_MARKER.storage),false);
+});
+test('staking history rejects missing, incomplete, malformed or mislabelled raw markers',()=>{
+  for(const mutation of [rows=>rows.delete(STAKING_HISTORY_MARKER.key),
+    rows=>{rows.get(STAKING_HISTORY_MARKER.key).value='0x00';},
+    rows=>{rows.get(STAKING_HISTORY_MARKER.key).value='0x0100';},
+    rows=>{rows.get(STAKING_HISTORY_MARKER.key).storage='Staking.BondedEras';}]) {
+    const f=fixture();mutation(f.rows);assert.throws(()=>generate(f.options),/normalization marker/);
+  }
+  const f=fixture();f.rows.get(STAKING_HISTORY_MARKER.key).valueHash='0x01';assert.throws(()=>generate(f.options),/encoded width/);
 });
 test('only narrow scalar/key ownership families change disposition; native families retain admission',()=>{
   const f=fixture(),before=structuredClone(f.options.baseInventory),result=generate(f.options);

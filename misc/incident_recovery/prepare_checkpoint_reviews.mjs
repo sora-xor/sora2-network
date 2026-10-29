@@ -37,6 +37,12 @@ export const ASYNC_ABSENT = ['AsyncUnappliedSlashes','OffenceQueue','OffenceQueu
   'WeightedPointsFormulaStartEra','NextDeferredSlashEra','CancelledSlashes','VoterSnapshotStatus',
   'NextElectionPage','ElectableStashes','EraPruningState'].map(i=>`Staking.${i}`);
 export const OFFENCES = ['Offences.Reports','Offences.ConcurrentReportsIndex'];
+// This raw migration key is outside the metadata storage descriptors. Native
+// staking-history admission includes it in the exact reviewed record set.
+export const STAKING_HISTORY_MARKER = Object.freeze({
+  storage:'StakingRewardPointsStashRemapped',
+  key:'0x'+Buffer.from('runtime:migrations:staking_reward_points_stash_remapped').toString('hex'),
+});
 const CONTROL = ['Staking.Bonded','Staking.Ledger','Staking.Payee','Referrals.Referrers',
   'Referrals.Referrals','Democracy.VotingOf','Democracy.ReferendumInfoOf'];
 const OPTIONAL_CONTROL = ['Proxy.Proxies','Proxy.Announcements'];
@@ -124,11 +130,15 @@ export function generate({rows,descriptors,prefix,keyFor,decodeAccountVector,map
   const required=(name,key,nullable=false)=>{const row=rows.get(key);need(row?.storage===name||nullable&&!row,`missing backing row ${name} ${key}`);return row?record(row):{storage:name,key,valueHash:null};};
   const complete=(names,absence)=>names.flatMap(name=>{const values=get(name);if(values.length)return values.map(record);
     return absence==='all'||absence==='plain'&&descriptors.get(name)?.hashers.length===0?[{storage:name,key:prefix(name),valueHash:null}]:[];});
+  const stakingMarker=rows.get(STAKING_HISTORY_MARKER.key);
+  need(stakingMarker?.storage===STAKING_HISTORY_MARKER.storage&&stakingMarker.value==='0x01',
+    'staking reward controller-to-stash normalization marker must be present and complete');
+  raw(stakingMarker.valueHash,32);
   const reviews={
     governance:{evidenceHash,records:complete(GOVERNANCE,'plain')},
     elections:{evidenceHash,records:complete(ELECTIONS,'all')},
     'staking-roles':{evidenceHash,operatorsHash,records:complete(ROLES),retainedNominations:[]},
-    'staking-history':{evidenceHash,records:complete(HISTORY),absentPrefixes:[...HISTORY.filter(name=>!get(name).length),...ASYNC_ABSENT].sort()},
+    'staking-history':{evidenceHash,records:[...complete(HISTORY),record(stakingMarker)],absentPrefixes:[...HISTORY.filter(name=>!get(name).length),...ASYNC_ABSENT].sort()},
     offences:{evidenceHash,records:complete(OFFENCES)},
   };
   need(ASYNC_ABSENT.every(name=>!get(name).length),'async state unexpectedly present at checkpoint');
@@ -269,6 +279,17 @@ export async function main(args) {
     }
   }
   await scan(names.map(prefix));
+  // Select the exact raw key from authenticated pages; do not synthesize the
+  // marker from runtime source or from a previous review's expected value.
+  for(const page of observedPages) {
+    if(!page.keyCount||page.firstKey>STAKING_HISTORY_MARKER.key||page.lastKey<STAKING_HISTORY_MARKER.key)continue;
+    const path=await checkPage(page);pages.set(page.file,page.sha256);
+    for await(const [key,value]of selectedRows(createReadStream(path).pipe(createGunzip()),[STAKING_HISTORY_MARKER.key])) {
+      if(key!==STAKING_HISTORY_MARKER.key)continue;
+      need(!rows.has(key),'duplicate staking history migration marker');
+      rows.set(key,{storage:STAKING_HISTORY_MARKER.storage,key,value,valueHash:blake(raw(value)),references:[]});
+    }
+  }
   // Reject async prefixes by reading them even though deployed metadata has no descriptors.
   const absentOptional=OPTIONAL_CONTROL.filter(name=>!descriptors.has(name));
   const asyncPrefixes=new Map([...ASYNC_ABSENT,...absentOptional].map(name=>[prefix(name),name]));
