@@ -1,0 +1,16 @@
+{
+  "schema": "sora-nexus-evm-kernel-source-provenance-v1",
+  "origin": "Reviewed offline EVM receipt kernel candidate v2",
+  "originKernelSha256": "3428bb415fec2add20d8d5f4b8b8ab882aa8c87ec0fbf6b44019e210c6140ef5",
+  "unchangedBodyStartsWith": "const keccak =",
+  "unchangedBodySha256": "d2fe7fc6d1b9e139a79f1c457f651748bd797c0a808a4ac5577391a397b761c0",
+  "changes": [
+    "Replace only absolute machine-specific dependency bootstrap with repository package resolution and the same installed-file hashes."
+  ],
+  "algorithmChanges": false,
+  "sourceReferences": [
+    "https://ethereum.github.io/yellowpaper/paper.pdf",
+    "https://github.com/ethereum/tests/blob/develop/TrieTests/trieanyorder.json",
+    "https://eips.ethereum.org/EIPS/eip-2718"
+  ]
+}
