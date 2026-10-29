@@ -245,15 +245,34 @@ pub fn compile(mut manifest: Manifest) -> Result<Report> {
     let mut commitments = Vec::new();
     let mut identities = BTreeSet::new();
     let mut pending_incoming = BTreeMap::new();
+    let balances_issuance = frame_support::storage::storage_prefix(b"Balances", b"TotalIssuance");
+    let tokens_issuance = frame_support::storage::storage_prefix(b"Tokens", b"TotalIssuance");
+    let mut incoming_seen = false;
     for (position, text) in manifest.work_envelopes.iter().enumerate() {
         let (envelope, bytes) = envelope(text)?;
         let (index, kind, commitment, identity, future_signatures) = match envelope.action {
             RecoveryAction::Apply(mut chunk) => {
+                // The first authenticated incoming operation fixes each affected
+                // asset's issuance baseline/head. Later raw supply edits would
+                // bypass that journal and make activation fail. Finish all raw
+                // issuance transformations before starting incoming execution.
+                if incoming_seen
+                    && chunk.edits.iter().any(|edit| {
+                        edit.scope == StorageScope::Top
+                            && (edit.key.as_slice() == balances_issuance.as_slice()
+                                || edit.key.starts_with(&tokens_issuance))
+                    })
+                {
+                    return Err(
+                        "issuance storage edits must precede every incoming work operation".into(),
+                    );
+                }
                 let (index, commitment) = (chunk.index, chunk.commitment());
                 chunk.index = 0;
                 (index, "storage", commitment, chunk.commitment(), false)
             }
             RecoveryAction::Incoming(bytes) => {
+                incoming_seen = true;
                 let mut operation: IncomingOperation = decode(&bytes, recovery::MAX_CHUNK_BYTES)?;
                 let future_signatures = matches!(
                     &operation.channel,
@@ -717,6 +736,75 @@ mod tests {
                 zero_claims: Vec::new(),
                 absent: Vec::new(),
             })),
+        }
+    }
+
+    fn supply_keys() -> Vec<Vec<u8>> {
+        let balances =
+            frame_support::storage::storage_prefix(b"Balances", b"TotalIssuance").to_vec();
+        let mut tokens =
+            frame_support::storage::storage_prefix(b"Tokens", b"TotalIssuance").to_vec();
+        // Tokens.TotalIssuance is a Twox64Concat map. Use a distinct asset:
+        // the ordering rule covers every supply key, not only the incoming asset.
+        let asset = common::PSWAP.encode();
+        tokens.extend(sp_io::hashing::twox_64(&asset));
+        tokens.extend(asset);
+        vec![balances, tokens]
+    }
+
+    fn supply_edit(index: u32, scope: StorageScope, key: Vec<u8>, delete: bool) -> String {
+        wrap(RecoveryAction::Apply(RecoveryChunk {
+            index,
+            edits: vec![GuardedStorageEdit {
+                scope,
+                key,
+                before: Some([16; 32]),
+                after: (!delete).then(|| 90u128.encode()),
+            }],
+        }))
+    }
+
+    #[test]
+    fn issuance_edits_after_incoming_are_rejected_before_policy_emission() {
+        for key in supply_keys() {
+            for delete in [false, true] {
+                let mut manifest = fixture();
+                manifest.work_envelopes[2] = supply_edit(2, StorageScope::Top, key.clone(), delete);
+                assert!(compile(manifest)
+                    .unwrap_err()
+                    .contains("issuance storage edits must precede every incoming"));
+            }
+        }
+    }
+
+    #[test]
+    fn issuance_edits_before_incoming_remain_supported() {
+        for key in supply_keys() {
+            let mut manifest = fixture();
+            manifest.work_envelopes[0] = supply_edit(0, StorageScope::Top, key, false);
+            assert!(compile(manifest).is_ok());
+        }
+    }
+
+    #[test]
+    fn unrelated_and_child_storage_edits_after_incoming_remain_supported() {
+        let mut manifest = fixture();
+        manifest.work_envelopes[2] = supply_edit(
+            2,
+            StorageScope::Top,
+            b"unrelated-final-cleanup".to_vec(),
+            false,
+        );
+        assert!(compile(manifest).is_ok());
+        for key in supply_keys() {
+            let mut manifest = fixture();
+            manifest.work_envelopes[2] = supply_edit(
+                2,
+                StorageScope::Child(b"fixture-child".to_vec()),
+                key,
+                false,
+            );
+            assert!(compile(manifest).is_ok());
         }
     }
 
