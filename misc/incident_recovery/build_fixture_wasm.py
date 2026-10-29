@@ -26,6 +26,12 @@ import release_package as package
 ENVIRONMENT_HELPER = ROOT / "runtime-rehearsal-async-staking-2026-10-25/validation/build_environment.py"
 LLVM_WRAPPER = ROOT / "scripts/with_llvm_env.sh"
 EXPORTS = ("Cargo.toml", "framenode_runtime.compact.wasm", "framenode_runtime.compact.compressed.wasm")
+BASE_FEATURES = ("build-wasm-binary",)
+
+
+def runtime_features(try_runtime_companion=False):
+    require(type(try_runtime_companion) is bool, "Companion selection must be explicit")
+    return [*BASE_FEATURES, *(["try-runtime"] if try_runtime_companion else [])]
 
 
 def require(condition, message):
@@ -54,6 +60,33 @@ def source_provenance(source):
     if expected[0] != 138:
         require(value.get("bound") is True and value.get("sdk") == "polkadot-stable2603-3", "Legacy fixture requires a bound preserved-source export")
     return path, value
+
+
+def companion_policy(source, provenance):
+    """Bind the extra feature to the same exported public-fixture policy/source.
+
+    A companion is supporting test code, never the ordinary final runtime. The
+    paired rehearsal separately compares its receipt with the ordinary build.
+    """
+    import fixture_artifacts
+    require(provenance.get("schema") == "sora-nexus-final-fixture-source-v1"
+            and provenance.get("fixtureOnly") is True and provenance.get("productionReady") is False
+            and (provenance.get("specVersion"), provenance.get("transactionVersion")) == (138, 134),
+            "Try-runtime companion requires the exact public final-runtime fixture export")
+    policy_path = package.local_file(source, "fixture-policy.scale")
+    with policy_path.open("rb") as stream:
+        policy = stream.read(package.MAX_POLICY + 1)
+    require(len(policy) <= package.MAX_POLICY, "Companion fixture policy exceeds bound")
+    # Provenance is JSON; canonicalize the decoder's mapping tuples to its lists.
+    identity = json.loads(json.dumps(package.policy_identity(policy)))
+    actual = digest(policy_path)
+    require(provenance.get("policyIdentity") == identity
+            and all(provenance.get("policy", {}).get(key) == actual[key] for key in ("sha256", "blake2_256")),
+            "Companion fixture policy differs from export provenance")
+    generated = package.local_file(source, "runtime/src/incident_recovery/generated.rs")
+    require(generated.read_bytes() == fixture_artifacts.final_source(policy).encode(),
+            "Companion generated source is not the exact public-fixture policy")
+    return {"policy": actual, "generatedPolicy": digest(generated), "policyCommitment": identity["commitment"]}
 
 
 def resolve_legacy_lock(source, reference, provenance):
@@ -145,10 +178,14 @@ def quarantine(project, output):
     return prior
 
 
-def validate_wasm_project(project, source):
+def validate_wasm_project(project, source, try_runtime_companion=False):
     manifest = tomllib.loads((project / "Cargo.toml").read_text())
     dependency = manifest["dependencies"]["wasm-project"]
-    require(dependency.get("default-features") is False and dependency.get("features") == ["build-wasm-binary"], "Unexpected fixture Wasm features")
+    features = dependency.get("features")
+    expected = runtime_features(try_runtime_companion)
+    require(dependency.get("default-features") is False and isinstance(features, list)
+            and all(isinstance(feature, str) for feature in features)
+            and sorted(features) == sorted(expected), "Unexpected fixture Wasm features")
     require(dependency.get("package") == "framenode-runtime" and isinstance(dependency.get("path"), str), "Unexpected fixture Wasm package")
     runtime_path = Path(dependency["path"])
     if not runtime_path.is_absolute():
@@ -178,7 +215,7 @@ def target_lock(target):
     return operation_lock(target.resolve(strict=True) / ".fixture-build.lock", "Another fixture build is using this Cargo target lane")
 
 
-def build(source, output, resolved_lock=None, target_dir=None):
+def build(source, output, resolved_lock=None, target_dir=None, try_runtime_companion=False):
     source = source.resolve(strict=True)
     target = (target_dir or source / "target").resolve()
     require(target != source and target not in source.parents, "Cargo target cannot replace fixture source or an ancestor")
@@ -186,18 +223,24 @@ def build(source, output, resolved_lock=None, target_dir=None):
     target = target.resolve(strict=True)
     with source_lock(source):
         with target_lock(target):
-            return build_locked(source, output, resolved_lock, target)
+            return build_locked(source, output, resolved_lock, target, try_runtime_companion)
 
 
-def build_locked(source, output, resolved_lock, target):
+def build_locked(source, output, resolved_lock, target, try_runtime_companion=False):
     provenance_path, provenance = source_provenance(source)
+    features = runtime_features(try_runtime_companion)
+    companion = companion_policy(source, provenance) if try_runtime_companion else None
     require(not output.exists(), "Build evidence output must be new; Cargo target is reused separately")
     output.mkdir(parents=True)
     report = {"schema": "sora-nexus-fixture-wasm-build-v1", "fixtureOnly": True, "productionReady": False,
               "status": "running", "startedAt": now(), "source": str(source), "specVersion": provenance["specVersion"],
               "transactionVersion": provenance["transactionVersion"], "sourceProvenance": digest(provenance_path),
+              "artifactRole": "tryRuntimeCompanion" if try_runtime_companion else "ordinaryRuntime",
+              "cargoFeatures": features, "tryRuntimeCompanion": try_runtime_companion,
               "cargoTargetDirectory": str(target), "targetLock": str(target / ".fixture-build.lock"),
               "runner": digest(Path(__file__)), "environmentHelper": digest(ENVIRONMENT_HELPER), "llvmWrapper": digest(LLVM_WRAPPER)}
+    if companion is not None:
+        report["companionFixturePolicy"] = companion
     evidence_path = output / "build.json"
     def save():
         temporary = output / "build.json.tmp"
@@ -222,7 +265,7 @@ def build_locked(source, output, resolved_lock, target):
         report["rustc"] = subprocess.check_output(["rustc", "-Vv"], cwd=source, env=env, text=True)
         project = target / "debug/wbuild/framenode-runtime"
         report["previousExports"] = quarantine(project, output)
-        command = [str(LLVM_WRAPPER), "cargo", "check", "--offline", "--locked", "-p", "framenode-runtime", "--lib", "--features", "build-wasm-binary"]
+        command = [str(LLVM_WRAPPER), "cargo", "check", "--offline", "--locked", "-p", "framenode-runtime", "--lib", "--features", ",".join(features)]
         report["command"] = command
         save()
         with (output / "cargo.stdout.log").open("wb") as stdout, (output / "cargo.stderr.log").open("wb") as stderr:
@@ -233,11 +276,13 @@ def build_locked(source, output, resolved_lock, target):
         require(report["lockAfter"] == lock_before, "Locked fixture build changed Cargo.lock")
         require(fingerprint(source, provenance, allow_lock) == before, "Fixture source changed during build")
         require(digest(provenance_path) == report["sourceProvenance"], "Fixture provenance changed during build")
+        if companion is not None:
+            require(companion_policy(source, provenance) == companion, "Companion fixture policy changed during build")
         require(result.returncode == 0, f"Cargo fixture build failed with exit {result.returncode}")
         for name in EXPORTS:
             path = project / name
             require(path.is_file() and not path.is_symlink() and path.stat().st_size > 0, "Build did not recreate " + name)
-        dependency = validate_wasm_project(project, source)
+        dependency = validate_wasm_project(project, source, try_runtime_companion)
         compressed = project / EXPORTS[2]
         identity = package.wasm_identity(compressed.read_bytes())
         require((identity["specVersion"], identity["transactionVersion"]) == (provenance["specVersion"], provenance["transactionVersion"]), "Built fixture identity mismatch")
@@ -248,7 +293,8 @@ def build_locked(source, output, resolved_lock, target):
             shutil.copy2(source_path, output / name)
         report["artifacts"] = {}
         for name in EXPORTS[1:]:
-            output_name = name.replace("framenode_runtime", f"runtime-{provenance['specVersion']}")
+            suffix = ".try-runtime" if try_runtime_companion else ""
+            output_name = name.replace("framenode_runtime", f"runtime-{provenance['specVersion']}{suffix}")
             shutil.copy2(project / name, output / output_name)
             report["artifacts"][output_name] = digest(output / output_name)
         report["status"] = "passed"
@@ -267,8 +313,10 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--resolved-legacy-lock", type=Path)
     parser.add_argument("--target-dir", type=Path, help="Explicit persistent Cargo target for sequential fixtures; exclusive target lock prevents overlap")
+    parser.add_argument("--try-runtime-companion", action="store_true",
+                        help="Build a separate public runtime-138 fixture with only the try-runtime feature added; never an activation artifact")
     args = parser.parse_args()
-    report = build(args.source, args.output.resolve(), args.resolved_legacy_lock, args.target_dir)
+    report = build(args.source, args.output.resolve(), args.resolved_legacy_lock, args.target_dir, args.try_runtime_companion)
     print(json.dumps({"status": report["status"], "output": str(args.output.resolve()), "artifacts": report["artifacts"], "fixtureOnly": True, "productionReady": False}))
 
 

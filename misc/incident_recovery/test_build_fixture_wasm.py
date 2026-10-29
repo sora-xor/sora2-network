@@ -5,6 +5,8 @@ import unittest
 from unittest.mock import patch
 
 import build_fixture_wasm as build
+import fixture_artifacts
+from test_release_package import policy, wasm
 
 
 class BuildFixtureTests(unittest.TestCase):
@@ -121,6 +123,114 @@ class BuildFixtureTests(unittest.TestCase):
             build.validate_wasm_project(project, source)
         write_manifest(source / "runtime")
         self.assertEqual(build.validate_wasm_project(project, source)["package"], "framenode-runtime")
+
+    def fixture_source(self):
+        """A synthetic exported source, only for mocked-process build checks."""
+        raw = policy()
+        generated = self.root / "runtime/src/incident_recovery/generated.rs"
+        generated.parent.mkdir(parents=True)
+        generated.write_text(fixture_artifacts.final_source(raw))
+        (self.root / "fixture-policy.scale").write_bytes(raw)
+        (self.root / "Cargo.lock").write_text("version = 4\n")
+        (self.root / "rust-toolchain.toml").write_text('[toolchain]\nchannel="nightly-2026-10-23"\n')
+        (self.root / "NEVER-DEPLOY.txt").write_text(fixture_artifacts.FIXTURE)
+        provenance = {"schema": "sora-nexus-final-fixture-source-v1", "fixtureOnly": True,
+            "productionReady": False, "specVersion": 138, "transactionVersion": 134,
+            "policy": build.digest(self.root / "fixture-policy.scale"),
+            "policyIdentity": json.loads(json.dumps(build.package.policy_identity(raw))),
+            "generatedPolicy": build.digest(generated),
+            "sourceFiles": {name: build.digest(self.root / name) for name in ("Cargo.lock", "rust-toolchain.toml")}}
+        (self.root / "FIXTURE-PROVENANCE.json").write_text(json.dumps(provenance))
+        target = self.root / "target"
+        (target / "debug/wbuild/framenode-runtime").mkdir(parents=True)
+        return provenance, target
+
+    def test_companion_requires_exact_final_fixture_policy_and_generated_source(self):
+        provenance, _ = self.fixture_source()
+        accepted = build.companion_policy(self.root, provenance)
+        self.assertEqual(accepted["policyCommitment"], provenance["policyIdentity"]["commitment"])
+        for change in ({"schema": "different"}, {"fixtureOnly": False}, {"productionReady": True},
+                       {"specVersion": 135, "transactionVersion": 132}):
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, "exact public final-runtime"):
+                build.companion_policy(self.root, {**provenance, **change})
+        with self.assertRaisesRegex(ValueError, "policy differs"):
+            build.companion_policy(self.root, {**provenance, "policyIdentity": {}})
+        generated = self.root / "runtime/src/incident_recovery/generated.rs"
+        generated.write_text(generated.read_text().replace("PUBLIC FIXTURE ONLY", "production candidate"))
+        with self.assertRaisesRegex(ValueError, "exact public-fixture policy"):
+            build.companion_policy(self.root, provenance)
+        (self.root / "fixture-policy.scale").write_bytes(policy()[:-1] + b'\x08')
+        with self.assertRaisesRegex(ValueError, "policy differs"):
+            build.companion_policy(self.root, provenance)
+
+    def test_nested_companion_features_allow_only_the_explicit_delta(self):
+        _, target = self.fixture_source()
+        project = target / "debug/wbuild/framenode-runtime"
+        for features, companion, allowed in [
+                (["build-wasm-binary"], False, True),
+                (["try-runtime", "build-wasm-binary"], True, True),
+                (["build-wasm-binary"], True, False),
+                (["build-wasm-binary", "try-runtime"], False, False),
+                (["build-wasm-binary", "try-runtime", "wip"], True, False),
+                (["build-wasm-binary", "try-runtime", "try-runtime"], True, False)]:
+            (project / "Cargo.toml").write_text('[dependencies.wasm-project]\npackage="framenode-runtime"\n'
+                'default-features=false\nfeatures=' + json.dumps(features) + '\npath=' + json.dumps(str(self.root / "runtime")) + '\n')
+            with self.subTest(features=features, companion=companion):
+                if allowed:
+                    self.assertEqual(build.validate_wasm_project(project, self.root, companion)["features"], features)
+                else:
+                    with self.assertRaisesRegex(ValueError, "Unexpected fixture Wasm features"):
+                        build.validate_wasm_project(project, self.root, companion)
+
+    def mock_successful_build(self, companion, mutation=None):
+        _, target = self.fixture_source()
+        project = target / "debug/wbuild/framenode-runtime"
+        output = self.root / "evidence"
+        def cargo(command, **kwargs):
+            self.assertEqual(command[-2:], ["--features", ",".join(build.runtime_features(companion))])
+            (project / "Cargo.toml").write_text('[dependencies.wasm-project]\npackage="framenode-runtime"\n'
+                'default-features=false\nfeatures=' + json.dumps(build.runtime_features(companion))
+                + '\npath=' + json.dumps(str(self.root / "runtime")) + '\n')
+            for name in build.EXPORTS[1:]:
+                (project / name).write_bytes(wasm(138, 134, b"synthetic companion" if companion else b"synthetic ordinary"))
+            if mutation:
+                mutation()
+            return build.subprocess.CompletedProcess(command, 0)
+        with patch.object(build.subprocess, "check_output", return_value="test-only rustc"), \
+                patch.object(build.subprocess, "run", side_effect=cargo):
+            return build.build_locked(self.root, output, None, target, companion)
+
+    def test_companion_receipt_and_names_are_distinct_without_changing_source(self):
+        report = self.mock_successful_build(True)
+        self.assertEqual(report["schema"], "sora-nexus-fixture-wasm-build-v1")
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(report["artifactRole"], "tryRuntimeCompanion")
+        self.assertTrue(report["tryRuntimeCompanion"])
+        self.assertFalse(report["productionReady"])
+        self.assertEqual(report["cargoFeatures"], ["build-wasm-binary", "try-runtime"])
+        self.assertEqual(report["lockBefore"], report["lockAfter"])
+        self.assertEqual(set(report["artifacts"]), {"runtime-138.try-runtime.compact.wasm",
+            "runtime-138.try-runtime.compact.compressed.wasm"})
+        self.assertFalse((self.root / "evidence/runtime-138.compact.compressed.wasm").exists())
+        self.assertEqual(report["companionFixturePolicy"], build.companion_policy(
+            self.root, build.source_provenance(self.root)[1]))
+
+    def test_ordinary_build_keeps_existing_features_and_artifact_names(self):
+        report = self.mock_successful_build(False)
+        self.assertEqual(report["artifactRole"], "ordinaryRuntime")
+        self.assertFalse(report["tryRuntimeCompanion"])
+        self.assertEqual(report["cargoFeatures"], ["build-wasm-binary"])
+        self.assertEqual(set(report["artifacts"]), {"runtime-138.compact.wasm", "runtime-138.compact.compressed.wasm"})
+        self.assertNotIn("companionFixturePolicy", report)
+
+    def test_companion_policy_change_during_mock_build_cannot_pass(self):
+        def mutate():
+            (self.root / "fixture-policy.scale").write_bytes(policy()[:-1] + b'\x08')
+        with self.assertRaisesRegex(ValueError, "policy differs"):
+            self.mock_successful_build(True, mutate)
+        report = json.loads((self.root / "evidence/build.json").read_text())
+        self.assertEqual(report["status"], "failed")
+        self.assertNotIn("artifacts", report)
 
     def test_legacy_lock_accepts_only_reviewed_direct_edges_and_no_version_drift(self):
         old = '''version = 4

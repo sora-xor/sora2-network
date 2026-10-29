@@ -16,10 +16,15 @@ first final-runtime initialization it records the completed maintenance parent
 hash, state root and persisted snapshot, the pre-upgrade runtime marker and
 staking version 16. After initialization it requires runtime 138, staking version
 18, the expected legacy cutoff/first-execution eras and incentive start marker.
-At least two ordinary final-runtime blocks must then pass independent Wasm import
-and persisted-state restoration. A migration panic, mismatched policy/artifact,
-missing observer, one-block sample or mere `set_code` installation cannot clear
-this gate. The successful observation is registered only after the entire fresh
+Execution must cross the first session rotation and first active-era transition,
+then execute at least one further ordinary block after each. The observer checks
+the actual maintenance slot gap, frozen sessions/eras, `StakingAsyncBridge.State`
+and validator recency records against the active, queued and pending validator
+sets. Every block must pass independent Wasm import and persisted-state restoration.
+A migration panic, mismatched policy/artifact, missing or legacy observer,
+same-session sample or mere `set_code` installation cannot clear this gate.
+The identical activation check applies after a forward repair, using that repair's
+final policy and exact runtime 138 bytes. The successful observation is registered only after the entire fresh
 process and its artifacts pass the final input/output guard.
 
 This executes the production `on_runtime_upgrade` through `Core_initialize_block`
@@ -442,16 +447,18 @@ fixture fields, known public test signing keys across roles, repair versions and
 alternate policies are rejected by this narrow hook.
 
 The activation manifest uses `sora-nexus-maintenance-replay-v1`. It must finish
-automatic activation and include at least one subsequent block executed by the
-exact final138 Wasm. Incoming/outgoing work requires the existing original-policy
+automatic activation and execute the exact final138 Wasm through both staking
+boundaries and their follow-up blocks as required above. Incoming/outgoing work requires the existing original-policy
 native recorder, its independent mode555 executable and exact nonfixture engine
 binding. Its auxiliary native comparisons do not replace Wasm authoring or
 import. The report's `nativeExecution` flag records those auxiliary comparisons;
 it is not evidence that block execution bypassed Wasm.
 
 The hold manifest uses `sora-nexus-supplied-council-maintenance-replay-v1`. Its
-first recovery child must carry the actual recovered-council hold135 escape,
-followed by at least one block executed by hold135. The terminal remains Hold,
+first recovery child must carry a Tick. The second child records that sealed
+parent as the recovery branch anchor and may carry the actual recovered-council
+hold135 escape, followed by at least one block executed by hold135. First-child
+escapes are rejected because the branch anchor does not yet exist. The terminal remains Hold,
 with unchanged policy, zero work/audit cursors and operation counter1. Obtain
 the deterministic expected terminal root through an offline diagnostic first;
 the package hook then executes a fresh replay against that committed root.
@@ -519,3 +526,64 @@ left unchanged. Native source/build authenticity, council inventory approval,
 external finality, economic policy approval, full/warp synchronization, actual
 process-crash recovery and maintenance epoch/liveness/custom-staking coverage
 remain separate. `productionReady` remains false.
+
+### Council authorization of repair staging
+
+Every installation of runtime 136 or 137 now requires an executed
+`AuthorizeRepairStaging` (action 12), followed by the exact ordered repair-code
+chunks. The approval signs the immutable original policy and council, release
+domain, recovery anchor, current phase/cursor/operation counter, installed code,
+destination code/version/revised policy, staging nonce, full code length and
+64 KiB chunk hashes. Staging nonces start at zero and increase independently of
+the escape counter. Reauthorization can continue an existing artifact's cursor;
+it cannot replace its committed bytes or reset that cursor.
+
+The forward-repair release checker rejects a graph without this admission before
+starting native execution. Its fresh native result must retain each
+`<block>.repair-staging.{manifest.scale,signing-message.scale,envelope.scale,authorization.json}`
+and the corresponding `repairStagingAuthorizations` witness. The checker joins
+the raw signature envelope and strict majority of the original council to the
+same imported block, restored snapshot, state root and subsequent escape. Native
+execution performs cryptographic signature and storage-transition verification;
+the Python checker does not turn a supplied JSON success flag into that evidence.
+
+### Supporting try-runtime state audit (implemented, execution pending)
+
+The exact production-Wasm activation replay remains the primary execution
+evidence. A separate supporting audit should build a runtime-138 companion from
+the same final source export, generated policy, resolved Cargo lockfile,
+toolchain and build environment, adding only the `try-runtime` feature. Retain
+its separate feature profile, build receipt, bytes and runtime/API identity,
+alongside the exact production-138 hash. Do not relax the production build's
+feature admission or describe the companion as the production artifact.
+
+Restore the hash-bound completed maintenance snapshot through
+`maintenance_snapshot::restore_pinned` and verify its root, installed production
+code and original/active policy markers. In one independent restore, invoke the
+companion's `TryRuntime_on_runtime_upgrade(UpgradeCheckSelect::All)` through the
+Wasm-only executor. This runs migration pre/post checks, whole-state decoding and
+pallet state checks, including the legacy staking ledger/exposure/liability
+audit. Retain the actual return, logs and resulting root.
+
+In a second fresh restore of that same parent, invoke
+`TryRuntime_execute_block` on the production-authored ordinary blocks, with both
+state-root and signature checks enabled and `TryStateSelect::All`. Continue
+through the first actual session and active-era transitions and their follow-up
+blocks; require each resulting root to equal its production replay witness.
+Do not seed this execution with the first audit's mutated state: initialization
+must run the production migration at its original boundary.
+
+The public-fixture builder accepts `--try-runtime-companion` for a separately
+named runtime-138 companion. The utility, built with `bridge-fixture`, exposes
+`rehearse-try-runtime-companion --manifest FILE`. Its
+`sora-nexus-fixture-try-runtime-audit-v1` manifest binds both Wasm artifacts and
+their build receipts, original and active policy bytes, production replay,
+snapshot directory and exact ordinary blocks. A repaired companion binds its
+active policy while admission preserves the original lineage.
+
+This implemented route has not yet passed an exact-artifact execution. Paired
+receipts bind retained build inputs; the outer controller must authenticate the
+actual builds. Existing optional remote tests do not establish this relationship.
+Keep the production observer's `tryRuntimeFeatureChecksExecuted` false and record
+the companion result separately. A failing audit needs investigation, not weaker
+checks or substitution of an older successful receipt.
