@@ -67,9 +67,10 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
      then unpack it to `<base-path>/chains/sora-nexus-recovery-28191817/db/full`.
    - By warp sync, starting from an empty database. This works only after the
      recovery chain has finalized blocks and at least 3 recovery peers serve it.
-3. More than 2/3 of validators must start from the snapshot. GRANDPA cannot
-   finalize the first recovery blocks without them, and warp sync cannot begin
-   before that finality exists. Coordinate who uses the snapshot before restart.
+3. More than 2/3 of validators must start from the snapshot: at least **11 of
+   the 15** checkpoint GRANDPA authorities. GRANDPA cannot finalize the first
+   recovery blocks without them, and warp sync cannot begin before that finality
+   exists. Coordinate who uses the snapshot before restart.
 4. Keep your existing keystore and point the node at it. The recovery chain ID
    moves the default keystore from `<base-path>/chains/sora-substrate-main-net/keystore`
    to `<base-path>/chains/sora-nexus-recovery-28191817/keystore`, which is empty.
