@@ -56,6 +56,17 @@ historical migration support.
 - `initialize_local_genesis` seeds exposure from the local session chain's initial
   election without planning another era. Local consensus integration lives in
   the runtime bridge and uses the upstream session-report interface.
+- Currency inspection preserves the deployed synchronous pallet's nonzero-hold
+  precedence over residual legacy locks (source revision
+  `36c466398e3f2760e8ab44fdb89de796f5b0dd99`). A consistent zero-stake ledger may
+  retain a legacy lock without turning it into stake. Activation does not remove
+  these locks. Explicit `migrate_currency` counts existing holds when checking
+  capacity and establishes the full hold before removing a positive old lock.
+  Unlike the deployed underfunded fallback, it never reduces ledger liabilities:
+  ambiguous backing, missing bonds and insufficient capacity fail unchanged.
+  Zero/absent lock amounts remain `AlreadyMigrated`, preventing repeated
+  reference decrements through an interface that cannot distinguish those cases.
+  The normal bonding path is unchanged; one extra database read is charged.
 
 ## New-era upstream slashing policy
 

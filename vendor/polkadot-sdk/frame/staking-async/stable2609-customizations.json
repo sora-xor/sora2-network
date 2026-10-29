@@ -3,7 +3,7 @@
   "upstreamCommit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
   "upstreamPath": "substrate/frame/staking-async",
   "sourcePatch": "stable2609-customizations.patch",
-  "sourcePatchSha256": "ff99de2dff5ee0e9161c95db9185e842cb1e5964d19de3bd2578829835105e68",
+  "sourcePatchSha256": "213a815e516dd8b9f2eae380718732e44608fe729ece3e33be80d50e8e264f8c",
   "upstreamManifestSha256": "3c32cc3146fa541c986da06ca966c97478bf8087fcc61164369546cad351d6a4",
   "materializedManifestSha256": "448aa30681cc7021fd2a8b63993252823c6abf77572296c68822dd408167441f",
   "rustfmtConfigSha256": "52daa45ebb3ade0902ca998779031184d6e780f8a1181bf00ee448b7819b8872",
@@ -37,12 +37,12 @@
     {
       "path": "src/pallet/impls.rs",
       "upstreamSha256": "4727fc28699f1ee8978f5ce7f9f3f609fa12880a190d6b637db085cd753462c7",
-      "localSha256": "394af3edfdd1d32427714c919da49c0e372d8dce05408749e6b766b88e940d10"
+      "localSha256": "c50e61ed1e2cc9873748ccebff614fca6e2bb80864258bc3c417755aca68b5e8"
     },
     {
       "path": "src/pallet/mod.rs",
       "upstreamSha256": "c6ad64d0e63c4c54d052598c4fd9cd6b99d0bcbf4271aa9741fc6cdf1dae70e2",
-      "localSha256": "26583df7dbcd78a23c3cf50f49f80f64868f698a939706b247e816e679f737cc"
+      "localSha256": "0a66702984abe27070c00d3e0a8168c02a9782e96d8543d9e5998d9c2ac850aa"
     },
     {
       "path": "src/session_rotation.rs",
@@ -77,7 +77,7 @@
     {
       "path": "src/tests/mod.rs",
       "upstreamSha256": "351780f56ec8ce21ac0cc6f8a0e49e58c59ed37a6dbedcb242277a2a2400bffa",
-      "localSha256": "41452e84e2e478b046f843d18f70fd07a1a346eada69dfbe5d705e0cbec7cce8"
+      "localSha256": "7008163726679acfd403e90253ba5a832ad46988721dc8452ac58b8ff64f3397"
     },
     {
       "path": "src/tests/nominators_no_slashing.rs",
@@ -97,7 +97,7 @@
     {
       "path": "src/tests/sora_customizations.rs",
       "upstreamSha256": null,
-      "localSha256": "ccaa6401e2f15a35687899348d4fbdb111a081757c4bc152167fc7077cd7ba4f"
+      "localSha256": "40fa3e0e1ad4e9420bf7498cd24eafa3221bc09bee372dcb2bbdb15fa091d8b1"
     },
     {
       "path": "src/weights.rs",

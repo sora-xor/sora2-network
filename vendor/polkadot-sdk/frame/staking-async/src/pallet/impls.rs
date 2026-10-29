@@ -130,9 +130,15 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn inspect_bond_state(
 		stash: &T::AccountId,
 	) -> Result<LedgerIntegrityState, Error<T>> {
-		// look at any old unmigrated lock as well.
-		let hold_or_lock = asset::staked::<T>(&stash)
-			.max(T::OldCurrency::balance_locked(STAKING_ID, &stash).into());
+		// The deployed synchronous pallet can establish a hold through a ledger
+		// update while retaining an older lock. That obsolete lock is not another
+		// staking liability, even when it is larger than the current hold.
+		let held = asset::staked::<T>(stash);
+		let hold_or_lock = if held.is_zero() {
+			T::OldCurrency::balance_locked(STAKING_ID, stash).into()
+		} else {
+			held
+		};
 
 		let controller = <Bonded<T>>::get(stash).ok_or_else(|| {
 			if hold_or_lock == Zero::zero() {
@@ -146,6 +152,14 @@ impl<T: Config> Pallet<T> {
 			Some(ledger) => {
 				if ledger.stash != *stash {
 					Ok(LedgerIntegrityState::Corrupted)
+				} else if held.is_zero() &&
+					ledger.total.is_zero() &&
+					ledger.active.is_zero() &&
+					ledger.unlocking.iter().all(|chunk| chunk.value.is_zero())
+				{
+					// A zero ledger can also retain its old lock. Inspection must not
+					// manufacture stake from it or remove it; explicit cleanup does so.
+					Ok(LedgerIntegrityState::Ok)
 				} else {
 					if hold_or_lock != ledger.total {
 						Ok(LedgerIntegrityState::LockCorrupted)
@@ -1214,40 +1228,50 @@ impl<T: Config> Pallet<T> {
 		}
 
 		let ledger = Self::ledger(Stash(stash.clone()))?;
-		let staked: BalanceOf<T> = T::OldCurrency::balance_locked(STAKING_ID, stash).into();
-		ensure!(!staked.is_zero(), Error::<T>::AlreadyMigrated);
-		ensure!(ledger.total == staked, Error::<T>::BadState);
-
-		// remove old staking lock
-		T::OldCurrency::remove_lock(STAKING_ID, &stash);
-
-		// check if we can hold all stake.
-		let max_hold = asset::free_to_stake::<T>(&stash);
-		let force_withdraw = if max_hold >= staked {
-			// this means we can hold all stake. yay!
-			asset::update_stake::<T>(&stash, staked)?;
-			Zero::zero()
+		let locked: BalanceOf<T> = T::OldCurrency::balance_locked(STAKING_ID, stash).into();
+		// The currency interface cannot distinguish an absent lock from a zero
+		// amount row. Never decrement references repeatedly for either case.
+		ensure!(!locked.is_zero(), Error::<T>::AlreadyMigrated);
+		ensure!(
+			ledger
+				.unlocking
+				.iter()
+				.try_fold(ledger.active, |total, chunk| total.checked_add(&chunk.value)) ==
+				Some(ledger.total),
+			Error::<T>::BadState
+		);
+		let held = asset::staked::<T>(stash);
+		if ledger.total.is_zero() {
+			ensure!(
+				held.is_zero() &&
+					ledger.active.is_zero() &&
+					ledger.unlocking.iter().all(|chunk| chunk.value.is_zero()),
+				Error::<T>::BadState
+			);
 		} else {
-			// if we are here, it means we cannot hold all user stake. We will do a force withdraw
-			// from ledger, but that's okay since anyways user do not have funds for it.
-			let force_withdraw = staked.saturating_sub(max_hold);
+			ensure!(
+				if held.is_zero() { locked == ledger.total } else { held == ledger.total },
+				Error::<T>::BadState
+			);
+		}
 
-			// we ignore if active is 0. It implies the locked amount is not actively staked. The
-			// account can still get away from potential slash but we can't do much better here.
-			StakingLedger {
-				total: max_hold,
-				active: ledger.active.saturating_sub(force_withdraw),
-				// we are not changing the stash, so we can keep the stash.
-				..ledger
-			}
-			.update()?;
-			force_withdraw
-		};
+		// Like the deployed synchronous migration, count stake already on hold.
+		// Unlike its underfunded fallback, never shrink liabilities to fit the
+		// available currency. Reject before removing the old lock or any reference.
+		let max_hold = asset::free_to_stake::<T>(stash).saturating_add(held);
+		ensure!(max_hold >= ledger.total, Error::<T>::NotEnoughFunds);
+		// Ledger::update already creates holds with the old lock present. Establish
+		// the full hold first so a failed currency operation cannot release custody.
+		asset::update_stake::<T>(stash, ledger.total)?;
+		T::OldCurrency::remove_lock(STAKING_ID, stash);
 
 		// Get rid of the extra consumer we used to have with OldCurrency.
 		frame_system::Pallet::<T>::dec_consumers(&stash);
 
-		Self::deposit_event(Event::<T>::CurrencyMigrated { stash: stash.clone(), force_withdraw });
+		Self::deposit_event(Event::<T>::CurrencyMigrated {
+			stash: stash.clone(),
+			force_withdraw: Zero::zero(),
+		});
 		Ok(())
 	}
 

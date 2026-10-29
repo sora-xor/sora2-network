@@ -4,8 +4,128 @@ use super::*;
 use crate::session_rotation::Eras;
 use frame_support::{
 	dispatch::{GetDispatchInfo, WithPostDispatchInfo},
+	traits::{LockableCurrency, WithdrawReasons},
 	StorageDoubleMap,
 };
+
+#[test]
+fn legacy_currency_cleanup_preserves_already_held_liability_and_unlocking() {
+	for old_lock in [400, 1000, 9000] {
+		ExtBuilder::default().build_and_execute(|| {
+			let who = 300;
+			bond(who, 1000);
+			testing_utils::migrate_to_old_currency::<Test>(who);
+			let mut ledger = Staking::ledger(StakingAccount::Stash(who)).unwrap();
+			ledger.active = 700;
+			ledger.unlocking = bounded_vec![UnlockChunk { value: 300, era: 100 }];
+			ledger.clone().update().unwrap();
+			// Native ledger updates establish the hold without clearing an old lock.
+			Balances::set_lock(STAKING_ID, &who, old_lock, WithdrawReasons::all());
+			Balances::set_lock(*b"otherlok", &who, 1, WithdrawReasons::all());
+			assert_eq!(asset::free_to_stake::<Test>(&who), 0);
+			assert_eq!(asset::staked::<Test>(&who), 1000);
+			let currency = asset::total_balance::<Test>(&who);
+			let issuance = asset::total_issuance::<Test>();
+			let before_ledger = Ledger::<Test>::get(who).unwrap().encode();
+			assert_storage_noop!({
+				assert_eq!(Staking::inspect_bond_state(&who), Ok(LedgerIntegrityState::Ok));
+			});
+			assert_ok!(Staking::migrate_currency(RuntimeOrigin::signed(1), who));
+			assert_eq!(Ledger::<Test>::get(who).unwrap().encode(), before_ledger);
+			assert_eq!(asset::staked::<Test>(&who), ledger.total);
+			assert_eq!(asset::total_balance::<Test>(&who), currency);
+			assert_eq!(asset::total_issuance::<Test>(), issuance);
+			assert_eq!(Balances::balance_locked(STAKING_ID, &who), 0);
+			assert_eq!(Balances::balance_locked(*b"otherlok", &who), 1);
+			assert_noop!(
+				Staking::migrate_currency(RuntimeOrigin::signed(1), who),
+				Error::<Test>::AlreadyMigrated
+			);
+		});
+	}
+}
+
+#[test]
+fn legacy_currency_zero_ledger_keeps_residual_lock_until_explicit_cleanup() {
+	ExtBuilder::default().build_and_execute(|| {
+		let who = 300;
+		bond(who, 1000);
+		testing_utils::migrate_to_old_currency::<Test>(who);
+		let mut ledger = Staking::ledger(StakingAccount::Stash(who)).unwrap();
+		ledger.total = 0;
+		ledger.active = 0;
+		ledger.update().unwrap();
+		let before = Ledger::<Test>::get(who).unwrap().encode();
+		let currency = asset::total_balance::<Test>(&who);
+		assert_eq!(asset::staked::<Test>(&who), 0);
+		assert_storage_noop!({
+			assert_eq!(Staking::inspect_bond_state(&who), Ok(LedgerIntegrityState::Ok));
+		});
+		assert_eq!(Balances::balance_locked(STAKING_ID, &who), 1000);
+		assert_ok!(Staking::migrate_currency(RuntimeOrigin::signed(1), who));
+		assert_eq!(Ledger::<Test>::get(who).unwrap().encode(), before);
+		assert_eq!(asset::staked::<Test>(&who), 0);
+		assert_eq!(asset::total_balance::<Test>(&who), currency);
+		assert_eq!(Balances::balance_locked(STAKING_ID, &who), 0);
+		assert_noop!(
+			Staking::migrate_currency(RuntimeOrigin::signed(1), who),
+			Error::<Test>::AlreadyMigrated
+		);
+	});
+}
+
+#[test]
+fn legacy_currency_cleanup_rejects_ambiguous_holds_locks_and_orphan_bonds() {
+	ExtBuilder::default().build_and_execute(|| {
+		let who = 300;
+		bond(who, 1000);
+		testing_utils::migrate_to_old_currency::<Test>(who);
+		for held in [500, 1100] {
+			hypothetically!({
+				assert!(asset::mint_into_existing::<Test>(&who, 200).is_some());
+				assert_ok!(asset::update_stake::<Test>(&who, held));
+				assert_eq!(
+					Staking::inspect_bond_state(&who),
+					Ok(LedgerIntegrityState::LockCorrupted)
+				);
+				assert_noop!(
+					Staking::migrate_currency(RuntimeOrigin::signed(1), who),
+					Error::<Test>::BadState
+				);
+			});
+		}
+		hypothetically!({
+			Balances::set_lock(STAKING_ID, &who, 9000, WithdrawReasons::all());
+			assert_noop!(
+				Staking::migrate_currency(RuntimeOrigin::signed(1), who),
+				Error::<Test>::BadState
+			);
+		});
+		hypothetically!({
+			Bonded::<Test>::remove(who);
+			assert_noop!(
+				Staking::migrate_currency(RuntimeOrigin::signed(1), who),
+				Error::<Test>::NotStash
+			);
+		});
+		hypothetically!({
+			Ledger::<Test>::mutate(who, |ledger| ledger.as_mut().unwrap().active = 999);
+			assert_noop!(
+				Staking::migrate_currency(RuntimeOrigin::signed(1), who),
+				Error::<Test>::BadState
+			);
+		});
+		// A zero/absent lock cannot trigger repeated reference cleanup.
+		hypothetically!({
+			Balances::remove_lock(STAKING_ID, &who);
+			assert_ok!(asset::update_stake::<Test>(&who, 1000));
+			assert_noop!(
+				Staking::migrate_currency(RuntimeOrigin::signed(1), who),
+				Error::<Test>::AlreadyMigrated
+			);
+		});
+	});
+}
 
 fn prepare_reward() {
 	Staking::reward_by_ids(vec![(11, 10)]);

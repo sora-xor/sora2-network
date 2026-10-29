@@ -1375,7 +1375,41 @@
  	/// Returns the minimum required bond for participation, considering nominators,
  	/// and the chain’s existential deposit.
  	///
-@@ -179,9 +191,19 @@
+@@ -118,9 +130,15 @@
+ 	pub(crate) fn inspect_bond_state(
+ 		stash: &T::AccountId,
+ 	) -> Result<LedgerIntegrityState, Error<T>> {
+-		// look at any old unmigrated lock as well.
+-		let hold_or_lock = asset::staked::<T>(&stash)
+-			.max(T::OldCurrency::balance_locked(STAKING_ID, &stash).into());
++		// The deployed synchronous pallet can establish a hold through a ledger
++		// update while retaining an older lock. That obsolete lock is not another
++		// staking liability, even when it is larger than the current hold.
++		let held = asset::staked::<T>(stash);
++		let hold_or_lock = if held.is_zero() {
++			T::OldCurrency::balance_locked(STAKING_ID, stash).into()
++		} else {
++			held
++		};
+ 
+ 		let controller = <Bonded<T>>::get(stash).ok_or_else(|| {
+ 			if hold_or_lock == Zero::zero() {
+@@ -134,6 +152,14 @@
+ 			Some(ledger) => {
+ 				if ledger.stash != *stash {
+ 					Ok(LedgerIntegrityState::Corrupted)
++				} else if held.is_zero() &&
++					ledger.total.is_zero() &&
++					ledger.active.is_zero() &&
++					ledger.unlocking.iter().all(|chunk| chunk.value.is_zero())
++				{
++					// A zero ledger can also retain its old lock. Inspection must not
++					// manufacture stake from it or remove it; explicit cleanup does so.
++					Ok(LedgerIntegrityState::Ok)
+ 				} else {
+ 					if hold_or_lock != ledger.total {
+ 						Ok(LedgerIntegrityState::LockCorrupted)
+@@ -179,9 +205,19 @@
  		Self::slashable_balance_of_vote_weight(who, issuance)
  	}
  
@@ -1396,7 +1430,7 @@
  	}
  
  	/// Checks if a slash has been cancelled for the given era and slash parameters.
-@@ -256,7 +278,17 @@
+@@ -256,7 +292,17 @@
  		active_era.min(earliest_unlock_era_by_offence_queue)
  	}
  
@@ -1415,7 +1449,7 @@
  		let mut ledger = Self::ledger(Controller(controller.clone()))?;
  		let (stash, old_total) = (ledger.stash.clone(), ledger.total);
  		let active_era = Rotator::<T>::active_era();
-@@ -264,6 +296,16 @@
+@@ -264,6 +310,16 @@
  		// Ensure last era slashes are applied. Else we block the withdrawals.
  		if active_era > 1 {
  			Self::ensure_era_slashes_applied(active_era.saturating_sub(1))?;
@@ -1432,7 +1466,7 @@
  		}
  
  		let earliest_era_to_withdraw = Self::calculate_earliest_withdrawal_era(active_era);
-@@ -291,7 +333,7 @@
+@@ -291,7 +347,7 @@
  				// This account must have called `unbond()` with some value that caused the active
  				// portion to fall below the existential deposit + will have no more unlocking
  				// chunks left. We can now safely remove all staking-related information.
@@ -1441,7 +1475,7 @@
  
  				T::WeightInfo::withdraw_unbonded_kill()
  			} else {
-@@ -313,12 +355,15 @@
+@@ -313,12 +369,15 @@
  			T::EventListeners::on_withdraw(controller, value);
  		}
  
@@ -1459,7 +1493,7 @@
  			Error::<T>::UnappliedSlashesInPreviousEra
  		);
  		Ok(())
-@@ -335,6 +380,7 @@
+@@ -335,6 +394,7 @@
  		Self::do_payout_stakers_by_page(validator_stash, era, page)
  	}
  
@@ -1467,7 +1501,7 @@
  	pub(super) fn do_payout_stakers_by_page(
  		validator_stash: T::AccountId,
  		era: EraIndex,
-@@ -378,7 +424,9 @@
+@@ -378,7 +438,9 @@
  
  		let stash = ledger.stash.clone();
  
@@ -1478,7 +1512,7 @@
  			return Err(Error::<T>::AlreadyClaimed
  				.with_weight(T::WeightInfo::payout_stakers_alive_staked(0)));
  		}
-@@ -390,6 +438,34 @@
+@@ -390,6 +452,34 @@
  				.with_weight(T::WeightInfo::payout_stakers_alive_staked(0))
  		})?;
  
@@ -1513,7 +1547,7 @@
  		// Input data seems good, no errors allowed after this point
  
  		let era_reward_points = Eras::<T>::get_reward_points(era);
-@@ -399,7 +475,11 @@
+@@ -399,7 +489,11 @@
  
  		// Nothing to do if they have no reward points.
  		if validator_reward_points.is_zero() {
@@ -1526,7 +1560,7 @@
  		}
  
  		// This is the fraction of the total reward that the validator and the
-@@ -474,7 +554,11 @@
+@@ -474,7 +568,11 @@
  
  		debug_assert!(nominator_payout_count <= T::MaxExposurePageSize::get());
  
@@ -1539,7 +1573,7 @@
  	}
  
  	/// Payout stakers from an era reward pot (transfer-based, no minting).
-@@ -819,7 +903,8 @@
+@@ -819,7 +917,8 @@
  	/// - after a `withdraw_unbonded()` call that frees all of a stash's bonded balance.
  	/// - through `reap_stash()` if the balance has fallen below the existential deposit (through
  	///   slashing or full unbond).
@@ -1549,7 +1583,7 @@
  		// removes controller from `Bonded` and staking ledger from `Ledger`, as well as reward
  		// setting of the stash in `Payee`.
  		StakingLedger::<T>::kill(&stash)?;
-@@ -833,8 +918,7 @@
+@@ -833,8 +932,7 @@
  		Ok(())
  	}
  
@@ -1559,7 +1593,87 @@
  		Eras::<T>::reward_active_era(validators_points)
  	}
  
-@@ -1481,7 +1565,16 @@
+@@ -1130,40 +1228,50 @@
+ 		}
+ 
+ 		let ledger = Self::ledger(Stash(stash.clone()))?;
+-		let staked: BalanceOf<T> = T::OldCurrency::balance_locked(STAKING_ID, stash).into();
+-		ensure!(!staked.is_zero(), Error::<T>::AlreadyMigrated);
+-		ensure!(ledger.total == staked, Error::<T>::BadState);
+-
+-		// remove old staking lock
+-		T::OldCurrency::remove_lock(STAKING_ID, &stash);
+-
+-		// check if we can hold all stake.
+-		let max_hold = asset::free_to_stake::<T>(&stash);
+-		let force_withdraw = if max_hold >= staked {
+-			// this means we can hold all stake. yay!
+-			asset::update_stake::<T>(&stash, staked)?;
+-			Zero::zero()
++		let locked: BalanceOf<T> = T::OldCurrency::balance_locked(STAKING_ID, stash).into();
++		// The currency interface cannot distinguish an absent lock from a zero
++		// amount row. Never decrement references repeatedly for either case.
++		ensure!(!locked.is_zero(), Error::<T>::AlreadyMigrated);
++		ensure!(
++			ledger
++				.unlocking
++				.iter()
++				.try_fold(ledger.active, |total, chunk| total.checked_add(&chunk.value)) ==
++				Some(ledger.total),
++			Error::<T>::BadState
++		);
++		let held = asset::staked::<T>(stash);
++		if ledger.total.is_zero() {
++			ensure!(
++				held.is_zero() &&
++					ledger.active.is_zero() &&
++					ledger.unlocking.iter().all(|chunk| chunk.value.is_zero()),
++				Error::<T>::BadState
++			);
+ 		} else {
+-			// if we are here, it means we cannot hold all user stake. We will do a force withdraw
+-			// from ledger, but that's okay since anyways user do not have funds for it.
+-			let force_withdraw = staked.saturating_sub(max_hold);
+-
+-			// we ignore if active is 0. It implies the locked amount is not actively staked. The
+-			// account can still get away from potential slash but we can't do much better here.
+-			StakingLedger {
+-				total: max_hold,
+-				active: ledger.active.saturating_sub(force_withdraw),
+-				// we are not changing the stash, so we can keep the stash.
+-				..ledger
+-			}
+-			.update()?;
+-			force_withdraw
+-		};
++			ensure!(
++				if held.is_zero() { locked == ledger.total } else { held == ledger.total },
++				Error::<T>::BadState
++			);
++		}
++
++		// Like the deployed synchronous migration, count stake already on hold.
++		// Unlike its underfunded fallback, never shrink liabilities to fit the
++		// available currency. Reject before removing the old lock or any reference.
++		let max_hold = asset::free_to_stake::<T>(stash).saturating_add(held);
++		ensure!(max_hold >= ledger.total, Error::<T>::NotEnoughFunds);
++		// Ledger::update already creates holds with the old lock present. Establish
++		// the full hold first so a failed currency operation cannot release custody.
++		asset::update_stake::<T>(stash, ledger.total)?;
++		T::OldCurrency::remove_lock(STAKING_ID, stash);
+ 
+ 		// Get rid of the extra consumer we used to have with OldCurrency.
+ 		frame_system::Pallet::<T>::dec_consumers(&stash);
+ 
+-		Self::deposit_event(Event::<T>::CurrencyMigrated { stash: stash.clone(), force_withdraw });
++		Self::deposit_event(Event::<T>::CurrencyMigrated {
++			stash: stash.clone(),
++			force_withdraw: Zero::zero(),
++		});
+ 		Ok(())
+ 	}
+ 
+@@ -1481,7 +1589,16 @@
  			}
  		};
  
@@ -1577,7 +1691,7 @@
  			// this implies that slashes are applied immediately, so we can accept any offence up to
  			// bonding duration old.
  			// Align with the SlashDeferDuration > 0 branch: accept offences from at most
-@@ -1495,6 +1588,9 @@
+@@ -1495,6 +1612,9 @@
  		};
  
  		for o in offences {
@@ -1587,7 +1701,7 @@
  			let slash_fraction = o.slash_fraction;
  			let validator: <T as frame_system::Config>::AccountId = o.offender.into();
  
-@@ -1936,10 +2032,10 @@
+@@ -1936,10 +2056,10 @@
  
  	fn withdraw_unbonded(
  		who: Self::AccountId,
@@ -1600,7 +1714,7 @@
  			.map(|_| !StakingLedger::<T>::is_bonded(StakingAccount::Controller(ctrl)))
  			.map_err(|with_post| with_post.error)
  	}
-@@ -2106,7 +2202,7 @@
+@@ -2106,7 +2226,7 @@
  		session_rotation::Eras::<T>::do_try_state()?;
  
  		use frame_support::traits::fungible::Inspect;
@@ -1609,7 +1723,7 @@
  			log!(warn, "total issuance will cause T::CurrencyToVote to downscale -- report to maintainers.")
  		}
  
-@@ -2389,7 +2485,9 @@
+@@ -2389,7 +2509,9 @@
  	/// For each validator in `ErasStakersOverview`, `LastValidatorEra` should be set to the active
  	/// era.
  	fn check_paged_exposures() -> Result<(), TryRuntimeError> {
@@ -1620,7 +1734,7 @@
  		let overview_and_pages = ErasStakersOverview::<T>::iter_prefix(era)
  			.map(|(validator, metadata)| {
  				let last_validator_era = LastValidatorEra::<T>::get(&validator).unwrap_or_default();
-@@ -2498,19 +2596,34 @@
+@@ -2498,19 +2620,34 @@
  			log!(info, "Offence queue for era {:?} has {:?} offences queued", e, count);
  		}
  
@@ -2589,7 +2703,26 @@
  		pub fn payout_stakers_by_page(
  			origin: OriginFor<T>,
  			validator_stash: T::AccountId,
-@@ -3041,12 +3290,12 @@
+@@ -3010,13 +3259,14 @@
+ 
+ 		/// Migrates permissionlessly a stash from locks to holds.
+ 		///
+-		/// This removes the old lock on the stake and creates a hold on it atomically. If all
+-		/// stake cannot be held, the best effort is made to hold as much as possible. The remaining
+-		/// stake is removed from the ledger.
++		/// This establishes the full ledger hold before removing the old staking lock. An existing
++		/// hold counts toward backing; a consistent zero ledger permits residual-lock cleanup.
++		/// Ambiguous or insufficient backing fails without reducing the ledger or removing its
++		/// lock.
+ 		///
+ 		/// The fee is waived if the migration is successful.
+ 		#[pallet::call_index(30)]
+-		#[pallet::weight(T::WeightInfo::migrate_currency())]
++		#[pallet::weight(T::WeightInfo::migrate_currency().saturating_add(T::DbWeight::get().reads(1)))]
+ 		pub fn migrate_currency(
+ 			origin: OriginFor<T>,
+ 			stash: T::AccountId,
+@@ -3041,12 +3291,12 @@
  		/// This function exists as a **fallback mechanism** for this extreme situation, but we
  		/// never expect to encounter this in normal scenarios.
  		///
@@ -2605,7 +2738,7 @@
  		/// - `slash_key`: A unique identifier for the slash, represented as a tuple:
  		///   - `stash`: The stash account of the validator being slashed.
  		///   - `slash_fraction`: The fraction of the stake that was slashed.
-@@ -3079,7 +3328,7 @@
+@@ -3079,7 +3329,7 @@
  				Error::<T>::CancelledSlash
  			);
  
@@ -2614,7 +2747,7 @@
  				.ok_or(Error::<T>::InvalidSlashRecord)?;
  			slashing::apply_slash::<T>(unapplied_slash, Self::offence_era_of(slash_era));
  
-@@ -3131,7 +3380,7 @@
+@@ -3131,7 +3381,7 @@
  		/// Sets the maximum commission that validators can set.
  		///
  		/// The dispatch origin must be `T::AdminOrigin`.
@@ -3659,7 +3792,93 @@
  				}
  			);
  
-@@ -1078,6 +1086,7 @@
+@@ -905,70 +913,41 @@
+ 		});
+ 	}
+ 	#[test]
+-	fn cannot_hold_all_stake() {
+-		// When there is not enough funds to hold all stake, part of the stake if force withdrawn.
+-		// At end of the migration, the stake and hold should be same.
++	fn cannot_hold_all_stake_preserves_liability_until_funded() {
+ 		ExtBuilder::default().has_stakers(true).build_and_execute(|| {
+-			// GIVEN alice who is a nominator with old currency.
+ 			let alice = 300;
+ 			let stake = 1000;
+ 			bond_nominator(alice, stake, vec![11]);
+ 			testing_utils::migrate_to_old_currency::<Test>(alice);
+-			assert_eq!(asset::staked::<Test>(&alice), 0);
+-			assert_eq!(Balances::balance_locked(STAKING_ID, &alice), stake);
+-			// ledger has 1000 staked.
+-			assert_eq!(
+-				<Staking as StakingInterface>::stake(&alice),
+-				Ok(Stake { total: stake, active: stake })
+-			);
+-
+-			// Get rid of the extra ED to emulate all their balance including ED is staked.
+ 			assert_ok!(Balances::transfer_allow_death(
+ 				RuntimeOrigin::signed(alice),
+ 				10,
+ 				ExistentialDeposit::get()
+ 			));
+-
+-			let expected_force_withdraw = ExistentialDeposit::get();
+-
+-			// ledger mutation would fail in this case before migration because of failing hold.
+ 			assert_noop!(
+ 				Staking::unbond(RuntimeOrigin::signed(alice), 100),
+ 				Error::<Test>::NotEnoughFunds
+ 			);
+-
+-			// clear events
+-			let _ = staking_events_since_last_call();
+-
+-			// WHEN alice currency is migrated.
++			// No force withdrawal, lock removal, hold change, reference change or event.
++			assert_noop!(
++				Staking::migrate_currency(RuntimeOrigin::signed(1), alice),
++				Error::<Test>::NotEnoughFunds
++			);
++			assert_eq!(Balances::balance_locked(STAKING_ID, &alice), stake);
++			assert_eq!(asset::staked::<Test>(&alice), 0);
++			assert_eq!(
++				<Staking as StakingInterface>::stake(&alice),
++				Ok(Stake { total: stake, active: stake })
++			);
++			// Funding the shortfall permits complete migration with the same liability.
++			assert!(asset::mint_into_existing::<Test>(&alice, ExistentialDeposit::get()).is_some());
+ 			assert_ok!(Staking::migrate_currency(RuntimeOrigin::signed(1), alice));
+-
+-			// THEN
+-			let expected_hold = stake - expected_force_withdraw;
+-			// ensure no lock
++			assert_eq!(asset::staked::<Test>(&alice), stake);
+ 			assert_eq!(Balances::balance_locked(STAKING_ID, &alice), 0);
+-			// ensure stake and hold are same.
+-			assert_eq!(
+-				<Staking as StakingInterface>::stake(&alice),
+-				Ok(Stake { total: expected_hold, active: expected_hold })
+-			);
+-			assert_eq!(asset::staked::<Test>(&alice), expected_hold);
+-			// ensure events are emitted.
+-			assert_eq!(
+-				staking_events_since_last_call(),
+-				vec![Event::CurrencyMigrated {
+-					stash: alice,
+-					force_withdraw: expected_force_withdraw
+-				}]
+-			);
+-
+-			// ensure cannot migrate again.
+ 			assert_noop!(
+ 				Staking::migrate_currency(RuntimeOrigin::signed(1), alice),
+ 				Error::<Test>::AlreadyMigrated
+ 			);
+-
+-			// unbond works after migration.
+ 			assert_ok!(Staking::unbond(RuntimeOrigin::signed(alice), 100));
+ 		});
+ 	}
+@@ -1078,6 +1057,7 @@
  // total: stake,
  // active: stake,
  // unlocking: Default::default(),
@@ -4130,15 +4349,135 @@
  	}
 --- /dev/null
 +++ b/src/tests/sora_customizations.rs
-@@ -0,0 +1,380 @@
+@@ -0,0 +1,500 @@
 +// SPDX-License-Identifier: Apache-2.0
 +//! SORA Nexus compatibility policies exercised against the upstream asynchronous state machine.
 +use super::*;
 +use crate::session_rotation::Eras;
 +use frame_support::{
 +	dispatch::{GetDispatchInfo, WithPostDispatchInfo},
++	traits::{LockableCurrency, WithdrawReasons},
 +	StorageDoubleMap,
 +};
++
++#[test]
++fn legacy_currency_cleanup_preserves_already_held_liability_and_unlocking() {
++	for old_lock in [400, 1000, 9000] {
++		ExtBuilder::default().build_and_execute(|| {
++			let who = 300;
++			bond(who, 1000);
++			testing_utils::migrate_to_old_currency::<Test>(who);
++			let mut ledger = Staking::ledger(StakingAccount::Stash(who)).unwrap();
++			ledger.active = 700;
++			ledger.unlocking = bounded_vec![UnlockChunk { value: 300, era: 100 }];
++			ledger.clone().update().unwrap();
++			// Native ledger updates establish the hold without clearing an old lock.
++			Balances::set_lock(STAKING_ID, &who, old_lock, WithdrawReasons::all());
++			Balances::set_lock(*b"otherlok", &who, 1, WithdrawReasons::all());
++			assert_eq!(asset::free_to_stake::<Test>(&who), 0);
++			assert_eq!(asset::staked::<Test>(&who), 1000);
++			let currency = asset::total_balance::<Test>(&who);
++			let issuance = asset::total_issuance::<Test>();
++			let before_ledger = Ledger::<Test>::get(who).unwrap().encode();
++			assert_storage_noop!({
++				assert_eq!(Staking::inspect_bond_state(&who), Ok(LedgerIntegrityState::Ok));
++			});
++			assert_ok!(Staking::migrate_currency(RuntimeOrigin::signed(1), who));
++			assert_eq!(Ledger::<Test>::get(who).unwrap().encode(), before_ledger);
++			assert_eq!(asset::staked::<Test>(&who), ledger.total);
++			assert_eq!(asset::total_balance::<Test>(&who), currency);
++			assert_eq!(asset::total_issuance::<Test>(), issuance);
++			assert_eq!(Balances::balance_locked(STAKING_ID, &who), 0);
++			assert_eq!(Balances::balance_locked(*b"otherlok", &who), 1);
++			assert_noop!(
++				Staking::migrate_currency(RuntimeOrigin::signed(1), who),
++				Error::<Test>::AlreadyMigrated
++			);
++		});
++	}
++}
++
++#[test]
++fn legacy_currency_zero_ledger_keeps_residual_lock_until_explicit_cleanup() {
++	ExtBuilder::default().build_and_execute(|| {
++		let who = 300;
++		bond(who, 1000);
++		testing_utils::migrate_to_old_currency::<Test>(who);
++		let mut ledger = Staking::ledger(StakingAccount::Stash(who)).unwrap();
++		ledger.total = 0;
++		ledger.active = 0;
++		ledger.update().unwrap();
++		let before = Ledger::<Test>::get(who).unwrap().encode();
++		let currency = asset::total_balance::<Test>(&who);
++		assert_eq!(asset::staked::<Test>(&who), 0);
++		assert_storage_noop!({
++			assert_eq!(Staking::inspect_bond_state(&who), Ok(LedgerIntegrityState::Ok));
++		});
++		assert_eq!(Balances::balance_locked(STAKING_ID, &who), 1000);
++		assert_ok!(Staking::migrate_currency(RuntimeOrigin::signed(1), who));
++		assert_eq!(Ledger::<Test>::get(who).unwrap().encode(), before);
++		assert_eq!(asset::staked::<Test>(&who), 0);
++		assert_eq!(asset::total_balance::<Test>(&who), currency);
++		assert_eq!(Balances::balance_locked(STAKING_ID, &who), 0);
++		assert_noop!(
++			Staking::migrate_currency(RuntimeOrigin::signed(1), who),
++			Error::<Test>::AlreadyMigrated
++		);
++	});
++}
++
++#[test]
++fn legacy_currency_cleanup_rejects_ambiguous_holds_locks_and_orphan_bonds() {
++	ExtBuilder::default().build_and_execute(|| {
++		let who = 300;
++		bond(who, 1000);
++		testing_utils::migrate_to_old_currency::<Test>(who);
++		for held in [500, 1100] {
++			hypothetically!({
++				assert!(asset::mint_into_existing::<Test>(&who, 200).is_some());
++				assert_ok!(asset::update_stake::<Test>(&who, held));
++				assert_eq!(
++					Staking::inspect_bond_state(&who),
++					Ok(LedgerIntegrityState::LockCorrupted)
++				);
++				assert_noop!(
++					Staking::migrate_currency(RuntimeOrigin::signed(1), who),
++					Error::<Test>::BadState
++				);
++			});
++		}
++		hypothetically!({
++			Balances::set_lock(STAKING_ID, &who, 9000, WithdrawReasons::all());
++			assert_noop!(
++				Staking::migrate_currency(RuntimeOrigin::signed(1), who),
++				Error::<Test>::BadState
++			);
++		});
++		hypothetically!({
++			Bonded::<Test>::remove(who);
++			assert_noop!(
++				Staking::migrate_currency(RuntimeOrigin::signed(1), who),
++				Error::<Test>::NotStash
++			);
++		});
++		hypothetically!({
++			Ledger::<Test>::mutate(who, |ledger| ledger.as_mut().unwrap().active = 999);
++			assert_noop!(
++				Staking::migrate_currency(RuntimeOrigin::signed(1), who),
++				Error::<Test>::BadState
++			);
++		});
++		// A zero/absent lock cannot trigger repeated reference cleanup.
++		hypothetically!({
++			Balances::remove_lock(STAKING_ID, &who);
++			assert_ok!(asset::update_stake::<Test>(&who, 1000));
++			assert_noop!(
++				Staking::migrate_currency(RuntimeOrigin::signed(1), who),
++				Error::<Test>::AlreadyMigrated
++			);
++		});
++	});
++}
 +
 +fn prepare_reward() {
 +	Staking::reward_by_ids(vec![(11, 10)]);

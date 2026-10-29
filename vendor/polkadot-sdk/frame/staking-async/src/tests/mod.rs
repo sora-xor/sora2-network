@@ -913,70 +913,41 @@ mod hold_migration {
 		});
 	}
 	#[test]
-	fn cannot_hold_all_stake() {
-		// When there is not enough funds to hold all stake, part of the stake if force withdrawn.
-		// At end of the migration, the stake and hold should be same.
+	fn cannot_hold_all_stake_preserves_liability_until_funded() {
 		ExtBuilder::default().has_stakers(true).build_and_execute(|| {
-			// GIVEN alice who is a nominator with old currency.
 			let alice = 300;
 			let stake = 1000;
 			bond_nominator(alice, stake, vec![11]);
 			testing_utils::migrate_to_old_currency::<Test>(alice);
-			assert_eq!(asset::staked::<Test>(&alice), 0);
-			assert_eq!(Balances::balance_locked(STAKING_ID, &alice), stake);
-			// ledger has 1000 staked.
-			assert_eq!(
-				<Staking as StakingInterface>::stake(&alice),
-				Ok(Stake { total: stake, active: stake })
-			);
-
-			// Get rid of the extra ED to emulate all their balance including ED is staked.
 			assert_ok!(Balances::transfer_allow_death(
 				RuntimeOrigin::signed(alice),
 				10,
 				ExistentialDeposit::get()
 			));
-
-			let expected_force_withdraw = ExistentialDeposit::get();
-
-			// ledger mutation would fail in this case before migration because of failing hold.
 			assert_noop!(
 				Staking::unbond(RuntimeOrigin::signed(alice), 100),
 				Error::<Test>::NotEnoughFunds
 			);
-
-			// clear events
-			let _ = staking_events_since_last_call();
-
-			// WHEN alice currency is migrated.
-			assert_ok!(Staking::migrate_currency(RuntimeOrigin::signed(1), alice));
-
-			// THEN
-			let expected_hold = stake - expected_force_withdraw;
-			// ensure no lock
-			assert_eq!(Balances::balance_locked(STAKING_ID, &alice), 0);
-			// ensure stake and hold are same.
+			// No force withdrawal, lock removal, hold change, reference change or event.
+			assert_noop!(
+				Staking::migrate_currency(RuntimeOrigin::signed(1), alice),
+				Error::<Test>::NotEnoughFunds
+			);
+			assert_eq!(Balances::balance_locked(STAKING_ID, &alice), stake);
+			assert_eq!(asset::staked::<Test>(&alice), 0);
 			assert_eq!(
 				<Staking as StakingInterface>::stake(&alice),
-				Ok(Stake { total: expected_hold, active: expected_hold })
+				Ok(Stake { total: stake, active: stake })
 			);
-			assert_eq!(asset::staked::<Test>(&alice), expected_hold);
-			// ensure events are emitted.
-			assert_eq!(
-				staking_events_since_last_call(),
-				vec![Event::CurrencyMigrated {
-					stash: alice,
-					force_withdraw: expected_force_withdraw
-				}]
-			);
-
-			// ensure cannot migrate again.
+			// Funding the shortfall permits complete migration with the same liability.
+			assert!(asset::mint_into_existing::<Test>(&alice, ExistentialDeposit::get()).is_some());
+			assert_ok!(Staking::migrate_currency(RuntimeOrigin::signed(1), alice));
+			assert_eq!(asset::staked::<Test>(&alice), stake);
+			assert_eq!(Balances::balance_locked(STAKING_ID, &alice), 0);
 			assert_noop!(
 				Staking::migrate_currency(RuntimeOrigin::signed(1), alice),
 				Error::<Test>::AlreadyMigrated
 			);
-
-			// unbond works after migration.
 			assert_ok!(Staking::unbond(RuntimeOrigin::signed(alice), 100));
 		});
 	}

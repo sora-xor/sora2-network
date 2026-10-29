@@ -3259,13 +3259,14 @@ pub mod pallet {
 
 		/// Migrates permissionlessly a stash from locks to holds.
 		///
-		/// This removes the old lock on the stake and creates a hold on it atomically. If all
-		/// stake cannot be held, the best effort is made to hold as much as possible. The remaining
-		/// stake is removed from the ledger.
+		/// This establishes the full ledger hold before removing the old staking lock. An existing
+		/// hold counts toward backing; a consistent zero ledger permits residual-lock cleanup.
+		/// Ambiguous or insufficient backing fails without reducing the ledger or removing its
+		/// lock.
 		///
 		/// The fee is waived if the migration is successful.
 		#[pallet::call_index(30)]
-		#[pallet::weight(T::WeightInfo::migrate_currency())]
+		#[pallet::weight(T::WeightInfo::migrate_currency().saturating_add(T::DbWeight::get().reads(1)))]
 		pub fn migrate_currency(
 			origin: OriginFor<T>,
 			stash: T::AccountId,
