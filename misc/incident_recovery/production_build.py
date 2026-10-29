@@ -344,10 +344,13 @@ def mixed_input(composed, layout):
         ('work', 'applyEnvelopes', 'workEnvelopes', {1}, {6, 7}),
         ('audits', 'auditEnvelopes', 'auditEnvelopes', {2, 8}, {9})):
         rows, base, seen, values = layout[name], composed[base_name], [], []
+        bridge_work_seen = False
         require(isinstance(rows, list) and 0 < len(rows) <= 16384, 'mixed work bound')
         for index, row in enumerate(rows):
             require(isinstance(row, dict) and set(row) in ({'composed'}, {'envelope'}), 'mixed entry fields')
             if 'composed' in row:
+                require(name != 'work' or not bridge_work_seen,
+                    'all composed storage edits must precede typed bridge work')
                 prior = row['composed']
                 require(type(prior) is int and 0 <= prior < len(base), 'composed entry index')
                 seen.append(prior)
@@ -355,6 +358,7 @@ def mixed_input(composed, layout):
             else:
                 raw = release.bounded_hex(row['envelope'], 2 * 1024**2)
                 require(len(raw) > 10 and raw[:9] == b'snxrec01\x01' and raw[9] in inserted, 'only typed bridge operations may supplement composed work')
+                bridge_work_seen = name == 'work'
                 values.append(row['envelope'])
         require(seen == list(range(len(base))), 'all composed work must remain exactly once in original order')
         result[output_name] = values

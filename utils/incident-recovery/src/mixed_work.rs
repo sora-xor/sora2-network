@@ -245,34 +245,23 @@ pub fn compile(mut manifest: Manifest) -> Result<Report> {
     let mut commitments = Vec::new();
     let mut identities = BTreeSet::new();
     let mut pending_incoming = BTreeMap::new();
-    let balances_issuance = frame_support::storage::storage_prefix(b"Balances", b"TotalIssuance");
-    let tokens_issuance = frame_support::storage::storage_prefix(b"Tokens", b"TotalIssuance");
-    let mut incoming_seen = false;
+    let mut bridge_work_seen = false;
     for (position, text) in manifest.work_envelopes.iter().enumerate() {
         let (envelope, bytes) = envelope(text)?;
         let (index, kind, commitment, identity, future_signatures) = match envelope.action {
             RecoveryAction::Apply(mut chunk) => {
-                // The first authenticated incoming operation fixes each affected
-                // asset's issuance baseline/head. Later raw supply edits would
-                // bypass that journal and make activation fail. Finish all raw
-                // issuance transformations before starting incoming execution.
-                if incoming_seen
-                    && chunk.edits.iter().any(|edit| {
-                        edit.scope == StorageScope::Top
-                            && (edit.key.as_slice() == balances_issuance.as_slice()
-                                || edit.key.starts_with(&tokens_issuance))
-                    })
-                {
-                    return Err(
-                        "issuance storage edits must precede every incoming work operation".into(),
-                    );
+                // Composition models only raw edits, not native bridge effects
+                // on balances, issuance, requests, locks or channel counters.
+                // Its preimages are valid only before bridge execution begins.
+                if bridge_work_seen {
+                    return Err("all storage edits must precede typed bridge work".into());
                 }
                 let (index, commitment) = (chunk.index, chunk.commitment());
                 chunk.index = 0;
                 (index, "storage", commitment, chunk.commitment(), false)
             }
             RecoveryAction::Incoming(bytes) => {
-                incoming_seen = true;
+                bridge_work_seen = true;
                 let mut operation: IncomingOperation = decode(&bytes, recovery::MAX_CHUNK_BYTES)?;
                 let future_signatures = matches!(
                     &operation.channel,
@@ -293,6 +282,7 @@ pub fn compile(mut manifest: Manifest) -> Result<Report> {
                 )
             }
             RecoveryAction::Outgoing(bytes) => {
+                bridge_work_seen = true;
                 let mut operation: OutgoingOperation = decode(&bytes, recovery::MAX_CHUNK_BYTES)?;
                 let (index, commitment) = (operation.index, operation.commitment());
                 operation.index = 0;
@@ -772,7 +762,7 @@ mod tests {
                 manifest.work_envelopes[2] = supply_edit(2, StorageScope::Top, key.clone(), delete);
                 assert!(compile(manifest)
                     .unwrap_err()
-                    .contains("issuance storage edits must precede every incoming"));
+                    .contains("all storage edits must precede typed bridge work"));
             }
         }
     }
@@ -787,7 +777,7 @@ mod tests {
     }
 
     #[test]
-    fn unrelated_and_child_storage_edits_after_incoming_remain_supported() {
+    fn unrelated_and_child_storage_edits_after_incoming_are_rejected() {
         let mut manifest = fixture();
         manifest.work_envelopes[2] = supply_edit(
             2,
@@ -795,7 +785,9 @@ mod tests {
             b"unrelated-final-cleanup".to_vec(),
             false,
         );
-        assert!(compile(manifest).is_ok());
+        assert!(compile(manifest)
+            .unwrap_err()
+            .contains("all storage edits must precede typed bridge work"));
         for key in supply_keys() {
             let mut manifest = fixture();
             manifest.work_envelopes[2] = supply_edit(
@@ -804,8 +796,29 @@ mod tests {
                 key,
                 false,
             );
-            assert!(compile(manifest).is_ok());
+            assert!(compile(manifest)
+                .unwrap_err()
+                .contains("all storage edits must precede typed bridge work"));
         }
+    }
+
+    #[test]
+    fn storage_edits_after_outgoing_are_rejected_even_without_incoming() {
+        let mut manifest = fixture();
+        let mut outgoing = envelope(&manifest.work_envelopes[2]).unwrap().0;
+        let RecoveryAction::Outgoing(bytes) = &mut outgoing.action else {
+            unreachable!()
+        };
+        let mut operation: OutgoingOperation = decode(bytes, recovery::MAX_CHUNK_BYTES).unwrap();
+        operation.index = 0;
+        *bytes = operation.encode();
+        manifest.work_envelopes = vec![
+            hx(&outgoing.encode_remark()),
+            supply_edit(1, StorageScope::Top, b"bridge-request".to_vec(), true),
+        ];
+        assert!(compile(manifest)
+            .unwrap_err()
+            .contains("all storage edits must precede typed bridge work"));
     }
 
     fn fixture_json() -> Vec<u8> {

@@ -61,7 +61,7 @@ class ProductionBuildTests(unittest.TestCase):
 
     def layout(self):
         return {'schema': 'sora-nexus-production-mixed-layout-v1',
-            'work': [{'composed': 0}, {'envelope': env(6, 1)}, {'composed': 1}],
+            'work': [{'composed': 0}, {'composed': 1}, {'envelope': env(6, 2)}],
             'audits': [{'composed': 0}, {'composed': 1}, {'envelope': env(9, 2)}], 'terminalEnvelope': None}
 
     def test_bounded_complete_input_graph_and_data_commitment(self):
@@ -167,14 +167,24 @@ class ProductionBuildTests(unittest.TestCase):
     def test_mixed_layout_preserves_composed_bodies_and_order(self):
         composed = self.composed()
         result = build.mixed_input(composed, self.layout())
-        self.assertEqual(bytes.fromhex(result['workEnvelopes'][2][2:])[14:], bytes.fromhex(composed['applyEnvelopes'][1][2:])[14:])
-        self.assertEqual(bytes.fromhex(result['workEnvelopes'][2][2:])[10:14], scale.u32(2))
+        self.assertEqual(bytes.fromhex(result['workEnvelopes'][1][2:])[14:], bytes.fromhex(composed['applyEnvelopes'][1][2:])[14:])
+        self.assertEqual(bytes.fromhex(result['workEnvelopes'][1][2:])[10:14], scale.u32(1))
         self.assertEqual(result['auditEnvelopes'][:2], composed['auditEnvelopes'])
         self.assertEqual(result['terminalEnvelope'], composed['terminalEnvelope'])
         cleared = build.clear_work_policy(policy())
         self.assertEqual(cleared[:134], policy()[:134])
         self.assertEqual(cleared[-64:-32], h(6))
         self.assertEqual(cleared[-32:], bytes(32))
+
+    def test_composed_edits_cannot_follow_incoming_or_outgoing(self):
+        for tag in (6, 7):
+            for work in ([{'envelope': env(tag, 0)}, {'composed': 0}, {'composed': 1}],
+                         [{'composed': 0}, {'envelope': env(tag, 1)}, {'composed': 1}]):
+                with self.subTest(tag=tag, work=work):
+                    value = self.layout()
+                    value['work'] = work
+                    with self.assertRaisesRegex(ValueError, 'all composed storage edits must precede'):
+                        build.mixed_input(self.composed(), value)
 
     def test_mixed_layout_omission_duplicate_reordering_and_arbitrary_storage_rejected(self):
         layouts = []
