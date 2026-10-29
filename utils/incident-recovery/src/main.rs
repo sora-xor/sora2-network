@@ -1371,6 +1371,23 @@ fn run() -> incident_recovery::Result<()> {
                 || !inventory.unused_destinations_verified
                 || !inventory.used_destinations.is_empty()
             {
+                // Name the blocking storage so a failed attempt is actionable.
+                let unresolved: Vec<_> = inventory
+                    .prefixes
+                    .iter()
+                    .filter(|p| !p.issues.is_empty())
+                    .map(|p| serde_json::json!({"storage": p.storage, "issues": p.issues, "examples": p.examples}))
+                    .collect();
+                eprintln!(
+                    "{}",
+                    serde_json::json!({
+                        "allEntriesClassified": inventory.all_entries_classified,
+                        "semanticDispositionsComplete": inventory.semantic_dispositions_complete,
+                        "unusedDestinationsVerified": inventory.unused_destinations_verified,
+                        "usedDestinations": inventory.used_destinations,
+                        "unresolvedPrefixes": unresolved,
+                    })
+                );
                 return Err("incomplete typed inventory or unresolved semantic dispositions; no work policy emitted".into());
             }
             if let Some(path) = attacker_interest_output {
