@@ -120,3 +120,5 @@ docs/security*
 !/runtime-upgrade-*/validation/**/package-lock.json
 !/runtime-upgrade-*/validation/**/rehearsal-package.json
 !/runtime-upgrade-*/validation/**/rehearsal-package-lock.json
+# Metadata fixture read by misc/runtime_upgrade/tests/test_governance_compatibility.py.
+!/runtime-upgrade-4.8.11/validation/deployed-spec-132-metadata.scale
