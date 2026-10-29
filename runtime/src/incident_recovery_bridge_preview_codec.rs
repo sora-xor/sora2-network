@@ -5,12 +5,13 @@ use sp_core::crypto::AccountId32;
 use std::collections::BTreeMap;
 
 pub type Values = BTreeMap<Vec<u8>, Option<Vec<u8>>>;
+pub const INPUT_TAG: [u8; 8] = *b"snxbrin3";
+pub const OUTPUT_TAG: [u8; 8] = *b"snxbro03";
 #[derive(Encode, Decode, DecodeWithMemTracking)]
 pub struct Input {
     pub tag: [u8; 8],
     pub checkpoint_top: BTreeMap<Vec<u8>, Vec<u8>>,
     pub setup: RecoveryChunk,
-    pub restore: RecoveryChunk,
     pub incoming: Vec<u8>,
     pub outgoing: Vec<u8>,
     pub policy: RecoveryPolicy,
@@ -29,4 +30,7 @@ pub struct Output {
     pub input_hash: [u8; 32],
     pub values: Values,
     pub operations: Vec<(u32, Values)>,
+    /// Actual native storage after all operations; public configuration is retained.
+    pub retained_configuration: Values,
+    pub bridge_halt_verified: bool,
 }

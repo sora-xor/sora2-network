@@ -13,6 +13,48 @@ import hashi_codec as scale
 import release_package as release
 import fixture_work_transport as transport
 
+MIXED_SCHEMA = "sora-nexus-PUBLIC-FIXTURE-ONLY-mixed-bridge-v2"
+HASHI_SCHEMA = "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v3"
+BRIDGE_HALT_KEY = "0x" + b":sora-nexus:recovery:bridge-halt:v1".hex()
+BRIDGE_HALT_VALUE_HASH = "0x" + hashlib.blake2b(b"\x01", digest_size=32).hexdigest()
+
+
+def storage_records(rows):
+    """Validate the native export's canonical bounded key/value-hash inventory."""
+    scale.require(isinstance(rows, list) and 0 < len(rows) <= 4096,
+                  "Complete native storage records required")
+    result = {}
+    for row in rows:
+        scale.require(isinstance(row, dict) and set(row) == {"key", "valueHash"},
+                      "Invalid native storage record")
+        key = scale.raw(row["key"])
+        scale.require(key and row["key"] not in result, "Duplicate or empty native storage key")
+        if row["valueHash"] is not None:
+            scale.raw(row["valueHash"], 32)
+        result[row["key"]] = row["valueHash"]
+    scale.require(list(result) == sorted(result), "Native storage records must be ordered")
+    return result
+
+
+def retained_configuration(document, expectations, hashi):
+    # These are hashes exported from the native execution. This adapter binds
+    # them into replay expectations; it does not certify native execution itself.
+    scale.require(document.get("nativeBridgeHaltVerified") is True and
+                  document.get("publicConfigurationRetained") is True and
+                  document.get("cleanupStorageEditsEmitted") is False,
+                  "Native halted retained public configuration required")
+    retained = storage_records(document.get("retainedPublicConfiguration"))
+    final = storage_records(expectations["records"])
+    scale.require(type(document.get("retainedConfigurationKeys")) is int and
+                  document["retainedConfigurationKeys"] == len(retained) and
+                  (not hashi or len(retained) == 6) and
+                  all(key in final and final[key] == value for key, value in retained.items()),
+                  "Retained public configuration must match native final records")
+    scale.require(final.get(BRIDGE_HALT_KEY) == BRIDGE_HALT_VALUE_HASH,
+                  "Native final records must preserve the persistent bridge halt")
+    for operation in expectations["operations"]:
+        storage_records(operation["records"])
+
 
 def work_inputs(document):
     """Keep structural assembly and native preview evidence distinct."""
@@ -34,7 +76,7 @@ def work_inputs(document):
                       work.get("storageEngineRehearsed") is True,
                       "Explicit public storage fixture and completed native composition required")
         envelopes = work["applyEnvelopes"]
-    elif schema in ("sora-nexus-PUBLIC-FIXTURE-ONLY-mixed-bridge-v1", "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v1", "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v2"):
+    elif schema in (MIXED_SCHEMA, HASHI_SCHEMA):
         scale.require(document.get("fixtureOnly") is True and
                       document.get("nativePreviewCompleted") is True and
                       document.get("exactWasmRehearsed") is False and
@@ -47,21 +89,22 @@ def work_inputs(document):
                           "storageEngineRehearsed", "exactArtifactRehearsed", "productionReady")),
                       "Structural assembly must not be promoted to execution evidence")
         envelopes = work["workEnvelopes"]
-        # The native preview binds block-number-dependent records to these four
-        # consecutive children; inserting work would invalidate its expectations.
-        hashi = schema in ("sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v1", "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v2")
-        source_hashi = schema == "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v2"
-        schedule = [(0, "storage"), (1, "incoming"), (2, "incoming"), (3, "incoming"), (4, "storage")] if source_hashi else [(0, "storage"), (1, "incoming"), (2, "storage")] if hashi else [
-            (0, "storage"), (1, "incoming"), (2, "outgoing"), (3, "storage")]
+        # Native previews bind block-number-dependent records to these three
+        # (mixed) or four (HASHI) children. Public configuration remains halted;
+        # no raw cleanup Apply is permitted after authenticated bridge work.
+        hashi = schema == HASHI_SCHEMA
+        schedule = [(0, "storage"), (1, "incoming"), (2, "incoming"), (3, "incoming")] if hashi else [
+            (0, "storage"), (1, "incoming"), (2, "outgoing")]
         scale.require([(row["index"], row["kind"]) for row in work["work"]] == schedule and
                       len(envelopes) == len(schedule), "Unexpected public bridge fixture work schedule")
         expectations = document["fixtureExpectations"]
         scale.require(expectations.get("schema") == "sora-nexus-public-fixture-storage-expectations-v1" and
                       expectations.get("fixtureOnly") is True and expectations.get("records") and
                       expectations.get("policyCommitment") == work["policyCommitment"] and
-                      [row["index"] for row in expectations.get("operations", [])] == ([1, 2, 3] if source_hashi else [1] if hashi else [1, 2]),
+                      [row["index"] for row in expectations.get("operations", [])] == ([1, 2, 3] if hashi else [1, 2]),
                       "Complete policy-bound dynamic storage expectations required")
-        if source_hashi:
+        retained_configuration(document, expectations, hashi)
+        if hashi:
             scale.require(document.get("nativeZeroSenderPreserved") is True and
                           document.get("incomingScenarios") == ["retained-pending-credit", "fresh-credit", "fresh-source-actor-exclusion"] and
                           document.get("signatureChainDomain") == "0x01" and
@@ -142,7 +185,7 @@ def prepare(root, destination, work_path, consensus_path, operators_path, bootst
         previous = step(f"apply-{index:05}", scale.raw(payload),
                         "Auditing" if index + 1 == len(envelopes) else "Applying",
                         rejected=[malformed] + ([previous] if previous else []))
-        if (work_document["schema"] == "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v1" and index == 1) or (work_document["schema"] == "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v2" and index in (1, 2, 3)):
+        if work_document["schema"] == HASHI_SCHEMA and index in (1, 2, 3):
             steps[-1]["fixtureHashi"] = True
     for index, payload in enumerate(work["auditEnvelopes"]):
         step(f"audit-{index:05}", scale.raw(payload), "Auditing")
@@ -166,7 +209,7 @@ def prepare(root, destination, work_path, consensus_path, operators_path, bootst
     if expectations is not None:
         manifest["fixtureExpectations"] = artifact("storage-expectations.json",
             (json.dumps(expectations, indent=2) + "\n").encode())
-    if work_document["schema"] in ("sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v1", "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v2"):
+    if work_document["schema"] == HASHI_SCHEMA:
         provenance = work_document["fixtureHashiProvenance"]
         manifest["schema"] = "sora-nexus-public-fixture-hashi-replay-v1"
         manifest["fixtureHashiPeers"] = {"scheme": provenance["peerScheme"], "provenance": artifact(

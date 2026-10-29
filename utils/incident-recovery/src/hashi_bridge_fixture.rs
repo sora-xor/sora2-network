@@ -1,16 +1,15 @@
 //! PUBLIC FIXTURE ONLY HASHI work from the exact observed checkpoint.
-//! Temporary public peers are restored. No production signing keys or transactions are used.
+//! Synthetic public configuration is retained under the verified bridge halt. Never deploy.
 use crate::{
     economics, maintenance::hashi_fixture, mixed_bridge_fixture as helpers, mixed_work,
     release_checks, Result, VerifiedCheckpoint,
 };
 use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId};
-use codec::{Decode, DecodeWithMemLimit, Encode};
+use codec::{DecodeAll, DecodeWithMemLimit, Encode};
 use common::{
     recovery::{
-        self, invariants::TerminalAudit, AccountReplacement, GuardedStorageEdit, RecoveryAction,
-        RecoveryAuditChunk, RecoveryChunk, RecoveryInherent, RecoveryPolicy, StorageScope,
-        StorageWitness,
+        self, invariants::TerminalAudit, AccountReplacement, RecoveryAction, RecoveryAuditChunk,
+        RecoveryChunk, RecoveryInherent, RecoveryPolicy, StorageScope, StorageWitness,
     },
     AssetInfoProvider,
 };
@@ -49,7 +48,7 @@ fn envelope(action: RecoveryAction) -> String {
 
 struct Setup {
     chunk: RecoveryChunk,
-    restore: RecoveryChunk,
+    configuration: Values,
     incoming: Vec<IncomingOperation>,
     stable_keys: BTreeSet<Vec<u8>>,
     network: u32,
@@ -199,14 +198,14 @@ fn setup(storage: &Storage) -> Result<Setup> {
         return Err("unexpected HASHI fixture setup writes".into());
     }
     let chunk = apply_edits(storage, &changed, 0)?;
-    let mut restore_edits = Vec::new();
+    let mut configuration = Values::new();
     for edit in &chunk.edits {
         if !configuration_keys.contains(&edit.key) {
             // Native incoming processing consumes the load and preserves its
             // exact historical evidence. Never undo receipt/replay/query state.
             continue;
         }
-        let mut before = edit
+        let mut expected = edit
             .after
             .clone()
             .ok_or("HASHI setup cannot delete state")?;
@@ -215,28 +214,16 @@ fn setup(storage: &Storage) -> Result<Setup> {
             .take(3)
             .any(|a| frame_system::Account::<Runtime>::hashed_key_for(a) == edit.key)
         {
-            let mut account = framenode_runtime::AccountData::decode(&mut before.as_slice())
+            let mut account = framenode_runtime::AccountData::decode_all(&mut expected.as_slice())
                 .map_err(|e| e.to_string())?;
             account.nonce = account
                 .nonce
                 .checked_add(wire::INCOMING_COUNT)
                 .ok_or("fixture peer nonce overflow")?;
-            before = account.encode();
+            expected = account.encode();
         }
-        restore_edits.push(GuardedStorageEdit {
-            scope: StorageScope::Top,
-            key: edit.key.clone(),
-            before: Some(hash(&before)),
-            after: storage.top.get(&edit.key).cloned(),
-        });
+        configuration.insert(edit.key.clone(), Some(expected));
     }
-    let restore = RecoveryChunk {
-        index: wire::INCOMING_COUNT + 1,
-        edits: restore_edits,
-    };
-    restore
-        .validate()
-        .map_err(|e| format!("HASHI restore bounds: {e:?}"))?;
     let mut incoming = Vec::new();
     let mut transaction_ids = BTreeSet::new();
     for (offset, raw_transaction) in raw_transactions.into_iter().enumerate() {
@@ -356,7 +343,7 @@ fn setup(storage: &Storage) -> Result<Setup> {
     stable_keys.insert(key(b"Balances", b"TotalIssuance"));
     Ok(Setup {
         chunk,
-        restore,
+        configuration,
         incoming,
         stable_keys,
         network,
@@ -367,6 +354,7 @@ struct Preview {
     values: Values,
     operations: Vec<Value>,
     evidence: Value,
+    retained_configuration: Values,
 }
 
 fn preview(
@@ -393,11 +381,10 @@ fn preview(
     ));
     fs::create_dir(&directory).map_err(|e| e.to_string())?;
     let input = wire::Input {
-        tag: *b"snxhain3",
+        tag: wire::INPUT_TAG,
         checkpoint_top: storage.top.clone(),
         audits: audits.iter().map(RecoveryInherent::encode_remark).collect(),
         setup: setup.chunk.clone(),
-        restore: setup.restore.clone(),
         incoming: setup.incoming.iter().map(Encode::encode).collect(),
         policy: policy.clone(),
         stable_keys: setup.stable_keys.iter().cloned().collect(),
@@ -449,23 +436,7 @@ fn preview(
     if output.len() > 64 * 1024 * 1024 {
         return Err("HASHI native preview output bound".into());
     }
-    let mut cursor = output.as_slice();
-    let decoded = wire::Output::decode_with_mem_limit(&mut cursor, 256 * 1024 * 1024)
-        .map_err(|e| e.to_string())?;
-    if !cursor.is_empty()
-        || decoded.encode() != output
-        || decoded.tag != *b"snxhao03"
-        || decoded.input_hash != input_hash
-        || decoded.values.len() > 4096
-        || decoded
-            .operations
-            .iter()
-            .map(|(i, _)| *i)
-            .collect::<Vec<_>>()
-            != [1, 2, 3]
-    {
-        return Err("native HASHI preview response is not bound to exact input".into());
-    }
+    let decoded = decode_preview_output(&output, input_hash, &setup.configuration)?;
     let evidence = json!({"fixtureOnly":true,"input":input_path,"inputBlake2":hx(&input_hash),"output":output_path,"outputSha256":hex::encode(Sha256::digest(output)),
         "nativeTestBinary":binary,"nativeTestBinarySha256":pin,"exporterSourceSha256":hex::encode(Sha256::digest(include_bytes!("../../../runtime/src/incident_recovery_hashi_preview_tests.rs"))),
         "signatureContext":"native preview uses disclosed synthetic birth; exact Wasm signer independently binds its actual postfork birth header"});
@@ -475,6 +446,7 @@ fn preview(
     )
     .map_err(|e| e.to_string())?;
     Ok(Preview {
+        retained_configuration: decoded.retained_configuration,
         values: decoded.values,
         operations: decoded
             .operations
@@ -483,6 +455,38 @@ fn preview(
             .collect(),
         evidence,
     })
+}
+
+fn decode_preview_output(
+    output: &[u8],
+    input_hash: [u8; 32],
+    configuration: &Values,
+) -> Result<wire::Output> {
+    let mut cursor = output;
+    let decoded = wire::Output::decode_with_mem_limit(&mut cursor, 256 * 1024 * 1024)
+        .map_err(|e| e.to_string())?;
+    if !cursor.is_empty()
+        || decoded.encode() != output
+        || decoded.tag != wire::OUTPUT_TAG
+        || decoded.input_hash != input_hash
+        || !decoded.bridge_halt_verified
+        || configuration.is_empty()
+        || &decoded.retained_configuration != configuration
+        || decoded
+            .retained_configuration
+            .iter()
+            .any(|(key, value)| decoded.values.get(key) != Some(value))
+        || decoded.values.len() > 4096
+        || decoded
+            .operations
+            .iter()
+            .map(|(index, _)| *index)
+            .collect::<Vec<_>>()
+            != [1, 2, 3]
+    {
+        return Err("native HASHI preview response is not bound to exact input".into());
+    }
+    Ok(decoded)
 }
 
 pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
@@ -499,7 +503,6 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
         council: release_checks::checkpoint_council(&verified.schema, &verified.storage)?,
         chunk_hashes: core::iter::once(setup.chunk.commitment())
             .chain(setup.incoming.iter().map(IncomingOperation::commitment))
-            .chain(core::iter::once(setup.restore.commitment()))
             .collect(),
         audit_chunk_hashes: vec![[1; 32]],
         evidence_commitment: hash(&[hashi_fixture::DOMAIN, b"public-diagnostic-only"].concat()),
@@ -612,7 +615,7 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
     let input = json!({"schema":"sora-nexus-mixed-work-input-v1","policyTemplateScale":hx(&policy.encode()),
         "workEnvelopes":core::iter::once(envelope(RecoveryAction::Apply(setup.chunk)))
             .chain(setup.incoming.iter().map(|op|envelope(RecoveryAction::Incoming(op.encode()))))
-            .chain(core::iter::once(envelope(RecoveryAction::Apply(setup.restore)))).collect::<Vec<_>>(),
+            .collect::<Vec<_>>(),
         "auditEnvelopes":audit_actions.iter().map(|audit|hx(&audit.encode_remark())).collect::<Vec<_>>(),"terminalEnvelope":envelope(RecoveryAction::TerminalAudit(terminal))});
     let work =
         mixed_work::compile(serde_json::from_value(input.clone()).map_err(|e| e.to_string())?)?;
@@ -621,16 +624,48 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
         .map(|(a, _)| hx(a.as_ref()))
         .collect();
     Ok(
-        json!({"schema":"sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v2","fixtureOnly":true,"productionReady":false,
+        json!({"schema":"sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v3","fixtureOnly":true,"productionReady":false,
         "warning":"PUBLIC HASHI TEST PEERS. NEVER DEPLOY. No external transfer, validator, victim or release authorization is proven.",
         "checkpoint":verified.state,"metadataWitness":verified.metadata_witness,"nativePreviewCompleted":true,"nativePreviewEvidence":[first.evidence,final_preview.evidence],"exactWasmRehearsed":false,
         "syntheticRetainedPendingLoad":true,"syntheticLoadSubmissionHeight":recovery::CHECKPOINT_NUMBER,"queryIndexMigratedBeforeAuthentication":true,
         "minted":(MINT * wire::CREDITED_COUNT).to_string(),
         "nativeZeroSenderPreserved":true,"sourceActor":hx(&wire::SOURCE_ACTOR),"excludedSourceActor":hx(&wire::EXCLUDED_SOURCE_ACTOR),"identicalSourceRegistryAcrossOperations":true,"signatureChainDomain":"0x01",
+        "retainedConfigurationKeys":final_preview.retained_configuration.len(),
+        "retainedPublicConfiguration":rows(&final_preview.retained_configuration),"nativeBridgeHaltVerified":true,"publicConfigurationRetained":true,"cleanupStorageEditsEmitted":false,
         "incomingScenarios":["retained-pending-credit","fresh-credit","fresh-source-actor-exclusion"],
         "sourceActorScope":"Outer transaction signer only; synthetic native peer-approved Deposit association; no receipt, external finality, routed caller or economic ownership is proven.","asset":hx(&common::DAI.encode()),"input":input,"work":work,
         "fixtureHashiProvenance":{"schema":"sora-nexus-public-fixture-hashi-inputs-v1","fixtureOnly":true,"productionReady":false,"peerScheme":hashi_fixture::SCHEME,"publicPeers":public_peers,
             "policyCommitment":hx(&policy.commitment()),"checkpointHash":hx(&recovery::CHECKPOINT_HASH)},
         "fixtureExpectations":{"schema":"sora-nexus-public-fixture-storage-expectations-v1","fixtureOnly":true,"policyCommitment":hx(&policy.commitment()),"records":rows(&final_preview.values),"operations":final_preview.operations}}),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn native_hashi_preview_rejects_old_tag_or_changed_config_nonces() {
+        let configuration = [(vec![1], Some(vec![2]))].into_iter().collect::<Values>();
+        let mut output = wire::Output {
+            tag: wire::OUTPUT_TAG,
+            input_hash: [3; 32],
+            values: configuration.clone(),
+            operations: vec![(1, Values::new()), (2, Values::new()), (3, Values::new())],
+            retained_configuration: configuration.clone(),
+            bridge_halt_verified: true,
+        };
+        assert!(decode_preview_output(&output.encode(), [3; 32], &configuration).is_ok());
+        output.tag = *b"snxhao03";
+        assert!(decode_preview_output(&output.encode(), [3; 32], &configuration).is_err());
+        output.tag = wire::OUTPUT_TAG;
+        output.bridge_halt_verified = false;
+        assert!(decode_preview_output(&output.encode(), [3; 32], &configuration).is_err());
+        output.bridge_halt_verified = true;
+        output.retained_configuration.insert(vec![1], Some(vec![4]));
+        assert!(decode_preview_output(&output.encode(), [3; 32], &configuration).is_err());
+        output.retained_configuration = configuration.clone();
+        output.values.clear();
+        assert!(decode_preview_output(&output.encode(), [3; 32], &configuration).is_err());
+    }
 }

@@ -153,13 +153,94 @@ fn sign_operation(
     Ok(())
 }
 
-fn run(input: &wire::Input) -> Result<(wire::Values, Vec<(u32, wire::Values)>), String> {
-    if input.tag != *b"snxhain3"
+struct Preview {
+    values: wire::Values,
+    operations: Vec<(u32, wire::Values)>,
+    retained_configuration: wire::Values,
+}
+
+fn public_peers() -> Vec<AccountId> {
+    let mut peers = (0..4)
+        .map(|index| {
+            AccountId::from(
+                ed25519::Pair::from_seed(&sp_io::hashing::sha2_256(
+                    format!("{PEER_SCHEME}{index}").as_bytes(),
+                ))
+                .public(),
+            )
+        })
+        .collect::<Vec<_>>();
+    peers.sort();
+    peers
+}
+
+fn retained_configuration(
+    ext: &mut sp_io::TestExternalities,
+    setup: &recovery::RecoveryChunk,
+    network: u32,
+) -> Result<wire::Values, String> {
+    setup
+        .validate()
+        .map_err(|e| format!("invalid HASHI setup: {e:?}"))?;
+    if read(ext, recovery::BRIDGE_HALT_STORAGE_KEY).as_deref() != Some(&[1][..]) {
+        return Err("public HASHI configuration requires persistent bridge halt".into());
+    }
+    let peers = public_peers();
+    let bridge = ext
+        .execute_with(|| crate::EthBridge::bridge_account(network))
+        .ok_or("HASHI bridge account absent")?;
+    let keys: BTreeSet<_> = peers
+        .iter()
+        .map(frame_system::Account::<Runtime>::hashed_key_for)
+        .chain([
+            eth_bridge::Peers::<Runtime>::hashed_key_for(network),
+            bridge_multisig::Accounts::<Runtime>::hashed_key_for(&bridge),
+        ])
+        .collect();
+    let mut retained = wire::Values::new();
+    for edit in &setup.edits {
+        if !keys.contains(&edit.key) {
+            continue;
+        }
+        let mut expected = edit
+            .after
+            .clone()
+            .ok_or("HASHI configuration cannot delete state")?;
+        if peers
+            .iter()
+            .take(3)
+            .any(|peer| frame_system::Account::<Runtime>::hashed_key_for(peer) == edit.key)
+        {
+            let mut account = crate::AccountData::decode_all(&mut expected.as_slice())
+                .map_err(|e| e.to_string())?;
+            account.nonce = account
+                .nonce
+                .checked_add(wire::INCOMING_COUNT)
+                .ok_or("public peer nonce overflow")?;
+            expected = account.encode();
+        }
+        let actual = read(ext, &edit.key);
+        if edit.scope != recovery::StorageScope::Top
+            || actual.as_deref() != Some(expected.as_slice())
+        {
+            return Err("retained HASHI configuration or actual peer nonce differs".into());
+        }
+        retained.insert(edit.key.clone(), actual);
+    }
+    if retained.keys().cloned().collect::<BTreeSet<_>>() != keys {
+        return Err("retained HASHI configuration inventory incomplete".into());
+    }
+    Ok(retained)
+}
+
+fn run(input: &wire::Input) -> Result<Preview, String> {
+    if input.tag != wire::INPUT_TAG
         || input.checkpoint_top.len() > 2_000_000
         || input.stable_keys.len() > 4096
         || input.incoming.len() != wire::INCOMING_COUNT as usize
         || input.setup.index != 0
-        || input.restore.index as usize != input.incoming.len() + 1
+        || input.policy.authorization_domain != recovery::RecoveryDomain::public_fixture()
+        || input.policy.chunk_hashes.len() != input.incoming.len() + 1
         || input.old != owner(b"owner-old")
         || input.replacement != owner(b"owner-new")
         || input.mint != wire::CREDITED_COUNT
@@ -359,9 +440,6 @@ fn run(input: &wire::Input) -> Result<(wire::Values, Vec<(u32, wire::Values)>), 
             prior = now;
         }
         ext.execute_with(|| -> Result<(), String> {
-            System::set_block_number(recovery::CHECKPOINT_NUMBER + 1 + input.restore.index);
-            recovery::storage::apply_chunk(&input.policy, &input.restore)
-                .map_err(|e| format!("restore {e:?}"))?;
             if crate::Assets::free_balance(&input.asset, &input.replacement)
                 .map_err(|e| format!("new balance {e:?}"))?
                 != input.mint
@@ -401,7 +479,12 @@ fn run(input: &wire::Input) -> Result<(wire::Values, Vec<(u32, wire::Values)>), 
         ] {
             prior.remove(key);
         }
-        Ok((prior, operations))
+        let retained_configuration = retained_configuration(&mut ext, &input.setup, input.network)?;
+        Ok(Preview {
+            values: prior,
+            operations,
+            retained_configuration,
+        })
     })
 }
 
@@ -418,6 +501,72 @@ fn public_hashi_preview_rejects_nested_or_noncanonical_signing_calls() {
         call = crate::RuntimeCall::Utility(pallet_utility::Call::batch { calls: vec![call] });
     }
     assert!(decode_runtime_call(&call.encode()).is_err());
+}
+
+#[test]
+fn retained_public_hashi_inventory_checks_halt_and_actual_peer_nonces() {
+    let network = crate::GetEthNetworkId::get();
+    let bridge = AccountId::new([91; 32]);
+    let peers = public_peers();
+    let mut configured = wire::Values::new();
+    for peer in &peers {
+        let account = crate::AccountData {
+            nonce: 7,
+            providers: 1,
+            ..Default::default()
+        };
+        configured.insert(
+            frame_system::Account::<Runtime>::hashed_key_for(peer),
+            Some(account.encode()),
+        );
+    }
+    configured.insert(
+        eth_bridge::Peers::<Runtime>::hashed_key_for(network),
+        Some(peers.iter().cloned().collect::<BTreeSet<_>>().encode()),
+    );
+    configured.insert(
+        bridge_multisig::Accounts::<Runtime>::hashed_key_for(&bridge),
+        Some(bridge_multisig::MultisigAccount::new(peers.clone()).encode()),
+    );
+    let setup = recovery::RecoveryChunk {
+        index: 0,
+        edits: configured
+            .into_iter()
+            .map(|(key, after)| recovery::GuardedStorageEdit {
+                scope: recovery::StorageScope::Top,
+                key,
+                before: None,
+                after,
+            })
+            .collect(),
+    };
+    let mut ext = sp_io::TestExternalities::default();
+    ext.execute_with(|| {
+        eth_bridge::BridgeAccount::<Runtime>::insert(network, &bridge);
+        for edit in &setup.edits {
+            sp_io::storage::set(&edit.key, edit.after.as_ref().unwrap());
+        }
+        for peer in peers.iter().take(3) {
+            frame_system::Account::<Runtime>::mutate(peer, |account| {
+                account.nonce += wire::INCOMING_COUNT
+            });
+        }
+    });
+    assert!(retained_configuration(&mut ext, &setup, network).is_err());
+    ext.execute_with(|| sp_io::storage::set(recovery::BRIDGE_HALT_STORAGE_KEY, &[1]));
+    assert_eq!(
+        retained_configuration(&mut ext, &setup, network)
+            .unwrap()
+            .len(),
+        6
+    );
+    let mut incomplete = setup.clone();
+    incomplete.edits.pop();
+    assert!(retained_configuration(&mut ext, &incomplete, network).is_err());
+    ext.execute_with(|| {
+        frame_system::Account::<Runtime>::mutate(&peers[0], |account| account.nonce -= 1)
+    });
+    assert!(retained_configuration(&mut ext, &setup, network).is_err());
 }
 
 #[test]
@@ -460,12 +609,14 @@ fn export_public_hashi_preview() {
     let decoded =
         wire::Input::decode_with_mem_limit(&mut encoded, 3 * 1024 * 1024 * 1024usize).unwrap();
     assert!(encoded.is_empty() && decoded.encode() == bytes);
-    let (values, operations) = run(&decoded).unwrap();
+    let preview = run(&decoded).unwrap();
     let result = wire::Output {
-        tag: *b"snxhao03",
+        tag: wire::OUTPUT_TAG,
         input_hash,
-        values,
-        operations,
+        values: preview.values,
+        operations: preview.operations,
+        retained_configuration: preview.retained_configuration,
+        bridge_halt_verified: true,
     }
     .encode();
     let mut output = fs::OpenOptions::new()

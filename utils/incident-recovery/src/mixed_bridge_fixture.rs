@@ -218,7 +218,7 @@ pub(crate) fn apply_edits(storage: &Storage, values: &Values, index: u32) -> Res
 
 struct Setup {
     chunk: RecoveryChunk,
-    restore: RecoveryChunk,
+    configuration: Values,
     incoming: IncomingOperation,
     outgoing: OutgoingOperation,
     stable_keys: BTreeSet<Vec<u8>>,
@@ -279,7 +279,7 @@ fn setup(storage: &Storage) -> Result<Setup> {
             )
             .map_err(|e| format!("native fixture asset management: {e:?}"))?;
             // These four private native maps have Identity keys. Values use the exact
-            // runtime types, and the original configuration is restored after work.
+            // runtime types; the public configuration remains under the bridge halt.
             for (item, suffix, value) in [
                 (
                     b"AssetKinds".as_slice(),
@@ -371,29 +371,21 @@ fn setup(storage: &Storage) -> Result<Setup> {
         return Err("unreviewed native fixture setup write".into());
     }
     let chunk = apply_edits(storage, &changed, 0)?;
-    // Retain the exact quarantined queue and request evidence. Restore temporary
-    // peer/configuration/permission/custody-registration changes verbatim.
-    let restore = RecoveryChunk {
-        index: 3,
-        edits: chunk
-            .edits
-            .iter()
-            .filter(|e| {
-                !e.key
-                    .starts_with(&sp_io::hashing::twox_128(b"SubstrateBridgeOutboundChannel"))
-                    && !e.key.starts_with(&sp_io::hashing::twox_128(b"BridgeProxy"))
-            })
-            .map(|e| GuardedStorageEdit {
-                scope: e.scope.clone(),
-                key: e.key.clone(),
-                before: e.after.as_ref().map(|v| hash(v)),
-                after: storage.top.get(&e.key).cloned(),
-            })
-            .collect(),
-    };
-    restore
-        .validate()
-        .map_err(|e| format!("fixture restoration bounds: {e:?}"))?;
+    // This disposable public fixture retains its synthetic configuration under
+    // the persistent bridge halt. Never append raw edits after native work.
+    let configuration = chunk
+        .edits
+        .iter()
+        .filter(|edit| {
+            !edit
+                .key
+                .starts_with(&sp_io::hashing::twox_128(b"SubstrateBridgeOutboundChannel"))
+                && !edit
+                    .key
+                    .starts_with(&sp_io::hashing::twox_128(b"BridgeProxy"))
+        })
+        .map(|edit| (edit.key.clone(), edit.after.clone()))
+        .collect();
     let commitment: Commitment = GenericCommitment::Sub(bridge_types::substrate::Commitment {
         nonce: incoming_nonce,
         messages: [id(b"old-owner"), AccountId::new(recovery::ATTACKER_ACCOUNT)]
@@ -472,7 +464,7 @@ fn setup(storage: &Storage) -> Result<Setup> {
     Ok(Setup {
         stable_keys: chunk.edits.iter().map(|e| e.key.clone()).collect(),
         chunk,
-        restore,
+        configuration,
         incoming,
         outgoing,
         incoming_nonce,
@@ -485,6 +477,7 @@ struct Preview {
     values: Values,
     operations: Vec<Value>,
     evidence: Value,
+    retained_configuration: Values,
 }
 pub(crate) fn file_sha(path: &Path) -> Result<String> {
     let mut file = fs::File::open(path).map_err(|e| e.to_string())?;
@@ -525,11 +518,10 @@ fn preview(
     ));
     fs::create_dir(&directory).map_err(|e| e.to_string())?;
     let input = preview_codec::Input {
-        tag: *b"snxbrin2",
+        tag: preview_codec::INPUT_TAG,
         checkpoint_top: storage.top.clone(),
         audits: audits.iter().map(RecoveryInherent::encode_remark).collect(),
         setup: setup.chunk.clone(),
-        restore: setup.restore.clone(),
         incoming: setup.incoming.encode(),
         outgoing: setup.outgoing.encode(),
         policy: policy.clone(),
@@ -582,24 +574,7 @@ fn preview(
     if output.len() > 64 * 1024 * 1024 {
         return Err("native preview output bound".into());
     }
-    let mut cursor = output.as_slice();
-    let decoded = preview_codec::Output::decode_with_mem_limit(&mut cursor, 256 * 1024 * 1024)
-        .map_err(|e| e.to_string())?;
-    if !cursor.is_empty()
-        || decoded.encode() != output
-        || decoded.tag != *b"snxbro02"
-        || decoded.input_hash != input_hash
-        || decoded.values.len() > 4096
-        || decoded.operations.len() != 2
-        || decoded
-            .operations
-            .iter()
-            .map(|(i, _)| *i)
-            .collect::<Vec<_>>()
-            != [1, 2]
-    {
-        return Err("native preview response is not bound to this exact request".into());
-    }
+    let decoded = decode_preview_output(&output, input_hash, &setup.configuration)?;
     let evidence = json!({"fixtureOnly":true,"input":input_path,"inputBlake2":hx(&input_hash),"output":output_path,
         "outputSha256":hex::encode(Sha256::digest(&output)),"nativeTestBinary":binary,"nativeTestBinarySha256":pin,
         "exporterSourceSha256":hex::encode(Sha256::digest(include_bytes!("../../../runtime/src/incident_recovery_bridge_preview_tests.rs")))});
@@ -609,6 +584,7 @@ fn preview(
     )
     .map_err(|e| e.to_string())?;
     Ok(Preview {
+        retained_configuration: decoded.retained_configuration,
         values: decoded.values,
         operations: decoded
             .operations
@@ -617,6 +593,38 @@ fn preview(
             .collect(),
         evidence,
     })
+}
+
+fn decode_preview_output(
+    output: &[u8],
+    input_hash: [u8; 32],
+    configuration: &Values,
+) -> Result<preview_codec::Output> {
+    let mut cursor = output;
+    let decoded = preview_codec::Output::decode_with_mem_limit(&mut cursor, 256 * 1024 * 1024)
+        .map_err(|e| e.to_string())?;
+    if !cursor.is_empty()
+        || decoded.encode() != output
+        || decoded.tag != preview_codec::OUTPUT_TAG
+        || decoded.input_hash != input_hash
+        || !decoded.bridge_halt_verified
+        || configuration.is_empty()
+        || &decoded.retained_configuration != configuration
+        || decoded
+            .retained_configuration
+            .iter()
+            .any(|(key, value)| decoded.values.get(key) != Some(value))
+        || decoded.values.len() > 4096
+        || decoded
+            .operations
+            .iter()
+            .map(|(index, _)| *index)
+            .collect::<Vec<_>>()
+            != [1, 2]
+    {
+        return Err("native preview response is not bound to this exact request".into());
+    }
+    Ok(decoded)
 }
 
 pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
@@ -636,7 +644,6 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
             setup.chunk.commitment(),
             setup.incoming.commitment(),
             setup.outgoing.commitment(),
-            setup.restore.commitment(),
         ],
         audit_chunk_hashes: vec![[1; 32]],
         evidence_commitment: hash(&[DOMAIN, b"synthetic-public-inputs-not-production"].concat()),
@@ -740,7 +747,6 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
         envelope(RecoveryAction::Apply(setup.chunk.clone())),
         envelope(RecoveryAction::Incoming(setup.incoming.encode())),
         envelope(RecoveryAction::Outgoing(setup.outgoing.encode())),
-        envelope(RecoveryAction::Apply(setup.restore.clone())),
     ];
     let audit_envelopes: Vec<_> = audit_actions
         .iter()
@@ -752,14 +758,15 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
     let work =
         mixed_work::compile(serde_json::from_value(input.clone()).map_err(|e| e.to_string())?)?;
     Ok(
-        json!({"schema":"sora-nexus-PUBLIC-FIXTURE-ONLY-mixed-bridge-v1","fixtureOnly":true,"productionReady":false,
+        json!({"schema":"sora-nexus-PUBLIC-FIXTURE-ONLY-mixed-bridge-v2","fixtureOnly":true,"productionReady":false,
             "warning":"PUBLIC-FIXTURE-ONLY. NEVER DEPLOY. Synthetic peer keys, signed messages and outgoing records prove no production authorization, external finality, refundable liability or operator approval.",
             "checkpoint":verified.state,"metadataWitness":verified.metadata_witness,
             "councilSource":"observed checkpoint council, diagnostic only; governance state unchanged",
             "publicKeyDerivation":"Blake2-256(domain || peer/ || one-byte index), secp256k1; domain is sora-nexus/PUBLIC-FIXTURE-ONLY/mixed-bridge/v1/",
             "oldOwner":hx(id(b"old-owner").as_ref()),"replacementOwner":hx(id(b"replacement-owner").as_ref()),
             "minted":MINT.to_string(),"externalAmountScale":hx(&setup.external_amount.encode()),"attackerMinted":"0","outgoingRefunds":"0",
-            "setupChangedKeys":setup.chunk.edits.len(),"restoredConfigurationKeys":setup.restore.edits.len(),
+            "setupChangedKeys":setup.chunk.edits.len(),"retainedConfigurationKeys":final_preview.retained_configuration.len(),
+            "retainedPublicConfiguration":rows(&final_preview.retained_configuration),"nativeBridgeHaltVerified":true,"publicConfigurationRetained":true,"cleanupStorageEditsEmitted":false,
             "nativePreviewCompleted":true,"nativePreviewEvidence":[first.evidence,final_preview.evidence],"exactWasmRehearsed":false,"input":input,"work":work,
             "fixtureExpectations":{"schema":"sora-nexus-public-fixture-storage-expectations-v1","fixtureOnly":true,
                 "policyCommitment":hx(&policy.commitment()),"records":rows(&final_preview.values),"operations":final_preview.operations}
@@ -770,6 +777,30 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_preview_rejects_old_tag_unhalted_or_unbound_retained_config() {
+        let configuration = [(vec![1], Some(vec![2]))].into_iter().collect::<Values>();
+        let mut output = preview_codec::Output {
+            tag: preview_codec::OUTPUT_TAG,
+            input_hash: [3; 32],
+            values: configuration.clone(),
+            operations: vec![(1, Values::new()), (2, Values::new())],
+            retained_configuration: configuration.clone(),
+            bridge_halt_verified: true,
+        };
+        assert!(decode_preview_output(&output.encode(), [3; 32], &configuration).is_ok());
+        output.tag = *b"snxbro02";
+        assert!(decode_preview_output(&output.encode(), [3; 32], &configuration).is_err());
+        output.tag = preview_codec::OUTPUT_TAG;
+        output.bridge_halt_verified = false;
+        assert!(decode_preview_output(&output.encode(), [3; 32], &configuration).is_err());
+        output.bridge_halt_verified = true;
+        output.values.clear();
+        assert!(decode_preview_output(&output.encode(), [3; 32], &configuration).is_err());
+        output.values = configuration.clone();
+        output.retained_configuration.clear();
+        assert!(decode_preview_output(&output.encode(), [3; 32], &configuration).is_err());
+    }
     #[test]
     fn checkpoint_denomination_uses_exact_positive_native_roundtrip() {
         let mut ext = sp_io::TestExternalities::default();

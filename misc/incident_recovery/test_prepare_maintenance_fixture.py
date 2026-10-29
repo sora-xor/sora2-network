@@ -15,22 +15,27 @@ from test_release_package import hx, policy, wasm
 def mixed():
     commitment = "0x" + release.policy_identity(policy())["commitment"]
     return {
-        "schema": "sora-nexus-PUBLIC-FIXTURE-ONLY-mixed-bridge-v1",
+        "schema": maintenance.MIXED_SCHEMA,
         "fixtureOnly": True, "productionReady": False, "nativePreviewCompleted": True,
         "exactWasmRehearsed": False, "nativePreviewEvidence": [{}, {}],
+        "retainedConfigurationKeys": 1,
+        "retainedPublicConfiguration": [{"key": "0x01", "valueHash": hx(4)}],
+        "nativeBridgeHaltVerified": True, "publicConfigurationRetained": True,
+        "cleanupStorageEditsEmitted": False,
         "work": {
             "schema": "sora-nexus-structural-mixed-work-v1", "structuralValidationOnly": True,
             "authenticationVerified": False, "economicCompletionVerified": False,
             "storageEngineRehearsed": False, "exactArtifactRehearsed": False, "productionReady": False,
             "policyScale": "0x" + policy().hex(), "policyCommitment": commitment,
-            "workEnvelopes": ["0x01", "0x02", "0x03", "0x04"],
+            "workEnvelopes": ["0x01", "0x02", "0x03"],
             "auditEnvelopes": ["0x05"], "terminalEnvelope": "0x06",
             "work": [{"index": i, "kind": kind} for i, kind in enumerate(
-                ["storage", "incoming", "outgoing", "storage"])],
+                ["storage", "incoming", "outgoing"])],
         },
         "fixtureExpectations": {
             "schema": "sora-nexus-public-fixture-storage-expectations-v1", "fixtureOnly": True,
-            "policyCommitment": commitment, "records": [{"key": "0x01", "valueHash": hx(4)}],
+            "policyCommitment": commitment, "records": [{"key": "0x01", "valueHash": hx(4)},
+                {"key": maintenance.BRIDGE_HALT_KEY, "valueHash": maintenance.BRIDGE_HALT_VALUE_HASH}],
             "operations": [{"index": i, "records": [{"key": "0x01", "valueHash": hx(i)}]} for i in [1, 2]],
         },
     }
@@ -38,10 +43,22 @@ def mixed():
 
 def hashi():
     document = mixed()
-    document["schema"] = "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v1"
-    document["work"]["work"] = [{"index": i, "kind": kind} for i, kind in enumerate(["storage", "incoming", "storage"])]
-    document["work"]["workEnvelopes"] = ["0x01", "0x02", "0x03"]
-    document["fixtureExpectations"]["operations"] = document["fixtureExpectations"]["operations"][:1]
+    document.update(schema=maintenance.HASHI_SCHEMA,
+        nativeZeroSenderPreserved=True, signatureChainDomain="0x01", minted="2",
+        sourceActor="0x9d8a62f656a8d1615c1294fd71e9cfb3e4855a4f",
+        excludedSourceActor="0xb595b18c88b1f651ca387489067f855b5c8e6720",
+        identicalSourceRegistryAcrossOperations=True,
+        incomingScenarios=["retained-pending-credit", "fresh-credit", "fresh-source-actor-exclusion"])
+    document["work"]["work"] = [{"index": i, "kind": kind} for i, kind in enumerate(
+        ["storage", "incoming", "incoming", "incoming"])]
+    document["work"]["workEnvelopes"] = ["0x01", "0x02", "0x03", "0x04"]
+    document["fixtureExpectations"]["operations"] = [
+        {"index": i, "records": [{"key": "0x01", "valueHash": hx(i)}]} for i in [1, 2, 3]]
+    document["retainedConfigurationKeys"] = 6
+    document["retainedPublicConfiguration"] = [
+        {"key": f"0x{i:02x}", "valueHash": hx(i)} for i in range(1, 7)]
+    document["fixtureExpectations"]["records"] = copy.deepcopy(document["retainedPublicConfiguration"]) + [
+        {"key": maintenance.BRIDGE_HALT_KEY, "valueHash": maintenance.BRIDGE_HALT_VALUE_HASH}]
     document["fixtureHashiProvenance"] = {"schema": "sora-nexus-public-fixture-hashi-inputs-v1",
         "fixtureOnly": True, "productionReady": False, "checkpointHash": scale.CHECKPOINT_HASH,
         "policyCommitment": document["work"]["policyCommitment"],
@@ -49,25 +66,69 @@ def hashi():
     return document
 
 
-def hashi_source():
-    document = hashi()
-    document.update(schema="sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v2",
-        nativeZeroSenderPreserved=True, signatureChainDomain="0x01", minted="2",
-        sourceActor="0x9d8a62f656a8d1615c1294fd71e9cfb3e4855a4f",
-        excludedSourceActor="0xb595b18c88b1f651ca387489067f855b5c8e6720",identicalSourceRegistryAcrossOperations=True,
-        incomingScenarios=["retained-pending-credit", "fresh-credit", "fresh-source-actor-exclusion"])
-    document["work"]["work"] = [{"index":i,"kind":kind} for i,kind in enumerate(["storage","incoming","incoming","incoming","storage"])]
-    document["work"]["workEnvelopes"] = ["0x01","0x02","0x03","0x04","0x05"]
-    document["fixtureExpectations"]["operations"] = [{"index":i,"records":[{"key":"0x01","valueHash":hx(i)}]} for i in [1,2,3]]
-    return document
-
-
 class MaintenanceFixtureTests(unittest.TestCase):
+    def test_old_bridge_schemas_and_cleanup_schedules_are_rejected(self):
+        for schema in ["sora-nexus-PUBLIC-FIXTURE-ONLY-mixed-bridge-v1",
+                       "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v1",
+                       "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v2"]:
+            document = mixed()
+            document["schema"] = schema
+            with self.assertRaisesRegex(ValueError, "Unsupported diagnostic work schema"):
+                maintenance.work_inputs(document)
+        for fixture in [mixed, hashi]:
+            document = fixture()
+            document["work"]["work"].append({"index": len(document["work"]["work"]), "kind": "storage"})
+            document["work"]["workEnvelopes"].append("0xff")
+            with self.assertRaisesRegex(ValueError, "work schedule"):
+                maintenance.work_inputs(document)
+
+    def test_retained_configuration_flags_count_and_final_hashes_are_bound(self):
+        for fixture in [mixed, hashi]:
+            for field, value in [("nativeBridgeHaltVerified", False),
+                                 ("publicConfigurationRetained", False),
+                                 ("cleanupStorageEditsEmitted", True)]:
+                document = fixture()
+                document[field] = value
+                with self.assertRaisesRegex(ValueError, "halted retained"):
+                    maintenance.work_inputs(document)
+            for count in [0, True, fixture()["retainedConfigurationKeys"] + 1]:
+                document = fixture()
+                document["retainedConfigurationKeys"] = count
+                with self.assertRaisesRegex(ValueError, "match native final records"):
+                    maintenance.work_inputs(document)
+            document = fixture()
+            document["retainedPublicConfiguration"][0]["valueHash"] = hx(99)
+            with self.assertRaisesRegex(ValueError, "match native final records"):
+                maintenance.work_inputs(document)
+            document = fixture()
+            document["fixtureExpectations"]["records"].pop()
+            with self.assertRaisesRegex(ValueError, "persistent bridge halt"):
+                maintenance.work_inputs(document)
+            document = fixture()
+            document["fixtureExpectations"]["records"][-1]["valueHash"] = hx(99)
+            with self.assertRaisesRegex(ValueError, "persistent bridge halt"):
+                maintenance.work_inputs(document)
+
+    def test_native_record_duplicates_unordered_and_bad_hashes_are_rejected(self):
+        for rows in [[], [{"key": "0x01", "valueHash": hx(1)}] * 2,
+                     [{"key": "0x02", "valueHash": None}, {"key": "0x01", "valueHash": None}],
+                     [{"key": "0x01", "valueHash": "0x01"}],
+                     [{"key": "0x", "valueHash": None}]]:
+            document = mixed()
+            document["retainedPublicConfiguration"] = rows
+            with self.assertRaises(ValueError):
+                maintenance.work_inputs(document)
+        document = hashi()
+        document["retainedPublicConfiguration"].pop()
+        document["retainedConfigurationKeys"] = 5
+        with self.assertRaisesRegex(ValueError, "match native final records"):
+            maintenance.work_inputs(document)
+
     def test_hashi_fixture_requires_exact_schedule_peer_provenance_and_write_expectations(self):
         document = hashi()
         _, envelopes, expectations = maintenance.work_inputs(document)
-        self.assertEqual(envelopes, ["0x01", "0x02", "0x03"])
-        self.assertEqual([row["index"] for row in expectations["operations"]], [1])
+        self.assertEqual(envelopes, ["0x01", "0x02", "0x03", "0x04"])
+        self.assertEqual([row["index"] for row in expectations["operations"]], [1, 2, 3])
         for field, value in [("productionReady", True), ("policyCommitment", hx(9)), ("publicPeers", [])]:
             changed = copy.deepcopy(document)
             changed["fixtureHashiProvenance"][field] = value
@@ -98,7 +159,7 @@ class MaintenanceFixtureTests(unittest.TestCase):
             result = maintenance.prepare(root, root / "diagnostic", work, consensus, operators, *paths)
             manifest = json.loads((root / result["manifest"]).read_text())
             self.assertEqual(manifest["schema"], "sora-nexus-public-fixture-hashi-replay-v1")
-            self.assertEqual([index for index, step in enumerate(manifest["steps"]) if step.get("fixtureHashi")], [1])
+            self.assertEqual([index for index, step in enumerate(manifest["steps"]) if step.get("fixtureHashi")], [1, 2, 3])
             reference = manifest["fixtureHashiPeers"]["provenance"]
             data = (root / reference["file"]).read_bytes()
             self.assertEqual(hashlib.sha256(data).hexdigest(), reference["sha256"])
@@ -116,9 +177,9 @@ class MaintenanceFixtureTests(unittest.TestCase):
             self.assertEqual([step['expectedPhase'] for step in page_manifest['steps'][-3:]], ['Complete'] * 3)
 
     def test_source_hashi_scope_and_three_incoming_steps_are_bound(self):
-        document=hashi_source()
+        document=hashi()
         _,envelopes,expectations=maintenance.work_inputs(document)
-        self.assertEqual(len(envelopes),5)
+        self.assertEqual(len(envelopes),4)
         self.assertEqual([r["index"] for r in expectations["operations"]],[1,2,3])
         for key,value in [("nativeZeroSenderPreserved",False),("signatureChainDomain","0x02"),("minted","3"),("sourceActor",hx(1)),("identicalSourceRegistryAcrossOperations",False),("excludedSourceActor",hx(2)),("incomingScenarios",["fresh-credit"])]:
             wrong=copy.deepcopy(document);wrong[key]=value
@@ -134,7 +195,7 @@ class MaintenanceFixtureTests(unittest.TestCase):
     def test_source_hashi_manifest_signs_all_three_and_no_storage_steps(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);(root/"checkpoint").mkdir();(root/"checkpoint/capture-complete.json").write_text("{}")
-            work=root/"work.json";work.write_text(json.dumps(hashi_source()))
+            work=root/"work.json";work.write_text(json.dumps(hashi()))
             consensus=root/"consensus.json";consensus.write_text(json.dumps({"checkpointHash":scale.CHECKPOINT_HASH,"stateRoot":release.CHECKPOINT_ROOT,
                 "validators":[hx(2)],"records":[{"storage":"Grandpa.Authorities","value":[[hx(8),1]]}],
                 "checkpointSlot":298823260,"checkpointTimestamp":1792939560002,"previousGrandpaSet":7956}))
@@ -145,7 +206,7 @@ class MaintenanceFixtureTests(unittest.TestCase):
             report=maintenance.prepare(root,root/"source-diagnostic",work,consensus,operators,*paths)
             manifest=json.loads((root/report["manifest"]).read_text())
             self.assertEqual([i for i,s in enumerate(manifest["steps"]) if s.get("fixtureHashi")],[1,2,3])
-            self.assertEqual([s["expectedPhase"] for s in manifest["steps"][:5]],["Applying"]*4+["Auditing"])
+            self.assertEqual([s["expectedPhase"] for s in manifest["steps"][:4]],["Applying"]*3+["Auditing"])
             self.assertFalse(report["productionReady"])
 
     def test_structural_flags_remain_false_and_preview_is_required(self):
@@ -177,7 +238,7 @@ class MaintenanceFixtureTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "policy-bound"):
             maintenance.work_inputs(document)
 
-    def test_manifest_binds_expectations_and_preserves_four_consecutive_work_blocks(self):
+    def test_manifest_binds_expectations_and_preserves_three_consecutive_work_blocks(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / "checkpoint").mkdir()
@@ -202,10 +263,10 @@ class MaintenanceFixtureTests(unittest.TestCase):
             data = (root / reference["file"]).read_bytes()
             self.assertEqual(hashlib.sha256(data).hexdigest(), reference["sha256"])
             self.assertEqual(json.loads(data), document["fixtureExpectations"])
-            self.assertEqual([s["expectedPhase"] for s in manifest["steps"][:4]],
-                             ["Applying", "Applying", "Applying", "Auditing"])
-            actual = [(root / s["recovery"]["file"]).read_bytes().hex() for s in manifest["steps"][:4]]
-            self.assertEqual(actual, ["01", "02", "03", "04"])
+            self.assertEqual([s["expectedPhase"] for s in manifest["steps"][:3]],
+                             ["Applying", "Applying", "Auditing"])
+            actual = [(root / s["recovery"]["file"]).read_bytes().hex() for s in manifest["steps"][:3]]
+            self.assertEqual(actual, ["01", "02", "03"])
             self.assertTrue(all(s["timestamp"] == s["slot"] * 6000 + 2 for s in manifest["steps"]))
             self.assertFalse(report["exactWasmRehearsed"])
             self.assertFalse(report["productionReady"])

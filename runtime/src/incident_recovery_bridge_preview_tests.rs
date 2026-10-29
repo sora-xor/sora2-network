@@ -109,10 +109,70 @@ fn diagnostic(input: &wire::Input) -> String {
     sp_io::storage::rollback_transaction();
     result
 }
-fn run(input: &wire::Input) -> Result<(wire::Values, Vec<(u32, wire::Values)>), String> {
-    if input.tag != *b"snxbrin2"
+struct Preview {
+    values: wire::Values,
+    operations: Vec<(u32, wire::Values)>,
+    retained_configuration: wire::Values,
+}
+
+fn retained_configuration(
+    ext: &mut sp_io::TestExternalities,
+    setup: &recovery::RecoveryChunk,
+) -> Result<wire::Values, String> {
+    setup
+        .validate()
+        .map_err(|e| format!("invalid public setup: {e:?}"))?;
+    if read(ext, recovery::BRIDGE_HALT_STORAGE_KEY).as_deref() != Some(&[1][..]) {
+        return Err("public configuration requires the persistent bridge halt".into());
+    }
+    let mut retained = wire::Values::new();
+    for edit in &setup.edits {
+        if edit
+            .key
+            .starts_with(&sp_io::hashing::twox_128(b"SubstrateBridgeOutboundChannel"))
+            || edit
+                .key
+                .starts_with(&sp_io::hashing::twox_128(b"BridgeProxy"))
+        {
+            continue;
+        }
+        let actual = read(ext, &edit.key);
+        if edit.scope != recovery::StorageScope::Top || actual != edit.after {
+            return Err("public configuration changed during native bridge work".into());
+        }
+        retained.insert(edit.key.clone(), actual);
+    }
+    if retained.is_empty() {
+        return Err("public configuration inventory absent".into());
+    }
+    Ok(retained)
+}
+
+fn run(input: &wire::Input) -> Result<Preview, String> {
+    if input.tag != wire::INPUT_TAG
         || input.checkpoint_top.len() > 2_000_000
         || input.stable_keys.len() > 4096
+        || input.policy.authorization_domain != recovery::RecoveryDomain::public_fixture()
+        || input.policy.chunk_hashes.len() != 3
+        || input.setup.index != 0
+        || input.old
+            != AccountId::new(sp_io::hashing::blake2_256(
+                b"sora-nexus/PUBLIC-FIXTURE-ONLY/mixed-bridge/v1/old-owner",
+            ))
+        || input.replacement
+            != AccountId::new(sp_io::hashing::blake2_256(
+                b"sora-nexus/PUBLIC-FIXTURE-ONLY/mixed-bridge/v1/replacement-owner",
+            ))
+        || input.mint != 1
+        || input.outgoing_nonce == 0
+        || input.stable_keys.iter().cloned().collect::<BTreeSet<_>>()
+            != input
+                .setup
+                .edits
+                .iter()
+                .map(|edit| edit.key.clone())
+                .collect()
+        || input.stable_keys.len() != input.setup.edits.len()
     {
         return Err("public fixture bounds/tag".into());
     }
@@ -143,7 +203,7 @@ fn run(input: &wire::Input) -> Result<(wire::Values, Vec<(u32, wire::Values)>), 
         })?;
         let mut prior = observed(&mut ext);
         let mut operations = Vec::new();
-        for index in [1u32, 2, 3] {
+        for index in [1u32, 2] {
             ext.execute_with(|| -> Result<(), String> {
                 System::set_block_number(recovery::CHECKPOINT_NUMBER + 1 + index);
                 match index {
@@ -153,34 +213,28 @@ fn run(input: &wire::Input) -> Result<(wire::Values, Vec<(u32, wire::Values)>), 
                     )
                     .map(|_| ())
                     .map_err(|e| format!("incoming {e:?}; {}", diagnostic(input)))?,
-                    2 => crate::incident_recovery_outgoing::apply_encoded_with_policy(
+                    _ => crate::incident_recovery_outgoing::apply_encoded_with_policy(
                         &input.policy,
                         &input.outgoing,
                     )
                     .map(|_| ())
                     .map_err(|e| format!("outgoing {e:?}"))?,
-                    _ => {
-                        recovery::storage::apply_chunk(&input.policy, &input.restore)
-                            .map_err(|e| format!("restore {e:?}"))?;
-                    }
                 }
                 Ok(())
             })?;
             let now = observed(&mut ext);
-            if index != 3 {
-                let delta = now
-                    .iter()
-                    .filter(|(k, v)| {
-                        let before = prior
-                            .get(*k)
-                            .cloned()
-                            .unwrap_or_else(|| storage.top.get(*k).cloned());
-                        &before != *v
-                    })
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect();
-                operations.push((index, delta));
-            }
+            let delta = now
+                .iter()
+                .filter(|(k, v)| {
+                    let before = prior
+                        .get(*k)
+                        .cloned()
+                        .unwrap_or_else(|| storage.top.get(*k).cloned());
+                    &before != *v
+                })
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+            operations.push((index, delta));
             prior = now;
         }
         ext.execute_with(|| -> Result<(), String> {
@@ -233,8 +287,39 @@ fn run(input: &wire::Input) -> Result<(wire::Values, Vec<(u32, wire::Values)>), 
         ] {
             prior.remove(key);
         }
-        Ok((prior, operations))
+        let retained_configuration = retained_configuration(&mut ext, &input.setup)?;
+        Ok(Preview {
+            values: prior,
+            operations,
+            retained_configuration,
+        })
     })
+}
+
+#[test]
+fn retained_public_configuration_requires_halt_and_exact_native_values() {
+    let key = prefix(b"MultisigVerifier", b"PeerKeys");
+    let setup = recovery::RecoveryChunk {
+        index: 0,
+        edits: vec![recovery::GuardedStorageEdit {
+            scope: recovery::StorageScope::Top,
+            key: key.clone(),
+            before: None,
+            after: Some(vec![42]),
+        }],
+    };
+    let mut ext = sp_io::TestExternalities::default();
+    ext.execute_with(|| sp_io::storage::set(&key, &[42]));
+    assert!(retained_configuration(&mut ext, &setup).is_err());
+    ext.execute_with(|| sp_io::storage::set(recovery::BRIDGE_HALT_STORAGE_KEY, &[1]));
+    assert_eq!(
+        retained_configuration(&mut ext, &setup).unwrap().get(&key),
+        Some(&Some(vec![42]))
+    );
+    ext.execute_with(|| sp_io::storage::set(&key, &[43]));
+    assert!(retained_configuration(&mut ext, &setup).is_err());
+    ext.execute_with(|| sp_io::storage::clear(&key));
+    assert!(retained_configuration(&mut ext, &setup).is_err());
 }
 
 #[test]
@@ -253,13 +338,15 @@ fn export_public_mixed_bridge_preview() {
     let mut encoded = bytes.as_slice();
     let decoded =
         wire::Input::decode_with_mem_limit(&mut encoded, 3 * 1024 * 1024 * 1024usize).unwrap();
-    assert!(encoded.is_empty());
-    let (values, operations) = run(&decoded).unwrap();
+    assert!(encoded.is_empty() && decoded.encode() == bytes);
+    let preview = run(&decoded).unwrap();
     let result = wire::Output {
-        tag: *b"snxbro02",
+        tag: wire::OUTPUT_TAG,
         input_hash,
-        values,
-        operations,
+        values: preview.values,
+        operations: preview.operations,
+        retained_configuration: preview.retained_configuration,
+        bridge_halt_verified: true,
     }
     .encode();
     let mut output = fs::OpenOptions::new()
