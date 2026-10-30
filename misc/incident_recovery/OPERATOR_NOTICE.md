@@ -141,21 +141,32 @@ external non-redemption, or manually refund quarantined liabilities.
 ### Bridge transfers after the checkpoint
 
 Bridge peers signed these withdrawals on the abandoned branch after the
-checkpoint. The fork restores their SORA-side debits, and this release debits no
-sender again: each keeps its checkpoint balance, or its trusted-CSV replacement
-account receives it. `cnSBot6vTtpckdo7HQhjk2hiAAKfDJX34DZsyLVs7B5Y2Gv6T` is not
-the attacker, and its funds are not reverted. The bridge reserve bears the paid
-amounts. The two signed, unclaimed withdrawals stay redeemable on Ethereum
-(bridge contract `0x313416870a4da6f12505a550b67bb73c8e21d5d3`).
+checkpoint, and every one of them has been paid on Ethereum. The fork restores
+their SORA-side debits, and this release debits no sender again: each keeps its
+checkpoint balance, or its trusted-CSV replacement account receives it.
+`cnSBot6vTtpckdo7HQhjk2hiAAKfDJX34DZsyLVs7B5Y2Gv6T` is not the attacker, and its
+funds are not reverted. The bridge reserve bears the paid amounts.
+
+The VAL contract `0xd1eeb2f30016fffd746233ee12c486e7ca8efef1` minted the two VAL
+withdrawals through `mintTokensByPeers`. The bridge contract
+`0x313416870a4da6f12505a550b67bb73c8e21d5d3` did not pay them, so its `used` flag
+stays false for both; the VAL contract's flag is set.
+
+- 20,601.8127 VAL to the attacker's `0xaf6fd7a11087bfbaddc5c4e1ab14ab0c592af63f`:
+  transaction `0xed501b00893525f5f5944ffff2a89f74754f94dc5bc090557a406a31b8e17ee4`,
+  Ethereum block 26,270,465.
+- 43,000.0000 VAL to `0x94b3c5fc67b0c63befcc74d7afcd333baa697b2a`: transaction
+  `0x5675ea1b494d4706539a326cebbd2d72badb667acab1d26c5118f462b632d0a8`,
+  Ethereum block 26,270,483.
 
 | SORA sender | Ethereum recipient | Amount | On Ethereum |
 |---|---|---|---|
 | `cnSBot6vTtpckdo7HQhjk2hiAAKfDJX34DZsyLVs7B5Y2Gv6T` | `0x94b3c5fc67b0c63befcc74d7afcd333baa697b2a` | 8,750,000.0000 PSWAP, 7,507.0626 DAI | paid |
-| `cnSBot6vTtpckdo7HQhjk2hiAAKfDJX34DZsyLVs7B5Y2Gv6T` | `0x94b3c5fc67b0c63befcc74d7afcd333baa697b2a` | 43,000.0000 VAL | signed, unclaimed |
+| `cnSBot6vTtpckdo7HQhjk2hiAAKfDJX34DZsyLVs7B5Y2Gv6T` | `0x94b3c5fc67b0c63befcc74d7afcd333baa697b2a` | 43,000.0000 VAL | paid |
 | `cnSgmhqLV3sXSz72o4JjMZeBLX39Y6vN4vwjdaXAmULsGQHZe` | `0xaf6fd7a11087bfbaddc5c4e1ab14ab0c592af63f` (attacker) | 148.6001 DAI, 8.0235 XOR | paid |
 | `cnW7wojJ6GgJz5VtqjAMT5CUmkuKXfT4MDsPzyRUWF2qyc8wV` | `0x95d64b2a397c4de7027e02fb0389965a68b8b376` | 176.7523 of asset `0x00513be65493a7fc3e2128d4230061a530acf40478a4affa20bbba27a310673e` | paid |
 | `cnTBZzshYXajet389PSAHKsyZ72ASL7XZhNCiudFJJ24okTDD` (in the CSV) | `0xaf6fd7a11087bfbaddc5c4e1ab14ab0c592af63f` (attacker) | 13,992,342.6464 PSWAP, 2,029.9013 DAI | paid |
-| `cnTBZzshYXajet389PSAHKsyZ72ASL7XZhNCiudFJJ24okTDD` (in the CSV) | `0xaf6fd7a11087bfbaddc5c4e1ab14ab0c592af63f` (attacker) | 20,601.8127 VAL | signed, unclaimed |
+| `cnTBZzshYXajet389PSAHKsyZ72ASL7XZhNCiudFJJ24okTDD` (in the CSV) | `0xaf6fd7a11087bfbaddc5c4e1ab14ab0c592af63f` (attacker) | 20,601.8127 VAL | paid |
 | `cnTYBcwoqVSiruign6ZsJbLvFnH4iRiNFm2tdA6idWZwAEupM` (in the CSV) | `0xaf6fd7a11087bfbaddc5c4e1ab14ab0c592af63f` (attacker) | 18,868,090.1949 PSWAP | paid |
 
 The fork also drops the one incoming deposit credited on the abandoned branch:
