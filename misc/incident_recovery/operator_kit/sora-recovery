@@ -1,0 +1,274 @@
+#!/usr/bin/env bash
+# SORA Nexus recovery restart kit for chain sora-nexus-recovery-28191817.
+#
+#   sora-recovery build                           compile the release node from source
+#   sora-recovery unpack SNAPSHOT --base-path DIR  check and unpack the validator snapshot
+#   sora-recovery run --base-path DIR [OPTIONS]    start the node and the recovery feeder
+#
+# The Docker image runs this script as its entrypoint with the base path /chain.
+# Everything the release depends on is pinned below; README.md has the steps.
+set -euo pipefail
+
+SOURCE_REPOSITORY=https://github.com/sora-xor/sora2-network.git
+SOURCE_COMMIT=fb3ff0a3bf19d626ed277e2cddb030ee8dfb380c
+SNAPSHOT_FILE=sora-nexus-recovery-28191817-db.tar.zst
+SNAPSHOT_BYTES=13520362704
+SNAPSHOT_SHA256=d02c704fda2d4e418f2be95aada732c729c651b3d29a49d3f894341e226dd40c
+SPEC_SHA256=f86bad5dc92780e50399e2a9c0ae91e84fc7d707cac2fca236b469c767598194
+BUNDLE_SHA256=cf3abf706afdd8aff0ed131653ffe3a2974201c6385fe5b33b8d6223ddcebe05
+CHAIN=sora-nexus-recovery-28191817
+OLD_CHAIN=sora-substrate-main-net
+
+SELF=$(readlink -f -- "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")
+KIT=$(cd -- "$(dirname -- "$SELF")" && pwd)
+SPEC=$KIT/$CHAIN.json
+BUNDLE=$KIT/sora-nexus-recovery-work-bundle
+NODE=${SORA_RECOVERY_NODE:-$KIT/framenode}
+
+say() { printf 'sora-recovery: %s\n' "$*"; }
+die() { printf 'sora-recovery: %s\n' "$*" >&2; exit 1; }
+
+sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum -- "$1" | cut -d' ' -f1
+  else
+    shasum -a 256 -- "$1" | cut -d' ' -f1
+  fi
+}
+
+usage() {
+  cat <<EOF
+SORA Nexus recovery restart kit for chain $CHAIN.
+
+  sora-recovery build [--source DIR]
+      Compile framenode from $SOURCE_REPOSITORY
+      at commit $SOURCE_COMMIT into this kit.
+
+  sora-recovery unpack $SNAPSHOT_FILE --base-path DIR
+      Check the snapshot's SHA-256 and unpack it into your node's data directory.
+
+  sora-recovery run --base-path DIR [--full-node] [--print] [framenode options]
+      Start the node with the keystore and network key already in DIR, and the
+      recovery feeder beside it. --full-node runs without the validator role and
+      without the feeder (bootnodes, RPC nodes). --print shows the commands
+      without starting them.
+
+In the Docker image the base path is /chain, and options after the image name go
+to "run".
+EOF
+}
+
+build() {
+  local source=$KIT/sora2-network output=$KIT/framenode fresh= tool missing=()
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --source) [ $# -ge 2 ] || die "$1 needs a directory"; source=$2; shift 2 ;;
+      --output) [ $# -ge 2 ] || die "$1 needs a file"; output=$2; shift 2 ;;
+      *) die "build: unknown option $1" ;;
+    esac
+  done
+  for tool in git rustup cargo cc c++ make cmake clang protoc pkg-config; do
+    command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
+  done
+  if [ ${#missing[@]} -gt 0 ]; then
+    cat >&2 <<EOF
+sora-recovery: missing build tools: ${missing[*]}
+On Debian or Ubuntu, install them with:
+  sudo apt-get install -y build-essential clang libclang-dev cmake protobuf-compiler pkg-config libssl-dev git curl
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+  . "\$HOME/.cargo/env"
+EOF
+    exit 1
+  fi
+  if [ ! -d "$source/.git" ]; then
+    git init -q "$source"
+    fresh=1
+  fi
+  say "fetching $SOURCE_COMMIT from $SOURCE_REPOSITORY"
+  # A shallow fetch only for a clone made here; an existing clone keeps its history.
+  git -C "$source" fetch -q ${fresh:+--depth 1} "$SOURCE_REPOSITORY" "$SOURCE_COMMIT"
+  git -C "$source" -c advice.detachedHead=false checkout -q "$SOURCE_COMMIT"
+  # The node version carries `git rev-parse --short HEAD`; nine digits match the release.
+  git -C "$source" config core.abbrev 9
+  [ "$(git -C "$source" rev-parse HEAD)" = "$SOURCE_COMMIT" ] || die "$source is not at $SOURCE_COMMIT"
+  [ -z "$(git -C "$source" status --porcelain --untracked-files=no)" ] || die "$source has local changes"
+  local channel
+  channel=$(sed -n 's/^channel *= *"\(.*\)"$/\1/p' "$source/rust-toolchain.toml")
+  [ -n "$channel" ] || die "no toolchain channel in $source/rust-toolchain.toml"
+  rustup toolchain install "$channel" --profile minimal --component rust-src \
+    --target wasm32-unknown-unknown,wasm32v1-none
+  say "compiling framenode; the first build takes 30-60 minutes and about 40 GB of disk"
+  (cd "$source" && CARGO_NET_GIT_FETCH_WITH_CLI=true \
+    cargo build --release --locked -p framenode --features include-real-files)
+  install -m 0755 "$source/target/release/framenode" "$output"
+  say "built $("$output" --version) at $output, SHA-256 $(sha256 "$output")"
+}
+
+unpack() {
+  local snapshot= base=${SORA_BASE_PATH:-}
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --base-path|-d) [ $# -ge 2 ] || die "$1 needs a directory"; base=$2; shift 2 ;;
+      --base-path=*) base=${1#*=}; shift ;;
+      -*) die "unpack: unknown option $1" ;;
+      *) [ -z "$snapshot" ] || die "unpack takes one snapshot file"; snapshot=$1; shift ;;
+    esac
+  done
+  [ -n "$snapshot" ] || die "usage: sora-recovery unpack $SNAPSHOT_FILE --base-path DIR"
+  [ -n "$base" ] || die "pass --base-path: the data directory your node used before, which holds your keystore"
+  [ -f "$snapshot" ] || die "no such file: $snapshot"
+  [ -d "$base" ] || die "no such directory: $base"
+  command -v zstd >/dev/null 2>&1 || die "unpacking needs zstd (apt-get install zstd)"
+  local target=$base/chains/$CHAIN size free probe=$base/.sora-recovery-write-test
+  [ ! -e "$target" ] || die "$target already exists; move it away to unpack again"
+  size=$(stat -c %s -- "$snapshot" 2>/dev/null || stat -f %z -- "$snapshot")
+  [ "$size" = "$SNAPSHOT_BYTES" ] || die "$snapshot has $size bytes, not $SNAPSHOT_BYTES; download it again"
+  if ! (: > "$probe") 2>/dev/null; then
+    die "cannot write to $base as uid $(id -u); give that user the directory, for example: chown -R $(id -u):$(id -g) $base"
+  fi
+  rm -f -- "$probe"
+  free=$(df -Pk -- "$base" | awk 'NR == 2 { print $4 }')
+  [ "$free" -ge $((20 * 1024 * 1024)) ] || die "unpacking needs 20 GB free in $base"
+  say "checking the snapshot SHA-256 (a minute or two)"
+  [ "$(sha256 "$snapshot")" = "$SNAPSHOT_SHA256" ] || die "$snapshot does not match the release SHA-256; download it again"
+  say "unpacking into $base (a few minutes)"
+  zstd -dc -- "$snapshot" | tar -C "$base" --no-same-owner -xf -
+  [ -f "$target/db/full/CURRENT" ] || die "the snapshot did not unpack to $target/db/full"
+  mkdir -p -- "$base/recovery-inherent"
+  say "unpacked $target; next: sora-recovery run"
+}
+
+prefix_lines() {
+  local line
+  while IFS= read -r line; do
+    printf 'recovery-feeder: %s\n' "$line"
+  done
+}
+
+feed() {
+  local inherent=$1 rpc_port=$2 child= status=0
+  trap '[ -n "$child" ] && kill -TERM "$child" 2>/dev/null; exit 0' TERM
+  # The node takes a few minutes to open the database; start the feeder once its
+  # RPC answers rather than letting it report every refused connection.
+  say "the recovery feeder starts when the node's RPC answers on port $rpc_port"
+  until (exec 3<>"/dev/tcp/127.0.0.1/$rpc_port") 2>/dev/null; do
+    sleep 2
+  done
+  python3 -u "$BUNDLE/recovery_feeder.py" run --bundle "$BUNDLE" --inherent-dir "$inherent" \
+    --rpc "http://127.0.0.1:$rpc_port" > >(prefix_lines) 2>&1 &
+  child=$!
+  wait "$child" || status=$?
+  if [ "$status" -eq 0 ]; then
+    say "all recovery work is on chain and the feeder has finished; keep the node running"
+  else
+    say "the recovery feeder STOPPED (exit $status); keep the node running and report the STOPPED line above"
+  fi
+}
+
+run() {
+  local base=${SORA_BASE_PATH:-} keystore= node_key= key_file= rpc_port=9944 validator=1 print= warp= args=()
+  while [ $# -gt 0 ]; do
+    case $1 in
+      --full-node) validator=; shift ;;
+      --sync=warp) warp=1; args+=("$1"); shift ;;
+      --sync) [ $# -ge 2 ] || die "$1 needs a mode"; [ "$2" != warp ] || warp=1; args+=("$1" "$2"); shift 2 ;;
+      --print) print=1; shift ;;
+      --validator) shift ;;
+      --base-path|-d) [ $# -ge 2 ] || die "$1 needs a directory"; base=$2; shift 2 ;;
+      --base-path=*) base=${1#*=}; shift ;;
+      --keystore-path) [ $# -ge 2 ] || die "$1 needs a directory"; keystore=$2; shift 2 ;;
+      --keystore-path=*) keystore=${1#*=}; shift ;;
+      --node-key-file) [ $# -ge 2 ] || die "$1 needs a file"; node_key=1; key_file=$2; args+=("$1" "$2"); shift 2 ;;
+      --node-key-file=*) node_key=1; key_file=${1#*=}; args+=("$1"); shift ;;
+      --node-key) [ $# -ge 2 ] || die "$1 needs a value"; node_key=1; args+=("$1" "$2"); shift 2 ;;
+      --node-key=*) node_key=1; args+=("$1"); shift ;;
+      --rpc-port) [ $# -ge 2 ] || die "$1 needs a port"; rpc_port=$2; args+=("$1" "$2"); shift 2 ;;
+      --rpc-port=*) rpc_port=${1#*=}; args+=("$1"); shift ;;
+      --state-pruning|--pruning|--database|--db)
+        [ $# -ge 2 ] || die "$1 needs a value"
+        case $2 in archive|rocksdb) ;; *) die "the snapshot is an archive RocksDB database; leave $1 out" ;; esac
+        shift 2 ;;
+      --state-pruning=*|--pruning=*|--database=*|--db=*)
+        case ${1#*=} in archive|rocksdb) ;; *) die "the snapshot is an archive RocksDB database; leave ${1%%=*} out" ;; esac
+        shift ;;
+      --chain|--chain=*|--dev|--recovery-inherent-dir|--recovery-inherent-dir=*|--unsafe-force-node-key-generation)
+        die "${1%%=*} is set by this kit; leave it out" ;;
+      *) args+=("$1"); shift ;;
+    esac
+  done
+  [ -n "$base" ] || die "pass --base-path: the data directory your node used before, which holds your keystore"
+  [ -d "$base" ] || die "no such directory: $base"
+  base=$(cd -- "$base" && pwd)
+  local old=$base/chains/$OLD_CHAIN db=$base/chains/$CHAIN/db/full inherent=$base/recovery-inherent
+  # Warp sync starts from an empty database once the recovery chain has finality.
+  [ -n "$warp" ] || [ -f "$db/CURRENT" ] ||
+    die "no recovery database in $db; first run: sora-recovery unpack $SNAPSHOT_FILE --base-path $base"
+  [ -x "$NODE" ] || die "no node binary at $NODE; first run: sora-recovery build"
+  [ "$(sha256 "$SPEC")" = "$SPEC_SHA256" ] || die "$SPEC is not the release chain spec"
+  [ "$(sha256 "$BUNDLE/BUNDLE.json")" = "$BUNDLE_SHA256" ] || die "$BUNDLE is not the release work bundle"
+  if [ -z "$node_key" ]; then
+    if [ -f "$old/network/secret_ed25519" ]; then
+      key_file=$old/network/secret_ed25519
+      args+=(--node-key-file "$key_file")
+    elif [ -n "$validator" ]; then
+      die "no network key at $old/network/secret_ed25519; pass the --node-key-file you used before (a new key changes your peer ID)"
+    fi
+  fi
+  if [ -n "$validator" ]; then
+    keystore=${keystore:-$old/keystore}
+    [ -d "$keystore" ] || die "no keystore at $keystore; pass --keystore-path with your validator keystore"
+    compgen -G "$keystore/62616265*" >/dev/null || die "no BABE key in $keystore"
+    compgen -G "$keystore/6772616e*" >/dev/null || die "no GRANDPA key in $keystore"
+    command -v python3 >/dev/null 2>&1 || die "the recovery feeder needs python3 (3.8 or newer)"
+    args+=(--validator --keystore-path "$keystore")
+  elif [ -n "$keystore" ]; then
+    args+=(--keystore-path "$keystore")
+  fi
+  args=(--chain "$SPEC" --base-path "$base" --recovery-inherent-dir "$inherent" --state-pruning archive
+        ${args[@]+"${args[@]}"})
+  if [ -n "$print" ]; then
+    printf 'node:  %s' "$NODE"; printf ' %q' "${args[@]}"; printf '\n'
+    if [ -n "$validator" ]; then
+      printf 'feeder: python3 %q run --bundle %q --inherent-dir %q --rpc http://127.0.0.1:%s\n' \
+        "$BUNDLE/recovery_feeder.py" "$BUNDLE" "$inherent" "$rpc_port"
+    fi
+    return 0
+  fi
+  mkdir -p -- "$inherent"
+  say "$("$NODE" --version) on chain $CHAIN, base path $base"
+  if [ -n "$key_file" ]; then
+    say "network identity $("$NODE" key inspect-node-key --file "$key_file" 2>/dev/null || echo unknown)"
+  fi
+  if [ -n "$validator" ]; then
+    say "validator keystore $keystore; no other node may run with these keys"
+  fi
+  local node feeder= status
+  "$NODE" "${args[@]}" &
+  node=$!
+  if [ -n "$validator" ]; then
+    feed "$inherent" "$rpc_port" &
+    feeder=$!
+  fi
+  # Stop the feeder together with the node, so it does not report the node going away.
+  trap 'kill -TERM "$node" ${feeder:+"$feeder"} 2>/dev/null || true' INT TERM
+  while :; do
+    status=0
+    wait "$node" || status=$?
+    kill -0 "$node" 2>/dev/null || break
+  done
+  if [ -n "$feeder" ]; then
+    kill -TERM "$feeder" 2>/dev/null || true
+    wait "$feeder" 2>/dev/null || true
+  fi
+  say "node exited with status $status"
+  return "$status"
+}
+
+command=${1:-run}
+case $command in
+  build|unpack|run) if [ $# -gt 0 ]; then shift; fi ;;
+  -h|--help|help) usage; exit 0 ;;
+  -*) command=run ;;
+  *) usage >&2; exit 2 ;;
+esac
+"$command" "$@"

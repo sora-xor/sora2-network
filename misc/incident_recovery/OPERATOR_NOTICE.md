@@ -56,6 +56,14 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
 
 ## Restart steps for validators
 
+The release's operator kit (`operator_kit/`) does steps 2, 4, 5 and 6 below:
+`sora-recovery unpack` checks and unpacks the snapshot, and `sora-recovery run`
+starts the node with the release chain spec, your existing keystore and network
+key, and the recovery feeder. It ships as `sora-nexus-recovery-28191817-kit.tar.gz`
+for building and running from source, and as the Docker image
+`sora-nexus-recovery:28191817` built from the kit's Dockerfile. Its README has the
+commands for both; the steps below are what it does.
+
 1. Stop every old node that holds validator keys, including backup and sentry
    nodes, and keep them stopped. Recovery slots and GRANDPA sets after 7956 are
    still slashable, so running an old node beside a recovery node with the same
@@ -69,7 +77,7 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
      node, so it carries the recovery import record. It is valid only with the
      chain spec it was made with. Check its SHA-256 against the release manifest,
      then unpack it into your base path as the account that runs the node:
-     `zstd -dc sora-nexus-recovery-28191817-db.tar.zst | tar -C <base-path> -xf -`.
+     `zstd -dc sora-nexus-recovery-28191817-db.tar.zst | tar -C <base-path> --no-same-owner -xf -`.
      This creates `<base-path>/chains/sora-nexus-recovery-28191817/db/full`.
    - Warp sync, starting from an empty database. This works only after the
      recovery chain has finalized blocks and at least 3 recovery peers serve it.
@@ -96,6 +104,11 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
    sync it starts once the checkpoint and set 7957 are imported. Any warning that
    begins `GRANDPA remains stopped before verified recovery` means the database
    or chain spec differs from the release.
+6. Run the recovery feeder beside every validator until it reports `complete`.
+   Block authors read the next envelope from `--recovery-inherent-dir`; the
+   feeder writes the release's rehearsed envelopes there, one for each new best
+   block, and signs or submits nothing. A validator without it authors
+   maintenance ticks, which delay activation but approve no skipped work.
 
 ## During recovery
 
