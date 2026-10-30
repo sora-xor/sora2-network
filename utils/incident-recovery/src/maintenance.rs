@@ -1008,6 +1008,7 @@ fn run_inner(
         if first_final_block {
             let lineage_policy = status(&mut ext)?.policy;
             activation_validation = Some(activation::Track::before(
+                &executor,
                 &mut ext,
                 number,
                 parent,
@@ -1016,6 +1017,7 @@ fn run_inner(
                 code,
                 &executing_version,
                 &activation_maintenance,
+                output,
             )?);
         }
         if maintenance != (step.recovery.is_some() || step.fixture_escape.is_some()) {

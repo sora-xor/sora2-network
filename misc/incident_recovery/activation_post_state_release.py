@@ -3,6 +3,8 @@
 Only artifact_identity_release.run calls this after executing and validating its
 owned process. An imported witness or success flag is never a release input.
 """
+import activation_block_weight as block_weight
+
 GATE = 'finalRuntimeActivationPostState'
 SCHEMA = 'sora-nexus-exact-post-maintenance-activation-v2'
 # Preserved production protocol: six-second slots, 600 slots per epoch.
@@ -70,10 +72,12 @@ def validate(result, context, scenario='activation'):
                 and row['diskRestartRootMatches'] is True,
                 'activation continuation did not execute/import/restore exact runtime')
     boundaries = validate_boundaries(witness, rows, details, first)
-    return {'status': 'verified' if boundaries else 'unverified',
+    weights = block_weight.validate(witness, context['wasm']['138']['blake2'])
+    passed = boundaries and weights['status'] == 'verified'
+    return {'status': 'verified' if passed else 'unverified',
             'reason': ('Exact production Wasm covered a maintenance gap of at least 24 hours and 24 actual epoch advances, migrated the completed state, crossed the first session and active-era transitions, and executed a subsequent block with checked async staking state, independent import and disk restoration'
-                       if boundaries else 'Activation requires a maintenance gap of at least 14,400 slots and 24 actual epoch advances, both session and active-era transitions, and a subsequent ordinary block after each'),
-            'evidence': witness, 'productionReady': False}
+                       if passed else ('Activation requires a maintenance gap of at least 14,400 slots and 24 actual epoch advances, both session and active-era transitions, and a subsequent ordinary block after each' if not boundaries else weights['reason'])),
+            'blockWeight': weights, 'evidence': witness, 'productionReady': False}
 
 
 def validate_boundaries(witness, blocks, details, first):

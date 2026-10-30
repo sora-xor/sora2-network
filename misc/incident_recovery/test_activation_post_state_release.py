@@ -2,6 +2,7 @@
 import copy
 import unittest
 import activation_post_state_release as activation
+from test_activation_block_weight import limits
 
 
 def activation_witness(rows, details, policy, code):
@@ -46,6 +47,10 @@ def activation_witness(rows, details, policy, code):
                 'queued': [] if changed else [{'account': '0x'+'ee'*32, 'era': 7}], 'pending': []},
             'readOnlyStateRootMatches': True})
     witness['rows'] = observed
+    witness['blockWeightLimits'] = limits(code)
+    from test_activation_block_weight import observed as weight_observation
+    for row in witness['rows']:
+        row['blockWeight'] = weight_observation()
     witness['transitions'] = {'firstSession': {'block': ordinary[transition_index]['number'], 'before': 100, 'after': 101} if transition_index is not None else None,
         'firstActiveEra': {'block': ordinary[transition_index]['number'], 'before': 6, 'after': 7} if transition_index is not None else None,
         'postFirstSessionBlocks': len(ordinary)-transition_index-1 if transition_index is not None else 0,
@@ -75,6 +80,13 @@ def fixture(count=3, maintenance_gap=14_400):
 
 
 class ActivationTests(unittest.TestCase):
+    def test_missing_or_overweight_accounting_cannot_pass_activation(self):
+        from test_activation_block_weight import observed
+        for change in (lambda w: w.pop('blockWeightLimits'),
+                       lambda w: w['rows'][1].update(blockWeight=observed(((0, 0), (0, 0), (101, 1))))):
+            result, context = fixture(); change(result['activationValidation'])
+            self.assertEqual(activation.validate(result, context)['status'], 'unverified')
+
     def test_exact_24_hour_gap_passes_and_short_diagnostics_remain_unverified(self):
         for gap, status in ((14_399, 'unverified'), (14_400, 'verified'), (14_401, 'verified')):
             result, context = fixture(maintenance_gap=gap)

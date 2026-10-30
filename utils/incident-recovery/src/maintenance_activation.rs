@@ -7,6 +7,8 @@ use sp_core::H256;
 
 #[path = "maintenance_activation_state.rs"]
 mod state;
+#[path = "maintenance_activation_weight.rs"]
+mod weights;
 pub(super) use state::Maintenance;
 
 fn required<T: Decode + Encode>(
@@ -59,6 +61,7 @@ pub(super) struct Track {
     active: u32,
     initialized_root: Option<H256>,
     maintenance: Value,
+    weights: weights::Observer,
     previous: state::Core,
     rows: Vec<Value>,
     report_bytes: usize,
@@ -69,6 +72,7 @@ pub(super) struct Track {
 impl Track {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn before(
+        executor: &replay::Executor,
         ext: &mut sp_io::TestExternalities,
         number: u32,
         parent: H256,
@@ -77,6 +81,7 @@ impl Track {
         code: &[u8],
         version: &sp_version::RuntimeVersion,
         maintenance: &Maintenance,
+        output: &std::path::Path,
     ) -> Result<Self> {
         let root = replay::root(ext);
         let policy = active_policy(ext, lineage)?;
@@ -111,6 +116,7 @@ impl Track {
             active,
             initialized_root: None,
             maintenance: maintenance.report()?,
+            weights: weights::Observer::start(executor, ext, code, output)?,
             previous,
             rows: Vec::new(),
             report_bytes: 0,
@@ -176,6 +182,7 @@ impl Track {
             );
         }
         let after = state::State::read(ext, true)?;
+        let weight = self.weights.observe(ext)?;
         if after.core.slot != slot {
             return Err("activation post-block slot differs from executed input".into());
         }
@@ -195,6 +202,7 @@ impl Track {
             "slot":slot,"timestamp":after.timestamp,"epoch":after.core.epoch,"session":after.core.session,
             "currentEra":after.core.current,"activeEra":after.core.active,"activeEraStart":after.core.start,
             "asyncState":after.async_report,"lastValidatorEra":after.recency_report,
+            "blockWeight":weight,
             "readOnlyStateRootMatches":true});
         self.report_bytes = self
             .report_bytes
@@ -256,6 +264,7 @@ impl Track {
             "ordinaryBlocks":ordinary,"lastBlockHash":rows.last().unwrap().hash,
             "lastStateRoot":rows.last().unwrap().state_root,
             "maintenance":self.maintenance,
+            "blockWeightLimits":self.weights.limits,
             "transitions":{"firstSession":boundary(self.first_session),"firstActiveEra":boundary(self.first_era),
                 "postFirstSessionBlocks":followups(self.first_session),"postFirstActiveEraBlocks":followups(self.first_era)},
             "rows":self.rows,
@@ -296,6 +305,7 @@ mod tests {
             active: 6,
             initialized_root: None,
             maintenance: json!({"checkpointSession":10,"checkpointActiveEra":6}),
+            weights: weights::tests::observer(),
             previous: core(),
             rows: Vec::new(),
             report_bytes: 0,
@@ -304,6 +314,7 @@ mod tests {
         }
     }
     fn witness(ext: &mut sp_io::TestExternalities, number: u32) -> BlockWitness {
+        weights::tests::install(ext, [1, 1, 2, 2, 3, 3]);
         BlockWitness {
             number,
             hash: format!("{:#x}", H256::repeat_byte(number as u8)),

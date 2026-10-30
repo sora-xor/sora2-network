@@ -21,6 +21,13 @@ then execute at least one further ordinary block after each. The observer checks
 the actual maintenance slot gap, frozen sessions/eras, `StakingAsyncBridge.State`
 and validator recency records against the active, queued and pending validator
 sets. Every block must pass independent Wasm import and persisted-state restoration.
+Each ordinary block also records the finalized `System.BlockWeight` SCALE bytes
+and all three dispatch classes. Their nonsaturating sum must fit both dimensions
+of `System.BlockWeights.max_block`, decoded from `Metadata_metadata` executed by
+that exact final Wasm and retained as `activation-metadata.scale`. Missing weight
+observations and overweight transition blocks cannot clear the gate. This is a
+conservative configured-accounting check, not an elapsed-time benchmark or a
+claim that FRAME forbids every block above its target when reserved weight applies.
 A migration panic, mismatched policy/artifact, missing or legacy observer,
 same-session sample or mere `set_code` installation cannot clear this gate.
 The identical activation check applies after a forward repair, using that repair's

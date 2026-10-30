@@ -14,6 +14,7 @@ import hashi_codec as scale
 import repair_staging_release as staging
 from test_artifact_identity_release import ArtifactIdentityTests as Fixtures
 from test_activation_post_state_release import activation_witness
+from test_activation_block_weight import METADATA
 from test_release_package import hx, policy, wasm
 
 
@@ -186,6 +187,7 @@ class ForwardRepairTests(unittest.TestCase):
         replay['activationValidation'] = activation_witness(rows, plan['steps'],
             context['policies']['138']['commitment'], context['wasm']['138']['blake2'])
         replay['activationValidation']['lineagePolicyCommitment'] = context['policyCommitment']
+        emit('activation-metadata.scale', METADATA)
         self.transcript(replay)
         witnesses = []
         for escape in plan['escapes']:

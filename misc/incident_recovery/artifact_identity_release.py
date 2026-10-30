@@ -579,11 +579,12 @@ def run(report, paths, binary, expected_sha256, parent, local_file, digest_file)
     def checked(result, context, scenario, output, pins):
         validate(result, context, scenario, output, pins)
         if scenario == 'activation':
+            activation.block_weight.join_metadata(result.get('activationValidation'), OutputEvidence(output, pins))
             observed['activation'] = activation.validate(result, context)
     profile = {'context': 'artifactIdentityReplay', 'gate': GATE, 'label': 'artifact-identity',
         'schema': 'sora-nexus-executing-artifact-identity-v1', 'outputRole': 'artifactIdentityOutput',
         'directoryField': 'artifactIdentityOutputDirectory', 'failureSchema': 'sora-nexus-executing-artifact-identity-failure-v1',
-        'scenarios': ('activation', 'hold'), 'sources': [Path(activation.__file__).resolve()],
+        'scenarios': ('activation', 'hold'), 'sources': [Path(activation.__file__).resolve(), Path(activation.block_weight.__file__).resolve()],
         'command': lambda verifier, owned, plan, output: [str(verifier), 'rehearse-maintenance', '--manifest', owned[plan['manifestRole']], '--output', str(output / 'replay')],
         'validate': checked, 'select': lambda result: result, 'versions': lambda context: [134, 135, 138],
         'reason': 'Fresh native replay executed the package exact134/135/138 Wasm, verified actual Core_version/transaction versions, independent import and persisted-state restoration; consensus/build/operator approval remain separate'}

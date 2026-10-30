@@ -211,6 +211,7 @@ def validate(result, context, scenario, output, pins):
         'artifacts': [{'blake2_256': value} for value in context['artifactBlakes']]}
     require(incoming_release.valid_receipt(result, report_context, context['artifactBindings'], history.ROOT), 'fresh opaque incoming certificate/coverage/retained audits failed')
     validate_baseline(result['recoveryReplay'], context, scenario, output, pins)
+    activation.block_weight.join_metadata(result['recoveryReplay'].get('activationValidation'), identity.OutputEvidence(output, pins))
     observed = activation.validate(result['recoveryReplay'], context, scenario)
     require(observed['status'] == 'verified',
         'repaired final runtime activation gate failed: ' + observed['reason'])
@@ -370,7 +371,7 @@ def run(report, paths, binary, expected_sha256, parent, local_file, digest_file)
     profile = {'context': 'forwardRepairReplay', 'gate': GATE, 'label': 'forward-repair',
         'schema': 'sora-nexus-forward-repair-release-v1', 'failureSchema': 'sora-nexus-forward-repair-release-failure-v1',
         'outputRole': 'forwardRepairOutput', 'directoryField': 'forwardRepairOutputDirectory', 'scenarios': ('repair',),
-        'sources': [Path(__file__).resolve(), Path(incoming_release.__file__).resolve(), Path(activation.__file__).resolve(), Path(staging.__file__).resolve()],
+        'sources': [Path(__file__).resolve(), Path(incoming_release.__file__).resolve(), Path(activation.__file__).resolve(), Path(activation.block_weight.__file__).resolve(), Path(staging.__file__).resolve()],
         'command': command, 'validate': validate, 'select': lambda result: result['recoveryReplay'],
         'versions': lambda context: [134, 135, *context['repairs'], 138],
         'reason': 'Fresh exact-Wasm hold, supplied-quorum forward repair and automatic final activation, with raw authorization/counter/policy joins, native comparisons and opaque historical incoming audit preservation; consensus/build/operator and other gates remain separate'}
