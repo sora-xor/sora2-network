@@ -29,8 +29,9 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
    runtime backstop and its tests are updated to match the new public evidence.
 2. Preserve an immutable copy of the abandoned database and its evidence. Prepare
    a **separate** database ending at block **28,191,816**. Every participating
-   restored node must import the checkpoint under the recovery release. Do not
-   edit or delete historical consensus evidence in place.
+   restored node must import the checkpoint under the recovery release; the
+   release snapshot already contains that import. Do not edit or delete
+   historical consensus evidence in place.
 3. Use the release's new chain-spec ID, database path and protocol/fork identity.
    Runtime overrides are forbidden. The spec-134 substitute must remain byte
    identical for the lifetime of this recovery chain, including future syncs.
@@ -62,10 +63,15 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
 2. Do not reuse your usual database. The abandoned chain finalized blocks after
    the checkpoint, and neither `framenode revert` nor GRANDPA can undo finalized
    blocks. Node 4.8.13 also refuses any database whose checkpoint was imported by
-   the old release. Get a database that ends at block **28,191,816** instead:
-   - From the release snapshot: check its SHA-256 against the release manifest,
-     then unpack it to `<base-path>/chains/sora-nexus-recovery-28191817/db/full`.
-   - By warp sync, starting from an empty database. This works only after the
+   the old release. Use one of these instead:
+   - The release snapshot. It holds the canonical chain through block
+     **28,191,816** and checkpoint block **28,191,817**, imported by the release
+     node, so it carries the recovery import record. It is valid only with the
+     chain spec it was made with. Check its SHA-256 against the release manifest,
+     then unpack it into your base path as the account that runs the node:
+     `zstd -dc sora-nexus-recovery-28191817-db.tar.zst | tar -C <base-path> -xf -`.
+     This creates `<base-path>/chains/sora-nexus-recovery-28191817/db/full`.
+   - Warp sync, starting from an empty database. This works only after the
      recovery chain has finalized blocks and at least 3 recovery peers serve it.
 3. More than 2/3 of validators must start from the snapshot: at least **11 of
    the 15** checkpoint GRANDPA authorities. GRANDPA cannot finalize the first
@@ -78,10 +84,12 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
    or copy that directory to the new location. Without its retained GRANDPA key
    the node refuses to start as a validator. Do not generate or rotate keys.
 5. Start node 4.8.13 with the release chain spec, your usual base path and no
-   runtime overrides. The GRANDPA voter stays stopped until the checkpoint is
-   imported and set 7957 is installed. Any warning that begins
-   `GRANDPA remains stopped before verified recovery` after that point means the
-   database or chain spec differs from the release.
+   runtime overrides. The snapshot is an archive RocksDB database: use
+   `--state-pruning archive` or omit that flag, and do not select ParityDB.
+   From the snapshot the GRANDPA voter starts at once with set 7957; after warp
+   sync it starts once the checkpoint and set 7957 are imported. Any warning that
+   begins `GRANDPA remains stopped before verified recovery` means the database
+   or chain spec differs from the release.
 
 ## During recovery
 
