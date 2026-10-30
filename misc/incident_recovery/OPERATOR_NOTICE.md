@@ -83,6 +83,12 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
    Start the node with `--keystore-path <base-path>/chains/sora-substrate-main-net/keystore`,
    or copy that directory to the new location. Without its retained GRANDPA key
    the node refuses to start as a validator. Do not generate or rotate keys.
+   The network key moves the same way, and a validator without one refuses to
+   start (`NetworkKeyNotFound`). Pass
+   `--node-key-file <base-path>/chains/sora-substrate-main-net/network/secret_ed25519`
+   (or your usual `--node-key`/`--node-key-file`) to keep your peer ID, so the
+   mainnet bootnode and reserved-peer addresses stay valid. Never use
+   `--unsafe-force-node-key-generation`.
 5. Start node 4.8.13 with the release chain spec, your usual base path and no
    runtime overrides. The snapshot is an archive RocksDB database: use
    `--state-pruning archive` or omit that flag, and do not select ParityDB.
