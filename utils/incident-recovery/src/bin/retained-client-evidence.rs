@@ -8,6 +8,9 @@ mod authority_chain;
 #[cfg(feature = "retained-predecessor")]
 #[path = "retained_client/predecessor.rs"]
 mod predecessor;
+#[cfg(feature = "retained-predecessor")]
+#[path = "retained_client/snapshot.rs"]
+mod snapshot;
 use codec::{Decode, DecodeLimit, Encode};
 use incident_recovery::{verify_capture, verify_capture_at, Result};
 use rocksdb::{Options, DB};
@@ -574,8 +577,15 @@ fn main() {
                 )
             } else if args.len() == 2 && args[0] == "--seed-predecessor-babe-weight" {
                 predecessor::seed_state_sync_weight(&PathBuf::from(&args[1]))
+            } else if args.len() == 4 && args[0] == "--inspect-checkpoint-snapshot" {
+                args[3]
+                    .to_str()
+                    .ok_or_else(|| "UTF-8 policy commitment required".to_string())
+                    .and_then(|policy| {
+                        snapshot::run(&PathBuf::from(&args[1]), &PathBuf::from(&args[2]), policy)
+                    })
             } else {
-                Err("expected --output <fresh evidence attempt>, or --verify-authority-chain <fresh evidence attempt> <fresh authority attempt>, or --reconstruct-predecessor <fresh evidence attempt> <fresh reconstruction attempt>, or --resume-predecessor <fresh evidence attempt> <owned partial reconstruction attempt>, or --seed-predecessor-babe-weight <owned completed predecessor database copy>".into())
+                Err("expected --output <fresh evidence attempt>, or --verify-authority-chain <fresh evidence attempt> <fresh authority attempt>, or --reconstruct-predecessor <fresh evidence attempt> <fresh reconstruction attempt>, or --resume-predecessor <fresh evidence attempt> <owned partial reconstruction attempt>, or --seed-predecessor-babe-weight <owned completed predecessor database copy>, or --inspect-checkpoint-snapshot <owned stopped snapshot database> <fresh evidence directory> <policy commitment>".into())
             }
         }
         #[cfg(not(feature = "retained-predecessor"))]
