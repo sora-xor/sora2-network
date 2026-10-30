@@ -74,6 +74,9 @@ sp_api::decl_runtime_apis! {
         /// deployed API identifier/version is intentionally unchanged; callers
         /// MUST authenticate executing code, not infer support from API v1.
         fn recovery_hashi_prepare(parent_header: Vec<u8>, operation: Vec<u8>) -> Result<recovery::RecoveryHashiPreparation, DispatchError>;
+        /// Associates the exact native original request with a peer-observed
+        /// receipt before preparing payloads. Does not prove source inclusion.
+        fn recovery_hashi_prepare_source(parent_header: Vec<u8>, operation: Vec<u8>, source: Vec<u8>) -> Result<recovery::RecoveryHashiSourcePreparation, DispatchError>;
         /// Native admission in a discarded storage overlay; no source-finality
         /// or whole-block validity claim, and no persistent credit or nonce write.
         fn recovery_hashi_admit(parent_header: Vec<u8>, operation: Vec<u8>) -> Result<recovery::RecoveryHashiAdmission, DispatchError>;

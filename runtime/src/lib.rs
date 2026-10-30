@@ -4284,6 +4284,12 @@ impl_runtime_apis! {
         ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiAdmission, DispatchError> {
             incident_recovery_incoming::witness::admit(parent_header, operation)
         }
+
+        fn recovery_hashi_prepare_source(
+            parent_header: Vec<u8>, operation: Vec<u8>, source: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiSourcePreparation, DispatchError> {
+            incident_recovery_incoming::witness::source::prepare_source(parent_header, operation, source)
+        }
     }
 
     impl iroha_migration_runtime_api::IrohaMigrationAPI<Block> for Runtime {

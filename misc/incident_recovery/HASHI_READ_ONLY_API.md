@@ -14,6 +14,19 @@ the native signed payload for each immutable approval template. Admission runs
 the existing incoming authentication and application routines with the completed
 signatures. Both discard every storage write, including native failure markers.
 
+`recovery_hashi_prepare_source` additionally accepts a bounded SCALE receipt
+projection and exact native load bytes. It checks the existing source-record
+commitment, authenticates the raw transaction actor and outer destination,
+requires one canonical native Deposit, and calls the existing bridge event
+parser and amount conversion. The complete original request must match before
+payload preparation resolves replacement owners. Retained Pending loads must
+have their original queue/submission/replay records and a known outer target;
+automatic event imports use the native beneficiary/timepoint recipe and permit
+routed outer calls while requiring a known emitting contract. Failed loads,
+historical transfer kinds and already-prepared incoming identities remain
+outside this narrow path. The source input never proves receipt completeness,
+inclusion or finality; peers must establish those observations independently.
+
 The original spec-134 / transaction-131 bootstrap is the only admitted version.
 The policy comes from the executing runtime's compiled binding. Its commitment
 must equal the original and active stored commitments, with an Applying phase,
@@ -92,6 +105,9 @@ fixture keys. Tests of the shared inner path use their actual compiled runtime
 version; they do not manufacture a production spec-134 admission result.
 
 ## Recorded verification
+
+The following results predate the source-association extension. That extension
+requires fresh native current/legacy and exact-artifact verification.
 
 The current runtime passed all nine focused native tests, strict Clippy including
 test targets, and a no_std check for `wasm32-unknown-unknown`. The source-guarded

@@ -44,6 +44,7 @@ class LegacyOverlayTests(unittest.TestCase):
         self.assertEqual(self.legacy[start:end], result[patched_start:patched_end])
         self.assertEqual(result.count("eth_bridge_runtime_api::EthBridgeRuntimeApi<"), 1)
         self.assertEqual(result.count("fn recovery_hashi_prepare("), 1)
+        self.assertEqual(result.count("fn recovery_hashi_prepare_source("), 1)
         self.assertEqual(result.count("fn recovery_hashi_admit("), 1)
         self.assertIn("mod incident_recovery_hashi_legacy_tests;", result)
         for spec in (135, 136, 137):
@@ -111,6 +112,8 @@ class LegacyOverlayTests(unittest.TestCase):
                              "pallets/eth-bridge/runtime-api/src/lib.rs",
                              "pallets/eth-bridge/runtime-api/src/recovery.rs",
                              "runtime/src/incident_recovery_hashi_witness.rs",
+                             "runtime/src/incident_recovery_hashi_source.rs",
+                             "runtime/src/incident_recovery_hashi_source_tests.rs",
                              "runtime/src/incident_recovery_hashi_witness_tests.rs",
                              "runtime/src/incident_recovery_hashi_legacy_tests.rs",
                              "runtime/src/incident_recovery_evm_source.rs",

@@ -24,6 +24,9 @@ use sp_runtime::{traits::Header as _, DispatchError, StateVersion};
 const MAX_PARENT_HEADER_BYTES: usize = 16 * 1024;
 const FORMAT_VERSION: u32 = 1;
 
+#[path = "incident_recovery_hashi_source.rs"]
+pub mod source;
+
 struct Context {
     parent: Header,
     policy: RecoveryPolicy,

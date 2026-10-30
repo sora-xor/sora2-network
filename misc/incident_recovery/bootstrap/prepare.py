@@ -74,6 +74,12 @@ def patch_runtime(source: str, spec: int) -> str:
             parent_header: Vec<u8>, operation: Vec<u8>,
         ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiAdmission, DispatchError> {
             incident_recovery_incoming::witness::admit(parent_header, operation)
+        }
+
+        fn recovery_hashi_prepare_source(
+            parent_header: Vec<u8>, operation: Vec<u8>, source: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiSourcePreparation, DispatchError> {
+            incident_recovery_incoming::witness::source::prepare_source(parent_header, operation, source)
         }""")
     if spec == 134:
         source += '\n#[cfg(test)]\nmod incident_recovery_hashi_legacy_tests;\n'
@@ -229,6 +235,8 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
         (ROOT / "runtime/src/incident_recovery_evm_source_tests.rs", "runtime/src/incident_recovery_evm_source_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming.rs", "runtime/src/incident_recovery_incoming.rs"),
         (ROOT / "runtime/src/incident_recovery_hashi_witness.rs", "runtime/src/incident_recovery_hashi_witness.rs"),
+        (ROOT / "runtime/src/incident_recovery_hashi_source.rs", "runtime/src/incident_recovery_hashi_source.rs"),
+        (ROOT / "runtime/src/incident_recovery_hashi_source_tests.rs", "runtime/src/incident_recovery_hashi_source_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_hashi_witness_tests.rs", "runtime/src/incident_recovery_hashi_witness_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_hashi_legacy_tests.rs", "runtime/src/incident_recovery_hashi_legacy_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming_audit.rs", "runtime/src/incident_recovery_incoming_audit.rs"),
@@ -257,7 +265,8 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
     overlays = ["runtime/src/lib.rs", "runtime/src/incident_recovery.rs", "runtime/src/incident_recovery_consensus.rs", "runtime/src/incident_recovery_babe_reports.rs",
         "runtime/src/incident_recovery/generated.rs", "runtime/Cargo.toml", "common/src/lib.rs", "common/src/recovery.rs",
         "pallets/eth-bridge/runtime-api/Cargo.toml", "pallets/eth-bridge/runtime-api/src/lib.rs", "pallets/eth-bridge/runtime-api/src/recovery.rs",
-        "runtime/src/incident_recovery_hashi_witness.rs", "runtime/src/incident_recovery_hashi_witness_tests.rs", "runtime/src/incident_recovery_hashi_legacy_tests.rs"]
+        "runtime/src/incident_recovery_hashi_witness.rs", "runtime/src/incident_recovery_hashi_witness_tests.rs", "runtime/src/incident_recovery_hashi_legacy_tests.rs",
+        "runtime/src/incident_recovery_hashi_source.rs", "runtime/src/incident_recovery_hashi_source_tests.rs"]
     overlays += [str(path.relative_to(destination)) for path in (destination / "common/src/recovery").rglob("*.rs")]
     overlays += [f"vendor/polkadot-sdk/frame/{pallet}/src/{file}" for pallet in ["babe", "grandpa"] for file in ["lib.rs", "recovery.rs"]]
     overlays.append("vendor/polkadot-sdk/frame/grandpa/src/equivocation.rs")

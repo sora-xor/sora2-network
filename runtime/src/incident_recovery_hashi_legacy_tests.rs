@@ -4,6 +4,28 @@
 //! The preparer includes this module only in the spec-134 export.
 
 #[test]
+fn legacy_hashi_source_api_matches_original_request_before_native_payload_preparation() {
+    use crate::incident_recovery_incoming::witness;
+    use codec::Encode;
+    sp_io::TestExternalities::default().execute_with(|| {
+        let (policy, operation, source) = witness::source::tests::fixture();
+        crate::incident_recovery::with_test_policy(&policy, || {
+            let header = witness::tests::parent(&policy).encode();
+            let before = sp_io::storage::root(sp_runtime::StateVersion::V0);
+            let result =
+                witness::source::prepare_source(header, operation.encode(), source.encode())
+                    .unwrap();
+            assert_eq!(result.preparation.spec_version, 134);
+            assert_eq!(result.preparation.transaction_version, 131);
+            assert!(result.association.complete_original_request_matches);
+            assert!(!result.association.source_inclusion_verified);
+            assert!(!result.association.external_finality_verified);
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V0), before);
+        });
+    });
+}
+
+#[test]
 fn legacy_hashi_public_api_executes_native_admission_without_persistent_writes() {
     use crate::incident_recovery_incoming::witness;
     use codec::Encode;
