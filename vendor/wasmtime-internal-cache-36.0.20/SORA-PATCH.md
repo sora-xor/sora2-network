@@ -1,6 +1,8 @@
 # SORA Nexus Wasmtime cache compression security migration
 
-Original published consumer: `wasmtime-internal-cache 36.0.19`, upstream commit `0d6b8ead4e94b0ce76f925611b831b56570aef94`, path `crates/cache`. `SORA-UPSTREAM.json` records the crates.io archive SHA-256, original file hashes and the local changes. The package retains its actual published identity.
+Original published consumer: `wasmtime-internal-cache 36.0.20`, upstream commit `b265f78b1e92e12240ec7bdc21c7a559d2df968e`, path `crates/cache`. `SORA-UPSTREAM.json` records the crates.io archive SHA-256, original file hashes and the local changes. The package retains its actual published identity.
+
+Re-vendored from 36.0.19 for Wasmtime 36.0.20, which fixes RUSTSEC-2026-0424. Wasmtime requires this crate at exactly its own version, so the 36.0.19 copy no longer patches it. The published 36.0.20 package differs from 36.0.19 only in its version and VCS commit, and still requires `zstd` 0.13.0. The two local changes below carry over unchanged.
 
 The dependency change is the manifest requirement on the genuine published `zstd` crate, from 0.13.0 to 0.14.3. It brings `zstd-safe 8.2.0` and `zstd-sys 2.1.2`, containing the October 2026 security fixes. The original default-features=false setting, cache encoding APIs and licenses remain unchanged. No compatibility shim or vulnerable crate is relabeled and no advisory is ignored.
 
