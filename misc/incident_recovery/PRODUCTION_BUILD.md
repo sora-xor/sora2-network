@@ -104,8 +104,10 @@ Additional recognized `compose` options are `bridge-history`, `bridge-signing`,
 native composer requires applicable reviews for populated checkpoint storage;
 omitting a necessary review fails. It verifies trusted CSV syntax and uniqueness, unused destinations, complete
 inventory, backing and guarded storage
-work. An independent fresh `verify-ownership` invocation also binds the separate
-derived-account inventory to the same semantic plan and checkpoint.
+work. An independent fresh `verify-trusted-mapping` invocation verifies the same CSV
+and checkpoint, derives funded utility descendants, and checks that its result
+exactly matches composition. No supplied ownership proof or derived-account
+inventory is required.
 
 Optional mixed work uses a separately inventoried JSON file:
 
