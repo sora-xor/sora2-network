@@ -582,6 +582,10 @@ impl Contains<RuntimeCall> for BaseCallFilter {
         if matches!(
             call,
             RuntimeCall::BridgeMultisig(bridge_multisig::Call::register_multisig { .. })
+                // Retain the beacon client's storage and call metadata, but do
+                // not expose an unused bridge verification surface to dispatch.
+                | RuntimeCall::EthereumBeaconClient(_)
+                | RuntimeCall::JettonApp(_)
         ) {
             return false;
         }
@@ -2850,7 +2854,7 @@ parameter_types! {
 }
 
 impl bridge_channel::inbound::Config for Runtime {
-    type Verifier = MultiVerifier;
+    type Verifier = GenericChannelVerifier;
     type MessageDispatch = incident_recovery_incoming::RecoveryGenericMessageDispatch;
     type WeightInfo = ();
     type ThisNetworkId = ThisNetworkId;
@@ -2930,6 +2934,7 @@ impl evm_fungible_app::Config for Runtime {
 }
 
 impl jetton_app::Config for Runtime {
+    type Enabled = frame_support::traits::ConstBool<false>;
     type CallOrigin = dispatch::EnsureAccount<
         bridge_types::types::CallOriginOutput<
             GenericNetworkId,
@@ -2994,6 +2999,7 @@ impl snowbridge_pallet_ethereum_client::Config for Runtime {
 
 impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type RefundAccountResolver = incident_recovery_incoming::PersistentAccountResolver;
 
     #[cfg(feature = "wip")] // EVM bridge
     type FAApp = EVMFungibleApp;
@@ -3006,8 +3012,7 @@ impl bridge_proxy::Config for Runtime {
     type LiberlandApp = SubstrateBridgeApp;
 
     type TimepointProvider = GenericTimepointProvider;
-    type ReferencePriceProvider =
-        liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
+    type ReferencePriceProvider = bridge_reference_price::AveragedBridgeReferencePrice;
     type ManagerOrigin = EitherOfDiverse<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 2, 3>,
         EnsureRoot<AccountId>,
@@ -3059,6 +3064,202 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
 
 pub struct MultiVerifier;
 
+/// Substrate commitments belong to the dedicated Substrate channel. Sharing
+/// their verifier with the generic channel must not create another nonce domain
+/// in which the same authenticated commitment can be consumed.
+pub struct GenericChannelVerifier;
+
+impl Verifier for GenericChannelVerifier {
+    type Proof = MultiProof;
+
+    fn verify(
+        network_id: GenericNetworkId,
+        message: H256,
+        proof: &Self::Proof,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        // The shared pallet's synthetic benchmark uses an empty Substrate
+        // batch. This proof variant is absent from non-benchmark runtimes.
+        #[cfg(feature = "runtime-benchmarks")]
+        if matches!(proof, MultiProof::Empty) && matches!(network_id, GenericNetworkId::Sub(_)) {
+            return Ok(());
+        }
+        frame_support::ensure!(
+            matches!(
+                network_id,
+                GenericNetworkId::EVM(_) | GenericNetworkId::TON(_)
+            ),
+            multisig_verifier::Error::<Runtime>::InvalidNetworkId
+        );
+        MultiVerifier::verify(network_id, message, proof)
+    }
+
+    fn verify_weight(proof: &Self::Proof) -> Weight {
+        MultiVerifier::verify_weight(proof)
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof> {
+        MultiVerifier::valid_proof()
+    }
+}
+
+#[cfg(test)]
+mod bridge_surface_tests {
+    use super::*;
+    use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem};
+    use bridge_types::U256;
+    use codec::Decode;
+    use frame_support::{assert_noop, assert_ok};
+    use sp_core::{ecdsa, Pair};
+    use sp_runtime::traits::{Dispatchable, Hash};
+
+    #[test]
+    fn substrate_proof_cannot_consume_a_generic_channel_nonce() {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let network = GenericNetworkId::Sub(SubNetworkId::Polkadot);
+            let signer = ecdsa::Pair::from_seed(&[47; 32]);
+            assert_ok!(MultisigVerifier::force_set_peers(
+                RuntimeOrigin::root(),
+                network,
+                vec![signer.public()].try_into().unwrap(),
+            ));
+            let commitment = bridge_types::GenericCommitment::<
+                BridgeMaxMessagesPerCommit,
+                BridgeMaxMessagePayloadSize,
+            >::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: Default::default(),
+            });
+            let hash = commitment.hash();
+            let digest = AuxiliaryDigest {
+                logs: vec![AuxiliaryDigestItem::Commitment(ThisNetworkId::get(), hash)],
+            };
+            let proof = MultiProof::Multisig(multisig_verifier::Proof {
+                proof: vec![signer.sign_prehashed(Keccak256::hash_of(&digest).as_fixed_bytes())],
+                digest,
+            });
+            assert_ok!(SubstrateBridgeInboundChannel::validate_submission(
+                SubNetworkId::Polkadot,
+                &commitment,
+                &proof,
+            ));
+            assert_noop!(
+                BridgeInboundChannel::submit(
+                    RuntimeOrigin::signed(AccountId::new([48; 32])),
+                    network,
+                    commitment,
+                    proof,
+                ),
+                multisig_verifier::Error::<Runtime>::InvalidNetworkId
+            );
+            assert_eq!(
+                bridge_channel::inbound::ChannelNonces::<Runtime>::get(network),
+                0
+            );
+        });
+    }
+
+    #[test]
+    fn unused_beacon_calls_keep_their_encoding_but_cannot_dispatch() {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let call = RuntimeCall::EthereumBeaconClient(
+                snowbridge_pallet_ethereum_client::Call::set_operating_mode {
+                    mode: Default::default(),
+                },
+            );
+            assert_eq!(call.encode(), vec![118, 3, 0]);
+            assert_eq!(RuntimeCall::decode(&mut &call.encode()[..]).unwrap(), call);
+            assert!(!BaseCallFilter::contains(&call));
+            assert_noop!(
+                call.clone()
+                    .dispatch(RuntimeOrigin::signed(AccountId::new([49; 32]))),
+                frame_system::Error::<Runtime>::CallFiltered
+            );
+            let nested =
+                RuntimeCall::Utility(pallet_utility::Call::batch_all { calls: vec![call] });
+            assert_noop!(
+                nested
+                    .dispatch(RuntimeOrigin::signed(AccountId::new([49; 32])))
+                    .map_err(|error| error.error),
+                frame_system::Error::<Runtime>::CallFiltered
+            );
+        });
+    }
+
+    #[test]
+    fn bridge_status_weights_cover_refunds_and_each_report_result() {
+        use bridge_types::traits::MessageStatusNotifier;
+        use frame_support::dispatch::GetDispatchInfo;
+        sp_io::TestExternalities::default().execute_with(|| {
+            let refund = <BridgeProxy as MessageStatusNotifier<AssetId, AccountId, Balance>>::
+                update_status_weight();
+            assert!(refund.ref_time() > 0 && refund.proof_size() > 0);
+            for asset_weight in [
+                <<Runtime as assets::Config>::WeightInfo as assets::WeightInfo>::mint(),
+                <<Runtime as assets::Config>::WeightInfo as assets::WeightInfo>::transfer(),
+            ] {
+                assert!(asset_weight.all_lte(refund));
+            }
+            let substrate = substrate_bridge_app::Call::<Runtime>::update_transaction_status {
+                message_id: H256::zero(),
+                message_status: bridge_types::types::MessageStatus::Failed,
+            }
+            .get_dispatch_info()
+            .call_weight;
+            let parachain = parachain_bridge_app::Call::<Runtime>::update_transaction_status {
+                message_id: H256::zero(),
+                transfer_status: bridge_types::substrate::XCMAppTransferStatus::XCMTransferError,
+            }
+            .get_dispatch_info()
+            .call_weight;
+            for weight in [substrate, parachain] {
+                assert!(weight.ref_time() >= refund.ref_time());
+                assert!(weight.proof_size() >= refund.proof_size());
+            }
+            let report_weight = |count| {
+                let commitment = bridge_types::GenericCommitment::EVM(
+                    bridge_types::evm::Commitment::StatusReport(bridge_types::evm::StatusReport {
+                        channel: H160::zero(),
+                        block_number: 1,
+                        relayer: H160::zero(),
+                        nonce: 1,
+                        results: vec![false; count].try_into().unwrap(),
+                        gas_spent: U256::zero(),
+                        base_fee: U256::zero(),
+                    }),
+                );
+                bridge_channel::inbound::Call::<Runtime>::submit {
+                    network_id: GenericNetworkId::EVM(H256::repeat_byte(1)),
+                    commitment,
+                    proof: MultiProof::EVMMultisig(multisig_verifier::MultiEVMProof {
+                        proof: vec![
+                            sp_core::ecdsa::Signature::from_raw([0; 65]);
+                            BridgeMaxPeers::get() as usize
+                        ],
+                    }),
+                }
+                .get_dispatch_info()
+                .call_weight
+            };
+            // The channel conservatively accounts for three admission/dispatch
+            // passes; its notifier component must grow for every bounded result.
+            for count in [1, 20, BridgeMaxMessagePayloadSize::get() as usize] {
+                assert_eq!(
+                    report_weight(count).saturating_sub(report_weight(0)),
+                    refund.saturating_mul(3 * count as u64)
+                );
+                // Count the largest peer proof too: existing legitimate report
+                // batches must remain admissible after charging full refunds.
+                let normal_limit = BlockWeights::get()
+                    .get(frame_support::dispatch::DispatchClass::Normal)
+                    .max_extrinsic
+                    .unwrap();
+                assert!(report_weight(count).all_lte(normal_limit));
+            }
+        });
+    }
+}
+
 #[derive(
     Clone,
     Debug,
@@ -3090,24 +3291,12 @@ impl Verifier for MultiVerifier {
         message: H256,
         proof: &Self::Proof,
     ) -> frame_support::pallet_prelude::DispatchResult {
-        // TON deposits use locally authorized peer signatures. Enforce the same
-        // domain-separated authorization at verification, including proofs that
-        // were disclosed before the unsigned approval call was rejected.
-        if matches!(network_id, GenericNetworkId::TON(_)) {
-            frame_support::ensure!(
-                matches!(proof, MultiProof::EVMMultisig(_)),
-                multisig_verifier::Error::<Runtime>::InvalidNetworkId
-            );
-            let approved_hash = <Keccak256 as sp_runtime::traits::Hash>::hash_of(&(
-                network_id,
-                ThisNetworkId::get(),
-                message,
-            ));
-            frame_support::ensure!(
-                BridgeDataSigner::pending_approval(network_id, approved_hash),
-                bridge_data_signer::Error::<Runtime>::ApprovalNotPending
-            );
-        }
+        // TON is disabled at the verifier boundary, before nonce consumption or
+        // dispatch. Keep its historical storage and proof encoding untouched.
+        frame_support::ensure!(
+            !matches!(network_id, GenericNetworkId::TON(_)),
+            jetton_app::Error::<Runtime>::BridgeDisabled
+        );
         match proof {
             #[cfg(feature = "wip")] // Trustless substrate bridge
             MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
@@ -3127,8 +3316,6 @@ impl Verifier for MultiVerifier {
             MultiProof::Multisig(proof) => MultisigVerifier::verify_weight(proof),
             MultiProof::EVMMultisig(proof) => {
                 multisig_verifier::MultiEVMVerifier::<Runtime>::verify_weight(proof)
-                    .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
-                    .saturating_add(Weight::from_parts(0, 3_600))
             }
             #[cfg(feature = "runtime-benchmarks")]
             MultiProof::Empty => Default::default(),
@@ -4950,4 +5137,9 @@ impl_runtime_apis! {
 mod incident_recovery_hashi_preview_tests;
 
 #[cfg(test)]
-mod ton_approval_gate_tests;
+mod ton_disabled_tests;
+
+#[cfg(all(test, feature = "wip"))]
+mod beefy_resource_tests;
+
+mod bridge_reference_price;

@@ -28,9 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Component benchmarks for recalibrating `weights.rs` on the deployment engine.
-//! The checked-in coefficients are conservative provisional charges, not claimed
-//! output from these benchmarks. Run the full native fixture calibration as well.
+//! Full-path and component benchmarks for calibrating `weights.rs`.
+//! The measured Wasmtime fits and applied charges with additional margin are
+//! documented separately in `RESOURCE_BOUNDS.md`.
 
 use super::*;
 use bridge_types::traits::Verifier;

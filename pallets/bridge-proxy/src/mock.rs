@@ -211,9 +211,17 @@ impl TimepointProvider for GenericTimepointProvider {
 
 pub struct ReferencePriceProvider;
 
+pub const REFERENCE_PRICE_TEST_MODE: &[u8] = b":bridge-proxy:test:reference-price-mode";
+
 impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider {
     fn get_reference_price(_asset_id: &AssetId) -> Result<Balance, sp_runtime::DispatchError> {
-        Ok(common::balance!(2.5))
+        match sp_io::storage::get(REFERENCE_PRICE_TEST_MODE).as_deref() {
+            Some(b"unavailable") => Err(sp_runtime::DispatchError::Other(
+                "reference quote unavailable",
+            )),
+            Some(b"zero") => Ok(0),
+            _ => Ok(common::balance!(2.5)),
+        }
     }
 }
 
@@ -302,6 +310,7 @@ impl proxy::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type ManagerOrigin = frame_system::EnsureRoot<AccountId>;
     type AccountIdConverter = sp_runtime::traits::Identity;
+    type RefundAccountResolver = MockRefundAccountResolver;
     type FAApp = FungibleApp;
     type HashiBridge = RoutedApp<0>;
     type LiberlandApp = RoutedApp<2>;
@@ -309,6 +318,28 @@ impl proxy::Config for Test {
     type ReferencePriceProvider = ReferencePriceProvider;
     type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
+}
+
+pub struct MockRefundAccountResolver;
+
+impl proxy::RefundAccountResolver<AccountId> for MockRefundAccountResolver {
+    fn resolve(account: AccountId) -> Result<AccountId, sp_runtime::DispatchError> {
+        use codec::Decode;
+        let Some(bytes) = sp_io::storage::get(b"proxy-test:refund-mapping") else {
+            return Ok(account);
+        };
+        let (source, beneficiary): (AccountId, AccountId) = Decode::decode(&mut &bytes[..])
+            .map_err(|_| sp_runtime::DispatchError::Other("Invalid refund mapping"))?;
+        Ok(if account == source {
+            beneficiary
+        } else {
+            account
+        })
+    }
+
+    fn weight() -> frame_support::weights::Weight {
+        frame_support::weights::Weight::from_parts(1_000, 64)
+    }
 }
 
 thread_local! {

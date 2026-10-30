@@ -55,3 +55,64 @@ fn only_local_root_can_authorize_a_registration() {
         ), sp_runtime::DispatchError::BadOrigin);
     });
 }
+
+#[test]
+fn remote_cannot_report_local_refund_or_pending_states() {
+    new_tester().execute_with(|| {
+        use bridge_types::types::MessageStatus;
+        for status in [MessageStatus::Refunded, MessageStatus::InQueue, MessageStatus::Committed,
+            MessageStatus::Approved] {
+            assert_noop!(SubstrateApp::update_transaction_status(origin(), H256::zero(), status),
+                Error::<Test>::InvalidTransferResult);
+        }
+        assert_ok!(SubstrateApp::update_transaction_status(origin(), H256::zero(), MessageStatus::Done));
+        assert_ok!(SubstrateApp::update_transaction_status(origin(), H256::zero(), MessageStatus::Failed));
+    });
+}
+
+#[test]
+fn burn_rejects_undeliverable_recipients_before_custody_or_queue_changes() {
+    use bridge_types::{substrate::VersionedMultiLocation, GenericAccount};
+    use sp_keyring::sr25519::Keyring;
+    for recipient in [
+        GenericAccount::EVM(Default::default()),
+        GenericAccount::Root,
+        GenericAccount::Unknown,
+        GenericAccount::TON(bridge_types::ton::TonAddress::empty()),
+        GenericAccount::Parachain(VersionedMultiLocation::V3(Default::default())),
+    ] {
+        new_tester().execute_with(|| {
+            // Exercise the raw helper as well as the extrinsic: rejection must
+            // precede the lock, without relying on a caller's transaction.
+            assert_noop!(SubstrateApp::burn_inner(
+                Keyring::Alice.into(), SubNetworkId::Liberland, AssetId::Xor,
+                recipient.clone(), 10,
+            ), Error::<Test>::WrongAccountId);
+            assert_noop!(SubstrateApp::burn(
+                RuntimeOrigin::signed(Keyring::Alice.into()), SubNetworkId::Liberland,
+                AssetId::Xor, recipient, 10,
+            ), Error::<Test>::WrongAccountId);
+        });
+    }
+}
+
+#[test]
+fn burn_preserves_both_deliverable_account_id_forms() {
+    use bridge_types::GenericAccount;
+    use sp_keyring::sr25519::Keyring;
+    use traits::MultiCurrency;
+    for recipient in [
+        GenericAccount::Sora(Keyring::Bob.into()),
+        GenericAccount::Liberland(Keyring::Bob.into()),
+    ] {
+        new_tester().execute_with(|| {
+            let sender = Keyring::Alice.into();
+            let before = Currencies::total_balance(AssetId::Xor, &sender);
+            assert_ok!(SubstrateApp::burn(
+                RuntimeOrigin::signed(sender.clone()), SubNetworkId::Liberland,
+                AssetId::Xor, recipient, 10,
+            ));
+            assert_eq!(Currencies::total_balance(AssetId::Xor, &sender), before - 10);
+        });
+    }
+}

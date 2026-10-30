@@ -195,6 +195,7 @@ impl<T: Config> OutgoingTransfer<T> {
 
     /// Checks that the given asset can be transferred through the bridge.
     pub fn validate(&self) -> Result<(), DispatchError> {
+        ensure!(self.amount > 0, Error::<T>::InvalidAmount);
         ensure!(
             !crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_asset(
                 self.network_id,

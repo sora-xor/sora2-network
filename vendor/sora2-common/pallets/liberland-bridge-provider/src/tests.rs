@@ -102,6 +102,11 @@ impl BridgeApp<AccountId32, GenericAccount, LiberlandAssetId, u64> for App {
         asset: LiberlandAssetId,
         amount: u64,
     ) -> DispatchResult {
+        // Model accounting performed before a payout can fail.
+        let calls = sp_io::storage::get(b"provider-test:refund-count")
+            .map(|bytes| u32::decode(&mut &bytes[..]).unwrap())
+            .unwrap_or_default();
+        sp_io::storage::set(b"provider-test:refund-count", &(calls + 1).encode());
         if sp_io::storage::exists(b"provider-test:refund-fails") {
             return Err(DispatchError::Unavailable);
         }
@@ -366,13 +371,16 @@ fn refund_routes_supported_assets_and_validates_account_kind() {
             (network_id(), id, alice(), LiberlandAssetId::LLD, 10u64).encode()
         );
         sp_io::storage::clear(b"provider-test:refund");
-        assert_ok!(Provider::refund(
-            network_id(),
-            id,
-            GenericAccount::Liberland(alice()),
-            LiberlandAssetId::Asset(u32::MAX),
-            10
-        ));
+        assert_noop!(
+            Provider::refund(
+                network_id(),
+                id,
+                GenericAccount::Liberland(alice()),
+                LiberlandAssetId::Asset(u32::MAX),
+                10
+            ),
+            Error::<Test>::PathIsNotAvailable
+        );
         assert!(!sp_io::storage::exists(b"provider-test:refund"));
     });
 }
@@ -467,6 +475,133 @@ fn request_notifications_record_direction_timepoints_and_refund_outcomes() {
             GenericTimepoint::Sora(4),
         );
         assert!(Provider::transactions((network, account), unknown).is_none());
+    });
+}
+
+#[test]
+fn terminal_outbound_reports_cannot_refund_or_regress() {
+    for terminal in [MessageStatus::Done, MessageStatus::Refunded] {
+        ext().execute_with(|| {
+            let id = H256::repeat_byte(71);
+            Provider::outbound_request(
+                network_id(),
+                id,
+                alice(),
+                GenericAccount::Sora(alice()),
+                LiberlandAssetId::LLD,
+                25,
+                MessageStatus::InQueue,
+            );
+            Provider::update_status(
+                network_id(),
+                id,
+                if terminal == MessageStatus::Done {
+                    MessageStatus::Done
+                } else {
+                    MessageStatus::Failed
+                },
+                GenericTimepoint::Sora(8),
+            );
+            let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
+            for report in [
+                MessageStatus::Failed,
+                MessageStatus::Committed,
+                MessageStatus::Done,
+            ] {
+                Provider::update_status(network_id(), id, report, GenericTimepoint::Sora(9));
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
+            }
+            assert_eq!(
+                Provider::transactions((network_id(), GenericAccount::Liberland(alice())), id)
+                    .unwrap()
+                    .status,
+                terminal
+            );
+        });
+    }
+}
+
+#[test]
+fn failed_refund_rolls_back_app_writes_and_can_retry_once() {
+    ext().execute_with(|| {
+        let id = H256::repeat_byte(72);
+        Provider::outbound_request(
+            network_id(),
+            id,
+            alice(),
+            GenericAccount::Sora(alice()),
+            LiberlandAssetId::LLD,
+            25,
+            MessageStatus::InQueue,
+        );
+        sp_io::storage::set(b"provider-test:refund-fails", &[1]);
+        Provider::update_status(
+            network_id(),
+            id,
+            MessageStatus::Failed,
+            GenericTimepoint::Sora(8),
+        );
+        assert!(!sp_io::storage::exists(b"provider-test:refund-count"));
+        assert_eq!(
+            Provider::transactions((network_id(), GenericAccount::Liberland(alice())), id)
+                .unwrap()
+                .status,
+            MessageStatus::Failed
+        );
+        sp_io::storage::clear(b"provider-test:refund-fails");
+        Provider::update_status(
+            network_id(),
+            id,
+            MessageStatus::Failed,
+            GenericTimepoint::Sora(9),
+        );
+        Provider::update_status(
+            network_id(),
+            id,
+            MessageStatus::Failed,
+            GenericTimepoint::Sora(10),
+        );
+        let count = sp_io::storage::get(b"provider-test:refund-count").unwrap();
+        assert_eq!(u32::decode(&mut &count[..]).unwrap(), 1);
+        assert_eq!(
+            Provider::transactions((network_id(), GenericAccount::Liberland(alice())), id)
+                .unwrap()
+                .status,
+            MessageStatus::Refunded
+        );
+    });
+}
+
+#[test]
+fn unsupported_refund_stays_failed_instead_of_claiming_payment() {
+    ext().execute_with(|| {
+        let id = H256::repeat_byte(73);
+        Provider::outbound_request(
+            network_id(),
+            id,
+            alice(),
+            GenericAccount::Sora(alice()),
+            LiberlandAssetId::Asset(u32::MAX),
+            25,
+            MessageStatus::InQueue,
+        );
+        Provider::update_status(
+            network_id(),
+            id,
+            MessageStatus::Failed,
+            GenericTimepoint::Sora(8),
+        );
+        assert_eq!(
+            Provider::transactions((network_id(), GenericAccount::Liberland(alice())), id)
+                .unwrap()
+                .status,
+            MessageStatus::Failed
+        );
+        assert!(!sp_io::storage::exists(b"provider-test:refund-count"));
+        assert!(!System::events().iter().any(|event| matches!(
+            event.event,
+            RuntimeEvent::Provider(Event::RefundInvoked(..))
+        )));
     });
 }
 

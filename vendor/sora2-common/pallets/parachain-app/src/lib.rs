@@ -326,7 +326,7 @@ pub mod pallet {
 
         // TODO: make benchmarks
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
         #[frame_support::transactional]
         pub fn finalize_asset_registration(
             origin: OriginFor<T>,
@@ -339,11 +339,16 @@ pub mod pallet {
                 Error::<T>::TokenIsNotRegistered
             );
             if let Some(existing_kind) = AssetKinds::<T>::get(network_id, &asset_id) {
-                ensure!(existing_kind == asset_kind, Error::<T>::AssetRegistrationMismatch);
+                ensure!(
+                    existing_kind == asset_kind,
+                    Error::<T>::AssetRegistrationMismatch
+                );
                 return Ok(());
             }
-            ensure!(PendingAssetKinds::<T>::get(network_id, &asset_id) == Some(asset_kind),
-                Error::<T>::AssetRegistrationNotAuthorized);
+            ensure!(
+                PendingAssetKinds::<T>::get(network_id, &asset_id) == Some(asset_kind),
+                Error::<T>::AssetRegistrationNotAuthorized
+            );
             PendingAssetKinds::<T>::remove(network_id, &asset_id);
             AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
             Ok(())
@@ -369,7 +374,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset(allowed_parachains.len() as u32))]
+        #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset(allowed_parachains.len() as u32).saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
         #[frame_support::transactional]
         pub fn register_thischain_asset(
             origin: OriginFor<T>,
@@ -410,7 +415,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(allowed_parachains.len() as u32))]
+        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(allowed_parachains.len() as u32).saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
         #[frame_support::transactional]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
@@ -482,7 +487,8 @@ pub mod pallet {
         }
 
         #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
+        #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status()
+            .saturating_add(T::MessageStatusNotifier::update_status_weight()))]
         pub fn update_transaction_status(
             origin: OriginFor<T>,
             message_id: H256,
@@ -547,7 +553,7 @@ pub mod pallet {
         /// Reconstruct only a root-reviewed registration that was pending before
         /// this guard existed. Existing active asset kinds remain immutable.
         #[pallet::call_index(9)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
         #[frame_support::transactional]
         pub fn authorize_pending_asset_registration(
             origin: OriginFor<T>,
@@ -556,13 +562,19 @@ pub mod pallet {
             asset_kind: AssetKind,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            ensure!(SidechainPrecision::<T>::contains_key(network_id, &asset_id),
-                Error::<T>::TokenIsNotRegistered);
-            ensure!(!AssetKinds::<T>::contains_key(network_id, &asset_id),
-                Error::<T>::TokenAlreadyRegistered);
-            ensure!(PendingAssetKinds::<T>::get(network_id, &asset_id)
-                .map_or(true, |pending| pending == asset_kind),
-                Error::<T>::AssetRegistrationMismatch);
+            ensure!(
+                SidechainPrecision::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenIsNotRegistered
+            );
+            ensure!(
+                !AssetKinds::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenAlreadyRegistered
+            );
+            ensure!(
+                PendingAssetKinds::<T>::get(network_id, &asset_id)
+                    .map_or(true, |pending| pending == asset_kind),
+                Error::<T>::AssetRegistrationMismatch
+            );
             PendingAssetKinds::<T>::insert(network_id, asset_id, asset_kind);
             Ok(())
         }

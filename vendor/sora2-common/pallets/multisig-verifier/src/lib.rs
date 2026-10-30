@@ -372,6 +372,14 @@ pub mod pallet {
                 fail!(Error::<T>::NetworkNotInitialized)
             };
 
+            // A valid proof contains unique current peers. Reject impossible
+            // counts before doing any public-key recovery.
+            let threshold = bridge_types::utils::threshold(peers.len() as u32);
+            ensure!(
+                signatures.len() >= threshold as usize && signatures.len() <= peers.len(),
+                Error::<T>::InvalidNumberOfSignatures
+            );
+
             let mut unique_peers = BTreeSet::new();
 
             // Insure that every sighnature exists in the storage
@@ -393,12 +401,11 @@ pub mod pallet {
             }
 
             let len = unique_peers.len() as u32;
-            let treshold = bridge_types::utils::threshold(peers.len() as u32);
-            ensure!(len >= treshold, {
+            ensure!(len >= threshold, {
                 log::error!(
                     "verify_signatures: invalid number of signatures: {:?} < {:?}",
                     len,
-                    treshold
+                    threshold
                 );
                 Error::<T>::InvalidNumberOfSignatures
             });
@@ -419,8 +426,6 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
         proof: &Self::Proof,
     ) -> DispatchResult {
         let this_network_id = T::ThisNetworkId::get();
-        let digest_hash = Keccak256::hash_of(&proof.digest);
-        Self::verify_signatures(network_id, digest_hash, &proof.proof)?;
         let count = proof
             .digest
             .logs
@@ -434,10 +439,11 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
                 }
                 false
             })
+            .take(2)
             .count();
         ensure!(count == 1, Error::<T>::CommitmentNotFoundInDigest);
-
-        Ok(())
+        let digest_hash = Keccak256::hash_of(&proof.digest);
+        Self::verify_signatures(network_id, digest_hash, &proof.proof)
     }
 
     fn verify_weight(proof: &Self::Proof) -> Weight {

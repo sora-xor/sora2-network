@@ -8,7 +8,7 @@ use crate::{BridgeSignatureVersion, BridgeStatus, EthAddress};
 use bridge_multisig::{BridgeTimepoint, MultiChainHeight};
 use codec::{Decode, Encode};
 use ethabi::Token;
-use frame_support::{assert_err, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use sp_core::H256;
 
 fn timepoint() -> crate::Timepoint<Runtime> {
@@ -1155,7 +1155,7 @@ fn outgoing_protocol_admission_rejects_bad_signatures_duplicates_and_approval_ov
             Error::DuplicateApproval
         );
         crate::RequestApprovers::<Runtime>::remove(0, hash);
-        let approvals = (0..MAX_PEERS)
+        let approvals = (0..=MAX_PEERS)
             .map(|i| SignatureParams {
                 r: [i as u8; 32],
                 s: [1; 32],
@@ -1300,7 +1300,7 @@ fn bridge_app_rejects_foreign_networks_and_reports_unsupported_refunds() {
 }
 
 #[test]
-fn cancelling_prepared_peer_addition_releases_reference_and_revokes_approvals() {
+fn receipt_cancellation_preserves_signed_peer_addition_and_its_reference() {
     use super::mock::System;
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -1361,26 +1361,16 @@ fn cancelling_prepared_peer_addition_releases_reference_and_revokes_approvals() 
         assert_eq!(incoming.hash(), initial_hash);
         assert_eq!(incoming.at_height(), 91);
         assert_eq!(incoming.timepoint(), timepoint());
-        assert_ok!(incoming.prepare());
-        assert_eq!(
-            crate::RequestStatuses::<Runtime>::get(0, hash),
-            Some(RequestStatus::Frozen)
-        );
+        assert_noop!(incoming.validate(), Error::PublicApprovalsRequireSettlement);
+        assert_noop!(incoming.prepare(), Error::PublicApprovalsRequireSettlement);
+        assert_noop!(incoming.finalize(), Error::PublicApprovalsRequireSettlement);
+        crate::RequestStatuses::<Runtime>::insert(0, hash, RequestStatus::Frozen);
         assert_ok!(incoming.cancel());
-        assert_eq!(
-            crate::RequestStatuses::<Runtime>::get(0, hash),
-            Some(RequestStatus::ApprovalsReady)
-        );
-        assert_ok!(incoming.prepare());
-        assert_eq!(incoming.finalize(), Ok(initial_hash));
-        assert_eq!(
-            crate::RequestStatuses::<Runtime>::get(0, hash),
-            Some(RequestStatus::Failed(Error::Cancelled.into()))
-        );
-        assert_eq!(crate::PendingPeer::<Runtime>::get(0), None);
-        assert_eq!(System::consumers(&peer), 0);
-        assert!(crate::RequestApprovers::<Runtime>::get(0, hash).is_empty());
-        assert!(crate::RequestApprovals::<Runtime>::get(0, hash).is_empty());
+        assert_eq!(crate::RequestStatuses::<Runtime>::get(0, hash), Some(RequestStatus::ApprovalsReady));
+        assert_eq!(crate::PendingPeer::<Runtime>::get(0), Some(peer.clone()));
+        assert_eq!(System::consumers(&peer), 1);
+        assert_eq!(crate::RequestApprovers::<Runtime>::get(0, hash).len(), 1);
+        assert_eq!(crate::RequestApprovals::<Runtime>::get(0, hash).len(), 1);
         let done: IncomingRequest<Runtime> =
             IncomingRequest::MarkAsDone(IncomingMarkAsDoneRequest {
                 outgoing_request_hash: hash,
@@ -1392,6 +1382,8 @@ fn cancelling_prepared_peer_addition_releases_reference_and_revokes_approvals() 
             });
         assert_eq!(done.timepoint(), timepoint());
         assert_eq!(done.at_height(), 92);
+        assert_ok!(done.validate());
+        crate::RequestStatuses::<Runtime>::insert(0, hash, RequestStatus::Failed(Error::Cancelled.into()));
         assert_err!(done.validate(), Error::RequestIsNotReady);
         assert_ok!(done.cancel());
         assert_eq!(

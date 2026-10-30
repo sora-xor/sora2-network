@@ -35,10 +35,10 @@ use crate::contract::{
     REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS,
 };
 use crate::requests::{
-    parse_hash_from_call, AssetKind, ChangePeersContract, IncomingCancelOutgoingRequest,
-    IncomingChangePeersCompat, IncomingRequest, IncomingTransactionRequestKind,
-    LoadIncomingMetaRequest, LoadIncomingTransactionRequest, OffchainRequest,
-    OutgoingAddPeerCompat, OutgoingRemovePeerCompat, OutgoingRequest,
+    parse_hash_from_call, AssetKind, ChangePeersContract, IncomingChangePeersCompat,
+    IncomingRequest, IncomingTransactionRequestKind, LoadIncomingMetaRequest,
+    LoadIncomingTransactionRequest, OffchainRequest, OutgoingAddPeerCompat,
+    OutgoingRemovePeerCompat, OutgoingRequest,
 };
 use crate::types::{Log, Transaction, TransactionReceipt};
 use crate::util::Decoder;
@@ -310,6 +310,21 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    /// Recover retained approval ownership when reconciling a changed peer set.
+    /// The caller bounds the number of signatures before invoking this helper.
+    pub(crate) fn recover_message_signer(
+        msg: &[u8],
+        signature: &SignatureParams,
+    ) -> Option<ecdsa::Public> {
+        let canonical = signature.clone().canonical_recovery_id()?;
+        let recovery_id = secp256k1::RecoveryId::parse(canonical.v).ok()?;
+        let bytes = canonical.to_bytes();
+        let signature = secp256k1::Signature::parse_standard_slice(&bytes[..64]).ok()?;
+        let public =
+            secp256k1::recover(&eth::prepare_message(msg), &signature, &recovery_id).ok()?;
+        Some(ecdsa::Public::from_raw(public.serialize_compressed()))
+    }
+
     /// Signs a message with a peer's secret key.
     #[allow(dead_code)]
     pub(crate) fn sign_message(
@@ -335,11 +350,11 @@ impl<T: Config> Pallet<T> {
     fn parse_cancel_incoming_request(
         tx_receipt: TransactionReceipt,
         pre_request: LoadIncomingMetaRequest<T>,
-        pre_request_hash: H256,
+        _pre_request_hash: H256,
     ) -> Result<IncomingRequest<T>, Error<T>> {
         let tx_approved = tx_receipt.is_approved();
         ensure!(!tx_approved, Error::<T>::EthTransactionIsSucceeded);
-        let at_height = tx_receipt
+        let _at_height = tx_receipt
             .block_number
             .ok_or(Error::<T>::EthTransactionIsPending)?
             .as_u64();
@@ -377,19 +392,9 @@ impl<T: Config> Pallet<T> {
             request.author() == &author,
             Error::<T>::RequestIsNotOwnedByTheAuthor
         );
-        Ok(IncomingRequest::CancelOutgoingRequest(
-            IncomingCancelOutgoingRequest {
-                outgoing_request: request,
-                outgoing_request_hash: hash,
-                initial_request_hash: pre_request_hash,
-                author,
-                tx_input: tx.input.0,
-                tx_hash: pre_request.hash,
-                at_height,
-                timepoint: pre_request.timepoint,
-                network_id: pre_request.network_id,
-            },
-        ))
+        // A failed call is still retryable, and a duplicate successful withdrawal
+        // also reverts. Neither case is irreversible cancellation evidence.
+        Err(Error::<T>::PublicApprovalsRequireSettlement)
     }
 
     /// Gets Thischain asset id and its kind. If the `raw_asset_id` is `zero`, it means that it's
@@ -518,6 +523,77 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    /// Validate receipt identity and the known bridge event before interpreting
+    /// its economic fields. Keep RPC inconsistency separate from deterministic
+    /// unsupported-asset or amount errors, so those cannot pin the log scanner.
+    fn attributed_deposit_log<'a>(
+        receipt: &'a TransactionReceipt,
+        load: &LoadIncomingTransactionRequest<T>,
+        observed_log: Option<&Log>,
+    ) -> Result<(&'a Log, u64), Error<T>> {
+        // Inconsistent/pending RPC responses must be retried, not turned into an
+        // abort or a failed import that permanently consumes the deposit hash.
+        let inconsistent = || Error::<T>::JsonDeserializationError;
+        ensure!(receipt.transaction_hash.0 == load.hash.0, inconsistent());
+        ensure!(receipt.status == Some(1u64.into()), inconsistent());
+        ensure!(!receipt.from.is_zero(), inconsistent());
+        let height = receipt.block_number.ok_or_else(inconsistent)?;
+        let block_hash = receipt.block_hash.ok_or_else(inconsistent)?;
+        let log = receipt
+            .logs
+            .iter()
+            .find(|log| {
+                log.topics.first().map(|topic| topic.0) == Some(DEPOSIT_TOPIC.0)
+                    && !log.removed.unwrap_or(true)
+                    && Self::ensure_known_contract(H160(log.address.0), load.network_id).is_ok()
+            })
+            .ok_or_else(inconsistent)?;
+        ensure!(
+            log.transaction_hash == Some(receipt.transaction_hash)
+                && log.block_number == Some(height)
+                && log.block_hash == Some(block_hash)
+                && log.transaction_index == Some(receipt.transaction_index),
+            inconsistent()
+        );
+        if let Some(observed) = observed_log {
+            ensure!(
+                observed.address == log.address
+                    && observed.topics == log.topics
+                    && observed.data == log.data
+                    && observed.transaction_hash == log.transaction_hash
+                    && observed.block_number == log.block_number
+                    && observed.block_hash == log.block_hash
+                    && observed.transaction_index == log.transaction_index
+                    && observed.log_index == log.log_index
+                    && !observed.removed.unwrap_or(true),
+                inconsistent()
+            );
+        }
+        Ok((log, height.as_u64()))
+    }
+
+    /// Reconstruct the deposit and its transaction signer from one internally
+    /// consistent RPC receipt. Peers still trust their Ethereum RPC for canonical
+    /// chain data; this is not a receipt proof or token-owner tracing through routers.
+    pub(crate) fn parse_attributed_transfer(
+        receipt: TransactionReceipt,
+        load: LoadIncomingTransactionRequest<T>,
+        observed_log: Option<&Log>,
+    ) -> Result<IncomingRequest<T>, Error<T>> {
+        let (log, height) = Self::attributed_deposit_log(&receipt, &load, observed_log)?;
+        let event = Self::parse_deposit_event_from_known_contract(load.network_id, log)?;
+        let mut request = IncomingRequest::<T>::try_from_contract_event(
+            ContractEvent::Deposit(event),
+            load,
+            height,
+        )?;
+        let IncomingRequest::Transfer(transfer) = &mut request else {
+            unreachable!("a deposit event always builds a transfer")
+        };
+        transfer.from = H160(receipt.from.0);
+        Ok(request)
+    }
+
     /// Tries to parse incoming request from the given pre-request and transaction receipt.
     ///
     /// The transaction should be approved and contain a known event from which the request
@@ -526,6 +602,53 @@ impl<T: Config> Pallet<T> {
         tx_receipt: TransactionReceipt,
         incoming_pre_request: LoadIncomingTransactionRequest<T>,
     ) -> Result<IncomingRequest<T>, Error<T>> {
+        if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)
+            && matches!(
+                incoming_pre_request.kind,
+                IncomingTransactionRequestKind::Transfer
+                    | IncomingTransactionRequestKind::TransferXOR
+            )
+        {
+            // A public load hint has not reserved or credited any money. A
+            // complete mined receipt can therefore reject a failed transaction
+            // or one without a bridge deposit. Keep contradictory/incomplete
+            // metadata retryable. Pending monetary requests and scanner logs
+            // bypass this classification and retain the stricter retry policy.
+            let inconsistent = || Error::<T>::JsonDeserializationError;
+            ensure!(
+                tx_receipt.transaction_hash.0 == incoming_pre_request.hash.0
+                    && !tx_receipt.from.is_zero(),
+                inconsistent()
+            );
+            let height = tx_receipt.block_number.ok_or_else(inconsistent)?;
+            let block_hash = tx_receipt.block_hash.ok_or_else(inconsistent)?;
+            ensure!(
+                tx_receipt.logs.iter().all(|log| {
+                    log.transaction_hash == Some(tx_receipt.transaction_hash)
+                        && log.block_number == Some(height)
+                        && log.block_hash == Some(block_hash)
+                        && log.transaction_index == Some(tx_receipt.transaction_index)
+                        && !log.removed.unwrap_or(true)
+                }),
+                inconsistent()
+            );
+            if tx_receipt.status == Some(0u64.into()) && tx_receipt.logs.is_empty() {
+                return Err(Error::<T>::EthTransactionIsFailed);
+            }
+            ensure!(tx_receipt.status == Some(1u64.into()), inconsistent());
+            ensure!(
+                tx_receipt.logs.iter().any(|log| {
+                    log.topics.first().map(|topic| topic.0) == Some(DEPOSIT_TOPIC.0)
+                        && Self::ensure_known_contract(
+                            H160(log.address.0),
+                            incoming_pre_request.network_id,
+                        )
+                        .is_ok()
+                }),
+                Error::<T>::UnknownEvent
+            );
+            return Self::parse_attributed_transfer(tx_receipt, incoming_pre_request, None);
+        }
         let tx_approved = tx_receipt.is_approved();
         ensure!(tx_approved, Error::<T>::EthTransactionIsFailed);
         let kind = incoming_pre_request.kind;

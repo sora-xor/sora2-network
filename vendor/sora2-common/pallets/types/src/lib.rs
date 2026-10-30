@@ -330,7 +330,9 @@ pub type MainnetBalance = u128;
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+// The asset-locker bound requires serde in Wasm builds as well. Serde is
+// already available with alloc and no default features; SCALE is unchanged.
+#[derive(Serialize, Deserialize)]
 pub enum LiberlandAssetId {
     LLD,
     Asset(u32),

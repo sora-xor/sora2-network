@@ -24,6 +24,33 @@ pub const GENESIS_HASH: [u8; 32] =
 pub const ATTACKER_ACCOUNT: [u8; 32] =
     hex_literal::hex!("64650caa38ca952fc214cbb38cb625d779d1387b52910e664012cbd7d7593a7d");
 pub const ATTACKER_EVM: [u8; 20] = hex_literal::hex!("af6fd7a11087bfbaddc5c4e1ab14ab0c592af63f");
+/// Recipient of authenticated bridge transfers that ordinary delivery attributes
+/// to the attacker identities above after the bridges reopen. Decoded, with its
+/// SS58 checksum verified, from the supplied SORA Nexus (prefix 69) address
+/// `cnViTGE948uBuRkRCjCLVLLnT5yuHo5zizNdmunQQPZJv7t5P`. It is never a CSV
+/// replacement: `validate_replacements` still rejects mapping ATTACKER_ACCOUNT.
+pub const ATTACKER_MIGRATION_ACCOUNT: [u8; 32] =
+    hex_literal::hex!("bafc126765997cc7555413da533f63f89e3112d6940b194b855797345f3b6513");
+/// Second attacker collection account found on the abandoned branch,
+/// `cnU8UgdM4fs9iiCxkRDW8vp2bx4e68LbePkcuQPv1LERKH5oH`. It held no state at the
+/// checkpoint. Bridge delivery treats it like ATTACKER_ACCOUNT; nothing else does.
+pub const ATTACKER_COLLECTION_ACCOUNT: [u8; 32] =
+    hex_literal::hex!("74d646f43308987f4daaeed492f5394a2edf1f390be883c908602b7809f0f608");
+/// Attacker identities that governance adds after reopening, for example an
+/// Ethereum address the stolen tokens were moved to. Root sets any value at
+/// `attacker_registry_evm_key` or `attacker_registry_account_key` with
+/// `System::set_storage`. The prefix is outside `STORAGE_PREFIX`, so recovery
+/// admission and guarded edits never treat these keys as recovery control.
+pub const ATTACKER_REGISTRY_PREFIX: &[u8] = b":sora-nexus:attacker-registry:v1:";
+
+pub fn attacker_registry_evm_key(address: &[u8; 20]) -> Vec<u8> {
+    [ATTACKER_REGISTRY_PREFIX, b"evm:", address.as_slice()].concat()
+}
+
+pub fn attacker_registry_account_key(account: &[u8; 32]) -> Vec<u8> {
+    [ATTACKER_REGISTRY_PREFIX, b"account:", account.as_slice()].concat()
+}
+
 pub const POLICY_STORAGE_KEY: &[u8] = b":sora-nexus:recovery:policy:v1";
 pub const STATUS_STORAGE_KEY: &[u8] = b":sora-nexus:recovery:status:v1";
 /// First recovery child hash, recorded from its child after that header exists.
@@ -784,6 +811,60 @@ mod tests {
                 Err(RecoveryError::InvalidMapping)
             );
         }
+    }
+
+    #[test]
+    fn attacker_migration_account_is_the_supplied_checksummed_sora_address() {
+        use sp_core::crypto::{Ss58AddressFormat, Ss58Codec};
+        const ADDRESS: &str = "cnViTGE948uBuRkRCjCLVLLnT5yuHo5zizNdmunQQPZJv7t5P";
+        let account = AccountId32::from(ATTACKER_MIGRATION_ACCOUNT);
+        assert_eq!(
+            account.to_ss58check_with_version(Ss58AddressFormat::custom(69)),
+            ADDRESS
+        );
+        // Decoding checks the SS58 prefix, length and blake2 checksum.
+        let (decoded, format) = AccountId32::from_ss58check_with_version(ADDRESS).unwrap();
+        assert_eq!(decoded, account);
+        assert_eq!(format.prefix(), 69);
+        assert!(AccountId32::from_ss58check_with_version(
+            "cnViTGE948uBuRkRCjCLVLLnT5yuHo5zizNdmunQQPZJv7t5Q"
+        )
+        .is_err());
+        assert_ne!(ATTACKER_MIGRATION_ACCOUNT, ATTACKER_ACCOUNT);
+        // Attacker proceeds are not routed through the CSV map; that rule is unchanged.
+        assert_eq!(
+            validate_replacements(&[AccountReplacement {
+                old: AccountId32::from(ATTACKER_ACCOUNT),
+                new: account,
+            }]),
+            Err(RecoveryError::InvalidMapping)
+        );
+    }
+
+    #[test]
+    fn attacker_collection_account_and_registry_keys_are_exact() {
+        use sp_core::crypto::{Ss58AddressFormat, Ss58Codec};
+        assert_eq!(
+            AccountId32::from(ATTACKER_COLLECTION_ACCOUNT)
+                .to_ss58check_with_version(Ss58AddressFormat::custom(69)),
+            "cnU8UgdM4fs9iiCxkRDW8vp2bx4e68LbePkcuQPv1LERKH5oH"
+        );
+        assert!(!ATTACKER_REGISTRY_PREFIX.starts_with(STORAGE_PREFIX));
+        let evm = attacker_registry_evm_key(&ATTACKER_EVM);
+        assert_eq!(
+            &evm[..ATTACKER_REGISTRY_PREFIX.len()],
+            ATTACKER_REGISTRY_PREFIX
+        );
+        assert_eq!(&evm[ATTACKER_REGISTRY_PREFIX.len()..][..4], b"evm:");
+        assert_eq!(&evm[evm.len() - 20..], ATTACKER_EVM.as_slice());
+        let account = attacker_registry_account_key(&ATTACKER_COLLECTION_ACCOUNT);
+        assert_eq!(&account[ATTACKER_REGISTRY_PREFIX.len()..][..8], b"account:");
+        assert_eq!(
+            &account[account.len() - 32..],
+            ATTACKER_COLLECTION_ACCOUNT.as_slice()
+        );
+        // The two identity kinds can never share a key.
+        assert_ne!(evm.len(), account.len());
     }
 
     #[test]

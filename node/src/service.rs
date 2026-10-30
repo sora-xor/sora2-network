@@ -55,7 +55,6 @@ use sp_blockchain::HeaderBackend;
 use sp_consensus_babe::inherents::BabeCreateInherentDataProviders;
 use sp_core::offchain::OffchainStorage;
 use sp_core::ByteArray;
-use sp_core::Pair;
 use sp_keystore::Keystore;
 use sp_runtime::offchain::STORAGE_PREFIX;
 use sp_runtime::traits::{Block as BlockT, IdentifyAccount};
@@ -472,16 +471,12 @@ pub fn new_partial(
         resolve_local_bridge_bootstrap(
             bridge_public_keys,
             |public_key| {
-                let local_keystore = keystore_container.local_keystore();
-                local_keystore
-                    .key_pair::<eth_bridge::offchain::crypto::Pair>(public_key)
-                    .map(|key_pair| key_pair.is_some())
-                    .map_err(|error| {
-                        ServiceError::Other(format!(
-                            "Failed to inspect local ethereum bridge keypair: {}",
-                            error
-                        ))
-                    })
+                // Availability checks only need the public key and key type.
+                // Do not deserialize a secret pair during bootstrap.
+                Ok(keystore_container.keystore().has_keys(&[(
+                    public_key.to_raw_vec(),
+                    eth_bridge::KEY_TYPE,
+                )]))
             },
             || {
                 let path = bridge_config_path(config)?;

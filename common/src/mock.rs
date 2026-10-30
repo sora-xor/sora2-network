@@ -1109,6 +1109,7 @@ macro_rules! mock_proxy_config {
     ($runtime:ty) => {
         impl proxy::Config for $runtime {
             type AccountIdConverter = sp_runtime::traits::Identity;
+            type RefundAccountResolver = ();
             type FAApp = FungibleApp;
             type HashiBridge = ();
             type LiberlandApp = ();

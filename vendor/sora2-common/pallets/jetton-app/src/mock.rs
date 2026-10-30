@@ -237,7 +237,10 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
     }
 }
 
+frame_support::parameter_types! { pub static BridgeEnabled: bool = true; }
+
 impl jetton_app::Config for Test {
+    type Enabled = BridgeEnabled;
     type CallOrigin = dispatch::EnsureAccount<
         bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
     >;
@@ -272,6 +275,7 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
+        BridgeEnabled::set(true);
         let mut storage = system::GenesisConfig::<Test>::default()
             .build_storage()
             .unwrap();

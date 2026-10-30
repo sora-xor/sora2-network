@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::contract::{functions, MethodId, FUNCTIONS, METHOD_ID_SIZE};
+use crate::contract::{functions, MethodId, FUNCTIONS};
 use crate::offchain::SignatureParams;
 use crate::requests::Assets;
 use crate::{
@@ -321,6 +321,7 @@ impl<T: Config> IncomingTransfer<T> {
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_ordinary_transfer_source::<T>(&self.from)?;
         crate::recovery::ensure_incoming_transaction_active::<T>(self.network_id, self.tx_hash)?;
         ensure!(
             !crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_asset(
@@ -409,7 +410,7 @@ impl<T: Config> IncomingTransfer<T> {
             bridge_types::types::AssetKind::Sidechain
         };
         common::with_transaction(|| {
-            T::BridgeAssetLockChecker::before_asset_lock(
+            T::BridgeAssetLockChecker::cancel_asset_unlock(
                 generic_network_id,
                 asset_kind,
                 &self.asset_id,
@@ -422,6 +423,16 @@ impl<T: Config> IncomingTransfer<T> {
     /// If the transferring asset kind is owned, the funds are transferred from the bridge account,
     /// otherwise the amount is minted.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
+        self.finalize_with::<T::IncomingAccountResolver>()
+    }
+
+    /// `finalize` with an explicit account resolver. Production always passes the
+    /// configured `T::IncomingAccountResolver`; crate tests substitute a recovery
+    /// resolver because the mock runtime keeps the identity `()` resolver.
+    pub(crate) fn finalize_with<R>(&self) -> Result<H256, DispatchError>
+    where
+        R: crate::recovery::IncomingAccountResolver<T::AccountId>,
+    {
         self.validate()?;
         let resolution = crate::recovery::transfer_resolution(self)?;
         let bridge_account_id = crate::Pallet::<T>::bridge_account(self.network_id)
@@ -440,9 +451,11 @@ impl<T: Config> IncomingTransfer<T> {
         // Preserve the original request and its authenticated replay identity.
         // A committed maintenance resolution takes precedence; ordinary native
         // delivery uses the permanent map after bridge-account authentication.
+        // With a recovery policy installed, the resolver may instead redirect an
+        // attacker-attributed transfer; asset, amount and fee are unchanged.
         let beneficiary = match resolution.as_ref() {
             Some(value) => value.beneficiary.clone(),
-            None => crate::recovery::ordinary_account::<T>(&self.to)?,
+            None => crate::recovery::ordinary_transfer_beneficiary::<T, R>(&self.from, &self.to)?,
         };
         let transfer_fee = Self::fee_amount();
         let amount = if self.should_take_fee {
@@ -519,10 +532,11 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
         .map_err(|_| Error::EthAbiEncodingError)
 }
 
-/// Incoming request for cancelling a obsolete outgoing request. "Obsolete" means that the request
-/// signatures were collected, but something changed in the bridge state (e.g., peers set) and
-/// the signatures became invalid. In this case we want to cancel the request to be able to
-/// re-submit it later.
+/// Retained encoding for the legacy failed-receipt cancellation flow.
+/// A failed Ethereum transaction does not revoke published signatures or prove
+/// non-delivery: it may be a duplicate of an already successful withdrawal.
+/// Admission and finalization stay disabled until an irreversible cancellation
+/// proof exists in the remote protocol. Ordinary unsigned aborts are separate.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
@@ -546,81 +560,42 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
         )
     }
 
-    /// Checks that the request status is `ApprovalsReady`, and encoded request's call matches
-    /// with the `tx_input`, otherwise an error is thrown. After that, a status of the request
-    /// is changed to `Frozen` to stop receiving approvals.
-    pub fn prepare(&self) -> Result<(), DispatchError> {
+    /// No receipt status or gas comparison proves permanent signature revocation.
+    pub fn validate(&self) -> Result<(), DispatchError> {
         crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
         ensure!(
             !self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer(),
             Error::<T>::DeprecatedLegacyXor
         );
-        let request_hash = self.outgoing_request_hash;
-        let net_id = self.network_id;
-        let req_status = crate::RequestStatuses::<T>::get(net_id, &self.outgoing_request_hash)
-            .ok_or(crate::Error::<T>::UnknownRequest)?;
-        ensure!(
-            req_status == RequestStatus::ApprovalsReady,
-            crate::Error::<T>::RequestIsNotReady
-        );
-        let mut method_id = [0u8; METHOD_ID_SIZE];
-        ensure!(self.tx_input.len() >= 4, Error::<T>::InvalidFunctionInput);
-        method_id.clone_from_slice(&self.tx_input[..METHOD_ID_SIZE]);
-        let expected_input = encode_outgoing_request_eth_call(
-            method_id,
-            &self.outgoing_request,
-            self.outgoing_request_hash,
-        )?;
-        ensure!(
-            expected_input == self.tx_input,
-            crate::Error::<T>::InvalidContractInput
-        );
-        crate::RequestStatuses::<T>::insert(net_id, &request_hash, RequestStatus::Frozen);
-        Ok(())
+        Err(Error::<T>::PublicApprovalsRequireSettlement.into())
     }
 
-    /// Changes the request's status back to `ApprovalsReady`.
+    /// Do not freeze a normally redeemable withdrawal on a failed retry receipt.
+    pub fn prepare(&self) -> Result<(), DispatchError> {
+        self.validate()
+    }
+
+    /// Unprepare a retained cancellation without refunding funds or deleting
+    /// signatures. Completed or otherwise changed withdrawals remain unchanged.
     pub fn cancel(&self) -> Result<(), DispatchError> {
         crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
-        if self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer() {
-            crate::RequestStatuses::<T>::insert(
-                self.network_id,
-                &self.outgoing_request_hash,
-                RequestStatus::Failed(Error::<T>::DeprecatedLegacyXor.into()),
-            );
-            crate::Pallet::<T>::clear_request_signatures(
-                self.network_id,
-                &self.outgoing_request_hash,
-            );
-            return Ok(());
-        }
-        crate::RequestStatuses::<T>::insert(
+        crate::RequestStatuses::<T>::mutate(
             self.network_id,
-            &self.outgoing_request_hash,
-            RequestStatus::ApprovalsReady,
+            self.outgoing_request_hash,
+            |status| {
+                if *status == Some(RequestStatus::Frozen) {
+                    *status = Some(RequestStatus::ApprovalsReady);
+                }
+            },
         );
         Ok(())
     }
 
-    /// Calls `cancel` on the request, changes its status to `Failed` and takes it approvals to
-    /// make it available for resubmission.
+    /// Also reject retained/prepared cancellations; never refund or erase their
+    /// outgoing approvals merely because an Ethereum transaction reverted.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
-        crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
-        ensure!(
-            !self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer(),
-            Error::<T>::DeprecatedLegacyXor
-        );
-        // TODO: `common::with_transaction` should be removed in the future after stabilization.
-        common::with_transaction(|| self.outgoing_request.cancel())?;
-        let hash = &self.outgoing_request_hash;
-        let net_id = self.network_id;
-        crate::RequestStatuses::<T>::insert(
-            net_id,
-            hash,
-            RequestStatus::Failed(Error::<T>::Cancelled.into()),
-        );
-        crate::Pallet::<T>::clear_request_signatures(net_id, hash);
-        Ok(self.initial_request_hash)
+        self.validate()?;
+        Err(Error::<T>::PublicApprovalsRequireSettlement.into())
     }
 
     pub fn timepoint(&self) -> Timepoint<T> {

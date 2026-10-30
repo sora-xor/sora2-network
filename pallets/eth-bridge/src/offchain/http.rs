@@ -383,6 +383,26 @@ impl<T: Config> Pallet<T> {
         Ok(tx_receipt)
     }
 
+    /// Load a mined deposit receipt without constraining the outer call target:
+    /// helper contracts can call the bridge. Callers must authenticate the known
+    /// bridge log and bind its metadata with `attributed_deposit_log` before use.
+    pub(crate) fn load_transfer_receipt(
+        hash: H256,
+        network_id: T::NetworkId,
+    ) -> Result<TransactionReceipt, Error<T>> {
+        let hash = types::H256(hash.0);
+        let receipt = Self::eth_json_rpc_request::<_, TransactionReceipt>(
+            "eth_getTransactionReceipt",
+            &vec![hash],
+            network_id,
+        )?;
+        frame_support::ensure!(
+            receipt.transaction_hash == hash && receipt.block_number.is_some(),
+            Error::<T>::JsonDeserializationError
+        );
+        Ok(receipt)
+    }
+
     /// Loads a Sidechain transaction receipt by the hash and ensures that it came from a known contract.
     pub fn load_tx_receipt(
         hash: H256,
@@ -394,6 +414,13 @@ impl<T: Config> Pallet<T> {
             &vec![hash],
             network_id,
         )?;
+        if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) {
+            // RPC inconsistencies are retryable; they are not failed transactions.
+            frame_support::ensure!(
+                tx_receipt.transaction_hash == hash && tx_receipt.block_number.is_some(),
+                Error::<T>::JsonDeserializationError
+            );
+        }
         let to = tx_receipt
             .to
             .map(|x| H160(x.0))

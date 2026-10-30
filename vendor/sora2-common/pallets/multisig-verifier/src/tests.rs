@@ -751,10 +751,44 @@ fn evm_signatures_bind_source_destination_and_commitment() {
             TrustedVerifier::verify_signatures(
                 network,
                 hash,
-                &[ecdsa::Signature::from_raw([0; 65])]
+                &[ecdsa::Signature::from_raw([0; 65]); 5]
             ),
             Error::<Test>::InvalidSignature
         );
+    });
+}
+
+#[test]
+fn invalid_digest_and_impossible_proof_counts_fail_before_signature_recovery() {
+    new_test_ext().execute_with(|| {
+        let network = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let hash = sp_core::H256::repeat_byte(43);
+        assert_ok!(TrustedVerifier::initialize(
+            RuntimeOrigin::root(),
+            network,
+            test_peers().try_into().unwrap()
+        ));
+        let matching = AuxiliaryDigestItem::Commitment(network, hash);
+        for logs in [vec![], vec![matching, matching]] {
+            let proof = crate::Proof {
+                digest: AuxiliaryDigest { logs },
+                proof: vec![ecdsa::Signature::from_raw([0; 65]); 5],
+            };
+            assert_noop!(
+                TrustedVerifier::verify(network, hash, &proof),
+                Error::<Test>::CommitmentNotFoundInDigest
+            );
+        }
+        for count in [0, 1, 3, 6] {
+            assert_noop!(
+                TrustedVerifier::verify_signatures(
+                    network,
+                    hash,
+                    &vec![ecdsa::Signature::from_raw([0; 65]); count]
+                ),
+                Error::<Test>::InvalidNumberOfSignatures
+            );
+        }
     });
 }
 

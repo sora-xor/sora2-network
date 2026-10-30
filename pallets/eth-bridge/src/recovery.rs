@@ -110,6 +110,7 @@ pub(crate) fn ensure_incoming_active<T: crate::Config>(
 ) -> Result<(), crate::Error<T>> {
     match request {
         crate::requests::IncomingRequest::Transfer(request) => {
+            ensure_ordinary_transfer_source::<T>(&request.from)?;
             ensure_incoming_transaction_active::<T>(request.network_id, request.tx_hash)
         }
         crate::requests::IncomingRequest::CancelOutgoingRequest(request) => {
@@ -120,6 +121,22 @@ pub(crate) fn ensure_incoming_active<T: crate::Config>(
         }
         _ => Ok(()),
     }
+}
+
+/// Old Deposit events omitted their sender. Keep those signed requests intact,
+/// but require explicit maintenance reconciliation before ordinary delivery:
+/// a zero source cannot establish that the transfer avoids the attacker registry.
+/// This runs before registration/finalization can enter cancellation fallback.
+pub(crate) fn ensure_ordinary_transfer_source<T: crate::Config>(
+    from: &sp_core::H160,
+) -> Result<(), crate::Error<T>> {
+    ensure!(
+        !sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)
+            || halted()
+            || *from != sp_core::H160::zero(),
+        crate::Error::<T>::InvalidAddress
+    );
+    Ok(())
 }
 
 pub(crate) fn ensure_request_active<T: crate::Config>(
@@ -156,6 +173,16 @@ pub(crate) fn ensure_request_active<T: crate::Config>(
 /// pallets embedded in runtimes without incident recovery.
 pub trait IncomingAccountResolver<AccountId> {
     fn resolve(account: &AccountId) -> Result<Option<AccountId>, DispatchError>;
+
+    /// Consulted only by ordinary (unhalted) transfer finalization while a
+    /// recovery policy is installed, after peers authenticated the request.
+    /// `beneficiary` is the recipient the request names. `Some` credits the
+    /// returned account instead, with the same asset, amount and fee; the
+    /// signed request and its replay identity are unchanged. The default never
+    /// redirects. Infallible: finalization errors enter the cancellation path.
+    fn redirect_transfer(_from: &sp_core::H160, _beneficiary: &AccountId) -> Option<AccountId> {
+        None
+    }
 }
 
 impl<AccountId> IncomingAccountResolver<AccountId> for () {
@@ -173,6 +200,29 @@ pub(crate) fn ordinary_account<T: crate::Config>(
         return Ok(account.clone());
     }
     Ok(T::IncomingAccountResolver::resolve(account)?.unwrap_or_else(|| account.clone()))
+}
+
+/// Ordinary transfer beneficiary for `IncomingTransfer` finalization without a
+/// maintenance resolution. Equals `ordinary_account` unless a recovery policy is
+/// installed and `R` redirects the transfer; the redirect takes precedence over
+/// the permanent replacement map, whose fail-closed policy check still runs first.
+pub(crate) fn ordinary_transfer_beneficiary<T, R>(
+    from: &sp_core::H160,
+    to: &T::AccountId,
+) -> Result<T::AccountId, DispatchError>
+where
+    T: crate::Config,
+    R: IncomingAccountResolver<T::AccountId>,
+{
+    if halted() {
+        return Ok(to.clone());
+    }
+    ensure_ordinary_transfer_source::<T>(from)?;
+    let account = R::resolve(to)?.unwrap_or_else(|| to.clone());
+    if !sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) {
+        return Ok(account);
+    }
+    Ok(R::redirect_transfer(from, to).unwrap_or(account))
 }
 
 /// AccountRequests indexes the author, independently of a transfer beneficiary.
@@ -196,6 +246,10 @@ pub(crate) fn incoming_index_author<T: crate::Config>(
 /// beneficiary preflight, load author, transfer author, beneficiary preflight
 /// before cancellation handling, and finalization). Cover all marker/context
 /// reads and 78 static-map comparisons; historical no-policy weights are unchanged.
+/// Finalization's redirect check adds marker reads, constant comparisons and two
+/// attacker-registry reads (sender address and beneficiary). Source admission
+/// adds policy/halt reads across preflight, validation and delivery; reserve
+/// twenty-four additional reads for their nested paths.
 pub(crate) fn resolution_weight<T: crate::Config>() -> frame_support::weights::Weight {
     if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") || halted() {
         // Halted manifest work supplies its own bounded executor allowance and
@@ -204,5 +258,5 @@ pub(crate) fn resolution_weight<T: crate::Config>() -> frame_support::weights::W
     }
     use frame_support::traits::Get;
     frame_support::weights::Weight::from_parts(50_000_000, 32_768)
-        .saturating_add(T::DbWeight::get().reads(32))
+        .saturating_add(T::DbWeight::get().reads(58))
 }

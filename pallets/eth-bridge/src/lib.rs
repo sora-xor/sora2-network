@@ -736,6 +736,13 @@ pub mod pallet {
             );
             debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
+            // Public transaction hashes are unauthenticated work hints. Reserve the
+            // remaining queue capacity for authenticated imports and bridge operations.
+            ensure!(
+                RequestsQueue::<T>::get(network_id).len()
+                    < (T::MaxRequestsPerQueue::get() / 4) as usize,
+                Error::<T>::RequestsQueueFull
+            );
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             let request = match kind {
                 IncomingRequestKind::Transaction(kind) => {
@@ -1075,6 +1082,7 @@ pub mod pallet {
                 .max(<T as Config>::WeightInfo::approve_request_finalize())
                 .saturating_mul(3)
                 .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
+                .saturating_add(Pallet::<T>::approval_reconciliation_weight().saturating_mul(3))
         )]
         pub fn approve_request(
             origin: OriginFor<T>,
@@ -1186,11 +1194,10 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Register existing asset
-        ///
-        /// Can only be called by root.
+        /// Retained for decoding historical calls. New registration requires
+        /// `register_existing_sidechain_asset_with_precision`, because local
+        /// asset precision cannot establish the remote token's decimals.
         #[pallet::call_index(16)]
-        // eth-bridge pallet will be deprecated soon, so we set const weight here
         #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
@@ -1199,32 +1206,9 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
-            log::debug!(
-                "called register_existing_sidechain_asset. asset_id: {:?}",
-                asset_id
-            );
             ensure_root(origin)?;
-            T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
-            ensure!(
-                network_id != T::GetEthNetworkId::get()
-                    || !Self::is_legacy_ethereum_xor_asset(&asset_id),
-                Error::<T>::DeprecatedLegacyXor
-            );
-            ensure!(
-                !Self::is_deprecated_sidechain_token(network_id, &token_address),
-                Error::<T>::DeprecatedLegacyXor
-            );
-            ensure!(
-                !RegisteredAsset::<T>::contains_key(network_id, &asset_id),
-                Error::<T>::TokenIsAlreadyAdded
-            );
-
-            let (_, _, precision, ..) = T::AssetInfoProvider::get_asset_info(&asset_id);
-            RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
-            RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
-            RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
-            SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
-            Ok(().into())
+            let _ = (asset_id, token_address, network_id);
+            Err(Error::<T>::Unavailable.into())
         }
 
         /// Explicitly clear collected signatures for a request.
@@ -1283,6 +1267,106 @@ pub mod pallet {
                 &call_hash,
                 |peer| peers.contains(peer),
             )?;
+            Ok(().into())
+        }
+
+        /// Recheck an already signed request after a peer change or repair of a
+        /// failed local finalization. Signatures authorize the operation; the
+        /// submitter only pays to retry its bounded local accounting.
+        #[pallet::call_index(19)]
+        #[pallet::weight(<T as Config>::WeightInfo::approve_request_finalize()
+            .saturating_add(Pallet::<T>::approval_reconciliation_weight())
+            .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        pub fn finalize_approved_request(
+            origin: OriginFor<T>,
+            network_id: BridgeNetworkId<T>,
+            hash: H256,
+        ) -> DispatchResultWithPostInfo {
+            let _ = ensure_signed(origin)?;
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            crate::recovery::ensure_outgoing_active::<T>(network_id, hash)?;
+            let request = Requests::<T>::get(network_id, hash)
+                .and_then(|request| request.into_outgoing().map(|x| x.0))
+                .ok_or(Error::<T>::UnknownRequest)?;
+            let status =
+                RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?;
+            ensure!(
+                Self::outgoing_finalization_retryable(&status),
+                Error::<T>::RequestIsNotReady
+            );
+            ensure!(
+                !Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+                    network_id, &hash
+                ),
+                Error::<T>::DeprecatedLegacyXor
+            );
+            ensure!(!request.should_be_skipped(), Error::<T>::RequestIsNotReady);
+            let encoded = request.to_eth_abi(hash)?;
+            let (approvals, approvers) =
+                Self::current_request_approvals(network_id, hash, encoded.as_raw())?;
+            ensure!(
+                Self::has_current_approval_quorum(network_id, &request, &approvers)?,
+                Error::<T>::InsufficientCurrentApprovals
+            );
+            RequestApprovals::<T>::insert(network_id, hash, approvals);
+            RequestApprovers::<T>::insert(network_id, hash, approvers);
+            Self::finalize_outgoing_with_public_approvals(&request, hash, network_id);
+            Ok(Pays::Yes.into())
+        }
+
+        /// Attach a bridge-owned local representation to a remote token.
+        /// Governance must verify and supply the remote token's precision; it
+        /// is independent of the local representation's precision. Existing
+        /// registrations and partial mappings are never overwritten.
+        #[pallet::call_index(20)]
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT
+            .saturating_add(T::DbWeight::get().reads_writes(12, 4))
+            .saturating_add(frame_support::weights::Weight::from_parts(0, 32_768)))]
+        pub fn register_existing_sidechain_asset_with_precision(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            token_address: EthAddress,
+            sidechain_precision: BalancePrecision,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure_root(origin)?;
+            let bridge_account =
+                Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
+            T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
+            ensure!(
+                network_id != T::GetEthNetworkId::get()
+                    || !Self::is_legacy_ethereum_xor_asset(&asset_id),
+                Error::<T>::DeprecatedLegacyXor
+            );
+            ensure!(
+                !Self::is_deprecated_sidechain_token(network_id, &token_address),
+                Error::<T>::DeprecatedLegacyXor
+            );
+            ensure!(!token_address.is_zero(), Error::<T>::InvalidAddress);
+            ensure!(
+                !RegisteredAsset::<T>::contains_key(network_id, &asset_id)
+                    && !RegisteredSidechainToken::<T>::contains_key(network_id, &asset_id)
+                    && !RegisteredSidechainAsset::<T>::contains_key(network_id, &token_address)
+                    && !SidechainAssetPrecision::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenIsAlreadyAdded
+            );
+            // Native asset issuers cannot be silently reclassified as remote
+            // assets, even though the historical bridge has mint permissions.
+            ensure!(
+                T::AssetInfoProvider::is_asset_owner(&asset_id, &bridge_account),
+                Error::<T>::TokenIsNotOwnedByTheAuthor
+            );
+            let (_, _, local_precision, ..) = T::AssetInfoProvider::get_asset_info(&asset_id);
+            ensure!(
+                sidechain_precision <= DEFAULT_BALANCE_PRECISION
+                    && local_precision <= DEFAULT_BALANCE_PRECISION,
+                Error::<T>::UnsupportedAssetPrecision
+            );
+            RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
+            RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
+            RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
+            SidechainAssetPrecision::<T>::insert(network_id, &asset_id, sidechain_precision);
             Ok(().into())
         }
     }
@@ -1506,6 +1590,10 @@ pub mod pallet {
         DuplicateApproval,
         /// Bridge execution remains quarantined by the recovery release.
         RecoveryHalted,
+        /// Public outgoing approvals require remote settlement, never an automatic refund.
+        PublicApprovalsRequireSettlement,
+        /// Too few valid signatures from the current peer set.
+        InsufficientCurrentApprovals,
     }
 
     impl<T: Config> Error<T> {
@@ -1977,7 +2065,9 @@ impl<T: Config> Pallet<T> {
                 let hash = load_incoming_request.hash();
                 let retained = Self::retained_recovery_load(load_incoming_request)?;
                 ensure!(
-                    retained || !Requests::<T>::contains_key(network, hash),
+                    retained
+                        || Self::unconsumed_public_transaction_load(network, hash)
+                        || !Requests::<T>::contains_key(network, hash),
                     Error::<T>::DuplicatedRequest
                 );
                 ensure!(
@@ -2014,6 +2104,7 @@ impl<T: Config> Pallet<T> {
                 let request =
                     Requests::<T>::get(network, hash).ok_or(Error::<T>::UnknownRequest)?;
                 crate::recovery::ensure_request_active::<T>(&request)?;
+                Self::ensure_outgoing_refund_unsigned(&request, network, *hash)?;
                 ensure!(
                     Requests::<T>::contains_key(network, hash),
                     Error::<T>::UnknownRequest
@@ -2073,10 +2164,8 @@ impl<T: Config> Pallet<T> {
             .ok_or(Error::<T>::UnknownRequest)?;
         let status = RequestStatuses::<T>::get(network, hash).ok_or(Error::<T>::UnknownRequest)?;
         ensure!(
-            matches!(
-                status,
-                RequestStatus::Pending | RequestStatus::ApprovalsReady
-            ),
+            Self::outgoing_finalization_retryable(&status)
+                || status == RequestStatus::ApprovalsReady,
             Error::<T>::RequestIsNotReady
         );
         ensure!(
@@ -2084,23 +2173,28 @@ impl<T: Config> Pallet<T> {
             Error::<T>::DeprecatedLegacyXor
         );
         ensure!(
-            status != RequestStatus::Pending || !request.should_be_skipped(),
+            !Self::outgoing_finalization_retryable(&status) || !request.should_be_skipped(),
             Error::<T>::RequestIsNotReady
-        );
-        ensure!(
-            !RequestApprovers::<T>::get(network, hash).contains(author),
-            Error::<T>::DuplicateApproval
-        );
-        ensure!(
-            RequestApprovals::<T>::get(network, hash).len() < MAX_PEERS
-                && RequestApprovers::<T>::get(network, hash).len() < MAX_PEERS,
-            Error::<T>::TooManyApprovals
         );
         let encoded = request.to_eth_abi(*hash)?;
         ensure!(
             Self::verify_message(encoded.as_raw(), signature, public, author),
             Error::<T>::InvalidSignature
         );
+        let (approvals, approvers) =
+            Self::current_request_approvals(network, *hash, encoded.as_raw())?;
+        if approvers.contains(author) {
+            ensure!(
+                status == RequestStatus::Pending
+                    && Self::has_current_approval_quorum(network, &request, &approvers)?,
+                Error::<T>::DuplicateApproval
+            );
+        } else {
+            ensure!(
+                approvals.len() < MAX_PEERS && approvers.len() < MAX_PEERS,
+                Error::<T>::TooManyApprovals
+            );
+        }
         Ok(())
     }
 
@@ -2165,6 +2259,26 @@ impl<T: Config> Pallet<T> {
                 Requests::<T>::get(net_id, &hash).is_none(),
                 Error::<T>::DuplicatedRequest
             );
+        }
+        if matches!(request, OffchainRequest::LoadIncoming(_)) {
+            ensure!(
+                !LoadToIncomingRequestHash::<T>::contains_key(net_id, hash),
+                Error::<T>::RequestIsAlreadyRegistered
+            );
+            // Do not let a fresh public hint erase a historical failed canonical
+            // import whose Sidechain timepoint predates explicit tombstones.
+            if matches!(
+                request,
+                OffchainRequest::LoadIncoming(LoadIncomingRequest::Transaction(_))
+            ) && matches!(
+                RequestStatuses::<T>::get(net_id, hash),
+                Some(RequestStatus::Failed(_))
+            ) {
+                ensure!(
+                    Self::unconsumed_public_transaction_load(net_id, hash),
+                    Error::<T>::RequestIsAlreadyRegistered
+                );
+            }
         }
         let queue_len = RequestsQueue::<T>::get(net_id).len();
         ensure!(
@@ -2499,6 +2613,7 @@ impl<T: Config> Pallet<T> {
                 || (request.as_outgoing().is_none() && crate::recovery::inbound_allowed::<T>()),
             Error::<T>::RecoveryHalted
         );
+        Self::ensure_outgoing_refund_unsigned(request, network_id, hash)?;
         ensure!(
             RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?
                 == RequestStatus::Pending,
@@ -2509,6 +2624,28 @@ impl<T: Config> Pallet<T> {
         Self::remove_request_from_queue(network_id, &hash);
         Self::deposit_event(Event::RequestAborted(hash));
         Ok(())
+    }
+
+    /// A public load is only a hint: its author, kind and native timepoint do not
+    /// authenticate the sidechain transaction. Canonical peer imports may replace
+    /// it until an incoming attempt consumes the external replay identity.
+    fn unconsumed_public_transaction_load(network: T::NetworkId, hash: H256) -> bool {
+        !crate::recovery::halted()
+            && !LoadToIncomingRequestHash::<T>::contains_key(network, hash)
+            && matches!(
+                RequestStatuses::<T>::get(network, hash),
+                Some(RequestStatus::Pending | RequestStatus::Failed(_))
+            )
+            && matches!(Requests::<T>::get(network, hash),
+                Some(OffchainRequest::LoadIncoming(LoadIncomingRequest::Transaction(load)))
+                if load.network_id == network && load.hash == hash
+                    && matches!(load.timepoint.height, bridge_multisig::MultiChainHeight::Thischain(_)))
+    }
+
+    fn should_import_sidechain_transaction(network: T::NetworkId, hash: H256) -> bool {
+        !LoadToIncomingRequestHash::<T>::contains_key(network, hash)
+            && (RequestStatuses::<T>::get(network, hash).is_none()
+                || Self::unconsumed_public_transaction_load(network, hash))
     }
 
     /// The same exact admission is used by protocol validation and dispatch.
@@ -2560,7 +2697,13 @@ impl<T: Config> Pallet<T> {
             crate::recovery::ordinary_account::<T>(&transfer.to)?;
         }
         let replay_key = load_incoming_request.hash();
-        let retained_load = Self::retained_recovery_load(&load_incoming_request)?;
+        let canonical_sidechain_load = matches!(
+            load_incoming_request.timepoint().height,
+            bridge_multisig::MultiChainHeight::Sidechain(_)
+        );
+        let retained_load = Self::retained_recovery_load(&load_incoming_request)?
+            || (Self::unconsumed_public_transaction_load(net_id, replay_key)
+                && RequestStatuses::<T>::get(net_id, replay_key) == Some(RequestStatus::Pending));
         let load_incoming = OffchainRequest::LoadIncoming(load_incoming_request);
         // A checkpoint may already contain the load half of this exact receipt.
         // Recovery still authenticates the complete import with a fresh native
@@ -2623,6 +2766,13 @@ impl<T: Config> Pallet<T> {
                 }
             }
             Err(e) => {
+                if canonical_sidechain_load {
+                    // Preserve the canonical failed load, including when it
+                    // superseded a public hint. Its Sidechain timepoint keeps
+                    // scanners and public resubmission from reopening it, without
+                    // inventing a LoadToIncoming link to a nonexistent incoming.
+                    Requests::<T>::insert(net_id, replay_key, &load_incoming);
+                }
                 Self::inner_abort_request(&load_incoming, replay_key, e, net_id)?;
             }
         }
@@ -2644,10 +2794,8 @@ impl<T: Config> Pallet<T> {
         let current_status =
             RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
         ensure!(
-            matches!(
-                current_status,
-                RequestStatus::Pending | RequestStatus::ApprovalsReady
-            ),
+            Self::outgoing_finalization_retryable(&current_status)
+                || current_status == RequestStatus::ApprovalsReady,
             Error::<T>::RequestIsNotReady
         );
         ensure!(
@@ -2670,48 +2818,145 @@ impl<T: Config> Pallet<T> {
         let signature_params = signature_params
             .canonical_recovery_id()
             .ok_or(Error::<T>::InvalidSignature)?;
-        let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
-        let mut approvers = RequestApprovers::<T>::get(net_id, &hash);
-        let pending_peers_len = if Self::is_additional_signature_needed(net_id, &request) {
-            1
-        } else {
-            0
-        };
-        let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
-        if current_status == RequestStatus::Pending && request.should_be_skipped() {
+        let (mut approvals, mut approvers) =
+            Self::current_request_approvals(net_id, hash, request_encoded.as_raw())?;
+        let may_finalize = Self::outgoing_finalization_retryable(&current_status);
+        if may_finalize && request.should_be_skipped() {
             return Err(Error::<T>::RequestIsNotReady.into());
         }
         if approvers.contains(&author) {
-            debug!(
-                "Peer {:?} attempted to resubmit approval for {:?}",
-                author, hash
+            // Existing peers can trigger the recheck without collecting a new
+            // signature after the threshold drops. Other duplicates stay invalid.
+            ensure!(
+                current_status == RequestStatus::Pending
+                    && Self::has_current_approval_quorum(net_id, &request, &approvers)?,
+                Error::<T>::DuplicateApproval
             );
-            return Err(Error::<T>::DuplicateApproval.into());
+        } else {
+            ensure!(
+                approvals.len() < MAX_PEERS && approvers.len() < MAX_PEERS,
+                Error::<T>::TooManyApprovals
+            );
+            approvers.insert(author);
+            approvals.insert(signature_params);
         }
-        ensure!(
-            approvals.len() < MAX_PEERS && approvers.len() < MAX_PEERS,
-            Error::<T>::TooManyApprovals
-        );
-        approvers.insert(author);
-        approvals.insert(signature_params);
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
         RequestApprovers::<T>::insert(net_id, &hash, &approvers);
-        if current_status == RequestStatus::Pending && approvers.len() == need_sigs {
-            if let Err(err) = request.finalize(hash) {
-                error!("Outgoing request finalization failed: {:?}", err);
-                RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
-                Self::deposit_event(Event::RequestFinalizationFailed(hash));
-                cancel!(request, hash, net_id, err);
-            } else {
-                debug!("Outgoing request approvals collected {:?}", hash);
-                RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
-                Self::deposit_event(Event::ApprovalsCollected(hash));
-            }
-            Self::remove_request_from_queue(net_id, &hash);
-            let weight_info = <T as Config>::WeightInfo::approve_request_finalize();
-            return Ok(Some(weight_info));
+        if may_finalize && Self::has_current_approval_quorum(net_id, &request, &approvers)? {
+            Self::finalize_outgoing_with_public_approvals(&request, hash, net_id);
+            return Ok(Some(<T as Config>::WeightInfo::approve_request_finalize()));
         }
         Ok(Some(<T as Config>::WeightInfo::approve_request()))
+    }
+
+    /// Covers at most MAX_PEERS secp256k1 recoveries and the bounded signer sets.
+    /// Keep this allowance in both fee validation and dispatch weight accounting.
+    pub fn approval_reconciliation_weight() -> Weight {
+        Weight::from_parts(
+            1_000_000_000u64.saturating_mul(MAX_PEERS as u64),
+            4096 + 128 * MAX_PEERS as u64,
+        )
+        .saturating_add(T::DbWeight::get().reads(3))
+    }
+
+    fn outgoing_finalization_retryable(status: &RequestStatus) -> bool {
+        matches!(status, RequestStatus::Pending)
+            || matches!(status, RequestStatus::Broken(_, reason)
+                if *reason == Error::<T>::PublicApprovalsRequireSettlement.into())
+    }
+
+    fn ensure_outgoing_refund_unsigned(
+        request: &OffchainRequest<T>,
+        network: T::NetworkId,
+        hash: H256,
+    ) -> DispatchResult {
+        if request.as_outgoing().is_some() {
+            // A historical or pending-peer threshold may differ from today's
+            // local threshold. Any published signature requires settlement proof.
+            ensure!(
+                RequestApprovals::<T>::get(network, hash).is_empty()
+                    && RequestApprovers::<T>::get(network, hash).is_empty(),
+                Error::<T>::PublicApprovalsRequireSettlement
+            );
+        }
+        Ok(())
+    }
+
+    fn current_request_approvals(
+        network: T::NetworkId,
+        hash: H256,
+        message: &[u8],
+    ) -> Result<(BTreeSet<SignatureParams>, BTreeSet<T::AccountId>), DispatchError> {
+        let stored_signatures = RequestApprovals::<T>::get(network, hash);
+        let recorded = RequestApprovers::<T>::get(network, hash);
+        ensure!(
+            stored_signatures.len() <= MAX_PEERS && recorded.len() <= MAX_PEERS,
+            Error::<T>::TooManyApprovals
+        );
+        let peers = Peers::<T>::get(network);
+        ensure!(
+            !peers.is_empty() && peers.len() <= MAX_PEERS,
+            Error::<T>::NotEnoughPeers
+        );
+        let by_encoded_account: sp_std::collections::btree_map::BTreeMap<_, _> = recorded
+            .intersection(&peers)
+            .map(|account| (account.encode(), account.clone()))
+            .collect();
+        let mut signatures = BTreeSet::new();
+        let mut approvers = BTreeSet::new();
+        for signature in stored_signatures {
+            let Some(signature) = signature.canonical_recovery_id() else {
+                continue;
+            };
+            let Some(public) = Self::recover_message_signer(message, &signature) else {
+                continue;
+            };
+            let signer = sp_runtime::MultiSigner::Ecdsa(public)
+                .into_account()
+                .encode();
+            if let Some(account) = by_encoded_account.get(&signer) {
+                if approvers.insert(account.clone()) {
+                    signatures.insert(signature);
+                }
+            }
+        }
+        Ok((signatures, approvers))
+    }
+
+    fn has_current_approval_quorum(
+        network: T::NetworkId,
+        request: &OutgoingRequest<T>,
+        approvers: &BTreeSet<T::AccountId>,
+    ) -> Result<bool, DispatchError> {
+        let peers = Peers::<T>::get(network);
+        ensure!(
+            !peers.is_empty() && peers.len() <= MAX_PEERS,
+            Error::<T>::NotEnoughPeers
+        );
+        let required = majority(peers.len())
+            + usize::from(Self::is_additional_signature_needed(network, request));
+        Ok(approvers.intersection(&peers).count() >= required)
+    }
+
+    fn finalize_outgoing_with_public_approvals(
+        request: &OutgoingRequest<T>,
+        hash: H256,
+        network: T::NetworkId,
+    ) {
+        // Catching an error must not commit a partial burn, membership change or
+        // accounting update. The public signatures remain valid on Ethereum.
+        if let Err(error) = common::with_transaction(|| request.finalize(hash)) {
+            RequestStatuses::<T>::insert(
+                network,
+                hash,
+                RequestStatus::Broken(error, Error::<T>::PublicApprovalsRequireSettlement.into()),
+            );
+            Self::deposit_event(Event::RequestFinalizationFailed(hash));
+        } else {
+            RequestStatuses::<T>::insert(network, hash, RequestStatus::ApprovalsReady);
+            Self::deposit_event(Event::ApprovalsCollected(hash));
+        }
+        Self::remove_request_from_queue(network, &hash);
     }
 
     fn is_additional_signature_needed(net_id: T::NetworkId, request: &OutgoingRequest<T>) -> bool {

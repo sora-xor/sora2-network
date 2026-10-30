@@ -454,7 +454,6 @@ fn approve_request_retains_declared_weight_after_quorum_is_already_reached() {
 #[test]
 fn approve_request_rejects_more_than_the_maximum_stored_approvals() {
     let (mut ext, state) = ExtBuilder::default().build();
-
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
@@ -462,64 +461,29 @@ fn approve_request_rejects_more_than_the_maximum_stored_approvals() {
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice),
             XOR.into(),
-            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
-            100_u32.into(),
-            net_id,
+            EthAddress::repeat_byte(9),
+            100u32.into(),
+            net_id
         ));
-        let (request, hash) = last_outgoing_request(net_id).expect("outgoing request exists");
-
-        let approvals = (0..(crate::MAX_PEERS - 1))
+        let (request, hash) = last_outgoing_request(net_id).unwrap();
+        let approvals = (0..=crate::MAX_PEERS)
             .map(|index| SignatureParams {
                 v: index as u8,
                 ..Default::default()
             })
             .collect::<BTreeSet<_>>();
-        let approvers = (0..(crate::MAX_PEERS - 1))
-            .map(|index| AccountId::new([index as u8; 32]))
-            .collect::<BTreeSet<_>>();
-        crate::RequestApprovals::<Runtime>::insert(net_id, hash, &approvals);
-        crate::RequestApprovers::<Runtime>::insert(net_id, hash, &approvers);
-        crate::RequestStatuses::<Runtime>::insert(net_id, hash, RequestStatus::ApprovalsReady);
-
-        let (_signer, account_id, seed) = &state.networks[&net_id].ocw_keypairs[0];
-        let (ocw_public, signature_params) = approval_params(&request, hash, seed);
-        assert_ok!(EthBridge::approve_request(
-            RuntimeOrigin::signed(account_id.clone()),
-            ocw_public,
-            hash,
-            signature_params,
-            net_id,
-        ));
-        assert_eq!(
-            crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
-            crate::MAX_PEERS
-        );
-        assert_eq!(
-            crate::RequestApprovers::<Runtime>::get(net_id, hash).len(),
-            crate::MAX_PEERS
-        );
-
-        let stored_approvals = crate::RequestApprovals::<Runtime>::get(net_id, hash);
-        let stored_approvers = crate::RequestApprovers::<Runtime>::get(net_id, hash);
-        let (_signer, account_id, seed) = &state.networks[&net_id].ocw_keypairs[1];
-        let (ocw_public, signature_params) = approval_params(&request, hash, seed);
-        assert_err_ignore_postinfo!(
+        crate::RequestApprovals::<Runtime>::insert(net_id, hash, approvals);
+        let (_, account, seed) = &state.networks[&net_id].ocw_keypairs[0];
+        let (public, signature) = approval_params(&request, hash, seed);
+        frame_support::assert_noop!(
             EthBridge::approve_request(
-                RuntimeOrigin::signed(account_id.clone()),
-                ocw_public,
+                RuntimeOrigin::signed(account.clone()),
+                public,
                 hash,
-                signature_params,
-                net_id,
+                signature,
+                net_id
             ),
             Error::TooManyApprovals
-        );
-        assert_eq!(
-            crate::RequestApprovals::<Runtime>::get(net_id, hash),
-            stored_approvals
-        );
-        assert_eq!(
-            crate::RequestApprovers::<Runtime>::get(net_id, hash),
-            stored_approvers
         );
     });
 }
@@ -688,16 +652,25 @@ fn should_fail_queued_outgoing_transfer_if_mapping_becomes_deprecated_before_app
                 net_id,
             ));
         }
-        assert!(matches!(
+        assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, request_hash),
-            Some(RequestStatus::Failed(_))
-        ));
+            Some(RequestStatus::Broken(
+                Error::DeprecatedLegacyXor.into(),
+                Error::PublicApprovalsRequireSettlement.into()
+            ))
+        );
         assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&request_hash));
-        assert!(crate::RequestApprovals::<Runtime>::get(net_id, request_hash).is_empty());
-        assert!(crate::RequestApprovers::<Runtime>::get(net_id, request_hash).is_empty());
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(net_id, request_hash).len(),
+            sigs_needed
+        );
+        assert_eq!(
+            crate::RequestApprovers::<Runtime>::get(net_id, request_hash).len(),
+            sigs_needed
+        );
         assert_eq!(
             Assets::total_balance(&VAL.into(), &alice).unwrap(),
-            1000u32.into()
+            900u32.into()
         );
     });
 }
@@ -1207,7 +1180,7 @@ fn quorum_counts_distinct_approvers_even_if_signature_storage_drifts() {
 
         assert_eq!(
             crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
-            3
+            2
         );
         assert_eq!(
             crate::RequestApprovers::<Runtime>::get(net_id, &hash).len(),
@@ -1590,5 +1563,329 @@ fn permanent_quarantine_blocks_referenced_incoming_work_and_legacy_aggregate_bur
         );
         crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
         assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+    });
+}
+
+#[test]
+fn current_peer_quorum_excludes_retired_approvers_and_accepts_more_than_threshold() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 1000).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice),
+            XOR.into(),
+            EthAddress::repeat_byte(7),
+            100,
+            net
+        ));
+        let (request, hash) = last_outgoing_request(net).unwrap();
+        let peers = &state.networks[&net].ocw_keypairs;
+        for index in [0, 1] {
+            let (_, account, seed) = &peers[index];
+            let (public, signature) = approval_params(&request, hash, seed);
+            assert_ok!(EthBridge::approve_request(
+                RuntimeOrigin::signed(account.clone()),
+                public,
+                hash,
+                signature,
+                net
+            ));
+        }
+        crate::Peers::<Runtime>::mutate(net, |set| {
+            set.remove(&peers[0].1);
+            set.insert(AccountId::new([248; 32]));
+        });
+        let (public, signature) = approval_params(&request, hash, &peers[2].2);
+        assert_ok!(EthBridge::approve_request(
+            RuntimeOrigin::signed(peers[2].1.clone()),
+            public,
+            hash,
+            signature,
+            net
+        ));
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net, hash),
+            Some(RequestStatus::Pending)
+        );
+        assert_eq!(crate::RequestApprovals::<Runtime>::get(net, hash).len(), 2);
+        assert!(!crate::RequestApprovers::<Runtime>::get(net, hash).contains(&peers[0].1));
+        let (public, signature) = approval_params(&request, hash, &peers[3].2);
+        assert_ok!(EthBridge::approve_request(
+            RuntimeOrigin::signed(peers[3].1.clone()),
+            public,
+            hash,
+            signature,
+            net
+        ));
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net, hash),
+            Some(RequestStatus::ApprovalsReady)
+        );
+    });
+    // The pending-peer extra signature disappears between approvals. The next
+    // valid vote makes four current approvals against a threshold of three.
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 1000).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice),
+            XOR.into(),
+            EthAddress::repeat_byte(8),
+            100,
+            net
+        ));
+        let (request, hash) = last_outgoing_request(net).unwrap();
+        crate::PendingPeer::<Runtime>::insert(net, AccountId::new([249; 32]));
+        for (_, account, seed) in state.networks[&net].ocw_keypairs.iter().take(3) {
+            let (public, signature) = approval_params(&request, hash, seed);
+            assert_ok!(EthBridge::approve_request(
+                RuntimeOrigin::signed(account.clone()),
+                public,
+                hash,
+                signature,
+                net
+            ));
+        }
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net, hash),
+            Some(RequestStatus::Pending)
+        );
+        crate::PendingPeer::<Runtime>::remove(net);
+        let (_, account, seed) = &state.networks[&net].ocw_keypairs[3];
+        let (public, signature) = approval_params(&request, hash, seed);
+        assert_ok!(EthBridge::approve_request(
+            RuntimeOrigin::signed(account.clone()),
+            public,
+            hash,
+            signature,
+            net
+        ));
+        assert_eq!(crate::RequestApprovers::<Runtime>::get(net, hash).len(), 4);
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net, hash),
+            Some(RequestStatus::ApprovalsReady)
+        );
+    });
+}
+
+#[test]
+fn permissionless_recheck_finishes_existing_quorum_after_threshold_drop() {
+    for resubmit_existing_peer in [false, true] {
+        let (mut ext, state) = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let net = ETH_NETWORK_ID;
+            let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+            Assets::mint_to(&XOR.into(), &alice, &alice, 1000).unwrap();
+            assert_ok!(EthBridge::transfer_to_sidechain(
+                RuntimeOrigin::signed(alice.clone()),
+                XOR.into(),
+                EthAddress::repeat_byte(9),
+                100,
+                net
+            ));
+            let (request, hash) = last_outgoing_request(net).unwrap();
+            crate::PendingPeer::<Runtime>::insert(net, AccountId::new([249; 32]));
+            for (_, account, seed) in state.networks[&net].ocw_keypairs.iter().take(3) {
+                let (public, signature) = approval_params(&request, hash, seed);
+                assert_ok!(EthBridge::approve_request(
+                    RuntimeOrigin::signed(account.clone()),
+                    public,
+                    hash,
+                    signature,
+                    net
+                ));
+            }
+            frame_support::assert_noop!(
+                EthBridge::finalize_approved_request(
+                    RuntimeOrigin::signed(alice.clone()),
+                    net,
+                    hash
+                ),
+                Error::InsufficientCurrentApprovals
+            );
+            crate::PendingPeer::<Runtime>::remove(net);
+            if resubmit_existing_peer {
+                let (_, account, seed) = &state.networks[&net].ocw_keypairs[0];
+                let (public, signature) = approval_params(&request, hash, seed);
+                assert_ok!(EthBridge::validate_outgoing_approval(
+                    &public, &hash, &signature, account, net
+                ));
+                assert_ok!(EthBridge::approve_request(
+                    RuntimeOrigin::signed(account.clone()),
+                    public,
+                    hash,
+                    signature,
+                    net
+                ));
+            } else {
+                assert_ok!(EthBridge::finalize_approved_request(
+                    RuntimeOrigin::signed(alice.clone()),
+                    net,
+                    hash
+                ));
+            }
+            assert_eq!(
+                crate::RequestStatuses::<Runtime>::get(net, hash),
+                Some(RequestStatus::ApprovalsReady)
+            );
+            frame_support::assert_noop!(
+                EthBridge::finalize_approved_request(RuntimeOrigin::signed(alice), net, hash),
+                Error::RequestIsNotReady
+            );
+        });
+    }
+}
+
+#[test]
+fn public_outgoing_approvals_prevent_refund_and_failed_finalization_can_retry() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 1000).unwrap();
+        let original = Assets::total_balance(&XOR.into(), &alice).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::repeat_byte(10),
+            100,
+            net
+        ));
+        let (request, hash) = last_outgoing_request(net).unwrap();
+        let bridge = &state.networks[&net].config.bridge_account_id;
+        let reserved_before = Assets::total_balance(&XOR.into(), bridge).unwrap()
+            - Assets::free_balance(&XOR.into(), bridge).unwrap();
+        let token =
+            crate::RegisteredSidechainToken::<Runtime>::get(net, AssetId::from(XOR)).unwrap();
+        // Deprecation after preparation makes local finalization fail while the
+        // already signed Ethereum payload and the reserved balance stay valid.
+        crate::DeprecatedSidechainTokens::<Runtime>::insert(net, token, true);
+        for (index, (_, account, seed)) in
+            state.networks[&net].ocw_keypairs.iter().take(3).enumerate()
+        {
+            let (public, signature) = approval_params(&request, hash, seed);
+            assert_ok!(EthBridge::approve_request(
+                RuntimeOrigin::signed(account.clone()),
+                public,
+                hash,
+                signature,
+                net
+            ));
+            if index == 0 {
+                frame_support::assert_noop!(
+                    EthBridge::abort_request(
+                        RuntimeOrigin::signed(bridge.clone()),
+                        hash,
+                        Error::Other.into(),
+                        net
+                    ),
+                    Error::PublicApprovalsRequireSettlement
+                );
+            }
+        }
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net, hash),
+            Some(RequestStatus::Broken(
+                Error::DeprecatedLegacyXor.into(),
+                Error::PublicApprovalsRequireSettlement.into()
+            ))
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            original - 100
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), bridge).unwrap()
+                - Assets::free_balance(&XOR.into(), bridge).unwrap(),
+            reserved_before
+        );
+        assert_eq!(crate::RequestApprovals::<Runtime>::get(net, hash).len(), 3);
+        let (_, peer, seed) = &state.networks[&net].ocw_keypairs[0];
+        let (public, signature) = approval_params(&request, hash, seed);
+        frame_support::assert_noop!(
+            EthBridge::validate_outgoing_approval(&public, &hash, &signature, peer, net),
+            Error::DuplicateApproval
+        );
+        frame_support::assert_noop!(
+            EthBridge::approve_request(
+                RuntimeOrigin::signed(peer.clone()),
+                public,
+                hash,
+                signature,
+                net
+            ),
+            Error::DuplicateApproval
+        );
+        frame_support::assert_noop!(
+            EthBridge::abort_request(
+                RuntimeOrigin::signed(bridge.clone()),
+                hash,
+                Error::Other.into(),
+                net
+            ),
+            Error::PublicApprovalsRequireSettlement
+        );
+        crate::DeprecatedSidechainTokens::<Runtime>::remove(net, token);
+        assert_ok!(EthBridge::finalize_approved_request(
+            RuntimeOrigin::signed(alice.clone()),
+            net,
+            hash
+        ));
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net, hash),
+            Some(RequestStatus::ApprovalsReady)
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            original - 100
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), bridge).unwrap()
+                - Assets::free_balance(&XOR.into(), bridge).unwrap(),
+            reserved_before - 100
+        );
+    });
+}
+
+#[test]
+fn zero_outgoing_transfer_is_rejected_before_nonce_queue_or_balance_changes() {
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let recipient = EthAddress::repeat_byte(42);
+        for asset in [PSWAP, VAL] {
+            let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+            assert_err!(
+                EthBridge::transfer_to_sidechain(
+                    RuntimeOrigin::signed(alice.clone()),
+                    asset,
+                    recipient,
+                    0,
+                    ETH_NETWORK_ID,
+                ),
+                Error::InvalidAmount
+            );
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+            assert_err!(
+                <EthBridge as bridge_types::traits::BridgeApp<
+                    AccountId,
+                    EthAddress,
+                    AssetId,
+                    common::Balance,
+                >>::transfer(
+                    bridge_types::GenericNetworkId::EVMLegacy(ETH_NETWORK_ID),
+                    asset,
+                    alice.clone(),
+                    recipient,
+                    0,
+                ),
+                Error::InvalidAmount
+            );
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+        }
     });
 }

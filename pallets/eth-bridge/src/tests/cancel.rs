@@ -59,75 +59,72 @@ use sp_core::{sr25519, H160, H256};
 use std::str::FromStr;
 
 #[test]
-fn should_cancel_ready_outgoing_request() {
+fn failed_duplicate_withdrawal_cannot_refund_from_another_pending_reserve() {
     let (mut ext, state) = ExtBuilder::default().build();
     let _ = FUNCTIONS.get_or_init(functions);
     ext.execute_with(|| {
-        let net_id = ETH_NETWORK_ID;
+        let net = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        // Sending request part
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            100u32.into()
-        );
-        assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
-            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
-            100_u32.into(),
-            net_id,
-        ));
+        let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
+        for owner in [&alice, &bob] {
+            Assets::mint_to(&XOR.into(), &alice, owner, 100).unwrap();
+        }
+        assert_ok!(EthBridge::transfer_to_sidechain(RuntimeOrigin::signed(alice.clone()),
+            XOR.into(), EthAddress::repeat_byte(9), 100, net));
+        let (outgoing, hash) = approve_last_request(&state, net).unwrap();
+        // The first transfer's own reserve was released at quorum. A second
+        // pending transfer makes the shared reserve sufficient for the old,
+        // unsafe cancellation to refund an already redeemable withdrawal.
+        assert_ok!(EthBridge::transfer_to_sidechain(RuntimeOrigin::signed(bob.clone()),
+            XOR.into(), EthAddress::repeat_byte(10), 100, net));
+        let (_, pending_hash) = last_outgoing_request(net).unwrap();
+        let calldata = encode_outgoing_request_eth_call::<Runtime>(
+            *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID.get().unwrap(), &outgoing, hash).unwrap();
+        let signatures = crate::RequestApprovals::<Runtime>::get(net, hash);
+        let approvers = crate::RequestApprovers::<Runtime>::get(net, hash);
+        let incoming = IncomingRequest::CancelOutgoingRequest(IncomingCancelOutgoingRequest {
+            outgoing_request: outgoing.clone(), outgoing_request_hash: hash,
+            initial_request_hash: H256::repeat_byte(11), tx_input: calldata.clone(),
+            author: alice.clone(), tx_hash: H256::repeat_byte(12), at_height: 1,
+            timepoint: Default::default(), network_id: net,
+        });
+        let bridge = &state.networks[&net].config.bridge_account_id;
+        let reserved = Assets::total_balance(&XOR.into(), bridge).unwrap()
+            - Assets::free_balance(&XOR.into(), bridge).unwrap();
+        assert_eq!(reserved, 100);
+        // Reproduce the old refund primitive in a rolled-back storage layer:
+        // its fungible reserve belongs to Bob, not the approved withdrawal.
+        frame_support::storage::with_transaction(|| {
+            assert_ok!(outgoing.cancel());
+            assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 100);
+            assert_eq!(Assets::total_balance(&XOR.into(), bridge).unwrap()
+                - Assets::free_balance(&XOR.into(), bridge).unwrap(), 0);
+            TransactionOutcome::Rollback(DispatchResult::Ok(()))
+        }).unwrap();
+        assert_noop!(incoming.validate(), Error::PublicApprovalsRequireSettlement);
+        assert_noop!(incoming.prepare(), Error::PublicApprovalsRequireSettlement);
+        assert_noop!(incoming.finalize(), Error::PublicApprovalsRequireSettlement);
+        assert_eq!(incoming.check_existence(), Err(Error::PublicApprovalsRequireSettlement));
+        // Also cover cancellations already prepared by the old runtime.
+        crate::RequestStatuses::<Runtime>::insert(net, hash, RequestStatus::Frozen);
+        assert_noop!(incoming.finalize(), Error::PublicApprovalsRequireSettlement);
+        assert_ok!(incoming.cancel());
+        assert_eq!(crate::RequestStatuses::<Runtime>::get(net, hash), Some(RequestStatus::ApprovalsReady));
+        assert_eq!(crate::RequestStatuses::<Runtime>::get(net, pending_hash), Some(RequestStatus::Pending));
         assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
-        let (outgoing_req, outgoing_req_hash) =
-            approve_last_request(&state, net_id).expect("request wasn't approved");
-
-        // Cancelling request part
-        let tx_hash = H256::from_slice(&[1u8; 32]);
-        let request_hash = request_incoming(
-            alice.clone(),
-            tx_hash,
-            IncomingMetaRequestKind::CancelOutgoingRequest.into(),
-            net_id,
-        )
-        .unwrap();
-        let tx_input = encode_outgoing_request_eth_call::<Runtime>(
-            *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID.get().unwrap(),
-            &outgoing_req,
-            outgoing_req_hash,
-        )
-        .unwrap();
-        let incoming_transfer =
-            IncomingRequest::CancelOutgoingRequest(crate::IncomingCancelOutgoingRequest {
-                outgoing_request: outgoing_req.clone(),
-                outgoing_request_hash: outgoing_req_hash,
-                initial_request_hash: request_hash,
-                tx_input: tx_input.clone(),
-                author: alice.clone(),
-                tx_hash,
-                at_height: 1,
-                timepoint: Default::default(),
-                network_id: ETH_NETWORK_ID,
-            });
-
-        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
-        assert_ok!(EthBridge::register_incoming_request(
-            RuntimeOrigin::signed(bridge_acc_id.clone()),
-            incoming_transfer.clone(),
-        ));
-        let req_hash =
-            crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, incoming_transfer.hash());
-        assert_ok!(EthBridge::finalize_incoming_request(
-            RuntimeOrigin::signed(bridge_acc_id),
-            req_hash,
-            net_id,
-        ));
-        let expected_error: sp_runtime::DispatchError = Error::FailedToUnreserve.into();
-        assert_eq!(
-            crate::RequestStatuses::<Runtime>::get(net_id, req_hash),
-            Some(RequestStatus::Failed(expected_error))
-        );
-        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&XOR.into(), &bob).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&XOR.into(), bridge).unwrap()
+            - Assets::free_balance(&XOR.into(), bridge).unwrap(), reserved);
+        assert_eq!(crate::RequestApprovals::<Runtime>::get(net, hash), signatures);
+        assert_eq!(crate::RequestApprovers::<Runtime>::get(net, hash), approvers);
+        // Nothing revoked or altered the signed withdrawal. If it has not yet
+        // succeeded remotely, its exact original calldata remains retryable.
+        assert_eq!(encode_outgoing_request_eth_call::<Runtime>(
+            *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID.get().unwrap(), &outgoing, hash).unwrap(), calldata);
+        crate::RequestStatuses::<Runtime>::insert(net, hash, RequestStatus::Done);
+        let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        assert_ok!(incoming.cancel());
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
     });
 }
 
@@ -193,7 +190,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
         assert_incoming_request_registration_failed(
             &state,
             incoming_transfer.clone(),
-            Error::InvalidContractInput,
+            Error::PublicApprovalsRequireSettlement,
         )
         .unwrap();
         assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
@@ -253,7 +250,7 @@ fn should_fail_cancel_unfinished_outgoing_request() {
         assert_incoming_request_registration_failed(
             &state,
             incoming_transfer.clone(),
-            Error::RequestIsNotReady,
+            Error::PublicApprovalsRequireSettlement,
         )
         .unwrap();
         assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
@@ -687,7 +684,7 @@ fn should_cancel_incoming_prepared_requests() {
 }
 
 #[test]
-fn should_cancel_incoming_cancel_outgoing_request_prepare() {
+fn retained_cancellation_unprepare_restores_withdrawal_without_new_admission() {
     let _ = FUNCTIONS.get_or_init(functions);
     let (mut ext, _state) = ExtBuilder::default().build();
 
@@ -728,7 +725,9 @@ fn should_cancel_incoming_cancel_outgoing_request_prepare() {
         });
 
         let state_hash_before = sp_io::storage::root(sp_runtime::StateVersion::V1);
-        request.prepare().unwrap();
+        assert_noop!(request.prepare(), Error::PublicApprovalsRequireSettlement);
+        // A retained old cancellation may already have frozen the request.
+        crate::RequestStatuses::<Runtime>::insert(net_id, outgoing_request_hash, RequestStatus::Frozen);
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, outgoing_request_hash),
             Some(RequestStatus::Frozen)
@@ -764,7 +763,7 @@ fn should_reject_manual_cancel_outgoing_meta_request() {
 }
 
 #[test]
-fn cancel_outgoing_check_existence_rejects_gas_limit_failure() {
+fn receipt_cancellation_rejects_gas_limit_receipts() {
     let (mut ext, _state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -810,13 +809,13 @@ fn cancel_outgoing_check_existence_rejects_gas_limit_failure() {
 
         assert_eq!(
             request.check_existence(),
-            Err(Error::TransactionMightHaveFailedDueToGasLimit)
+            Err(Error::PublicApprovalsRequireSettlement)
         );
     });
 }
 
 #[test]
-fn cancel_outgoing_check_existence_accepts_non_gas_limit_failure() {
+fn receipt_cancellation_rejects_other_failed_receipts() {
     let (mut ext, _state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -860,12 +859,12 @@ fn cancel_outgoing_check_existence_accepts_non_gas_limit_failure() {
             ..Default::default()
         });
 
-        assert_eq!(request.check_existence(), Ok(true));
+        assert_eq!(request.check_existence(), Err(Error::PublicApprovalsRequireSettlement));
     });
 }
 
 #[test]
-fn cancel_outgoing_check_existence_returns_false_for_approved_tx() {
+fn receipt_cancellation_rejects_successful_receipts() {
     let (mut ext, _state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -902,12 +901,12 @@ fn cancel_outgoing_check_existence_returns_false_for_approved_tx() {
             ..Default::default()
         });
 
-        assert_eq!(request.check_existence(), Ok(false));
+        assert_eq!(request.check_existence(), Err(Error::PublicApprovalsRequireSettlement));
     });
 }
 
 #[test]
-fn cancel_outgoing_check_existence_rejects_missing_gas_used() {
+fn receipt_cancellation_rejects_missing_gas_used() {
     let (mut ext, _state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -953,7 +952,7 @@ fn cancel_outgoing_check_existence_rejects_missing_gas_used() {
 
         assert_eq!(
             request.check_existence(),
-            Err(Error::TransactionMightHaveFailedDueToGasLimit)
+            Err(Error::PublicApprovalsRequireSettlement)
         );
     });
 }

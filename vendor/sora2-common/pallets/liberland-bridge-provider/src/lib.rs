@@ -161,12 +161,14 @@ pub mod pallet {
         NoTechAccFound,
         WrongAccount,
         WrongSidechainAsset,
+        PathIsNotAvailable,
     }
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     impl<T: Config> Pallet<T> {
+        #[frame_support::transactional]
         pub fn refund(
             network_id: GenericNetworkId,
             message_id: H256,
@@ -180,6 +182,8 @@ pub mod pallet {
             let beneficiary = T::AccountIdConverter::convert(beneficiary_liberland);
             if T::SoraApp::is_asset_supported(network_id, asset_id) {
                 T::SoraApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else {
+                frame_support::fail!(Error::<T>::PathIsNotAvailable);
             }
             Self::deposit_event(Event::<T>::RefundInvoked(message_id, amount));
             Ok(())
@@ -426,6 +430,13 @@ impl<T: Config>
         };
         Transactions::<T>::mutate((network_id, sender), message_id, |req| {
             if let Some(req) = req {
+                // Distinct authenticated reports can refer to the same transfer.
+                // A settled liability must not regress or release custody again.
+                if req.direction == MessageDirection::Outbound
+                    && matches!(req.status, MessageStatus::Done | MessageStatus::Refunded)
+                {
+                    return;
+                }
                 if new_status == MessageStatus::Failed
                     && req.direction == MessageDirection::Outbound
                 {

@@ -231,7 +231,12 @@ pub mod pallet {
                     bridge_types::evm::Commitment::Inbound(commitment) => {
                         T::MessageDispatch::dispatch_weight(&commitment.payload)
                     }
-                    bridge_types::evm::Commitment::StatusReport(_) => Default::default(),
+                    bridge_types::evm::Commitment::StatusReport(report) => {
+                        // Every failure can refund custody. The result vector is
+                        // bounded at decoding; its length is read without traversal.
+                        T::MessageStatusNotifier::update_status_weight()
+                            .saturating_mul(report.results.len() as u64)
+                    }
                     bridge_types::evm::Commitment::BaseFeeUpdate(_) => Default::default(),
                 },
                 bridge_types::GenericCommitment::TON(bridge_types::ton::Commitment::Inbound(

@@ -537,3 +537,87 @@ fn delayed_hashi_load_query_mapping_preserves_native_kind_and_decommission_admis
         }
     }
 }
+
+#[test]
+fn delayed_hashi_attacker_proceeds_credit_migration_account_after_reopening() {
+    use common::AssetInfoProvider;
+    for attacker_recipient in [false, true] {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let attacker = AccountId::new(recovery::ATTACKER_ACCOUNT);
+            let migration = AccountId::new(recovery::ATTACKER_MIGRATION_ACCOUNT);
+            // From ATTACKER_EVM to the retired [7; 32] (the redirect takes precedence
+            // over its replacement), or from an ordinary sender to the attacker.
+            let (policy, operation, keys) = if attacker_recipient {
+                hashi_fixture_with_parties(AccountId::new([19; 32]), attacker.clone())
+            } else {
+                hashi_fixture(true)
+            };
+            let IncomingChannel::Hashi {
+                request,
+                approvals,
+                network,
+            } = &operation.channel
+            else {
+                unreachable!()
+            };
+            let transfer = hashi_transfer(request).unwrap();
+            let redirect = || {
+                <PersistentAccountResolver as eth_bridge::recovery::IncomingAccountResolver<
+                    AccountId,
+                >>::redirect_transfer(&transfer.from, &transfer.to)
+            };
+            assert_eq!(redirect(), None, "no recovery policy");
+            let wrapper =
+                eth_bridge::requests::OffchainRequest::incoming(decode_bounded(request).unwrap());
+            let outer = decode_runtime_call(&approvals[0].call).unwrap();
+            let RuntimeCall::BridgeMultisig(bridge_multisig::Call::as_multi { call, .. }) = outer
+            else {
+                unreachable!()
+            };
+            let inner = decode_runtime_call(&call).unwrap();
+            crate::incident_recovery::with_test_policy(&policy, || {
+                delayed_hashi_complete_and_enable(&policy);
+                assert_eq!(redirect(), Some(migration.clone()));
+                // Halted delivery belongs to the committed maintenance resolution.
+                sp_io::storage::set(BRIDGE_HALT_STORAGE_KEY, &[1]);
+                assert_eq!(redirect(), None);
+                sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
+                for approval in delayed_hashi_approvals(&operation, &keys, inner.clone()) {
+                    assert_ok!(delayed_hashi_submit(&approval));
+                }
+                assert_eq!(
+                    crate::Assets::free_balance(&common::DAI, &migration).unwrap(),
+                    transfer.amount
+                );
+                for account in [&transfer.to, &AccountId::new([8; 32]), &attacker] {
+                    assert_eq!(
+                        crate::Assets::free_balance(&common::DAI, account).unwrap(),
+                        0
+                    );
+                }
+                // The peer-approved request bytes and replay identity are unchanged;
+                // only the credited account and its bridge history differ.
+                assert_eq!(
+                    eth_bridge::Requests::<Runtime>::get(*network, wrapper.hash()),
+                    Some(wrapper.clone())
+                );
+                assert_eq!(
+                    eth_bridge::RequestStatuses::<Runtime>::get(*network, wrapper.hash()),
+                    Some(eth_bridge::requests::RequestStatus::Done)
+                );
+                assert_eq!(
+                    crate::BridgeProxy::sender(
+                        GenericNetworkId::EVMLegacy(*network),
+                        transfer.tx_hash
+                    ),
+                    Some(migration.clone())
+                );
+                let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+                let retry = delayed_hashi_approvals(&operation, &keys, inner);
+                assert!(delayed_hashi_submit(&retry[0]).is_err());
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+                delayed_hashi_no_context();
+            });
+        });
+    }
+}

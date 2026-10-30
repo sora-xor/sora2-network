@@ -137,6 +137,9 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config<RuntimeEvent: From<Event<Self>>> {
+        /// Operational switch. Disabling preserves all historical bridge state.
+        #[pallet::constant]
+        type Enabled: Get<bool>;
         type CallOrigin: EnsureOrigin<
             Self::RuntimeOrigin,
             Success = CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
@@ -239,6 +242,7 @@ pub mod pallet {
         WrongAccountPrefix,
         /// This exact message remains permanently quarantined by recovery.
         RecoveryHalted,
+        BridgeDisabled,
     }
 
     #[pallet::genesis_config]
@@ -264,7 +268,7 @@ pub mod pallet {
             if let Some(app) = &self.app {
                 AppInfo::<T>::set(Some(*app));
                 for (asset_id, address, asset_kind, precision) in self.assets.iter() {
-                    Pallet::<T>::register_asset_inner(
+                    Pallet::<T>::register_asset_storage(
                         asset_id.clone(),
                         *address,
                         *asset_kind,
@@ -306,6 +310,7 @@ pub mod pallet {
             recipient: T::AccountId,
             amount: TonBalance,
         ) -> DispatchResult {
+            ensure!(T::Enabled::get(), Error::<T>::BridgeDisabled);
             let CallOriginOutput {
                 network_id: GenericNetworkId::TON(network_id),
                 message_id,
@@ -395,6 +400,7 @@ pub mod pallet {
             name: AssetNameOf<T>,
             decimals: u8,
         ) -> DispatchResult {
+            ensure!(T::Enabled::get(), Error::<T>::BridgeDisabled);
             ensure_root(origin)?;
             ensure!(!AppInfo::<T>::exists(), Error::<T>::AppAlreadyRegistered);
             AppInfo::<T>::put((network_id, contract));
@@ -430,6 +436,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             decimals: u8,
         ) -> DispatchResult {
+            ensure!(T::Enabled::get(), Error::<T>::BridgeDisabled);
             ensure_root(origin)?;
             ensure!(!AppInfo::<T>::exists(), Error::<T>::AppAlreadyRegistered);
             AppInfo::<T>::put((network_id, contract));
@@ -445,6 +452,17 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         pub fn register_asset_inner(
+            asset_id: AssetIdOf<T>,
+            contract: TonAddress,
+            asset_kind: AssetKind,
+            sidechain_precision: u8,
+        ) -> DispatchResult {
+            ensure!(T::Enabled::get(), Error::<T>::BridgeDisabled);
+            Self::register_asset_storage(asset_id, contract, asset_kind, sidechain_precision)
+        }
+
+        // Genesis may retain registered historical assets while operations are disabled.
+        fn register_asset_storage(
             asset_id: AssetIdOf<T>,
             contract: TonAddress,
             asset_kind: AssetKind,
@@ -477,6 +495,7 @@ pub mod pallet {
             _recipient: TonAddress,
             _amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
+            ensure!(T::Enabled::get(), Error::<T>::BridgeDisabled);
             frame_support::fail!(Error::<T>::InvalidNetwork);
         }
 
@@ -487,10 +506,14 @@ pub mod pallet {
             _asset_id: AssetIdOf<T>,
             _amount: BalanceOf<T>,
         ) -> DispatchResult {
+            ensure!(T::Enabled::get(), Error::<T>::BridgeDisabled);
             frame_support::fail!(Error::<T>::InvalidNetwork);
         }
 
         fn list_supported_assets(network_id: GenericNetworkId) -> Vec<BridgeAssetInfo> {
+            if !T::Enabled::get() {
+                return vec![];
+            }
             let app_info = AppInfo::<T>::get();
             if let Some((app_network_id, _)) = app_info {
                 if network_id != GenericNetworkId::TON(app_network_id) {
@@ -517,6 +540,9 @@ pub mod pallet {
         }
 
         fn list_apps() -> Vec<BridgeAppInfo> {
+            if !T::Enabled::get() {
+                return vec![];
+            }
             let app_info = AppInfo::<T>::get();
             if let Some((network_id, address)) = app_info {
                 vec![BridgeAppInfo::TON(

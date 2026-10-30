@@ -758,6 +758,95 @@ fn replace_recipient(
     Ok(call.encode())
 }
 
+/// A recorded attacker account (ATTACKER_ACCOUNT or ATTACKER_COLLECTION_ACCOUNT),
+/// or one root has since added to the attacker registry.
+fn attacker_account(account: &[u8; 32]) -> bool {
+    account == &recovery::ATTACKER_ACCOUNT
+        || account == &recovery::ATTACKER_COLLECTION_ACCOUNT
+        || sp_io::storage::exists(&recovery::attacker_registry_account_key(account))
+}
+
+/// ATTACKER_EVM, or an EVM address root has since added to the attacker registry.
+fn attacker_evm(address: &[u8; 20]) -> bool {
+    address == &recovery::ATTACKER_EVM
+        || sp_io::storage::exists(&recovery::attacker_registry_evm_key(address))
+}
+
+fn attacker_local_account(account: &AccountId) -> bool {
+    attacker_account(AsRef::<[u8; 32]>::as_ref(account))
+}
+
+/// Known attacker identities as an authenticated bridge sender: an attacker account
+/// as a Sora, Liberland or parachain AccountId32, or an attacker EVM address.
+fn attacker_sender(sender: &GenericAccount) -> bool {
+    match sender {
+        GenericAccount::Sora(account) | GenericAccount::Liberland(account) => {
+            attacker_local_account(account)
+        }
+        GenericAccount::EVM(address) => attacker_evm(address.as_fixed_bytes()),
+        GenericAccount::Parachain(location) => attacker_location(location),
+        GenericAccount::TON(_) | GenericAccount::Unknown | GenericAccount::Root => false,
+    }
+}
+
+/// A parachain sender containing an AccountId32 junction with an attacker account,
+/// or an AccountKey20 junction with an attacker EVM address, at any position and
+/// XCM version. Interiors hold at most eight junctions, so at most eight registry reads.
+fn attacker_location(location: &xcm::VersionedLocation) -> bool {
+    match location {
+        xcm::VersionedLocation::V3(location) => {
+            location.interior().iter().any(|junction| match junction {
+                xcm::v3::Junction::AccountId32 { id, .. } => attacker_account(id),
+                xcm::v3::Junction::AccountKey20 { key, .. } => attacker_evm(key),
+                _ => false,
+            })
+        }
+        xcm::VersionedLocation::V4(location) => {
+            location.interior().iter().any(|junction| match junction {
+                xcm::v4::Junction::AccountId32 { id, .. } => attacker_account(id),
+                xcm::v4::Junction::AccountKey20 { key, .. } => attacker_evm(key),
+                _ => false,
+            })
+        }
+        xcm::VersionedLocation::V5(location) => {
+            location.interior().iter().any(|junction| match junction {
+                xcm::v5::Junction::AccountId32 { id, .. } => attacker_account(id),
+                xcm::v5::Junction::AccountKey20 { key, .. } => attacker_evm(key),
+                _ => false,
+            })
+        }
+    }
+}
+
+/// Ordinary delivery after reopening: an authenticated transfer sent by an attacker
+/// identity, or naming an attacker account as recipient, carries attacker proceeds.
+/// `parties` attributes it exactly as maintenance exclusion does. Ordinary delivery
+/// also mints shapes `parties` rejects: unattributed senders, and Substrate
+/// recipients tagged Liberland, which mint to the same local account. Check their
+/// remaining identities directly so neither shape bypasses the redirect.
+fn attacker_transfer(call: &BridgeCall) -> bool {
+    match parties(call) {
+        Ok((sender, recipient)) => attacker_sender(&sender) || attacker_local_account(&recipient),
+        Err(_) => match call {
+            BridgeCall::SubstrateApp(SubstrateAppCall::Transfer {
+                sender, recipient, ..
+            }) => {
+                attacker_sender(sender)
+                    || matches!(
+                        recipient,
+                        GenericAccount::Sora(account) | GenericAccount::Liberland(account)
+                            if attacker_local_account(account)
+                    )
+            }
+            BridgeCall::ParachainApp(ParachainAppCall::Transfer { recipient, .. })
+            | BridgeCall::JettonApp(JettonAppCall::Transfer { recipient, .. }) => {
+                attacker_local_account(recipient)
+            }
+            _ => false,
+        },
+    }
+}
+
 fn expected_transfer(
     operation: &IncomingOperation,
     policy: &RecoveryPolicy,
@@ -1511,6 +1600,22 @@ fn dispatch_authenticated(
                 return Err(RecoveryError::ChunkBounds);
             }
             let call = decode_call(payload)?;
+            // Attacker proceeds are migrated, never credited to the named recipient
+            // or its replacement. Unlike halted maintenance exclusion, which
+            // extinguishes the claim, the native application credits the migration
+            // account and reports Done, so the source chain does not refund it.
+            if attacker_transfer(&call) {
+                // Redirects use the same policy commitment admission as every
+                // other permanent beneficiary resolution.
+                crate::incident_recovery::replacement(&AccountId::new(
+                    recovery::ATTACKER_MIGRATION_ACCOUNT,
+                ))?;
+                return replace_recipient(
+                    call,
+                    AccountId::new(recovery::ATTACKER_MIGRATION_ACCOUNT),
+                )
+                .map(Some);
+            }
             let original = match &call {
                 BridgeCall::SubstrateApp(SubstrateAppCall::Transfer {
                     recipient: GenericAccount::Sora(recipient),
@@ -1675,11 +1780,13 @@ impl MessageDispatch<Runtime, GenericNetworkId, MessageId, GenericAdditionalInbo
         if sp_io::storage::exists(POLICY_STORAGE_KEY) {
             // Includes permanent tombstones and the authenticated recipient
             // resolver: at most 256 payload bytes and thirteen static-map comparisons
-            // for 4,096 replacements, with three extra policy reads. Historical
-            // no-policy weights remain byte-for-byte compatible.
+            // for 4,096 replacements, with three extra policy reads. The attacker
+            // registry adds at most ten reads: the sender, up to eight location
+            // junctions, and the recipient. Historical no-policy weights remain
+            // byte-for-byte compatible.
             original
                 .saturating_add(Weight::from_parts(8_000_000, 20_480))
-                .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads(15))
+                .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads(25))
         } else {
             original
         }
@@ -1713,11 +1820,13 @@ impl MessageDispatch<Runtime, SubNetworkId, MessageId, ()> for RecoverySubstrate
         if sp_io::storage::exists(POLICY_STORAGE_KEY) {
             // Includes permanent tombstones and the authenticated recipient
             // resolver: at most 256 payload bytes and thirteen static-map comparisons
-            // for 4,096 replacements, with three extra policy reads. Historical
-            // no-policy weights remain byte-for-byte compatible.
+            // for 4,096 replacements, with three extra policy reads. The attacker
+            // registry adds at most ten reads: the sender, up to eight location
+            // junctions, and the recipient. Historical no-policy weights remain
+            // byte-for-byte compatible.
             original
                 .saturating_add(Weight::from_parts(8_000_000, 20_480))
-                .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads(15))
+                .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads(25))
         } else {
             original
         }
@@ -1827,6 +1936,17 @@ mod tests {
             (),
         ))
         .into();
+        // This ingress fixture deliberately omits the local asset so callers
+        // can exercise missing-asset failures or register their own settlement
+        // fixture later. Seed only the locally authorized bridge metadata.
+        substrate_bridge_app::PendingAssetRegistrations::<Runtime>::insert(
+            network,
+            common::XOR,
+            (
+                GenericAssetId::Sora(common::XOR.into()),
+                AssetKind::Sidechain,
+            ),
+        );
         assert_ok!(crate::SubstrateBridgeApp::finalize_asset_registration(
             origin,
             common::XOR,
@@ -1995,7 +2115,47 @@ mod tests {
     #[test]
     fn recovery_hashi_offline_codec_golden() {
         sp_io::TestExternalities::default().execute_with(|| {
-            let (policy, operation, _) = hashi_fixture(false);
+            let (mut policy, mut operation, keys) = hashi_fixture(false);
+            let committed = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../misc/incident_recovery/hashi_codec_fixture.json");
+            let expected: Option<serde_json::Value> = committed
+                .exists()
+                .then(|| serde_json::from_slice(&std::fs::read(&committed).unwrap()).unwrap());
+            if let Some(expected) = &expected {
+                let IncomingChannel::Hashi { approvals, .. } = &mut operation.channel else {
+                    unreachable!()
+                };
+                let retained = expected["template"]["approvals"].as_array().unwrap();
+                assert_eq!(approvals.len(), retained.len());
+                for ((approval, key), retained) in approvals.iter_mut().zip(&keys).zip(retained) {
+                    let call_hex = retained["call"].as_str().unwrap().strip_prefix("0x").unwrap();
+                    assert_eq!(call_hex.len() % 2, 0);
+                    let retained_bytes: Vec<_> = call_hex.as_bytes().chunks_exact(2)
+                        .map(|pair| u8::from_str_radix(core::str::from_utf8(pair).unwrap(), 16).unwrap())
+                        .collect();
+                    let retained_call = decode_runtime_call(&retained_bytes).unwrap();
+                    assert_eq!(retained_call.encode(), retained_bytes, "historical call codec");
+                    let RuntimeCall::BridgeMultisig(bridge_multisig::Call::as_multi {
+                        max_weight: retained_weight, ..
+                    }) = retained_call else { unreachable!() };
+                    let mut current_call = decode_runtime_call(&approval.call).unwrap();
+                    let RuntimeCall::BridgeMultisig(bridge_multisig::Call::as_multi {
+                        call, max_weight, ..
+                    }) = &mut current_call else { unreachable!() };
+                    assert_eq!(
+                        *max_weight,
+                        decode_runtime_call(call).unwrap().get_dispatch_info().total_weight(),
+                        "fresh approvals must use the current dispatch weight",
+                    );
+                    // max_weight belongs to the historical signed envelope. New
+                    // protocol weights must not rewrite retained codec evidence.
+                    // Pin only this field; compare every other generated byte below.
+                    *max_weight = retained_weight;
+                    approval.call = current_call.encode();
+                    sign_hashi(approval, key);
+                }
+                policy.chunk_hashes = vec![operation.commitment()];
+            }
             let hex = |bytes: &[u8]| format!("0x{}", bytes.iter()
                 .map(|byte| format!("{byte:02x}"))
                 .collect::<alloc::string::String>());
@@ -2033,9 +2193,7 @@ mod tests {
                 let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(path).unwrap();
                 file.write_all(serde_json::to_string_pretty(&fixture).unwrap().as_bytes()).unwrap();
             }
-            let committed = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../misc/incident_recovery/hashi_codec_fixture.json");
-            if committed.exists() {
-                let expected: serde_json::Value = serde_json::from_slice(&std::fs::read(committed).unwrap()).unwrap();
+            if let Some(expected) = expected {
                 // Signatures use randomized native signing; compare immutable templates,
                 // native payloads and commitments while excluding witness bytes.
                 for field in ["template", "commitment", "signingPayloads", "nativeContext"] {
@@ -2276,7 +2434,7 @@ mod tests {
     }
 
     #[test]
-    fn recovery_hashi_checkpoint_pending_load_reuse_requires_internal_authenticated_context() {
+    fn recovery_hashi_checkpoint_pending_load_reuse_requires_context_while_halted() {
         sp_io::TestExternalities::default().execute_with(|| {
             let (policy, operation, _) = hashi_fixture_with_author(AccountId::new([7; 32]));
             let (load, _) = checkpoint_pending_hashi_load(&operation, true);
@@ -2292,13 +2450,26 @@ mod tests {
                 incoming_request_result: Ok(decode_bounded(request).unwrap()),
             };
             let bridge = AccountId::new([55; 32]);
-            assert!(crate::EthBridge::validate_peer_protocol_call(&bridge, &protocol).is_err());
-            assert!(crate::EthBridge::import_incoming_request(
-                RuntimeOrigin::signed(bridge.clone()),
-                load_request.clone(),
-                Ok(decode_bounded(request).unwrap())
-            )
-            .is_err());
+            // Before recovery is installed, an authenticated import can replace
+            // a public hint. Roll back that ordinary-path check so the same
+            // retained load can exercise the stricter halted recovery boundary.
+            assert_ok!(crate::EthBridge::validate_peer_protocol_call(
+                &bridge, &protocol
+            ));
+            let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+            frame_support::storage::with_transaction(|| {
+                assert_ok!(crate::EthBridge::import_incoming_request(
+                    RuntimeOrigin::signed(bridge.clone()),
+                    load_request.clone(),
+                    Ok(decode_bounded(request).unwrap())
+                ));
+                frame_support::storage::TransactionOutcome::Rollback(Ok::<
+                    _,
+                    sp_runtime::DispatchError,
+                >(()))
+            })
+            .unwrap();
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
             crate::incident_recovery::with_test_policy(&policy, || {
                 recovery::storage::initialize(&policy).unwrap();
                 assert!(crate::EthBridge::validate_peer_protocol_call(&bridge, &protocol).is_err());
@@ -3176,11 +3347,12 @@ mod tests {
                 assert_ok!(SubstrateBridgeInboundChannel::validate_submission(
                     *network, commitment, proof
                 ));
-                assert_ok!(BridgeInboundChannel::validate_submission(
-                    (*network).into(),
-                    commitment,
-                    proof
-                ));
+                // The dedicated channel accepts this proof; the generic
+                // channel rejects its domain even before quarantine is set.
+                assert_eq!(
+                    BridgeInboundChannel::validate_submission((*network).into(), commitment, proof),
+                    Err(multisig_verifier::Error::<Runtime>::InvalidNetworkId.into())
+                );
                 let id = MessageId::batched((*network).into(), ThisNetworkId::get(), 1, 0);
                 opaque_anomaly_marker((*network).into(), id.hash(), malformed);
                 let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
@@ -3302,7 +3474,7 @@ mod tests {
                     recipient.clone(),
                     1u128.into()
                 ),
-                jetton_app::Error::<Runtime>::RecoveryHalted
+                jetton_app::Error::<Runtime>::BridgeDisabled
             );
             assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
             #[cfg(feature = "wip")]
@@ -3357,6 +3529,153 @@ mod tests {
             assert_eq!(outcome, MessageDispatchOutcome::Failed);
         });
     }
+    #[test]
+    fn recovery_bridge_refund_pays_the_current_owner_and_preserves_the_original_source() {
+        use bridge_types::traits::{BridgeAssetRegistry, MessageStatusNotifier};
+        use common::AssetInfoProvider;
+        let migration = AccountId::new(recovery::ATTACKER_MIGRATION_ACCOUNT);
+        for (source, beneficiary) in [
+            (AccountId::new([7; 32]), AccountId::new([8; 32])),
+            (
+                AccountId::new(recovery::ATTACKER_ACCOUNT),
+                migration.clone(),
+            ),
+            (
+                AccountId::new(recovery::ATTACKER_COLLECTION_ACCOUNT),
+                migration.clone(),
+            ),
+            (AccountId::new([31; 32]), migration.clone()),
+            (AccountId::new([32; 32]), AccountId::new([32; 32])),
+        ] {
+            sp_io::TestExternalities::default().execute_with(|| {
+                let (policy, _, _) = fixture(AccountId::new([7; 32]));
+                let network = GenericNetworkId::Sub(SubNetworkId::Liberland);
+                let custody = crate::BridgeProxy::bridge_account(network).unwrap();
+                System::inc_providers(&custody);
+                assert_ok!(crate::Assets::register_asset_id(
+                    custody,
+                    common::DAI,
+                    common::AssetSymbol(b"DAI".to_vec()),
+                    common::AssetName(b"Dai".to_vec()),
+                    18,
+                    0,
+                    true,
+                    common::AssetType::Regular,
+                    None,
+                    None,
+                ));
+                assert_ok!(<crate::BridgeProxy as BridgeAssetRegistry<
+                    AccountId,
+                    crate::AssetId,
+                >>::manage_asset(network, common::DAI));
+                assert_ok!(crate::SubstrateBridgeApp::authorize_asset_registration(
+                    RuntimeOrigin::root(),
+                    SubNetworkId::Liberland,
+                    common::DAI,
+                    GenericAssetId::Sora(common::DAI.into()),
+                    AssetKind::Sidechain,
+                ));
+                let origin: RuntimeOrigin = dispatch::RawOrigin::new(CallOriginOutput::new(
+                    SubNetworkId::Liberland,
+                    H256::zero(),
+                    GenericTimepoint::Unknown,
+                    (),
+                ))
+                .into();
+                assert_ok!(crate::SubstrateBridgeApp::finalize_asset_registration(
+                    origin,
+                    common::DAI,
+                    GenericAssetId::Sora(common::DAI.into()),
+                    AssetKind::Sidechain,
+                    18,
+                ));
+                let id = H256::repeat_byte(98);
+                // Retained failed liability from the authenticated pre-recovery sender.
+                crate::BridgeProxy::outbound_request(
+                    network,
+                    id,
+                    source.clone(),
+                    GenericAccount::Liberland(AccountId::new([33; 32])),
+                    common::DAI,
+                    1_000,
+                    MessageStatus::Failed,
+                );
+                sp_io::storage::set(&recovery::attacker_registry_account_key(&[31; 32]), &[1]);
+                crate::incident_recovery::with_test_policy(&policy, || {
+                    sp_io::storage::set(POLICY_STORAGE_KEY, &policy.commitment());
+                    let payer = AccountId::new([44; 32]);
+                    let call = RuntimeCall::BridgeProxy(bridge_proxy::Call::retry_refund {
+                        network_id: network,
+                        message_id: id,
+                    });
+                    assert_eq!(
+                        crate::xor_fee_impls::validate_bridge_fee_exemption(&payer, &call),
+                        Ok(false)
+                    );
+                    assert_ok!(crate::BridgeProxy::retry_refund(
+                        RuntimeOrigin::signed(payer.clone()),
+                        network,
+                        id
+                    ));
+                    assert_eq!(
+                        crate::Assets::free_balance(&common::DAI, &beneficiary).unwrap(),
+                        1_000
+                    );
+                    assert_eq!(
+                        crate::Assets::free_balance(&common::DAI, &payer).unwrap(),
+                        0
+                    );
+                    if source != beneficiary {
+                        assert_eq!(
+                            crate::Assets::free_balance(&common::DAI, &source).unwrap(),
+                            0
+                        );
+                    }
+                    let request =
+                        crate::BridgeProxy::transactions((network, source.clone()), id).unwrap();
+                    assert_eq!(request.source(), &GenericAccount::Sora(source.clone()));
+                    assert_eq!(request.status(), MessageStatus::Refunded);
+                    assert_eq!(
+                        crate::BridgeProxy::sender(network, id),
+                        Some(source.clone())
+                    );
+                    frame_support::assert_noop!(
+                        crate::BridgeProxy::retry_refund(RuntimeOrigin::signed(payer), network, id),
+                        bridge_proxy::Error::<Runtime>::RefundNotAvailable
+                    );
+                });
+            });
+        }
+    }
+
+    #[test]
+    fn recovery_bridge_refund_resolver_fails_closed_for_invalid_policy() {
+        let resolve = |account| {
+            <PersistentAccountResolver as bridge_proxy::RefundAccountResolver<AccountId>>::resolve(
+                account,
+            )
+        };
+        sp_io::TestExternalities::default().execute_with(|| {
+            let original = AccountId::new(recovery::ATTACKER_ACCOUNT);
+            assert_eq!(resolve(original.clone()).unwrap(), original);
+            let (policy, _, _) = fixture(AccountId::new([7; 32]));
+            crate::incident_recovery::with_test_policy(&policy, || {
+                sp_io::storage::set(POLICY_STORAGE_KEY, &[0xff]);
+                assert!(resolve(original.clone()).is_err());
+                assert!(resolve(AccountId::new([7; 32])).is_err());
+                sp_io::storage::set(POLICY_STORAGE_KEY, &policy.commitment());
+                assert_eq!(
+                    resolve(original).unwrap(),
+                    AccountId::new(recovery::ATTACKER_MIGRATION_ACCOUNT)
+                );
+                assert_eq!(
+                    resolve(AccountId::new([7; 32])).unwrap(),
+                    AccountId::new([8; 32])
+                );
+            });
+        });
+    }
+
     include!("incident_recovery_incoming_hashi_delayed_tests.rs");
     include!("incident_recovery_incoming_hashi_source_tests.rs");
 }
@@ -3365,9 +3684,41 @@ mod tests {
 /// This resolves ownership only; it never changes a signed caller or opens a bridge.
 pub struct PersistentAccountResolver;
 
+impl bridge_proxy::RefundAccountResolver<AccountId> for PersistentAccountResolver {
+    fn resolve(account: AccountId) -> Result<AccountId, sp_runtime::DispatchError> {
+        let mapped = crate::incident_recovery::replacement(&account)
+            .map_err(|_| sp_runtime::DispatchError::Other("Invalid recovery account mapping"))?
+            .unwrap_or_else(|| account.clone());
+        if sp_io::storage::exists(POLICY_STORAGE_KEY)
+            && (attacker_local_account(&account) || attacker_local_account(&mapped))
+        {
+            return Ok(AccountId::new(recovery::ATTACKER_MIGRATION_ACCOUNT));
+        }
+        Ok(mapped)
+    }
+
+    fn weight() -> Weight {
+        Weight::from_parts(50_000_000, 32_768)
+            .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads(6))
+    }
+}
+
 impl eth_bridge::recovery::IncomingAccountResolver<AccountId> for PersistentAccountResolver {
     fn resolve(account: &AccountId) -> Result<Option<AccountId>, sp_runtime::DispatchError> {
         crate::incident_recovery::replacement(account)
             .map_err(|_| sp_runtime::DispatchError::Other("Invalid recovery account mapping"))
+    }
+
+    /// Ordinary HASHI delivery after reopening credits authenticated attacker
+    /// proceeds (from an attacker EVM address, or to an attacker account) to the
+    /// attacker migration account. Halted maintenance resolutions never reach this.
+    /// The OCW binds new deposits to the transaction receipt's sender. Historical
+    /// zero-source requests cannot pass ordinary delivery after recovery.
+    fn redirect_transfer(from: &bridge_types::H160, beneficiary: &AccountId) -> Option<AccountId> {
+        (sp_io::storage::exists(POLICY_STORAGE_KEY)
+            && !sp_io::storage::exists(BRIDGE_HALT_STORAGE_KEY)
+            && (attacker_sender(&GenericAccount::EVM(*from))
+                || attacker_local_account(beneficiary)))
+        .then(|| AccountId::new(recovery::ATTACKER_MIGRATION_ACCOUNT))
     }
 }

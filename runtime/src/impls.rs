@@ -490,6 +490,53 @@ impl Convert<crate::AssetId, GenericAssetId> for LiberlandAssetIdConverter {
 pub struct BalancePrecisionConverter;
 
 impl BalancePrecisionConverter {
+    /// Smallest pair of whole local/remote units representing the same value.
+    /// Reducing the denomination/decimal ratio before multiplication prevents
+    /// both premature truncation and a factor-scaled local custody amount.
+    fn conversion_units(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+    ) -> Option<(crate::Balance, U256)> {
+        let factor = crate::Denomination::current_factor(asset_id);
+        if factor == 0 {
+            return None;
+        }
+        let local_precision = crate::Assets::asset_infos_v2(asset_id).precision;
+        if local_precision >= sidechain_precision {
+            let scale = 10_u128.checked_pow((local_precision - sidechain_precision).into())?;
+            let (mut a, mut b) = (factor, scale);
+            while b != 0 {
+                (a, b) = (b, a % b);
+            }
+            Some((scale / a, (factor / a).into()))
+        } else {
+            let scale = 10_u128.checked_pow((sidechain_precision - local_precision).into())?;
+            Some((1, U256::from(factor).checked_mul(scale.into())?))
+        }
+    }
+
+    fn from_remote(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: U256,
+    ) -> Option<(crate::Balance, U256)> {
+        let (local_unit, remote_unit) = Self::conversion_units(asset_id, sidechain_precision)?;
+        let units = amount.checked_div(remote_unit)?;
+        let local = units.checked_mul(local_unit.into())?.try_into().ok()?;
+        Some((local, units.checked_mul(remote_unit)?))
+    }
+
+    fn to_remote(
+        asset_id: &crate::AssetId,
+        sidechain_precision: u8,
+        amount: crate::Balance,
+    ) -> Option<(crate::Balance, U256)> {
+        let (local_unit, remote_unit) = Self::conversion_units(asset_id, sidechain_precision)?;
+        let units = amount.checked_div(local_unit)?;
+        Some((units.checked_mul(local_unit)?, U256::from(units).checked_mul(remote_unit)?))
+    }
+
+    #[cfg(test)]
     fn convert_precision(
         precision_from: u8,
         precision_to: u8,
@@ -521,11 +568,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, crate::Balance)> {
-        let denomination_factor = crate::Denomination::current_factor(asset_id);
-        let amount = amount.checked_div(denomination_factor)?;
-        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
-        Self::convert_precision(sidechain_precision, thischain_precision, amount)
-            .map(|(a, b)| (b, a))
+        let (local, remote) = Self::from_remote(asset_id, sidechain_precision, amount.into())?;
+        Some((local, remote.try_into().ok()?))
     }
 
     fn to_sidechain(
@@ -533,10 +577,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, crate::Balance)> {
-        let denomination_factor = crate::Denomination::current_factor(asset_id);
-        let amount = amount.checked_mul(denomination_factor)?;
-        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
-        Self::convert_precision(thischain_precision, sidechain_precision, amount)
+        let (local, remote) = Self::to_remote(asset_id, sidechain_precision, amount)?;
+        Some((local, remote.try_into().ok()?))
     }
 }
 
@@ -548,15 +590,7 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: U256,
     ) -> Option<(crate::Balance, U256)> {
-        let denomination_factor = crate::Denomination::current_factor(asset_id);
-        let amount = amount.checked_div(denomination_factor.into())?;
-        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
-        Self::convert_precision(
-            sidechain_precision,
-            thischain_precision,
-            amount.try_into().ok()?,
-        )
-        .map(|(a, b)| (b, a.into()))
+        Self::from_remote(asset_id, sidechain_precision, amount)
     }
 
     fn to_sidechain(
@@ -564,11 +598,7 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, U256)> {
-        let denomination_factor = crate::Denomination::current_factor(asset_id);
-        let amount = amount.checked_mul(denomination_factor)?;
-        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
-        Self::convert_precision(thischain_precision, sidechain_precision, amount)
-            .map(|(a, b)| (a, b.into()))
+        Self::to_remote(asset_id, sidechain_precision, amount)
     }
 }
 
@@ -580,11 +610,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: TonBalance,
     ) -> Option<(crate::Balance, TonBalance)> {
-        let denomination_factor = crate::Denomination::current_factor(asset_id);
-        let amount = amount.balance().checked_div(denomination_factor)?;
-        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
-        Self::convert_precision(sidechain_precision, thischain_precision, amount)
-            .map(|(a, b)| (b, TonBalance::new(a)))
+        let (local, remote) = Self::from_remote(asset_id, sidechain_precision, amount.balance().into())?;
+        Some((local, TonBalance::new(remote.try_into().ok()?)))
     }
 
     fn to_sidechain(
@@ -592,11 +619,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, TonBalance)> {
-        let denomination_factor = crate::Denomination::current_factor(asset_id);
-        let amount = amount.checked_mul(denomination_factor)?;
-        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
-        Self::convert_precision(thischain_precision, sidechain_precision, amount)
-            .map(|(a, b)| (a, TonBalance::new(b)))
+        let (local, remote) = Self::to_remote(asset_id, sidechain_precision, amount)?;
+        Some((local, TonBalance::new(remote.try_into().ok()?)))
     }
 }
 
@@ -609,21 +633,16 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: GenericBalance,
     ) -> Option<(crate::Balance, GenericBalance)> {
-        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
-        let denomination_factor = crate::Denomination::current_factor(asset_id);
+        use bridge_types::traits::BalancePrecisionConverter as Converter;
         match amount {
-            GenericBalance::Substrate(val) => BalancePrecisionConverter::convert_precision(
-                sidechain_precision,
-                thischain_precision,
-                val.checked_div(denomination_factor)?,
-            )
-            .map(|(a, b)| (b, GenericBalance::Substrate(a))),
-            GenericBalance::TON(val) => BalancePrecisionConverter::convert_precision(
-                sidechain_precision,
-                thischain_precision,
-                val.balance().checked_div(denomination_factor)?,
-            )
-            .map(|(a, b)| (b, GenericBalance::TON(TonBalance::new(a)))),
+            GenericBalance::Substrate(amount) =>
+                <BalancePrecisionConverter as Converter<_, _, crate::Balance>>::from_sidechain(
+                    asset_id, sidechain_precision, amount,
+                ).map(|(local, remote)| (local, GenericBalance::Substrate(remote))),
+            GenericBalance::TON(amount) =>
+                <BalancePrecisionConverter as Converter<_, _, TonBalance>>::from_sidechain(
+                    asset_id, sidechain_precision, amount,
+                ).map(|(local, remote)| (local, GenericBalance::TON(remote))),
             GenericBalance::EVM(_) => None,
         }
     }
@@ -633,15 +652,10 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, GenericBalance)> {
-        let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
-        let denomination_factor = crate::Denomination::current_factor(asset_id);
-        let amount = amount.checked_mul(denomination_factor)?;
-        BalancePrecisionConverter::convert_precision(
-            thischain_precision,
-            sidechain_precision,
-            amount,
-        )
-        .map(|(a, b)| (a, GenericBalance::Substrate(b)))
+        use bridge_types::traits::BalancePrecisionConverter as Converter;
+        <BalancePrecisionConverter as Converter<_, _, crate::Balance>>::to_sidechain(
+            asset_id, sidechain_precision, amount,
+        ).map(|(local, remote)| (local, GenericBalance::Substrate(remote)))
     }
 }
 
@@ -692,6 +706,32 @@ mod test {
 
     const MAX_WEIGHT: Weight = Weight::from_parts(1_459_875_000_000_u64, 0);
     const MEBIBYTE: u32 = 1024 * 1024;
+
+    #[test]
+    fn authenticated_bridge_sources_cannot_dispatch_other_network_apps() {
+        use bridge_types::{substrate::{BridgeCall, ParachainAppCall, SubstrateAppCall},
+            traits::{BridgeOriginOutput, DispatchWithOutcome}, types::{AssetKind, CallOriginOutput, MessageStatus},
+            GenericTimepoint, SubNetworkId};
+        let origin = |network| -> crate::RuntimeOrigin {
+            dispatch::RawOrigin::new(CallOriginOutput::new(network, sp_core::H256::zero(),
+                GenericTimepoint::Unknown, ())).into()
+        };
+        let parachain = DispatchableSubstrateBridgeCall(BridgeCall::ParachainApp(
+            ParachainAppCall::FinalizeAssetRegistration {
+                asset_id: sp_core::H256::zero(), asset_kind: AssetKind::Sidechain,
+            }));
+        let liberland = DispatchableSubstrateBridgeCall(BridgeCall::SubstrateApp(
+            SubstrateAppCall::ReportTransferResult { message_id: sp_core::H256::zero(),
+                message_status: MessageStatus::Done }));
+        assert_eq!(parachain.ensure_source_app(&origin(SubNetworkId::Liberland)),
+            Err(DispatchError::BadOrigin));
+        assert_eq!(liberland.ensure_source_app(&origin(SubNetworkId::Kusama)),
+            Err(DispatchError::BadOrigin));
+        assert!(parachain.ensure_source_app(&origin(SubNetworkId::Kusama)).is_ok());
+        assert!(liberland.ensure_source_app(&origin(SubNetworkId::Liberland)).is_ok());
+        assert_eq!(liberland.dispatch_with_outcome(origin(SubNetworkId::Polkadot)),
+            Err(DispatchError::BadOrigin));
+    }
 
     #[test]
     fn democracy_weight_info_should_scale_weight_linearly_up_to_max_preimage_size() {
@@ -761,5 +801,167 @@ mod test {
             BalancePrecisionConverter::convert_precision(18, 9, 123_456_789_123_000_000_u128),
             Some((123_456_789_000_000_000_u128, 123_456_789_u128))
         );
+    }
+
+    #[test]
+    fn bridge_precision_converter_returns_current_native_custody_units() {
+        type Converter = BalancePrecisionConverter;
+        type Runtime = crate::Runtime;
+        use bridge_types::traits::BalancePrecisionConverter as Convert;
+        sp_io::TestExternalities::new_empty().execute_with(|| {
+            let factor = 10_u128.pow(38);
+            frame_support::storage::unhashed::put(
+                &frame_support::storage::storage_prefix(b"Denomination", b"Denominator"),
+                &factor,
+            );
+            for asset_id in [crate::AssetId::from(common::XOR), common::TBCD.into()] {
+                assets::AssetInfosV2::<Runtime>::mutate(asset_id, |info| info.precision = 18);
+                let (locked, remote) = <Converter as Convert<_, u128, u128>>::to_sidechain(
+                    &asset_id, 18, 2,
+                ).unwrap();
+                assert_eq!((locked, remote), (2, 2 * factor));
+                let (returned, _) = <Converter as Convert<_, u128, u128>>::from_sidechain(
+                    &asset_id, 18, remote,
+                ).unwrap();
+                assert_eq!(returned, locked);
+                // Scaling must precede division on the return path: dividing
+                // 10^32 remote units by 10^38 first incorrectly produced zero.
+                let remote = 10_u128.pow(32);
+                assert_eq!(<Converter as Convert<_, u128, u128>>::to_sidechain(
+                    &asset_id, 12, 1,
+                ), Some((1, remote)));
+                assert_eq!(<Converter as Convert<_, u128, u128>>::from_sidechain(
+                    &asset_id, 12, remote,
+                ), Some((1, remote)));
+                assert_eq!(<Converter as Convert<_, u128, u128>>::to_sidechain(
+                    &asset_id, 18, 4,
+                ), None, "overflow remains rejected");
+            }
+        });
+    }
+
+    #[test]
+    fn bridge_precision_converter_preserves_ordinary_precision_dust() {
+        use bridge_types::traits::BalancePrecisionConverter as Convert;
+        sp_io::TestExternalities::new_empty().execute_with(|| {
+            let asset_id = crate::AssetId::from(common::PSWAP);
+            assets::AssetInfosV2::<crate::Runtime>::mutate(asset_id, |info| info.precision = 18);
+            let (locked, remote) =
+                <BalancePrecisionConverter as Convert<_, u128, u128>>::to_sidechain(
+                    &asset_id, 12, 123_456_789_123_456_789,
+                ).unwrap();
+            assert_eq!((locked, remote), (123_456_789_123_000_000, 123_456_789_123));
+            let (returned, _) =
+                <BalancePrecisionConverter as Convert<_, u128, u128>>::from_sidechain(
+                    &asset_id, 12, remote,
+                ).unwrap();
+            assert_eq!(returned, locked);
+            assert_eq!(<BalancePrecisionConverter as Convert<_, u128, u128>>::to_sidechain(
+                &asset_id, 20, 123,
+            ), Some((123, 12_300)));
+        });
+    }
+
+    #[test]
+    fn bridge_precision_converter_rounds_both_chains_to_whole_custody_units() {
+        use bridge_types::traits::BalancePrecisionConverter as Convert;
+        sp_io::TestExternalities::new_empty().execute_with(|| {
+            let asset_id = crate::AssetId::from(common::XOR);
+            assets::AssetInfosV2::<crate::Runtime>::mutate(asset_id, |info| info.precision = 18);
+            frame_support::storage::unhashed::put(
+                &frame_support::storage::storage_prefix(b"Denomination", b"Denominator"),
+                &3u128,
+            );
+            // The smallest exact pair is 10 local units to 3 remote units.
+            // Independently rounding 4 local units to 1 remote unit would
+            // undercollateralize it if only floor(10 / 3) local units were locked.
+            assert_eq!(<BalancePrecisionConverter as Convert<_, u128, u128>>::to_sidechain(
+                &asset_id, 17, 4,
+            ), Some((0, 0)));
+            assert_eq!(<BalancePrecisionConverter as Convert<_, u128, u128>>::to_sidechain(
+                &asset_id, 17, 10,
+            ), Some((10, 3)));
+            assert_eq!(<BalancePrecisionConverter as Convert<_, u128, u128>>::from_sidechain(
+                &asset_id, 17, 4,
+            ), Some((10, 3)));
+        });
+    }
+
+    #[test]
+    fn bridge_precision_converter_matches_existing_unscaled_conversions() {
+        use bridge_types::traits::BalancePrecisionConverter as Convert;
+        sp_io::TestExternalities::new_empty().execute_with(|| {
+            let asset_id = crate::AssetId::from(common::PSWAP);
+            for local_precision in [0, 6, 12, 18, 38] {
+                assets::AssetInfosV2::<crate::Runtime>::mutate(asset_id,
+                    |info| info.precision = local_precision);
+                for remote_precision in [0, 6, 9, 12, 18, 20, 38, 57, 60] {
+                    for amount in [0, 1, 123_456_789_123_456_789, u128::MAX] {
+                        assert_eq!(
+                            <BalancePrecisionConverter as Convert<_, u128, u128>>::to_sidechain(
+                                &asset_id, remote_precision, amount),
+                            BalancePrecisionConverter::convert_precision(
+                                local_precision, remote_precision, amount));
+                        assert_eq!(
+                            <BalancePrecisionConverter as Convert<_, u128, u128>>::from_sidechain(
+                                &asset_id, remote_precision, amount),
+                            BalancePrecisionConverter::convert_precision(
+                                remote_precision, local_precision, amount).map(|(a, b)| (b, a)));
+                    }
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn bridge_precision_converter_wrappers_preserve_admitted_value_roundtrips() {
+        use bridge_types::traits::BalancePrecisionConverter as Convert;
+        sp_io::TestExternalities::new_empty().execute_with(|| {
+            let asset_id = crate::AssetId::from(common::XOR);
+            assets::AssetInfosV2::<crate::Runtime>::mutate(asset_id, |info| info.precision = 18);
+            for factor in [1, 3, 10, 1000, 10_u128.pow(18), 10_u128.pow(38)] {
+                frame_support::storage::unhashed::put(
+                    &frame_support::storage::storage_prefix(b"Denomination", b"Denominator"),
+                    &factor,
+                );
+                for precision in [6, 12, 18, 20, 38] {
+                    for amount in [0, 1, 2, 9, 10, 11, 12_345, u128::MAX / 5, u128::MAX] {
+                        if let Some((local, remote)) =
+                            <BalancePrecisionConverter as Convert<_, u128, U256>>::to_sidechain(
+                                &asset_id, precision, amount)
+                        {
+                            assert!(local <= amount);
+                            assert_eq!(
+                                <BalancePrecisionConverter as Convert<_, u128, U256>>::from_sidechain(
+                                    &asset_id, precision, remote), Some((local, remote)));
+                        }
+                        let narrow = <BalancePrecisionConverter as Convert<_, u128, u128>>::to_sidechain(
+                            &asset_id, precision, amount);
+                        assert_eq!(
+                            <BalancePrecisionConverter as Convert<_, u128, TonBalance>>::to_sidechain(
+                                &asset_id, precision, amount),
+                            narrow.map(|(local, remote)| (local, TonBalance::new(remote))));
+                        assert_eq!(
+                            <GenericBalancePrecisionConverter as Convert<_, u128, GenericBalance>>::to_sidechain(
+                                &asset_id, precision, amount),
+                            narrow.map(|(local, remote)| (local, GenericBalance::Substrate(remote))));
+                        if let Some((local, remote)) = narrow {
+                            assert_eq!(
+                                <BalancePrecisionConverter as Convert<_, u128, u128>>::from_sidechain(
+                                    &asset_id, precision, remote), Some((local, remote)));
+                            assert_eq!(
+                                <BalancePrecisionConverter as Convert<_, u128, TonBalance>>::from_sidechain(
+                                    &asset_id, precision, TonBalance::new(remote)),
+                                Some((local, TonBalance::new(remote))));
+                            for generic in [GenericBalance::Substrate(remote), GenericBalance::TON(TonBalance::new(remote))] {
+                                assert_eq!(
+                                    <GenericBalancePrecisionConverter as Convert<_, u128, GenericBalance>>::from_sidechain(
+                                        &asset_id, precision, generic.clone()), Some((local, generic)));
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 }

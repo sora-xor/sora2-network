@@ -521,3 +521,69 @@ fn test_register_network_with_existing_asset() {
         assert!(AppInfo::<Test>::exists());
     })
 }
+
+#[test]
+fn disabled_bridge_preserves_registered_state_and_rejects_all_value_paths() {
+    use bridge_types::traits::BridgeApp;
+    ExtBuilder::with_ton().build().execute_with(|| {
+        let app = AppInfo::<Test>::get();
+        let token = TokenAddresses::<Test>::get(TON).unwrap();
+        let recipient: AccountId = Keyring::Charlie.into();
+        crate::mock::BridgeEnabled::set(false);
+        assert_noop!(
+            JettonApp::mint(
+                dispatch::RawOrigin::new(CallOriginOutput {
+                    network_id: BASE_NETWORK_ID.into(),
+                    additional: GenericAdditionalInboundData::TON(AdditionalTONInboundData {
+                        source: TON_APP_ADDRESS
+                    }),
+                    ..Default::default()
+                })
+                .into(),
+                token.into(),
+                token.into(),
+                recipient.clone(),
+                10u128.into(),
+            ),
+            Error::<Test>::BridgeDisabled
+        );
+        assert_noop!(
+            JettonApp::register_network_with_existing_asset(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                TON_APP_ADDRESS,
+                TON,
+                18
+            ),
+            Error::<Test>::BridgeDisabled
+        );
+        assert_noop!(
+            JettonApp::register_asset_inner(
+                TON,
+                token,
+                bridge_types::types::AssetKind::Sidechain,
+                18
+            ),
+            Error::<Test>::BridgeDisabled
+        );
+        assert_noop!(
+            JettonApp::transfer(BASE_NETWORK_ID.into(), TON, recipient.clone(), token, 10),
+            Error::<Test>::BridgeDisabled
+        );
+        assert_noop!(
+            JettonApp::refund(
+                BASE_NETWORK_ID.into(),
+                H256::zero(),
+                recipient.clone(),
+                TON,
+                10
+            ),
+            Error::<Test>::BridgeDisabled
+        );
+        assert!(JettonApp::list_apps().is_empty());
+        assert!(JettonApp::list_supported_assets(BASE_NETWORK_ID.into()).is_empty());
+        assert_eq!(AppInfo::<Test>::get(), app);
+        assert_eq!(TokenAddresses::<Test>::get(TON), Some(token));
+        assert_eq!(Tokens::total_balance(TON, &recipient), 0);
+    });
+}

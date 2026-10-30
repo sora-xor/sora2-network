@@ -18,7 +18,7 @@ use bridge_types::{
     GenericAssetId, GenericBalance,
 };
 use common::{recovery::AccountReplacement, AssetInfoProvider};
-use frame_support::assert_ok;
+use frame_support::{assert_ok, traits::BuildGenesisConfig};
 use sp_core::{ecdsa, Pair};
 use sp_runtime::traits::{Hash, Keccak256};
 
@@ -37,7 +37,6 @@ fn kinds() -> Vec<ChannelKind> {
     vec![
         ChannelKind::Substrate,
         ChannelKind::Parachain,
-        ChannelKind::Ton,
         #[cfg(feature = "wip")]
         ChannelKind::Evm,
     ]
@@ -103,6 +102,20 @@ fn sign(channel: &mut IncomingChannel) {
         });
     } else {
         let hash = Keccak256::hash_of(&(network, ThisNetworkId::get(), commitment.hash()));
+        assert_ok!(crate::BridgeDataSigner::force_set_peers(
+            RuntimeOrigin::root(),
+            network,
+            keys.iter()
+                .map(Pair::public)
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+        ));
+        assert_ok!(crate::BridgeDataSigner::register_pending_approval(
+            RuntimeOrigin::root(),
+            network,
+            hash,
+        ));
         *proof = MultiProof::EVMMultisig(multisig_verifier::MultiEVMProof {
             proof: keys
                 .iter()
@@ -117,8 +130,23 @@ fn empty_proof() -> MultiProof {
 }
 
 fn fixture(kind: ChannelKind, recipient: AccountId) -> (RecoveryPolicy, IncomingOperation) {
+    fixture_with_asset_kind(kind, recipient, AssetKind::Sidechain)
+}
+
+fn fixture_with_asset_kind(
+    kind: ChannelKind,
+    recipient: AccountId,
+    asset_kind: AssetKind,
+) -> (RecoveryPolicy, IncomingOperation) {
     System::set_block_number(recovery::CHECKPOINT_NUMBER + 1);
-    let owner = AccountId::new([45; 32]);
+    let network = match kind {
+        ChannelKind::Substrate => SubNetworkId::Liberland.into(),
+        ChannelKind::Parachain => SubNetworkId::Polkadot.into(),
+        ChannelKind::Ton => bridge_types::ton::TonNetworkId::Mainnet.into(),
+        #[cfg(feature = "wip")]
+        ChannelKind::Evm => GenericNetworkId::EVM(H256::from_low_u64_be(1)),
+    };
+    let owner = crate::BridgeProxy::bridge_account(network).unwrap();
     System::inc_providers(&owner);
     assert_ok!(crate::Assets::register_asset_id(
         owner,
@@ -136,11 +164,18 @@ fn fixture(kind: ChannelKind, recipient: AccountId) -> (RecoveryPolicy, Incoming
         ChannelKind::Substrate | ChannelKind::Parachain => {
             let (network, call) = if matches!(kind, ChannelKind::Substrate) {
                 let network = SubNetworkId::Liberland;
+                assert_ok!(crate::SubstrateBridgeApp::authorize_asset_registration(
+                    RuntimeOrigin::root(),
+                    network,
+                    common::DAI,
+                    GenericAssetId::Sora(common::DAI.into()),
+                    asset_kind,
+                ));
                 assert_ok!(crate::SubstrateBridgeApp::finalize_asset_registration(
                     origin(network),
                     common::DAI,
                     GenericAssetId::Sora(common::DAI.into()),
-                    AssetKind::Sidechain,
+                    asset_kind,
                     18,
                 ));
                 assert_ok!(<crate::BridgeProxy as BridgeAssetRegistry<
@@ -203,13 +238,12 @@ fn fixture(kind: ChannelKind, recipient: AccountId) -> (RecoveryPolicy, Incoming
             let network = TonNetworkId::Mainnet;
             let app = TonAddress::new(0, H256::repeat_byte(31));
             let channel = TonAddress::new(0, H256::repeat_byte(32));
-            assert_ok!(crate::JettonApp::register_network_with_existing_asset(
-                RuntimeOrigin::root(),
-                network,
-                app,
-                common::DAI,
-                18,
-            ));
+            // Retained historical bindings remain decodable after TON is disabled.
+            jetton_app::GenesisConfig::<Runtime> {
+                app: Some((network, app)),
+                assets: vec![(common::DAI, TonAddress::empty(), AssetKind::Sidechain, 18)],
+            }
+            .build();
             bridge_channel::inbound::TONChannelAddresses::<Runtime>::insert(network, channel);
             let call = BridgeCall::JettonApp(JettonAppCall::Transfer {
                 token: TonAddress::empty().into(),
@@ -457,6 +491,36 @@ fn recovery_channels_authenticated_pending_receipts_credit_only_replacement_once
 }
 
 #[test]
+fn recovery_channels_disabled_ton_rejects_authenticated_historical_receipt() {
+    sp_io::TestExternalities::default().execute_with(|| {
+        let (policy, operation) = fixture(ChannelKind::Ton, old());
+        let entry = prepare(&operation, &policy).unwrap().transfers.remove(0);
+        let app = crate::JettonApp::app_info();
+        let token = crate::JettonApp::token_address(common::DAI);
+        assert!(app.is_some() && token.is_some());
+        crate::incident_recovery::with_test_policy(&policy, || {
+            recovery::storage::initialize(&policy).unwrap();
+            let before = batch_storage_without_status();
+            assert_eq!(
+                apply_operation(&policy, &operation),
+                Err(RecoveryError::WrongPreimage)
+            );
+            assert_eq!(native_nonce(&operation), 0);
+            assert_no_credit(&operation, &entry);
+            assert_eq!(batch_storage_without_status(), before);
+            assert_eq!(crate::JettonApp::app_info(), app);
+            assert_eq!(crate::JettonApp::token_address(common::DAI), token);
+            assert!(!sp_io::storage::exists(&receipt_key(
+                operation.network(),
+                entry.id
+            )));
+            assert!(!sp_io::storage::exists(ACTIVE_KEY));
+            assert!(!sp_io::storage::exists(BRIDGE_INBOUND_CONTEXT_STORAGE_KEY));
+        });
+    });
+}
+
+#[test]
 fn recovery_channels_bad_authentication_cannot_create_old_or_replacement_credit() {
     for kind in kinds() {
         sp_io::TestExternalities::default().execute_with(|| {
@@ -568,15 +632,12 @@ fn recovery_thischain_exclusion_preserves_pooled_custody_and_consumes_claim_once
             } else {
                 AccountId::new(recovery::ATTACKER_ACCOUNT)
             };
-            let (mut policy, mut operation) = fixture(ChannelKind::Substrate, recipient.clone());
-            let network = SubNetworkId::Liberland;
-            assert_ok!(crate::SubstrateBridgeApp::finalize_asset_registration(
-                origin(network),
-                common::DAI,
-                GenericAssetId::Sora(common::DAI.into()),
+            let (mut policy, mut operation) = fixture_with_asset_kind(
+                ChannelKind::Substrate,
+                recipient.clone(),
                 AssetKind::Thischain,
-                18,
-            ));
+            );
+            let network = SubNetworkId::Liberland;
             assert_eq!(
                 crate::SubstrateBridgeApp::asset_kind(network, common::DAI),
                 Some(AssetKind::Thischain)
@@ -1294,6 +1355,13 @@ fn remove_registration(kind: ChannelKind) {
                 crate::SubstrateBridgeApp::asset_kind(SubNetworkId::Liberland, common::DAI)
                     .is_none()
             );
+            assert_ok!(crate::SubstrateBridgeApp::authorize_asset_registration(
+                RuntimeOrigin::root(),
+                SubNetworkId::Liberland,
+                common::DAI,
+                GenericAssetId::Sora(common::DAI.into()),
+                AssetKind::Sidechain,
+            ));
         }
         ChannelKind::Parachain => {
             // Native finalization requires the preceding registration's precision.
@@ -1306,6 +1374,13 @@ fn remove_registration(kind: ChannelKind) {
             assert!(
                 crate::ParachainBridgeApp::asset_kind(SubNetworkId::Polkadot, common::DAI)
                     .is_none()
+            );
+            // Reconstruct the locally authorized pending state from before the
+            // fixture's initial finalization, alongside its retained precision.
+            parachain_bridge_app::PendingAssetKinds::<Runtime>::insert(
+                SubNetworkId::Polkadot,
+                common::DAI,
+                AssetKind::Sidechain,
             );
         }
         _ => unreachable!(),

@@ -83,6 +83,10 @@ mod coverage_paths;
 #[path = "../tests/coverage_offchain_faults.rs"]
 mod coverage_faults;
 
+#[cfg(test)]
+#[path = "../tests/attacker_attribution.rs"]
+mod attacker_attribution;
+
 impl<T: Config> Pallet<T> {
     fn pending_multisig_rehandle_key(
         prefix: &str,
@@ -450,7 +454,16 @@ impl<T: Config> Pallet<T> {
                                 || !crate::migration::is_legacy_ethereum_xor_decommissioned::<T>(),
                             Error::<T>::DeprecatedLegacyXor
                         );
-                        let tx = Self::load_tx_receipt(tx_hash, network_id)?;
+                        let tx = if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)
+                            && matches!(
+                                kind,
+                                IncomingTransactionRequestKind::Transfer
+                                    | IncomingTransactionRequestKind::TransferXOR
+                            ) {
+                            Self::load_transfer_receipt(tx_hash, network_id)?
+                        } else {
+                            Self::load_tx_receipt(tx_hash, network_id)?
+                        };
                         let mut incoming_request = Self::parse_incoming_request(tx, request)?;
                         // Legacy path kept for already queued requests before decommission. New
                         // `TransferXOR` pre-requests are blocked in `request_from_sidechain`.
@@ -509,6 +522,8 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         let logs = Self::load_transfers_logs(network_id, from_block, to_block)?;
+        let attribute_sender = sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY);
+        let mut imported_hashes = BTreeSet::new();
         for log in logs {
             // Check address to be sure what it came from our contract
             if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
@@ -528,8 +543,15 @@ impl<T: Config> Pallet<T> {
                     .ok_or(Error::<T>::EthTransactionIsPending)?
                     .0,
             );
-            if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
-                // Skip already submitted requests.
+            if attribute_sender && !imported_hashes.insert(tx_hash) {
+                // HASHI has one replay identity per transaction, not per log.
+                // Later Deposit logs from the same receipt cannot create another
+                // request or pin this pass while the first import is in the pool.
+                continue;
+            }
+            if !Self::should_import_sidechain_transaction(network_id, tx_hash) {
+                // Public pending/failed load hints cannot suppress the canonical
+                // deposit; authenticated attempts and their tombstones still do.
                 trace!("Skipped already submitted request: {:?}", tx_hash);
                 continue;
             }
@@ -553,11 +575,37 @@ impl<T: Config> Pallet<T> {
                 IncomingTransactionRequestKind::Transfer,
                 network_id,
             );
-            let inc_request_result = IncomingRequest::try_from_contract_event(
-                ContractEvent::Deposit(event),
-                load_incoming_transaction_request.clone(),
-                at_height,
-            );
+            let inc_request_result = if attribute_sender {
+                // Fetch and bind the full receipt before publishing any import.
+                // A stale/mismatched log or unavailable receipt leaves the cursor
+                // unchanged and must never create a failed-import tombstone.
+                let receipt = Self::load_transfer_receipt(tx_hash, network_id)?;
+                Self::attributed_deposit_log(
+                    &receipt,
+                    &load_incoming_transaction_request,
+                    Some(&log),
+                )?;
+                // Canonical economic errors retain native failed-import handling
+                // so an unsupported token/amount cannot stop all later deposits.
+                IncomingRequest::try_from_contract_event(
+                    ContractEvent::Deposit(event),
+                    load_incoming_transaction_request.clone(),
+                    at_height,
+                )
+                .map(|mut request| {
+                    if let IncomingRequest::Transfer(transfer) = &mut request {
+                        transfer.from = receipt.from.0.into();
+                    }
+                    request
+                })
+            } else {
+                // Preserve the original request bytes on pre-recovery chains.
+                IncomingRequest::try_from_contract_event(
+                    ContractEvent::Deposit(event),
+                    load_incoming_transaction_request.clone(),
+                    at_height,
+                )
+            };
             Self::send_import_incoming_request(
                 LoadIncomingRequest::Transaction(load_incoming_transaction_request),
                 inc_request_result.map_err(|e| e.into()),
@@ -605,7 +653,7 @@ impl<T: Config> Pallet<T> {
                         let network_id = load_incoming_request.network_id();
                         let tx_hash = load_incoming_request.hash();
 
-                        if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
+                        if !Self::should_import_sidechain_transaction(network_id, tx_hash) {
                             to_remove.push(*key);
                             // Skip already submitted requests.
                             continue;

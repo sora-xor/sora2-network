@@ -19,6 +19,47 @@ use sp_core::{sr25519, Pair, H160, H256};
 use sp_runtime::{generic::Era, DispatchResult, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 
+fn seed_existing_pswap_bridge_mapping() {
+    use frame_support::StorageHasher;
+    // Fee tests start from an existing native-asset mapping. Registering PSWAP
+    // as a new foreign asset would give this fixture the wrong custody semantics.
+    let token = H160::repeat_byte(2);
+    let network = frame_support::Twox64Concat::hash(&0u32.encode());
+    for (name, suffix, value) in [
+        (
+            b"RegisteredAsset".as_slice(),
+            PSWAP.encode(),
+            eth_bridge::requests::AssetKind::Thischain.encode(),
+        ),
+        (
+            b"SidechainAssetPrecision".as_slice(),
+            PSWAP.encode(),
+            18u8.encode(),
+        ),
+        (
+            b"RegisteredSidechainToken".as_slice(),
+            frame_support::Blake2_128Concat::hash(&PSWAP.encode()),
+            token.encode(),
+        ),
+        (
+            b"RegisteredSidechainAsset".as_slice(),
+            frame_support::Blake2_128Concat::hash(&token.encode()),
+            PSWAP.encode(),
+        ),
+    ] {
+        let mut key = frame_support::storage::storage_prefix(b"EthBridge", name).to_vec();
+        key.extend_from_slice(&network);
+        key.extend(suffix);
+        sp_io::storage::set(&key, &value);
+    }
+    assert_eq!(
+        EthBridge::registered_asset(0, PSWAP),
+        Some(eth_bridge::requests::AssetKind::Thischain)
+    );
+    assert_eq!(EthBridge::registered_sidechain_token(0, PSWAP), Some(token));
+    assert_eq!(EthBridge::registered_sidechain_asset(0, token), Some(PSWAP));
+}
+
 #[test]
 fn captured_legacy_bridge_peer_pair_remains_compatible_without_queue_or_index() {
     use codec::DecodeAll;
@@ -463,7 +504,7 @@ fn zero_xor_outgoing_peer_approval_checks_real_signature_and_rejects_replay() {
         let who=MultiSigner::Ecdsa(peer.public()).into_account();
         System::inc_providers(&who);
         eth_bridge::Peers::<Runtime>::insert(0,[who.clone(),AccountId::from([78;32])].into_iter().collect::<std::collections::BTreeSet<_>>());
-        assert_ok!(EthBridge::register_existing_sidechain_asset(RuntimeOrigin::root(), PSWAP, H160::repeat_byte(2), 0));
+        seed_existing_pswap_bridge_mapping();
         let request=eth_bridge::requests::OutgoingRequest::Transfer(eth_bridge::requests::OutgoingTransfer::<Runtime> {from:AccountId::from([79;32]),to:H160::repeat_byte(1),asset_id:PSWAP,amount:balance!(1),nonce:0,network_id:0,timepoint:Default::default()});
         let stored=eth_bridge::requests::OffchainRequest::outgoing(request.clone());let hash=stored.hash();
         eth_bridge::Requests::<Runtime>::insert(0,hash,stored);
@@ -521,9 +562,7 @@ fn outgoing_approval_retains_validation_weight_before_and_at_quorum() {
             accounts.iter().cloned().collect::<std::collections::BTreeSet<_>>(),
         );
         assert!(EthBridge::pending_peer(0).is_none());
-        assert_ok!(EthBridge::register_existing_sidechain_asset(
-            RuntimeOrigin::root(), PSWAP, H160::repeat_byte(2), 0
-        ));
+        seed_existing_pswap_bridge_mapping();
         // Back a native-asset outgoing transfer so the second approval completes it.
         let mut asset_key = frame_support::storage::storage_prefix(
             b"EthBridge", b"RegisteredAsset",
@@ -1142,7 +1181,7 @@ fn captured_nonbridge_multisigs_cannot_dispatch_protocol_calls_or_add_cosigners(
                 frame_system::Error::<Runtime>::CallFiltered
             );
             let add_cosigner = RuntimeCall::BridgeMultisig(bridge_multisig::Call::add_signatory {
-                signatory: AccountId::from([246; 32]),
+                new_member: AccountId::from([246; 32]),
             });
             assert_noop!(
                 BridgeMultisig::as_multi_threshold_1(
@@ -1157,5 +1196,78 @@ fn captured_nonbridge_multisigs_cannot_dispatch_protocol_calls_or_add_cosigners(
             checked += 1;
         }
         assert_eq!(checked, 2);
+    });
+}
+
+#[test]
+fn cancelling_prepared_incoming_restores_accounting_when_outbound_price_is_unavailable() {
+    use common::AssetInfoProvider;
+    use frame_support::assert_noop;
+    ext().execute_with(|| {
+        let (_, id) = setup();
+        let (import, _, recipient) = incoming(&id, true, 247);
+        let RuntimeCall::EthBridge(eth_bridge::Call::import_incoming_request {
+            incoming_request_result: Ok(request),
+            ..
+        }) = import
+        else {
+            panic!("fixture")
+        };
+        let network = bridge_types::GenericNetworkId::EVMLegacy(0);
+        let asset = crate::AssetId::from(PSWAP);
+        // Complete native-asset registration so the genuine outgoing path
+        // reaches price validation instead of failing on an unknown asset.
+        assert_ok!(eth_bridge::requests::OutgoingAddAsset::<Runtime> {
+            author: id.clone(),
+            asset_id: asset,
+            nonce: 0,
+            network_id: 0,
+            timepoint: BridgeMultisig::sidechain_timepoint(10, 246),
+        }
+        .finalize());
+        assert_eq!(
+            EthBridge::registered_asset(0, asset),
+            Some(eth_bridge::requests::AssetKind::Thischain)
+        );
+        let locked_before = BridgeProxy::locked_assets(network, asset);
+        let available_before = Assets::free_balance(&asset, &id).unwrap();
+        assert_ok!(request.prepare());
+        assert_eq!(
+            BridgeProxy::locked_assets(network, asset),
+            locked_before - balance!(10)
+        );
+        assert_eq!(
+            Assets::free_balance(&asset, &id).unwrap(),
+            available_before - balance!(10)
+        );
+        if !BridgeProxy::is_asset_limited(asset) {
+            assert_ok!(BridgeProxy::add_limited_asset(RuntimeOrigin::root(), asset));
+        }
+        price_tools::PriceInfos::<Runtime>::remove(asset);
+        let consumed = BridgeProxy::consumed_transfer_limit();
+        // The genesis transfer-limit window is 600 blocks.
+        let unlock_at = System::block_number() + 600;
+        let scheduled = BridgeProxy::transfer_limit_unlock_schedule(unlock_at);
+        let outgoing = eth_bridge::requests::OutgoingTransfer::<Runtime> {
+            from: recipient,
+            to: H160::repeat_byte(247),
+            asset_id: asset,
+            amount: balance!(10),
+            nonce: 0,
+            network_id: 0,
+            timepoint: BridgeMultisig::sidechain_timepoint(10, 247),
+        };
+        assert_noop!(
+            outgoing.prepare(H256::repeat_byte(247)),
+            price_tools::Error::<Runtime>::UnsupportedQuotePath
+        );
+        assert_ok!(request.cancel());
+        assert_eq!(BridgeProxy::locked_assets(network, asset), locked_before);
+        assert_eq!(Assets::free_balance(&asset, &id).unwrap(), available_before);
+        assert_eq!(BridgeProxy::consumed_transfer_limit(), consumed);
+        assert_eq!(
+            BridgeProxy::transfer_limit_unlock_schedule(unlock_at),
+            scheduled
+        );
     });
 }

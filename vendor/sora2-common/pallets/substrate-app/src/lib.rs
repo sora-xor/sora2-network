@@ -277,7 +277,13 @@ pub mod pallet {
     /// counterparty acknowledgement can activate an asset.
     #[pallet::storage]
     pub type PendingAssetRegistrations<T: Config> = StorageDoubleMap<
-        _, Identity, SubNetworkId, Identity, AssetIdOf<T>, (GenericAssetId, AssetKind), OptionQuery,
+        _,
+        Identity,
+        SubNetworkId,
+        Identity,
+        AssetIdOf<T>,
+        (GenericAssetId, AssetKind),
+        OptionQuery,
     >;
 
     #[pallet::error]
@@ -298,6 +304,7 @@ pub mod pallet {
         DeferredResultExists,
         AssetRegistrationNotAuthorized,
         AssetRegistrationMismatch,
+        InvalidTransferResult,
     }
 
     #[pallet::call]
@@ -321,7 +328,7 @@ pub mod pallet {
         /// The Origin for this call is the Bridge Origin
         /// Only the relayer can call this function
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
         #[frame_support::transactional]
         pub fn finalize_asset_registration(
             origin: OriginFor<T>,
@@ -337,10 +344,14 @@ pub mod pallet {
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
             if let Some(existing_kind) = AssetKinds::<T>::get(network_id, &asset_id) {
                 // Repeated acknowledgements may not redefine custody as minting.
-                ensure!(existing_kind == asset_kind
-                    && SidechainAssetId::<T>::get(network_id, &asset_id) == Some(sidechain_asset_id)
-                    && SidechainPrecision::<T>::get(network_id, &asset_id) == Some(sidechain_precision),
-                    Error::<T>::AssetRegistrationMismatch);
+                ensure!(
+                    existing_kind == asset_kind
+                        && SidechainAssetId::<T>::get(network_id, &asset_id)
+                            == Some(sidechain_asset_id)
+                        && SidechainPrecision::<T>::get(network_id, &asset_id)
+                            == Some(sidechain_precision),
+                    Error::<T>::AssetRegistrationMismatch
+                );
                 return Ok(());
             }
             ensure!(
@@ -348,9 +359,11 @@ pub mod pallet {
                     == Some((sidechain_asset_id, asset_kind)),
                 Error::<T>::AssetRegistrationNotAuthorized
             );
-            ensure!(ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
-                .map_or(true, |registered| registered == asset_id),
-                Error::<T>::AssetRegistrationMismatch);
+            ensure!(
+                ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
+                    .map_or(true, |registered| registered == asset_id),
+                Error::<T>::AssetRegistrationMismatch
+            );
             SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
             AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
             ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id.clone());
@@ -365,7 +378,7 @@ pub mod pallet {
         /// Only the relayer can call this function
         /// Sends the message to sidechain to finalize asset registration
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::incoming_thischain_asset_registration())]
+        #[pallet::weight(<T as Config>::WeightInfo::incoming_thischain_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
         #[frame_support::transactional]
         pub fn incoming_thischain_asset_registration(
             origin: OriginFor<T>,
@@ -385,11 +398,15 @@ pub mod pallet {
                     == Some((sidechain_asset_id, asset_kind)),
                 Error::<T>::AssetRegistrationNotAuthorized
             );
-            ensure!(!AssetKinds::<T>::contains_key(network_id, &asset_id),
-                Error::<T>::TokenAlreadyRegistered);
-            ensure!(ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
-                .map_or(true, |registered| registered == asset_id),
-                Error::<T>::AssetRegistrationMismatch);
+            ensure!(
+                !AssetKinds::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenAlreadyRegistered
+            );
+            ensure!(
+                ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
+                    .map_or(true, |registered| registered == asset_id),
+                Error::<T>::AssetRegistrationMismatch
+            );
 
             let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
 
@@ -439,7 +456,7 @@ pub mod pallet {
         /// Only the root can call this function
         /// Sends the message to sidechain to register asset
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
         #[frame_support::transactional]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
@@ -473,7 +490,9 @@ pub mod pallet {
                 (),
             )?;
             PendingAssetRegistrations::<T>::insert(
-                network_id, &asset_id, (sidechain_asset, AssetKind::Sidechain),
+                network_id,
+                &asset_id,
+                (sidechain_asset, AssetKind::Sidechain),
             );
             // Reserve the remote identifier while the acknowledgement is pending.
             ThischainAssetId::<T>::insert(network_id, sidechain_asset, asset_id);
@@ -484,13 +503,20 @@ pub mod pallet {
         /// The Origin for this call is the Bridge Origin
         /// Only the relayer can call this function
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
+        #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status()
+            .saturating_add(T::MessageStatusNotifier::update_status_weight()))]
         pub fn update_transaction_status(
             origin: OriginFor<T>,
             message_id: H256,
             message_status: MessageStatus,
         ) -> DispatchResult {
             ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            // Only delivery success/failure are remote protocol results. Local
+            // custody states (especially Refunded) cannot be asserted remotely.
+            ensure!(
+                matches!(message_status, MessageStatus::Done | MessageStatus::Failed),
+                Error::<T>::InvalidTransferResult
+            );
             let CallOriginOutput {
                 network_id,
                 timepoint,
@@ -509,7 +535,7 @@ pub mod pallet {
         /// Authorize an incoming native-asset registration, or reconstruct a
         /// reviewed pre-upgrade pending registration. No token rights change here.
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
         #[frame_support::transactional]
         pub fn authorize_asset_registration(
             origin: OriginFor<T>,
@@ -519,18 +545,28 @@ pub mod pallet {
             asset_kind: AssetKind,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            ensure!(T::AssetRegistry::ensure_asset_exists(asset_id.clone()),
-                Error::<T>::TokenIsNotRegistered);
-            ensure!(!AssetKinds::<T>::contains_key(network_id, &asset_id),
-                Error::<T>::TokenAlreadyRegistered);
-            ensure!(PendingAssetRegistrations::<T>::get(network_id, &asset_id)
-                .map_or(true, |pending| pending == (sidechain_asset_id, asset_kind)),
-                Error::<T>::AssetRegistrationMismatch);
-            ensure!(ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
-                .map_or(true, |registered| registered == asset_id),
-                Error::<T>::AssetRegistrationMismatch);
+            ensure!(
+                T::AssetRegistry::ensure_asset_exists(asset_id.clone()),
+                Error::<T>::TokenIsNotRegistered
+            );
+            ensure!(
+                !AssetKinds::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenAlreadyRegistered
+            );
+            ensure!(
+                PendingAssetRegistrations::<T>::get(network_id, &asset_id)
+                    .map_or(true, |pending| pending == (sidechain_asset_id, asset_kind)),
+                Error::<T>::AssetRegistrationMismatch
+            );
+            ensure!(
+                ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
+                    .map_or(true, |registered| registered == asset_id),
+                Error::<T>::AssetRegistrationMismatch
+            );
             PendingAssetRegistrations::<T>::insert(
-                network_id, &asset_id, (sidechain_asset_id, asset_kind),
+                network_id,
+                &asset_id,
+                (sidechain_asset_id, asset_kind),
             );
             ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id);
             Ok(())
@@ -665,6 +701,15 @@ pub mod pallet {
         ) -> Result<H256, DispatchError> {
             ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
+            // The receiving app converts only these two AccountId32 forms.
+            // Other variants fail before its transfer-result response can run.
+            ensure!(
+                matches!(
+                    &recipient,
+                    GenericAccount::Sora(_) | GenericAccount::Liberland(_)
+                ),
+                Error::<T>::WrongAccountId
+            );
 
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;

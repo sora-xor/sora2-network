@@ -476,7 +476,7 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::Transfer(request) => request.validate(),
             IncomingRequest::AddToken(request) => request.validate(),
             IncomingRequest::ChangePeers(_request) => Ok(()),
-            IncomingRequest::CancelOutgoingRequest(_request) => Ok(()),
+            IncomingRequest::CancelOutgoingRequest(request) => request.validate(),
             IncomingRequest::MarkAsDone(request) => request.validate(),
             IncomingRequest::PrepareForMigration(_request) => Ok(()),
             IncomingRequest::Migrate(_request) => Ok(()),
@@ -555,21 +555,29 @@ impl<T: Config> IncomingRequest<T> {
     pub fn check_existence(&self) -> Result<bool, Error<T>> {
         let network_id = self.network_id();
         match self {
-            IncomingRequest::CancelOutgoingRequest(request) => {
-                let hash = request.tx_hash;
-                let tx_receipt = Pallet::<T>::load_tx_receipt(hash, network_id)?;
-                if tx_receipt.is_approved() {
-                    return Ok(false);
-                }
-                let tx = Pallet::<T>::load_tx(hash, network_id)?;
+            IncomingRequest::Transfer(request)
+                if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) =>
+            {
+                let receipt = Pallet::<T>::load_transfer_receipt(request.tx_hash, network_id)?;
+                let load = LoadIncomingTransactionRequest::new(
+                    request.author.clone(),
+                    request.tx_hash,
+                    request.timepoint,
+                    IncomingTransactionRequestKind::Transfer,
+                    network_id,
+                );
+                let canonical = Pallet::<T>::parse_attributed_transfer(receipt, load, None)
+                    .map_err(|_| Error::<T>::JsonDeserializationError)?;
+                // Compare all economic fields and the signer before approving
+                // finalization. Never rewrite a retained zero-sender request/hash.
                 ensure!(
-                    tx_receipt
-                        .gas_used
-                        .map(|used| used != tx.gas)
-                        .unwrap_or(false),
-                    Error::<T>::TransactionMightHaveFailedDueToGasLimit
+                    canonical.encode() == self.encode(),
+                    Error::<T>::JsonDeserializationError
                 );
                 Ok(true)
+            }
+            IncomingRequest::CancelOutgoingRequest(_) => {
+                Err(Error::<T>::PublicApprovalsRequireSettlement)
             }
             IncomingRequest::MarkAsDone(request) => {
                 Pallet::<T>::load_is_used(request.outgoing_request_hash, request.network_id)
@@ -996,7 +1004,8 @@ pub enum RequestStatus {
     ApprovalsReady,
     Failed(DispatchError),
     Done,
-    /// Request is broken. Tried to abort with the first error but got another one when cancelling.
+    /// Request is broken: cancellation failed, or outgoing finalization failed
+    /// after public approvals (second error is PublicApprovalsRequireSettlement).
     Broken(DispatchError, DispatchError),
 }
 
