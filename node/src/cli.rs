@@ -49,14 +49,6 @@ pub struct Cli {
     /// Fresh evidence directory for a passive recovery verification node.
     #[clap(long)]
     pub recovery_evidence_dir: Option<std::path::PathBuf>,
-
-    /// Public local HASHI witness requests/results; never signs or submits transactions.
-    #[clap(long, requires = "recovery_hashi_release_sha256")]
-    pub recovery_hashi_witness_dir: Option<std::path::PathBuf>,
-
-    /// Independently admitted outer release-manifest SHA-256 (0x-prefixed).
-    #[clap(long, requires = "recovery_hashi_witness_dir")]
-    pub recovery_hashi_release_sha256: Option<sp_core::H256>,
 }
 
 #[derive(Debug, clap::Subcommand)]

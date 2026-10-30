@@ -95,32 +95,17 @@ def resolve_legacy_lock(source, reference, provenance):
     old, new = tomllib.loads(before.read_text()), tomllib.loads(reference.read_text())
     old_packages = {(item["name"], item["version"], item.get("source")): item for item in old["package"]}
     new_packages = {(item["name"], item["version"], item.get("source")): item for item in new["package"]}
-    require(len(old_packages) == len(old["package"]) and len(new_packages) == len(new["package"]),
-            "Resolved fixture lock duplicates package identities")
     require(old_packages.keys() == new_packages.keys(), "Resolved fixture lock changes package identities")
-    allowed = {"framenode-runtime": {"sp-trie", "sp-externalities"},
-               "eth-bridge-runtime-api": {"scale-info"}}
-    added = {}
     for key, prior in old_packages.items():
         current = new_packages[key]
-        if key[0] not in allowed:
+        if key[0] != "framenode-runtime":
             require(prior == current, "Resolved fixture lock changes a non-runtime package")
             continue
         old_deps, new_deps = set(prior.get("dependencies", [])), set(current.get("dependencies", []))
-        require(len(old_deps) == len(prior.get("dependencies", []))
-                and len(new_deps) == len(current.get("dependencies", [])), "Duplicate runtime lock dependency")
-        additions = new_deps - old_deps
-        require(old_deps <= new_deps and additions <= allowed[key[0]], "Unreviewed runtime lock dependency change")
-        if key[0] == "eth-bridge-runtime-api" and additions:
-            require(sum(package[0] == "scale-info" for package in old_packages) == 1,
-                    "HASHI API metadata dependency must already be uniquely locked")
-        if additions:
-            added[key[0]] = sorted(additions)
+        require(old_deps <= new_deps and new_deps - old_deps <= {"sp-trie", "sp-externalities"}, "Unreviewed runtime lock dependency change")
         require({k: v for k, v in prior.items() if k != "dependencies"} == {k: v for k, v in current.items() if k != "dependencies"}, "Resolved runtime package changed")
     require({k: v for k, v in old.items() if k != "package"} == {k: v for k, v in new.items() if k != "package"}, "Resolved lock format changed")
-    evidence = {"original": digest(before), "resolved": digest(reference), "allowedDirectDependencies": ["sp-trie", "sp-externalities"],
-                "allowedPackageDependencies": {name: sorted(dependencies) for name, dependencies in allowed.items()},
-                "addedPackageDependencies": added, "packageIdentityDrift": False}
+    evidence = {"original": digest(before), "resolved": digest(reference), "allowedDirectDependencies": ["sp-trie", "sp-externalities"], "packageIdentityDrift": False}
     if before.read_bytes() != reference.read_bytes():
         before.write_bytes(reference.read_bytes())
     return evidence

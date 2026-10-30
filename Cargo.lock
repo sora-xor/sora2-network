@@ -4463,7 +4463,6 @@ name = "eth-bridge-runtime-api"
 version = "0.1.0"
 dependencies = [
  "parity-scale-codec",
- "scale-info",
  "sp-api",
  "sp-runtime",
  "sp-std",
@@ -5401,7 +5400,6 @@ dependencies = [
  "dex-api-rpc",
  "dex-manager-rpc",
  "eth-bridge-rpc",
- "eth-bridge-runtime-api",
  "farming-rpc",
  "finality-grandpa",
  "frame-benchmarking",
@@ -5454,7 +5452,6 @@ dependencies = [
  "sc-telemetry",
  "sc-transaction-pool",
  "sc-transaction-pool-api",
- "serde",
  "serde_json",
  "sora-secp256k1-compat",
  "sp-api",
@@ -5466,7 +5463,6 @@ dependencies = [
  "sp-consensus-beefy",
  "sp-core",
  "sp-database",
- "sp-externalities",
  "sp-inherents",
  "sp-io",
  "sp-keyring",
