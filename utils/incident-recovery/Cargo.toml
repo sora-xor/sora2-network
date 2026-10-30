@@ -10,7 +10,7 @@ workspace = true
 [features]
 default = []
 # Exact runtime adapter types/commitments for structural work assembly only.
-runtime-work-types = ["dep:framenode-runtime", "dep:bridge-types", "dep:eth-bridge"]
+runtime-work-types = ["dep:framenode-runtime", "dep:bridge-types", "dep:eth-bridge", "dep:multisig-verifier"]
 # Public synthetic bridge fixtures only; does not enable release admission.
 bridge-fixture = ["dep:permissions", "runtime-work-types", "dep:pallet-staking", "dep:bridge-types", "dep:bridge-multisig", "dep:frame-support", "dep:frame-system", "dep:multisig-verifier", "dep:substrate-bridge-app", "dep:substrate-bridge-channel", "dep:bridge-channel", "dep:jetton-app", "dep:parachain-bridge-app", "dep:xcm", "dep:dispatch"]
 
