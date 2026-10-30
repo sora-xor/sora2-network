@@ -31,7 +31,8 @@
 use super::*;
 use bridge_types::evm::AdditionalEVMOutboundData;
 use bridge_types::EVMChainId;
-use bridge_types::GenericNetworkId;
+use bridge_types::{GenericBridgeMessage, GenericCommitment};
+use bridge_types::{GenericNetworkId, GenericTimepoint};
 use codec::{Decode, Encode, MaxEncodedLen};
 use currencies::BasicCurrencyAdapter;
 use frame_support::derive_impl;
@@ -218,6 +219,7 @@ impl pallet_timestamp::Config for Test {
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
+    init_test_logging();
     let mut storage = frame_system::GenesisConfig::<Test>::default()
         .build_storage()
         .unwrap();
@@ -430,5 +432,227 @@ fn permanent_batch_quarantine_survives_global_halt_removal() {
         assert_eq!(MessageQueues::<Test>::get(BASE_NETWORK_ID), queue);
         assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
         assert!(LatestCommitment::<Test>::get(BASE_NETWORK_ID).is_none());
+    });
+}
+
+#[test]
+fn automatic_commit_obeys_interval_and_empty_queue_keeps_nonce() {
+    use frame_support::traits::Hooks;
+    new_tester().execute_with(|| {
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        assert_ok!(BridgeOutboundChannel::submit(BASE_NETWORK_ID.sub().unwrap(), &RawOrigin::Root, &[1], ()));
+        assert_eq!(BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID).len(), 1);
+        BridgeOutboundChannel::on_initialize(9);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        sp_io::storage::set(b":sora-nexus:recovery:policy:v1", &[1]);
+        BridgeOutboundChannel::on_initialize(10);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
+        assert!(BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID).is_empty());
+        assert!(matches!(LatestCommitment::<Test>::get(BASE_NETWORK_ID).unwrap().commitment, bridge_types::GenericCommitment::Sub(batch) if batch.nonce == 1 && batch.messages[0].payload.as_slice() == [1]));
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
+    });
+}
+
+#[test]
+fn outbound_channel_is_trait_only_and_restores_the_default_interval() {
+    use frame_support::traits::{GetCallIndex, GetCallName};
+    assert!(Call::<Test>::get_call_names().is_empty());
+    assert!(Call::<Test>::get_call_indices().is_empty());
+    assert_eq!(
+        BridgeOutboundChannel::call_functions().ty,
+        scale_info::meta_type::<Call<Test>>()
+    );
+    new_tester().execute_with(|| {
+        Interval::<Test>::kill();
+        assert_eq!(BridgeOutboundChannel::interval(), 10);
+    });
+}
+
+#[test]
+fn evm_gas_limits_and_policy_rollback_protect_the_queue_budget() {
+    new_tester().execute_with(|| {
+        let network = EVMChainId::default();
+        let origin = RawOrigin::Root;
+        let data = |gas: u64| AdditionalEVMOutboundData {
+            target: H160::repeat_byte(1),
+            max_gas: gas.into(),
+        };
+        sp_io::storage::set(b":sora-nexus:recovery:policy:v1", &[1]);
+        assert_noop!(
+            BridgeOutboundChannel::submit(network, &origin, &[1], data(5_000_000)),
+            Error::<Test>::MessageGasLimitExceeded
+        );
+        assert_ok!(BridgeOutboundChannel::submit(
+            network,
+            &origin,
+            &[1],
+            data(3_000_000)
+        ));
+        assert_noop!(
+            BridgeOutboundChannel::submit(network, &origin, &[2], data(2_000_000)),
+            Error::<Test>::CommitmentGasLimitExceeded
+        );
+        assert_eq!(
+            QueueTotalGas::<Test>::get(GenericNetworkId::EVM(network)),
+            3_000_000u32.into()
+        );
+        assert_noop!(
+            BridgeOutboundChannel::submit(network, &origin, &[0; 129], data(1)),
+            Error::<Test>::PayloadTooLarge
+        );
+        assert_eq!(
+            QueueTotalGas::<Test>::get(GenericNetworkId::EVM(network)),
+            3_000_000u32.into()
+        );
+        let queue = BridgeOutboundChannel::recovery_queue(network.into());
+        sp_io::storage::set(
+            &bridge_types::recovery::batch_key(0, network.into(), 1),
+            &[1],
+        );
+        assert_noop!(
+            BridgeOutboundChannel::submit(network, &origin, &[2], data(1)),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_eq!(
+            QueueTotalGas::<Test>::get(GenericNetworkId::EVM(network)),
+            3_000_000u32.into()
+        );
+        assert_eq!(BridgeOutboundChannel::recovery_queue(network.into()), queue);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        assert_noop!(
+            BridgeOutboundChannel::submit(network, &origin, &[2], data(1)),
+            Error::<Test>::RecoveryHalted
+        );
+    });
+}
+
+#[test]
+fn outbound_weights_and_submit_gas_include_configured_policy_costs() {
+    use bridge_types::traits::EVMOutboundChannel;
+    new_tester().execute_with(|| {
+        type SubChannel = BridgeOutboundChannel;
+        let base = <SubChannel as OutboundChannel<SubNetworkId, AccountId, ()>>::submit_weight();
+        assert_eq!(base, <SubChannel as OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData>>::submit_weight());
+        assert_eq!(BridgeOutboundChannel::submit_gas(EVMChainId::default()).unwrap(), DefaultEVMSubmitGas::get());
+        EVMSubmitGas::<Test>::insert(EVMChainId::default(), U256::from(123u32));
+        assert_eq!(BridgeOutboundChannel::submit_gas(EVMChainId::default()).unwrap(), 123u32.into());
+        sp_io::storage::set(b":sora-nexus:recovery:policy:v1", &[1]);
+        let policy = <SubChannel as OutboundChannel<SubNetworkId, AccountId, ()>>::submit_weight();
+        assert!(policy.ref_time() > base.ref_time());
+        assert!(policy.proof_size() > base.proof_size());
+        assert_eq!(policy, <SubChannel as OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData>>::submit_weight());
+    });
+}
+
+#[test]
+fn individual_quarantine_and_exhausted_nonce_prevent_committing_retained_messages() {
+    new_tester().execute_with(|| {
+        let id = BridgeOutboundChannel::submit(
+            BASE_NETWORK_ID.sub().unwrap(),
+            &RawOrigin::Root,
+            &[1],
+            (),
+        )
+        .unwrap();
+        let queue = BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID);
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(BASE_NETWORK_ID, id),
+            &[1],
+        );
+        assert_noop!(
+            BridgeOutboundChannel::submit(
+                BASE_NETWORK_ID.sub().unwrap(),
+                &RawOrigin::Root,
+                &[2],
+                ()
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(
+            BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID),
+            queue
+        );
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        ChannelNonces::<Test>::insert(BASE_NETWORK_ID, u64::MAX);
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(
+            BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID),
+            queue
+        );
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), u64::MAX);
+    });
+}
+
+// Exercise diagnostic formatting as it is enabled in an operator's debug build.
+fn init_test_logging() {
+    struct TestLogger;
+    impl log::Log for TestLogger {
+        fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+            metadata.level() <= log::Level::Debug
+        }
+        fn log(&self, record: &log::Record<'_>) {
+            if self.enabled(record.metadata()) {
+                eprintln!("{}", record.args());
+            }
+        }
+        fn flush(&self) {}
+    }
+    static LOGGER: TestLogger = TestLogger;
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        let _ = log::set_logger(&LOGGER);
+        log::set_max_level(log::LevelFilter::Debug);
+    });
+}
+
+#[test]
+fn legacy_mixed_domain_queues_do_not_include_foreign_payloads_in_commitments() {
+    new_tester().execute_with(|| {
+        let sub = GenericBridgeMessage::Sub(bridge_types::substrate::BridgeMessage {
+            payload: vec![1].try_into().unwrap(),
+            timepoint: GenericTimepoint::Pending,
+        });
+        let evm = GenericBridgeMessage::EVM(bridge_types::evm::Message {
+            target: H160::repeat_byte(3),
+            max_gas: 7u32.into(),
+            payload: vec![2].try_into().unwrap(),
+        });
+        let evm_network = GenericNetworkId::EVM(H256::repeat_byte(73));
+        for network in [BASE_NETWORK_ID, evm_network] {
+            MessageQueues::<Test>::insert(
+                network,
+                BoundedVec::try_from(vec![sub.clone(), evm.clone()]).unwrap(),
+            );
+            BridgeOutboundChannel::commit(network);
+            assert_eq!(ChannelNonces::<Test>::get(network), 1);
+            assert!(MessageQueues::<Test>::get(network).is_empty());
+            match LatestCommitment::<Test>::get(network).unwrap().commitment {
+                GenericCommitment::Sub(batch) => {
+                    assert_eq!(batch.messages.len(), 1);
+                    assert_eq!(batch.messages[0].payload.as_slice(), [1]);
+                }
+                GenericCommitment::EVM(bridge_types::evm::Commitment::Outbound(batch)) => {
+                    assert_eq!(batch.messages.len(), 1);
+                    assert_eq!(batch.messages[0].payload.as_slice(), [2]);
+                    assert_eq!(batch.total_max_gas, 7u32.into());
+                }
+                _ => panic!("unexpected commitment domain"),
+            }
+        }
+        for network in [
+            GenericNetworkId::EVMLegacy(74),
+            GenericNetworkId::TON(bridge_types::ton::TonNetworkId::Testnet),
+        ] {
+            MessageQueues::<Test>::insert(
+                network,
+                BoundedVec::try_from(vec![sub.clone()]).unwrap(),
+            );
+            BridgeOutboundChannel::commit(network);
+            assert!(LatestCommitment::<Test>::get(network).is_none());
+            assert!(MessageQueues::<Test>::get(network).is_empty());
+        }
     });
 }

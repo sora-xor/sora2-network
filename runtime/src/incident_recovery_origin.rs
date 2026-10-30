@@ -78,6 +78,10 @@ mod post_complete_bridge_tests {
                     },
                 );
                 let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
+                assert_eq!(
+                    crate::xor_fee_impls::validate_bridge_fee_exemption(&old, &call),
+                    Err(sp_runtime::transaction_validity::InvalidTransaction::BadSigner.into())
+                );
                 let error = call.dispatch(RuntimeOrigin::signed(old)).unwrap_err();
                 assert_eq!(
                     error.error,

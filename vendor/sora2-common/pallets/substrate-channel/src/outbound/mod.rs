@@ -232,6 +232,11 @@ pub mod pallet {
         RecoveryHalted,
     }
 
+    #[cfg(test)]
+    mod boundary_tests {
+        include!("boundary_tests.rs");
+    }
+
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
@@ -251,6 +256,40 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        // Payload and queue bounds remain enforced at the storage write boundary.
+        pub fn can_queue_messages(network_id: SubNetworkId, additional: u32) -> bool {
+            // Read the compact length, not every queued payload.
+            let total = MessageQueues::<T>::decode_len(network_id).unwrap_or(0)
+                .saturating_add(additional as usize);
+            if total > T::MaxMessagesPerCommit::get() as usize { return false; }
+            if additional == 0 { return true; }
+            let Some(nonce) = ChannelNonces::<T>::get(network_id).checked_add(1) else {
+                return false;
+            };
+            if bridge_types::recovery::batch_quarantined(1, network_id.into(), nonce) {
+                return false;
+            }
+            // Retained quarantine survives reopening. Reserve only positions the
+            // actual outbound submit path will accept, including queued prefixes.
+            !(0..total).any(|index| bridge_types::recovery::message_quarantined(
+                network_id.into(), MessageId::batched(T::ThisNetworkId::get(),
+                    network_id.into(), nonce, index as u64).hash()))
+        }
+
+        fn append_message(network_id: SubNetworkId, payload: &[u8]) -> DispatchResult {
+            MessageQueues::<T>::try_append(
+                network_id,
+                BridgeMessage {
+                    payload: payload
+                        .to_vec()
+                        .try_into()
+                        .map_err(|_| Error::<T>::PayloadTooLarge)?,
+                    timepoint: T::TimepointProvider::get_timepoint(),
+                },
+            )
+            .map_err(|_| Error::<T>::QueueSizeLimitReached.into())
+        }
+
         /// Exact native queue witness for manifest-bound recovery quarantine.
         pub fn recovery_queue(
             network_id: SubNetworkId,
@@ -391,17 +430,7 @@ pub mod pallet {
                 Error::<T>::RecoveryHalted
             );
 
-            MessageQueues::<T>::try_append(
-                network_id,
-                BridgeMessage {
-                    payload: payload
-                        .to_vec()
-                        .try_into()
-                        .map_err(|_| Error::<T>::PayloadTooLarge)?,
-                    timepoint: T::TimepointProvider::get_timepoint(),
-                },
-            )
-            .map_err(|_| Error::<T>::QueueSizeLimitReached)?;
+            Self::append_message(network_id, payload)?;
             Self::deposit_event(Event::MessageAccepted {
                 network_id,
                 batch_nonce,

@@ -44,6 +44,7 @@
 //!
 //! - `burn`: Burn an ERC20 token balance.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
 

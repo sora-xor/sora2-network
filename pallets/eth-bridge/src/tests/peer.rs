@@ -52,6 +52,254 @@ use hex_literal::hex;
 use secp256k1::{PublicKey, SecretKey};
 use sp_core::{H160, H256};
 
+fn canonical_peer_pair_fixture(
+    nonce: u64,
+) -> (
+    crate::requests::OffchainRequest<Runtime>,
+    crate::requests::OutgoingAddPeerCompat<Runtime>,
+    crate::requests::OffchainRequest<Runtime>,
+    crate::requests::OutgoingRemovePeerCompat<Runtime>,
+) {
+    use crate::requests::{OffchainRequest, OutgoingRequest};
+    let author = AccountId::new([1; 32]);
+    let peer_account_id = AccountId::new([3; 32]);
+    let peer_address = H160::repeat_byte(2);
+    let timepoint = bridge_multisig::BridgeTimepoint {
+        height: bridge_multisig::MultiChainHeight::Thischain(42),
+        index: 3,
+    };
+    let add =
+        OffchainRequest::outgoing(OutgoingRequest::AddPeer(crate::requests::OutgoingAddPeer {
+            author: author.clone(),
+            peer_account_id: peer_account_id.clone(),
+            peer_address,
+            nonce,
+            network_id: ETH_NETWORK_ID,
+            timepoint,
+        }));
+    let add_compat = crate::requests::OutgoingAddPeerCompat {
+        author: author.clone(),
+        peer_account_id: peer_account_id.clone(),
+        peer_address,
+        nonce: nonce.wrapping_add(1),
+        network_id: ETH_NETWORK_ID,
+        timepoint,
+    };
+    let remove_compat = crate::requests::OutgoingRemovePeerCompat {
+        author: author.clone(),
+        peer_account_id: peer_account_id.clone(),
+        peer_address,
+        nonce,
+        network_id: ETH_NETWORK_ID,
+        timepoint,
+    };
+    let compat_hash =
+        OffchainRequest::outgoing(OutgoingRequest::RemovePeerCompat(remove_compat.clone())).hash();
+    let remove = OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
+        crate::requests::OutgoingRemovePeer {
+            author,
+            peer_account_id,
+            peer_address,
+            nonce: nonce.wrapping_add(1),
+            network_id: ETH_NETWORK_ID,
+            timepoint,
+            compat_hash: Some(compat_hash),
+        },
+    ));
+    (add, add_compat, remove, remove_compat)
+}
+
+#[test]
+fn peer_pair_hashes_preserve_historical_source_layout() {
+    use crate::requests::{OffchainRequest, OutgoingRequest};
+    // Frozen synthetic fixtures using the SCALE layout in 66a100429 (the commit
+    // introducing compat_hash), instantiated with this mock's u64 nonce/height.
+    // These are source-layout fixtures, not a claim of captured production state.
+    let (add, add_compat, remove, remove_compat) = canonical_peer_pair_fixture(7);
+    assert_eq!(
+        add.hash(),
+        H256(hex!(
+            "6f1b25bb28e61c10a9581035c3b869cce10b649a6e16257cdd0d55b17929a0c2"
+        ))
+    );
+    assert_eq!(
+        OffchainRequest::outgoing(OutgoingRequest::AddPeerCompat(add_compat)).hash(),
+        H256(hex!(
+            "8086d0f0983167d5552b4f59f856de7d5f68aa832cce35f98ac78643e52369f6"
+        ))
+    );
+    assert_eq!(
+        remove.hash(),
+        H256(hex!(
+            "1905ba99345ad46cfa4d67b3254a1d41420df3beb408ce10ad13b96a212fbd8e"
+        ))
+    );
+    assert_eq!(
+        OffchainRequest::outgoing(OutgoingRequest::RemovePeerCompat(remove_compat)).hash(),
+        H256(hex!(
+            "4df1948ff52caa6aea7c5c5c9d734c52889e221ca89686580a1ba97b4063e2a0"
+        ))
+    );
+}
+
+#[test]
+fn peer_pair_lookup_matches_legacy_scan_after_primary_leaves_queue() {
+    use crate::requests::{OffchainRequest, OutgoingRequest};
+    for nonce in [0, 7, u64::MAX] {
+        let (mut ext, _) = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let (add, add_compat, remove, remove_compat) = canonical_peer_pair_fixture(nonce);
+            let add_hash = add.hash();
+            let remove_hash = remove.hash();
+            crate::Requests::<Runtime>::insert(ETH_NETWORK_ID, add_hash, add);
+            crate::Requests::<Runtime>::insert(ETH_NETWORK_ID, remove_hash, remove);
+            // Do not rely on a queue entry: the primary may already be approved/done.
+            crate::RequestsQueue::<Runtime>::remove(ETH_NETWORK_ID);
+            for status in [
+                RequestStatus::Pending,
+                RequestStatus::ApprovalsReady,
+                RequestStatus::Done,
+                RequestStatus::Failed(Error::Cancelled.into()),
+            ] {
+                crate::RequestStatuses::<Runtime>::insert(ETH_NETWORK_ID, add_hash, &status);
+                let legacy_status = crate::Requests::<Runtime>::iter_prefix(ETH_NETWORK_ID)
+                    .find_map(|(hash, request)| match request {
+                        OffchainRequest::Outgoing(OutgoingRequest::AddPeer(req), _)
+                            if req.peer_account_id == add_compat.peer_account_id
+                                && req.peer_address == add_compat.peer_address
+                                && req.timepoint == add_compat.timepoint =>
+                        {
+                            crate::RequestStatuses::<Runtime>::get(ETH_NETWORK_ID, hash)
+                        }
+                        _ => None,
+                    });
+                assert_eq!(
+                    add_compat.should_be_skipped(),
+                    legacy_status == Some(RequestStatus::Pending)
+                );
+                let expected = if matches!(
+                    legacy_status,
+                    Some(RequestStatus::ApprovalsReady | RequestStatus::Done)
+                ) {
+                    Ok(())
+                } else {
+                    Err(Error::RequestIsNotReady.into())
+                };
+                assert_eq!(add_compat.finalize(), expected);
+            }
+            let compat_hash =
+                OffchainRequest::outgoing(OutgoingRequest::RemovePeerCompat(remove_compat.clone()))
+                    .hash();
+            let legacy_match =
+                crate::Requests::<Runtime>::iter_prefix(ETH_NETWORK_ID).any(|(_, request)| {
+                    matches!(
+                        request,
+                        OffchainRequest::Outgoing(OutgoingRequest::RemovePeer(req), _)
+                            if req.compat_hash == Some(compat_hash)
+                                && req.peer_account_id == remove_compat.peer_account_id
+                                && req.peer_address == remove_compat.peer_address
+                                && req.timepoint == remove_compat.timepoint
+                    )
+                });
+            assert!(legacy_match);
+            assert_ok!(remove_compat.finalize());
+            crate::Requests::<Runtime>::remove(ETH_NETWORK_ID, add_hash);
+            crate::Requests::<Runtime>::remove(ETH_NETWORK_ID, remove_hash);
+            // A retained status alone must not authenticate a missing primary request.
+            assert_err!(add_compat.finalize(), Error::UnknownRequest);
+            assert_err!(remove_compat.finalize(), Error::UnknownRequest);
+        });
+    }
+}
+
+#[test]
+fn peer_pair_lookup_rejects_inconsistent_primary_payloads() {
+    use crate::requests::{OffchainRequest, OutgoingRequest};
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let (add, add_compat, remove, remove_compat) = canonical_peer_pair_fixture(7);
+        let add_hash = add.hash();
+        let remove_hash = remove.hash();
+        let OffchainRequest::Outgoing(OutgoingRequest::AddPeer(mut bad_add), _) = add else {
+            unreachable!()
+        };
+        bad_add.author = AccountId::new([9; 32]);
+        let OffchainRequest::Outgoing(OutgoingRequest::RemovePeer(mut bad_remove), _) = remove
+        else {
+            unreachable!()
+        };
+        bad_remove.compat_hash = Some(H256::repeat_byte(9));
+        crate::Requests::<Runtime>::insert(
+            ETH_NETWORK_ID,
+            add_hash,
+            OffchainRequest::outgoing(OutgoingRequest::AddPeer(bad_add)),
+        );
+        crate::Requests::<Runtime>::insert(
+            ETH_NETWORK_ID,
+            remove_hash,
+            OffchainRequest::outgoing(OutgoingRequest::RemovePeer(bad_remove)),
+        );
+        crate::RequestStatuses::<Runtime>::insert(ETH_NETWORK_ID, add_hash, RequestStatus::Done);
+        assert_err!(add_compat.finalize(), Error::UnknownRequest);
+        assert_err!(remove_compat.finalize(), Error::UnknownRequest);
+    });
+}
+
+#[test]
+fn peer_pair_lookup_does_not_scan_unrelated_history() {
+    let (mut ext, _) = ExtBuilder::default().build();
+    let (_, add_compat, _, remove_compat) = canonical_peer_pair_fixture(7);
+    ext.execute_with(|| {
+        for nonce in 100..356 {
+            let (mut unrelated, _, _, _) = canonical_peer_pair_fixture(nonce);
+            // Give each historical request a different peer, so the old scan must
+            // inspect every value to establish that the requested pair is missing.
+            if let crate::requests::OffchainRequest::Outgoing(
+                crate::requests::OutgoingRequest::AddPeer(ref mut peer),
+                _,
+            ) = unrelated
+            {
+                peer.peer_address = H160::repeat_byte(8);
+            }
+            let crate::requests::OffchainRequest::Outgoing(unrelated, _) = unrelated else {
+                unreachable!()
+            };
+            let unrelated = crate::requests::OffchainRequest::outgoing(unrelated);
+            crate::Requests::<Runtime>::insert(ETH_NETWORK_ID, unrelated.hash(), unrelated);
+        }
+    });
+    ext.commit_all().unwrap();
+    let (_, add_proof) = ext.execute_and_prove(|| {
+        assert!(!add_compat.should_be_skipped());
+        assert_err!(add_compat.finalize(), Error::UnknownRequest);
+    });
+    let (_, remove_proof) = ext.execute_and_prove(|| {
+        assert_err!(remove_compat.finalize(), Error::UnknownRequest);
+    });
+    let (_, legacy_proof) = ext.execute_and_prove(|| {
+        assert!(
+            !crate::Requests::<Runtime>::iter_prefix(ETH_NETWORK_ID).any(|(_, request)| {
+                matches!(request,
+                    crate::requests::OffchainRequest::Outgoing(
+                        crate::requests::OutgoingRequest::AddPeer(peer), _
+                    ) if peer.peer_address == add_compat.peer_address
+                )
+            })
+        );
+    });
+    assert!(
+        legacy_proof.len() >= 256,
+        "fixture must expose the old historical scan"
+    );
+    for (kind, proof) in [("add", add_proof), ("remove", remove_proof)] {
+        assert!(
+            proof.len() < 80,
+            "{kind} peer lookup scanned history: {} proof nodes",
+            proof.len()
+        );
+    }
+}
+
 #[test]
 fn should_add_peer_in_eth_network() {
     let (mut ext, state) = ExtBuilder::default().build();

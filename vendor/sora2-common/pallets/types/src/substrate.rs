@@ -311,6 +311,7 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> codec::DecodeWithMemTracking
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::BridgeCall;
     use codec::Decode;

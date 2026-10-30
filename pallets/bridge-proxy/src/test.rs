@@ -50,6 +50,9 @@ use sp_keyring::sr25519::Keyring;
 use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::types::{MessageDirection, MessageId, MessageStatus};
 
+#[path = "coverage.rs"]
+mod coverage;
+
 #[test]
 fn recovery_halt_keeps_failed_outgoing_liability_quarantined() {
     use bridge_types::traits::MessageStatusNotifier;
@@ -104,6 +107,160 @@ fn assert_event(event: RuntimeEvent) {
         .iter()
         .find(|e| e.event == event)
         .expect("Event not found");
+}
+
+fn create_refundable_transfer(owner: AccountId, amount: u128) -> bridge_types::H256 {
+    assert_ok!(Currencies::update_balance(
+        RawOrigin::Root.into(),
+        owner.clone(),
+        XOR,
+        amount as FixedInner,
+    ));
+    assert_ok!(BridgeProxy::burn(
+        RawOrigin::Signed(owner.clone()).into(),
+        BASE_EVM_NETWORK_ID.into(),
+        XOR,
+        GenericAccount::EVM(H160::repeat_byte(9)),
+        amount,
+    ));
+    Transactions::<Test>::iter_prefix((GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), owner))
+        .next()
+        .unwrap()
+        .0
+}
+
+#[test]
+fn terminal_outgoing_status_cannot_refund_again_or_regress() {
+    use bridge_types::traits::MessageStatusNotifier;
+    use common::AssetInfoProvider;
+    for terminal in [MessageStatus::Done, MessageStatus::Refunded] {
+        new_tester().execute_with(|| {
+            let owner: AccountId = Keyring::Alice.into();
+            let other: AccountId = Keyring::Charlie.into();
+            let network = GenericNetworkId::EVM(BASE_EVM_NETWORK_ID);
+            let id = create_refundable_transfer(owner.clone(), 1_000);
+            // A second user's custody makes repeated refunds financially exploitable.
+            create_refundable_transfer(other, 1_000);
+            let first_status = if terminal == MessageStatus::Refunded {
+                MessageStatus::Failed
+            } else {
+                MessageStatus::Done
+            };
+            BridgeProxy::update_status(network, id, first_status, GenericTimepoint::EVM(10));
+            assert_eq!(
+                Transactions::<Test>::get((network, owner.clone()), id)
+                    .unwrap()
+                    .status,
+                terminal
+            );
+            let balance = assets::Pallet::<Test>::free_balance(&XOR, &owner).unwrap();
+            let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+            for status in [
+                MessageStatus::Failed,
+                MessageStatus::Committed,
+                MessageStatus::InQueue,
+                MessageStatus::Approved,
+                MessageStatus::Done,
+                MessageStatus::Refunded,
+            ] {
+                BridgeProxy::update_status(network, id, status, GenericTimepoint::EVM(11));
+                assert_eq!(
+                    assets::Pallet::<Test>::free_balance(&XOR, &owner).unwrap(),
+                    balance
+                );
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+            }
+        });
+    }
+}
+
+#[test]
+fn failed_refund_preserves_locked_assets_and_can_be_retried() {
+    use bridge_types::traits::MessageStatusNotifier;
+    use common::AssetInfoProvider;
+    new_tester().execute_with(|| {
+        let owner: AccountId = Keyring::Alice.into();
+        let network = GenericNetworkId::EVM(BASE_EVM_NETWORK_ID);
+        let id = create_refundable_transfer(owner.clone(), 1_000);
+        let bridge_account = BridgeProxy::bridge_account(network).unwrap();
+        // Simulate unavailable custody after the outbound request was admitted.
+        assert_ok!(Currencies::update_balance(
+            RawOrigin::Root.into(),
+            bridge_account.clone(),
+            XOR,
+            -1_000,
+        ));
+        BridgeProxy::update_status(
+            network,
+            id,
+            MessageStatus::Failed,
+            GenericTimepoint::EVM(10),
+        );
+        assert_eq!(crate::LockedAssets::<Test>::get(network, XOR), 1_000);
+        assert_eq!(
+            assets::Pallet::<Test>::free_balance(&XOR, &owner).unwrap(),
+            0
+        );
+        assert_eq!(
+            Transactions::<Test>::get((network, owner.clone()), id)
+                .unwrap()
+                .status,
+            MessageStatus::Failed
+        );
+        assert_event(crate::Event::RefundFailed(id).into());
+
+        assert_ok!(Currencies::update_balance(
+            RawOrigin::Root.into(),
+            bridge_account,
+            XOR,
+            1_000,
+        ));
+        BridgeProxy::update_status(
+            network,
+            id,
+            MessageStatus::Failed,
+            GenericTimepoint::EVM(11),
+        );
+        assert_eq!(crate::LockedAssets::<Test>::get(network, XOR), 0);
+        assert_eq!(
+            assets::Pallet::<Test>::free_balance(&XOR, &owner).unwrap(),
+            1_000
+        );
+        assert_eq!(
+            Transactions::<Test>::get((network, owner), id)
+                .unwrap()
+                .status,
+            MessageStatus::Refunded
+        );
+    });
+}
+
+#[test]
+fn unsupported_refund_path_does_not_mark_request_refunded() {
+    use bridge_types::traits::MessageStatusNotifier;
+    new_tester().execute_with(|| {
+        let owner: AccountId = Keyring::Alice.into();
+        let network = GenericNetworkId::EVM(BASE_EVM_NETWORK_ID);
+        let id = create_refundable_transfer(owner.clone(), 1_000);
+        // Retained requests can outlive the app/asset route that handled them.
+        Transactions::<Test>::mutate((network, owner.clone()), id, |request| {
+            request.as_mut().unwrap().asset_id = TBCD;
+        });
+        BridgeProxy::update_status(
+            network,
+            id,
+            MessageStatus::Failed,
+            GenericTimepoint::EVM(10),
+        );
+        assert_eq!(
+            Transactions::<Test>::get((network, owner), id)
+                .unwrap()
+                .status,
+            MessageStatus::Failed
+        );
+        assert_eq!(crate::LockedAssets::<Test>::get(network, XOR), 1_000);
+        assert_event(crate::Event::RefundFailed(id).into());
+    });
 }
 
 #[test]

@@ -1,0 +1,20 @@
+{
+  "source": "runtime-rehearsal-async-staking-2026-10-25/validation/bridge-request-recovery-pages.jsonl.gz",
+  "rows": [
+    {
+      "key": "0x8e8f4d4777099074419cbb4597dac1d3e973821932a99de497c2362ed9f9be34b4def25cfda6ef3a000000007f962c0b899773697095a50c8d14e684983e52904d97f9e7e9d71ea147f9e278",
+      "value": "0x000354734f90f971a02c609b2d684e61b557766d78ad686ac10d30c50ba66759465c6219d0ba6a0bafa69cd2b1b15633a3fd864dd371614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cc08000000000000000039e36a00000000007f962c0b899773697095a50c8d14e684983e52904d97f9e7e9d71ea147f9e278"
+    },
+    {
+      "key": "0x8e8f4d4777099074419cbb4597dac1d3e973821932a99de497c2362ed9f9be34b4def25cfda6ef3a00000000ba89c9bf820fffbe298a176dd0eb6857db94c99f46791e6035ecab7c7fbee509",
+      "value": "0x000754734f90f971a02c609b2d684e61b557766d78ad686ac10d30c50ba66759465c6219d0ba6a0bafa69cd2b1b15633a3fd864dd371614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cc09000000000000000039e36a0000000000ba89c9bf820fffbe298a176dd0eb6857db94c99f46791e6035ecab7c7fbee509"
+    }
+  ],
+  "sourceSha256": "fb38a9bebacb89982cb05b347b85eac80ac58a08d3e118b09c35cae987c41919",
+  "purpose": "Historical public request-payload compatibility fixture; status transitions in the test are synthetic, not captured state.",
+  "captureDate": "2026-10-25",
+  "pairingSourceHistory": {
+    "addPeerAdjacencyIntroduced": "63b7fa412",
+    "removePeerCompatHashIntroduced": "66a100429"
+  }
+}

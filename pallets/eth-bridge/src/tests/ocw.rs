@@ -166,6 +166,44 @@ fn multiple_local_bridge_accounts() -> Vec<frame_system::offchain::Account<Runti
     accounts
 }
 
+fn pending_incoming_for_signer_selection(tx_hash_byte: u8, sidechain_height: u64) -> H256 {
+    // Finalization signing rejects unknown requests before choosing a local key.
+    // Seed a real pending import so these tests exercise signer membership.
+    let author = get_account_id_from_seed::<sr25519::Public>("Alice");
+    let tx_hash = H256::repeat_byte(tx_hash_byte);
+    super::request_incoming(
+        author.clone(),
+        tx_hash,
+        IncomingTransactionRequestKind::Transfer.into(),
+        ETH_NETWORK_ID,
+    )
+    .unwrap();
+    let request = IncomingRequest::Transfer(crate::IncomingTransfer {
+        from: EthAddress::repeat_byte(1),
+        to: author.clone(),
+        asset_id: XOR.into(),
+        asset_kind: crate::AssetKind::Thischain,
+        amount: 100,
+        author,
+        tx_hash,
+        at_height: sidechain_height,
+        timepoint: bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(sidechain_height, 0),
+        network_id: ETH_NETWORK_ID,
+        should_take_fee: false,
+    });
+    let bridge = crate::BridgeAccount::<Runtime>::get(ETH_NETWORK_ID).unwrap();
+    assert_ok!(EthBridge::register_incoming_request(
+        RuntimeOrigin::signed(bridge),
+        request,
+    ));
+    let hash = crate::LoadToIncomingRequestHash::<Runtime>::get(ETH_NETWORK_ID, tx_hash);
+    assert_eq!(
+        crate::RequestStatuses::<Runtime>::get(ETH_NETWORK_ID, hash),
+        Some(RequestStatus::Pending),
+    );
+    hash
+}
+
 #[test]
 fn ocw_multisig_submission_selects_current_network_peer_and_signatory() {
     for threshold_one in [false, true] {
@@ -190,11 +228,12 @@ fn ocw_multisig_submission_selects_current_network_peer_and_signatory() {
                     &bridge,
                     bridge_multisig::MultisigAccount::new(signatories),
                 );
+                let hash = pending_incoming_for_signer_selection(0x51, 7);
                 let nonce = System::account_nonce(&selected.id);
                 let first_nonce = System::account_nonce(&first.id);
                 assert_ok!(EthBridge::send_multisig_transaction(
                     crate::Call::<Runtime>::finalize_incoming_request {
-                        hash: H256::repeat_byte(0x51),
+                        hash,
                         network_id: ETH_NETWORK_ID,
                     },
                     bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(7, 0),
@@ -230,8 +269,9 @@ fn ocw_multisig_retry_reselects_current_network_peer_after_rotation() {
             &bridge,
             bridge_multisig::MultisigAccount::new(vec![selected.id.clone()]),
         );
+        let hash = pending_incoming_for_signer_selection(0x52, 8);
         let inner: RuntimeCall = crate::Call::<Runtime>::finalize_incoming_request {
-            hash: H256::repeat_byte(0x52),
+            hash,
             network_id: ETH_NETWORK_ID,
         }
         .into();

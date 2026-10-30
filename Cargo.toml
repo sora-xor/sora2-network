@@ -1,5 +1,5 @@
 [patch.crates-io]
-wasmtime-internal-cache = { path = "vendor/wasmtime-internal-cache-36.0.19" }
+wasmtime-internal-cache = { path = "vendor/wasmtime-internal-cache-36.0.20" }
 polkadot-node-primitives = { path = "vendor/polkadot-sdk/polkadot/node/primitives" }
 frame-decode = { path = "vendor/frame-decode" }
 scale-info-legacy = { path = "vendor/scale-info-legacy" }
@@ -254,7 +254,7 @@ members = [
 exclude = [
     "vendor/polkadot-sdk/primitives/maybe-compressed-blob",
     "vendor/polkadot-sdk/polkadot/node/primitives",
-    "vendor/wasmtime-internal-cache-36.0.19",
+    "vendor/wasmtime-internal-cache-36.0.20",
     "vendor/polkadot-sdk/frame/staking",
     "vendor/polkadot-sdk/client/network",
     "vendor/ark-ec-0.4.2",
@@ -285,6 +285,7 @@ resolver = "2"
 # Vendored crates retain the lint policy of their pinned upstream version.
 [workspace.lints.rust]
 unused_must_use = "deny"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

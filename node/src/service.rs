@@ -264,6 +264,12 @@ fn set_offchain_u64_metric<S: OffchainStorage>(storage: &mut S, key: &[u8], valu
     storage.set(STORAGE_PREFIX, key, &value.encode());
 }
 
+fn remove_legacy_bridge_secret<S: OffchainStorage>(storage: &mut S) {
+    // Signing is handled by the keystore host API. Offchain local storage is
+    // readable through unsafe RPC and must never retain a private-key copy.
+    storage.remove(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY);
+}
+
 fn set_offchain_network_metric<S: OffchainStorage, N: core::fmt::Debug>(
     storage: &mut S,
     prefix: &str,
@@ -280,10 +286,10 @@ fn set_offchain_network_metric<S: OffchainStorage, N: core::fmt::Debug>(
 )]
 fn resolve_local_bridge_credentials<F>(
     public_keys: Vec<Vec<u8>>,
-    mut local_seed_for_public: F,
-) -> Result<Option<(Vec<u8>, Vec<u8>)>, ServiceError>
+    mut has_local_keypair: F,
+) -> Result<Option<Vec<u8>>, ServiceError>
 where
-    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<Option<Vec<u8>>, ServiceError>,
+    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<bool, ServiceError>,
 {
     let mut saw_any_public_key = false;
 
@@ -314,8 +320,8 @@ where
             substrate_public
         );
 
-        if let Some(seed) = local_seed_for_public(&bridge_public)? {
-            return Ok(Some((public_key_bytes, seed)));
+        if has_local_keypair(&bridge_public)? {
+            return Ok(Some(public_key_bytes));
         }
     }
 
@@ -336,20 +342,18 @@ where
 )]
 fn resolve_local_bridge_bootstrap<F, G>(
     public_keys: Vec<Vec<u8>>,
-    local_seed_for_public: F,
+    has_local_keypair: F,
     load_peer_config: G,
-) -> Result<Option<(Vec<u8>, Vec<u8>, BridgePeerConfig)>, ServiceError>
+) -> Result<Option<(Vec<u8>, BridgePeerConfig)>, ServiceError>
 where
-    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<Option<Vec<u8>>, ServiceError>,
+    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<bool, ServiceError>,
     G: FnOnce() -> Result<BridgePeerConfig, ServiceError>,
 {
-    let Some((marker, legacy_secret)) =
-        resolve_local_bridge_credentials(public_keys, local_seed_for_public)?
-    else {
+    let Some(marker) = resolve_local_bridge_credentials(public_keys, has_local_keypair)? else {
         return Ok(None);
     };
 
-    Ok(Some((marker, legacy_secret, load_peer_config()?)))
+    Ok(Some((marker, load_peer_config()?)))
 }
 
 #[allow(
@@ -452,6 +456,11 @@ pub fn new_partial(
         )
         .map_err(ServiceError::Other)?;
     }
+    // Purge stale seeds for every startup mode, including recovery/offline modes
+    // that deliberately skip bootstrap. Do this before configuration can fail.
+    if let Some(mut storage) = backend.offchain_storage() {
+        remove_legacy_bridge_secret(&mut storage);
+    }
     let bridge_bootstrap = if recovery.is_some() || offline {
         // Recovery never re-arms HASHI from an operator's existing bridge files.
         None
@@ -466,7 +475,7 @@ pub fn new_partial(
                 let local_keystore = keystore_container.local_keystore();
                 local_keystore
                     .key_pair::<eth_bridge::offchain::crypto::Pair>(public_key)
-                    .map(|key_pair| key_pair.map(|key_pair| key_pair.to_raw_vec()))
+                    .map(|key_pair| key_pair.is_some())
                     .map_err(|error| {
                         ServiceError::Other(format!(
                             "Failed to inspect local ethereum bridge keypair: {}",
@@ -495,7 +504,7 @@ pub fn new_partial(
         );
     }
 
-    if let Some((marker, legacy_secret, peer_config)) = bridge_bootstrap {
+    if let Some((marker, peer_config)) = bridge_bootstrap {
         let mut storage = backend.offchain_storage().ok_or_else(|| {
             ServiceError::Other(
                 "Ethereum bridge offchain storage is unavailable for local bridge bootstrap."
@@ -504,12 +513,6 @@ pub fn new_partial(
         })?;
         // Keep a non-secret OCW activation marker in offchain DB for bridge workers.
         storage.set(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY, &marker.encode());
-        // The deployed bridge runtime still reads the legacy 32-byte seed from the offchain DB.
-        storage.set(
-            STORAGE_PREFIX,
-            STORAGE_PEER_SECRET_KEY,
-            &legacy_secret.encode(),
-        );
         let mut network_ids = BTreeSet::new();
         for (net_id, params) in peer_config.networks {
             let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
@@ -1144,7 +1147,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{bridge_rpc_url, load_bridge_peer_config, resolve_local_bridge_bootstrap};
+    use super::{
+        bridge_rpc_url, load_bridge_peer_config, remove_legacy_bridge_secret,
+        resolve_local_bridge_bootstrap,
+    };
+    use sp_core::offchain::{storage::InMemOffchainStorage, OffchainStorage};
     use sp_core::Pair;
     use std::cell::Cell;
     use std::fs;
@@ -1158,6 +1165,25 @@ mod tests {
             .public()
             .0
             .to_vec()
+    }
+
+    #[test]
+    fn legacy_bridge_secret_is_removed_without_removing_public_bootstrap_marker() {
+        use super::{STORAGE_PEER_MARKER_KEY, STORAGE_PEER_SECRET_KEY, STORAGE_PREFIX};
+        let mut storage = InMemOffchainStorage::default();
+        let marker = sample_bridge_public_key();
+        // Public dummy fixture, never an operator key.
+        storage.set(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY, &[7; 32]);
+        storage.set(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY, &marker);
+        remove_legacy_bridge_secret(&mut storage);
+        remove_legacy_bridge_secret(&mut storage);
+        assert!(storage
+            .get(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY)
+            .is_none());
+        assert_eq!(
+            storage.get(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY),
+            Some(marker)
+        );
     }
 
     fn unique_temp_path(name: &str) -> PathBuf {
@@ -1177,7 +1203,7 @@ mod tests {
         let missing_path = unique_temp_path("missing-eth-json");
         let result = resolve_local_bridge_bootstrap(
             vec![sample_bridge_public_key()],
-            |_| Ok(Some(vec![7u8; 32])),
+            |_| Ok(true),
             || load_bridge_peer_config(&missing_path),
         );
 
@@ -1195,7 +1221,7 @@ mod tests {
 
         let result = resolve_local_bridge_bootstrap(
             vec![sample_bridge_public_key()],
-            |_| Ok(Some(vec![7u8; 32])),
+            |_| Ok(true),
             || load_bridge_peer_config(&invalid_path),
         );
 
@@ -1212,7 +1238,7 @@ mod tests {
         let loader_called = Cell::new(false);
         let result = resolve_local_bridge_bootstrap(
             vec![sample_bridge_public_key()],
-            |_| Ok(None),
+            |_| Ok(false),
             || {
                 loader_called.set(true);
                 unreachable!("bridge config should not be loaded without a local keypair")

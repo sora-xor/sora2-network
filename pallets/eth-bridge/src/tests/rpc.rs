@@ -40,6 +40,184 @@ use common::{VAL, XOR};
 use sp_core::{sr25519, H256};
 
 #[test]
+fn approvals_export_canonical_parity_without_rewriting_retained_signatures() {
+    use crate::offchain::SignatureParams;
+    use std::collections::BTreeSet;
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let request =
+            OffchainRequest::outgoing(OutgoingRequest::AddToken(OutgoingAddToken::<Runtime> {
+                author: get_account_id_from_seed::<sr25519::Public>("Alice"),
+                token_address: EthAddress::repeat_byte(3),
+                symbol: "TOK".into(),
+                name: "Token".into(),
+                decimals: 18,
+                nonce: 5,
+                network_id: ETH_NETWORK_ID,
+                timepoint: Default::default(),
+            }));
+        let hash = request.hash();
+        crate::Requests::<Runtime>::insert(ETH_NETWORK_ID, hash, request);
+        crate::RequestStatuses::<Runtime>::insert(
+            ETH_NETWORK_ID,
+            hash,
+            RequestStatus::ApprovalsReady,
+        );
+        let signature = |v| SignatureParams {
+            r: [1; 32],
+            s: [2; 32],
+            v,
+        };
+        let retained = BTreeSet::from([signature(0), signature(27), signature(28), signature(55)]);
+        crate::RequestApprovals::<Runtime>::insert(ETH_NETWORK_ID, hash, &retained);
+        for network in [Some(ETH_NETWORK_ID), None] {
+            let exported = EthBridge::get_approvals(&[hash], network).unwrap();
+            assert_eq!(exported, vec![vec![signature(0), signature(1)]]);
+            assert_eq!(
+                EthBridge::get_approved_requests(&[hash], network).unwrap()[0].1,
+                exported[0]
+            );
+            // The existing web consumer adds 27; both accepted encodings now reach
+            // EVM ecrecover as 27/28, never 54/55.
+            assert_eq!(
+                exported[0]
+                    .iter()
+                    .map(|proof| proof.v + 27)
+                    .collect::<Vec<_>>(),
+                vec![27, 28]
+            );
+        }
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(ETH_NETWORK_ID, hash),
+            retained
+        );
+    });
+}
+
+#[test]
+fn networkless_hash_lookups_do_not_read_unrelated_request_history() {
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        for nonce in 0..256 {
+            let request =
+                OffchainRequest::outgoing(OutgoingRequest::AddToken(OutgoingAddToken::<Runtime> {
+                    author: alice.clone(),
+                    token_address: EthAddress::repeat_byte(1),
+                    symbol: "TOK".into(),
+                    name: "Token".into(),
+                    decimals: 18,
+                    nonce,
+                    network_id: ETH_NETWORK_ID,
+                    timepoint: Default::default(),
+                }));
+            let hash = request.hash();
+            crate::Requests::<Runtime>::insert(ETH_NETWORK_ID, hash, request);
+            crate::RequestStatuses::<Runtime>::insert(
+                ETH_NETWORK_ID,
+                hash,
+                RequestStatus::ApprovalsReady,
+            );
+            crate::RequestApprovals::<Runtime>::insert(
+                ETH_NETWORK_ID,
+                hash,
+                std::collections::BTreeSet::from([crate::offchain::SignatureParams {
+                    r: hash.0,
+                    s: [1; 32],
+                    v: 27,
+                }]),
+            );
+        }
+    });
+    // Persist fixtures so the proof records reads from the trie rather than the overlay.
+    ext.commit_all().unwrap();
+    let missing = H256::repeat_byte(0xff);
+    let (_, requests_proof) = ext.execute_and_prove(|| {
+        assert!(EthBridge::get_requests(&[missing; 50], None, true)
+            .unwrap()
+            .is_empty());
+    });
+    let (_, approved_proof) = ext.execute_and_prove(|| {
+        assert!(EthBridge::get_approved_requests(&[missing; 50], None)
+            .unwrap()
+            .is_empty());
+    });
+    let (_, approvals_proof) = ext.execute_and_prove(|| {
+        assert!(EthBridge::get_approvals(&[missing; 50], None)
+            .unwrap()
+            .is_empty());
+    });
+    // A few point lookups need only their trie paths, not hundreds of historical leaves.
+    for (name, proof) in [
+        ("requests", requests_proof),
+        ("approved requests", approved_proof),
+        ("approvals", approvals_proof),
+    ] {
+        assert!(
+            proof.len() < 80,
+            "{name} scanned unrelated history: {} proof nodes",
+            proof.len()
+        );
+    }
+}
+
+#[test]
+fn networkless_hash_lookups_preserve_network_matches_and_empty_approvals() {
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let second_network = ETH_NETWORK_ID + 1;
+        crate::BridgeAccount::<Runtime>::insert(second_network, &alice);
+        let request =
+            OffchainRequest::outgoing(OutgoingRequest::AddToken(OutgoingAddToken::<Runtime> {
+                author: alice,
+                token_address: EthAddress::repeat_byte(1),
+                symbol: "TOK".into(),
+                name: "Token".into(),
+                decimals: 18,
+                nonce: 1,
+                network_id: ETH_NETWORK_ID,
+                timepoint: Default::default(),
+            }));
+        let hash = request.hash();
+        for network in [ETH_NETWORK_ID, second_network] {
+            crate::Requests::<Runtime>::insert(network, hash, &request);
+        }
+        crate::RequestStatuses::<Runtime>::insert(
+            ETH_NETWORK_ID,
+            hash,
+            RequestStatus::ApprovalsReady,
+        );
+        let requests = EthBridge::get_requests(&[hash], None, false).unwrap();
+        assert_eq!(requests.len(), 2);
+        assert!(requests
+            .iter()
+            .any(|(_, status)| *status == RequestStatus::ApprovalsReady));
+        assert!(requests
+            .iter()
+            .any(|(_, status)| *status == RequestStatus::Pending));
+        assert_eq!(
+            EthBridge::get_approved_requests(&[hash], None)
+                .unwrap()
+                .len(),
+            1
+        );
+
+        // A network with no approvals entry must not add a spurious empty result.
+        assert!(EthBridge::get_approvals(&[hash], None).unwrap().is_empty());
+        crate::RequestApprovals::<Runtime>::insert(
+            second_network,
+            hash,
+            std::collections::BTreeSet::<crate::offchain::SignatureParams>::new(),
+        );
+        assert_eq!(
+            EthBridge::get_approvals(&[hash], None).unwrap(),
+            vec![Vec::new()]
+        );
+    });
+}
+
+#[test]
 fn get_account_requests_should_ignore_entries_without_status_when_filter_is_set() {
     let (mut ext, _) = ExtBuilder::default().build();
     ext.execute_with(|| {

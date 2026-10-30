@@ -114,3 +114,59 @@ impl Contains<RuntimeCall> for BridgeMultisigCallFilter {
         Self::permits(call, 0)
     }
 }
+
+/// The legacy bridge multisig is a protocol executor. Its pending key contains
+/// only the call hash, so accepting an arbitrary first timepoint lets one peer
+/// prevent the remaining peers from approving the canonical operation.
+pub struct BridgeMultisigOperationFilter;
+
+impl bridge_multisig::OperationFilter<crate::AccountId, RuntimeCall, crate::BlockNumber>
+    for BridgeMultisigOperationFilter
+{
+    fn validate(
+        id: &crate::AccountId,
+        timepoint: Option<bridge_multisig::BridgeTimepoint<crate::BlockNumber>>,
+        call: Option<&RuntimeCall>,
+    ) -> sp_runtime::DispatchResult {
+        use frame_support::ensure;
+        let Some(RuntimeCall::EthBridge(protocol)) = call else {
+            return Err(frame_system::Error::<Runtime>::CallFiltered.into());
+        };
+        let (network, canonical) = match protocol {
+            eth_bridge::Call::register_incoming_request { incoming_request } => {
+                (incoming_request.network_id(), incoming_request.timepoint())
+            }
+            eth_bridge::Call::import_incoming_request {
+                load_incoming_request,
+                ..
+            } => (
+                load_incoming_request.network_id(),
+                load_incoming_request.timepoint(),
+            ),
+            eth_bridge::Call::finalize_incoming_request { network_id, hash }
+            | eth_bridge::Call::abort_request {
+                network_id, hash, ..
+            } => {
+                let request = eth_bridge::Requests::<Runtime>::get(network_id, hash)
+                    .ok_or(eth_bridge::Error::<Runtime>::UnknownRequest)?;
+                (*network_id, request.timepoint())
+            }
+            // Outgoing approvals and cancellation votes are authenticated direct
+            // peer calls; neither uses the bridge account's multisig dispatcher.
+            _ => return Err(frame_system::Error::<Runtime>::CallFiltered.into()),
+        };
+        ensure!(
+            crate::EthBridge::bridge_account(network).as_ref() == Some(id),
+            frame_system::Error::<Runtime>::CallFiltered
+        );
+        ensure!(
+            timepoint == Some(canonical),
+            bridge_multisig::Error::<Runtime>::WrongTimepoint
+        );
+        ensure!(
+            crate::EthBridge::validate_peer_protocol_call(id, protocol)?,
+            frame_system::Error::<Runtime>::CallFiltered
+        );
+        Ok(())
+    }
+}

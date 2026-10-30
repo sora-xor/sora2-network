@@ -38,10 +38,213 @@ use bridge_types::types::GenericAdditionalInboundData;
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use sp_core::H256;
-use sp_keyring::AccountKeyring as Keyring;
+use sp_keyring::sr25519::Keyring;
 use traits::MultiCurrency;
 
 use crate::mock::{BASE_NETWORK_ID, TON};
+
+#[test]
+fn discovery_reports_registered_ton_assets_and_omits_incomplete_records() {
+    use bridge_types::ton::{TonAppInfo, TonAssetInfo, TonNetworkId};
+    use bridge_types::traits::BridgeApp;
+    use bridge_types::types::{BridgeAppInfo, BridgeAssetInfo};
+    ExtBuilder::empty().build().execute_with(|| {
+        assert!(JettonApp::list_apps().is_empty());
+        assert!(JettonApp::list_supported_assets(BASE_NETWORK_ID.into()).is_empty());
+    });
+    ExtBuilder::with_ton().build().execute_with(|| {
+        assert_eq!(
+            JettonApp::list_apps(),
+            vec![BridgeAppInfo::TON(
+                BASE_NETWORK_ID.into(),
+                TonAppInfo {
+                    address: TON_APP_ADDRESS
+                }
+            )]
+        );
+        assert_eq!(
+            JettonApp::list_supported_assets(BASE_NETWORK_ID.into()),
+            vec![BridgeAssetInfo::Ton(TonAssetInfo {
+                asset_id: TON,
+                address: TON_ADDRESS,
+                precision: 18
+            })]
+        );
+        assert!(JettonApp::list_supported_assets(TonNetworkId::Mainnet.into()).is_empty());
+        SidechainPrecision::<Test>::remove(TON);
+        assert!(JettonApp::list_supported_assets(BASE_NETWORK_ID.into()).is_empty());
+        SidechainPrecision::<Test>::insert(TON, 18);
+        TokenAddresses::<Test>::remove(TON);
+        assert!(JettonApp::list_supported_assets(BASE_NETWORK_ID.into()).is_empty());
+    });
+}
+
+#[test]
+fn outbound_routes_are_explicitly_unsupported() {
+    use bridge_types::traits::BridgeApp;
+    ExtBuilder::with_ton().build().execute_with(|| {
+        assert!(!JettonApp::is_asset_supported(BASE_NETWORK_ID.into(), TON));
+        assert_noop!(
+            JettonApp::transfer(
+                BASE_NETWORK_ID.into(),
+                TON,
+                Keyring::Alice.into(),
+                TON_ADDRESS,
+                10
+            ),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_noop!(
+            JettonApp::refund(
+                BASE_NETWORK_ID.into(),
+                H256::zero(),
+                Keyring::Alice.into(),
+                TON,
+                10
+            ),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_eq!(
+            JettonApp::transfer_weight(),
+            frame_support::weights::Weight::zero()
+        );
+        assert_eq!(
+            JettonApp::refund_weight(),
+            frame_support::weights::Weight::zero()
+        );
+        assert_eq!(
+            JettonApp::is_asset_supported_weight(),
+            frame_support::weights::Weight::zero()
+        );
+    });
+}
+
+#[test]
+fn registration_rejects_duplicates_and_unprivileged_callers() {
+    ExtBuilder::with_ton().build().execute_with(|| {
+        assert_noop!(
+            JettonApp::register_asset_inner(
+                TON,
+                TON_ADDRESS,
+                bridge_types::types::AssetKind::Sidechain,
+                18
+            ),
+            Error::<Test>::TokenAlreadyRegistered
+        );
+        assert_noop!(
+            JettonApp::register_network(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                TON_APP_ADDRESS,
+                b"TON".to_vec(),
+                b"TON".to_vec(),
+                18
+            ),
+            Error::<Test>::AppAlreadyRegistered
+        );
+        assert_noop!(
+            JettonApp::register_network_with_existing_asset(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                TON_APP_ADDRESS,
+                TON,
+                18
+            ),
+            Error::<Test>::AppAlreadyRegistered
+        );
+        assert_noop!(
+            JettonApp::register_network(
+                RuntimeOrigin::signed(Keyring::Alice.into()),
+                BASE_NETWORK_ID,
+                TON_APP_ADDRESS,
+                b"TON".to_vec(),
+                b"TON".to_vec(),
+                18
+            ),
+            sp_runtime::DispatchError::BadOrigin
+        );
+        assert_noop!(
+            JettonApp::register_network_with_existing_asset(
+                RuntimeOrigin::signed(Keyring::Alice.into()),
+                BASE_NETWORK_ID,
+                TON_APP_ADDRESS,
+                TON,
+                18
+            ),
+            sp_runtime::DispatchError::BadOrigin
+        );
+    });
+    ExtBuilder::empty().build().execute_with(|| {
+        assert_noop!(
+            JettonApp::register_asset_inner(
+                TON,
+                TON_ADDRESS,
+                bridge_types::types::AssetKind::Sidechain,
+                18
+            ),
+            Error::<Test>::AppIsNotRegistered
+        );
+    });
+}
+
+#[test]
+fn quarantined_mint_and_missing_registration_fields_do_not_credit_tokens() {
+    ExtBuilder::with_ton().build().execute_with(|| {
+        let message = H256::repeat_byte(43);
+        let mint = || {
+            JettonApp::mint(
+                dispatch::RawOrigin::new(CallOriginOutput {
+                    network_id: BASE_NETWORK_ID.into(),
+                    message_id: message,
+                    additional: GenericAdditionalInboundData::TON(AdditionalTONInboundData {
+                        source: TON_APP_ADDRESS,
+                    }),
+                    ..Default::default()
+                })
+                .into(),
+                TON_ADDRESS.into(),
+                TON_ADDRESS.into(),
+                Keyring::Alice.into(),
+                10u128.into(),
+            )
+        };
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(BASE_NETWORK_ID.into(), message),
+            &[1],
+        );
+        assert_noop!(mint(), Error::<Test>::RecoveryHalted);
+        sp_io::storage::clear(&bridge_types::recovery::message_key(
+            BASE_NETWORK_ID.into(),
+            message,
+        ));
+        SidechainPrecision::<Test>::remove(TON);
+        assert_noop!(mint(), Error::<Test>::TokenIsNotRegistered);
+        SidechainPrecision::<Test>::insert(TON, 18);
+        AssetKinds::<Test>::remove(TON);
+        assert_noop!(mint(), Error::<Test>::TokenIsNotRegistered);
+        assert_eq!(Tokens::total_balance(TON, &Keyring::Alice.into()), 0);
+    });
+}
+
+#[test]
+fn bridge_call_conversion_preserves_transfer_fields() {
+    let call: Call<Test> = bridge_types::substrate::JettonAppCall::Transfer {
+        sender: TON_APP_ADDRESS.into(),
+        recipient: Keyring::Alice.into(),
+        amount: 123u128.into(),
+        token: TON_ADDRESS.into(),
+    }
+    .into();
+    assert_eq!(
+        call,
+        Call::<Test>::mint {
+            sender: TON_APP_ADDRESS.into(),
+            recipient: Keyring::Alice.into(),
+            amount: 123u128.into(),
+            token: TON_ADDRESS.into()
+        }
+    );
+}
 
 fn last_event() -> RuntimeEvent {
     System::events().pop().expect("Event expected").event

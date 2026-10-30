@@ -75,6 +75,14 @@ use sp_std::convert::TryInto;
 // Revisit learned provider/body limits without retrying a rejected range every other scan.
 const LOG_RANGE_LIMIT_RETRY_DELAY_MS: u64 = 30 * 60 * 1000;
 
+#[cfg(test)]
+#[path = "../tests/coverage_offchain_paths.rs"]
+mod coverage_paths;
+
+#[cfg(test)]
+#[path = "../tests/coverage_offchain_faults.rs"]
+mod coverage_faults;
+
 impl<T: Config> Pallet<T> {
     fn pending_multisig_rehandle_key(
         prefix: &str,

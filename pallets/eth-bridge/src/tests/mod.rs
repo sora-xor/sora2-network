@@ -47,6 +47,9 @@ use std::collections::BTreeSet;
 
 mod asset;
 mod cancel;
+mod coverage_requests;
+mod coverage_rpc;
+mod coverage_types;
 mod ethabi;
 mod genesis;
 mod http_status;

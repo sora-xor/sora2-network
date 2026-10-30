@@ -162,6 +162,9 @@ impl Verifier for MockVerifier {
             bridge_types::GenericNetworkId::EVM(chain) if chain == [1u8; 32].into() => {
                 return Ok(())
             }
+            bridge_types::GenericNetworkId::TON(bridge_types::ton::TonNetworkId::Mainnet) => {
+                return Ok(())
+            }
             bridge_types::GenericNetworkId::EVM(_)
             | bridge_types::GenericNetworkId::TON(_)
             | bridge_types::GenericNetworkId::EVMLegacy(_) => {
@@ -243,12 +246,19 @@ pub struct OutboundChannelImpl;
 
 impl OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData> for OutboundChannelImpl {
     fn submit(
-        _network_id: EVMChainId,
+        network_id: EVMChainId,
         _who: &frame_system::RawOrigin<AccountId>,
-        _payload: &[u8],
-        _additional: AdditionalEVMOutboundData,
+        payload: &[u8],
+        additional: AdditionalEVMOutboundData,
     ) -> Result<H256, DispatchError> {
-        Ok(H256::random())
+        if sp_io::storage::exists(b"test/outbound-fails") {
+            return Err(DispatchError::Unavailable);
+        }
+        sp_io::storage::set(
+            b"test/outbound",
+            &(network_id, payload, additional).encode(),
+        );
+        Ok(H256::repeat_byte(1))
     }
 
     fn submit_weight() -> frame_support::weights::Weight {
@@ -256,11 +266,30 @@ impl OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData> for Outbo
     }
 }
 
+pub struct TestFeeHandler;
+impl bridge_types::traits::EVMFeeHandler<H256> for TestFeeHandler {
+    fn get_latest_base_fee(_: EVMChainId) -> Result<bridge_types::U256, DispatchError> {
+        Err(DispatchError::Unavailable)
+    }
+    fn get_network_fee_asset(_: EVMChainId) -> Result<H256, DispatchError> {
+        Err(DispatchError::Unavailable)
+    }
+    fn on_fee_paid(network: EVMChainId, relayer: H160, amount: bridge_types::U256) {
+        sp_io::storage::set(b"test/fee-paid", &(network, relayer, amount).encode());
+    }
+    fn update_base_fee(network: EVMChainId, fee: bridge_types::U256, block: u64) {
+        sp_io::storage::set(b"test/base-fee", &(network, fee, block).encode());
+    }
+    fn can_update_base_fee(_: EVMChainId, _: bridge_types::U256, _: u64) -> bool {
+        sp_io::storage::exists(b"test/allow-base-fee")
+    }
+}
+
 impl bridge_inbound_channel::Config for Test {
     type MessageStatusNotifier = ();
     type AssetId = H256;
     type Balance = Balance;
-    type EVMFeeHandler = ();
+    type EVMFeeHandler = TestFeeHandler;
     type OutboundChannel = OutboundChannelImpl;
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
@@ -671,6 +700,355 @@ fn recovery_context_cannot_admit_abandoned_outbound_status_reports() {
         assert_eq!(
             ReportedChannelNonces::<Test>::get(GenericNetworkId::EVM(chain)),
             0
+        );
+    });
+}
+
+#[test]
+fn evm_and_ton_inbound_messages_require_registered_channels_and_fresh_nonces() {
+    use bridge_types::{evm, ton, GenericCommitment};
+    use frame_support::dispatch::GetDispatchInfo;
+    new_tester().execute_with(|| {
+        let chain: EVMChainId = [1; 32].into();
+        let channel = H160::repeat_byte(4);
+        let evm = GenericCommitment::EVM(evm::Commitment::Inbound(evm::InboundCommitment {
+            channel,
+            source: H160::repeat_byte(8),
+            nonce: 1,
+            block_number: 12,
+            payload: vec![1].try_into().unwrap(),
+        }));
+        assert_noop!(
+            Pallet::<Test>::validate_submission(chain.into(), &evm, &vec![]),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_noop!(
+            Pallet::<Test>::register_evm_channel(
+                RuntimeOrigin::signed(Keyring::Bob.into()),
+                chain,
+                channel
+            ),
+            DispatchError::BadOrigin
+        );
+        assert_ok!(Pallet::<Test>::register_evm_channel(
+            RuntimeOrigin::root(),
+            chain,
+            H160::zero()
+        ));
+        assert_noop!(
+            Pallet::<Test>::validate_submission(chain.into(), &evm, &vec![]),
+            Error::<Test>::InvalidSourceChannel
+        );
+        assert_ok!(Pallet::<Test>::register_evm_channel(
+            RuntimeOrigin::root(),
+            chain,
+            channel
+        ));
+        let evm_call = Call::<Test>::submit {
+            network_id: chain.into(),
+            commitment: evm.clone(),
+            proof: vec![],
+        };
+        assert!(evm_call.get_dispatch_info().call_weight.ref_time() > 0);
+        assert_ok!(evm_call.dispatch_bypass_filter(RuntimeOrigin::none()));
+        assert_eq!(ChannelNonces::<Test>::get(GenericNetworkId::EVM(chain)), 1);
+        assert_noop!(
+            Pallet::<Test>::validate_submission(chain.into(), &evm, &vec![]),
+            Error::<Test>::InvalidNonce
+        );
+
+        let ton_network = ton::TonNetworkId::Mainnet;
+        let ton_channel = ton::TonAddress::new(0, H256::repeat_byte(5));
+        let ton = GenericCommitment::TON(ton::Commitment::Inbound(ton::InboundCommitment {
+            channel: ton_channel,
+            source: ton::TonAddress::new(0, H256::repeat_byte(6)),
+            nonce: 1,
+            transaction_id: ton::TonTransactionId {
+                lt: 12,
+                hash: H256::repeat_byte(7),
+            },
+            payload: vec![2].try_into().unwrap(),
+        }));
+        let ton_id = GenericNetworkId::TON(ton_network);
+        assert_noop!(
+            Pallet::<Test>::validate_submission(ton_id, &ton, &vec![]),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_noop!(
+            Pallet::<Test>::register_ton_channel(
+                RuntimeOrigin::signed(Keyring::Bob.into()),
+                ton_network,
+                ton_channel
+            ),
+            DispatchError::BadOrigin
+        );
+        assert_ok!(Pallet::<Test>::register_ton_channel(
+            RuntimeOrigin::root(),
+            ton_network,
+            Default::default()
+        ));
+        assert_noop!(
+            Pallet::<Test>::validate_submission(ton_id, &ton, &vec![]),
+            Error::<Test>::InvalidSourceChannel
+        );
+        assert_ok!(Pallet::<Test>::register_ton_channel(
+            RuntimeOrigin::root(),
+            ton_network,
+            ton_channel
+        ));
+        let call = Call::<Test>::submit {
+            network_id: ton_id,
+            commitment: ton.clone(),
+            proof: vec![],
+        };
+        assert!(call.get_dispatch_info().call_weight.ref_time() > 0);
+        assert_ok!(call.dispatch_bypass_filter(RuntimeOrigin::signed(Keyring::Bob.into())));
+        assert_eq!(ChannelNonces::<Test>::get(ton_id), 1);
+        assert_noop!(
+            Pallet::<Test>::validate_submission(ton_id, &ton, &vec![]),
+            Error::<Test>::InvalidNonce
+        );
+        assert_eq!(sp_io::storage::get(b"test/applied-messages").unwrap()[0], 2);
+    });
+}
+
+#[test]
+fn evm_fee_updates_and_reports_apply_authenticated_values() {
+    use bridge_types::{evm, GenericCommitment, U256};
+    use frame_support::dispatch::GetDispatchInfo;
+    new_tester().execute_with(|| {
+        let chain: EVMChainId = [1; 32].into();
+        let update = GenericCommitment::EVM(evm::Commitment::BaseFeeUpdate(evm::BaseFeeUpdate {
+            new_base_fee: 123u32.into(),
+            evm_block_number: 100,
+        }));
+        assert_noop!(
+            Pallet::<Test>::validate_submission(chain.into(), &update, &vec![]),
+            Error::<Test>::InvalidBaseFeeUpdate
+        );
+        sp_io::storage::set(b"test/allow-base-fee", &[1]);
+        let call = Call::<Test>::submit {
+            network_id: chain.into(),
+            commitment: update,
+            proof: vec![],
+        };
+        assert!(call.get_dispatch_info().call_weight.ref_time() > 0);
+        assert_ok!(call.dispatch_bypass_filter(RuntimeOrigin::none()));
+        assert_eq!(
+            sp_io::storage::get(b"test/base-fee").unwrap().to_vec(),
+            (chain, U256::from(123u32), 100u64).encode()
+        );
+        let channel = H160::repeat_byte(4);
+        let relayer = H160::repeat_byte(5);
+        assert_ok!(Pallet::<Test>::register_evm_channel(
+            RuntimeOrigin::root(),
+            chain,
+            channel
+        ));
+        let report = GenericCommitment::EVM(evm::Commitment::StatusReport(evm::StatusReport {
+            channel,
+            block_number: 101,
+            relayer,
+            nonce: 1,
+            results: vec![true, false].try_into().unwrap(),
+            gas_spent: 100u32.into(),
+            base_fee: 10u32.into(),
+        }));
+        let call = Call::<Test>::submit {
+            network_id: chain.into(),
+            commitment: report,
+            proof: vec![],
+        };
+        assert!(call.get_dispatch_info().call_weight.ref_time() > 0);
+        assert_ok!(call.dispatch_bypass_filter(RuntimeOrigin::none()));
+        let expected =
+            U256::from(100u64 + EVM_GAS_OVERHEAD).saturating_mul(U256::from(5_000_000_010u64));
+        assert_eq!(
+            sp_io::storage::get(b"test/fee-paid").unwrap().to_vec(),
+            (chain, relayer, expected).encode()
+        );
+        assert_eq!(
+            ReportedChannelNonces::<Test>::get(GenericNetworkId::EVM(chain)),
+            1
+        );
+    });
+}
+
+#[test]
+#[allow(deprecated)]
+fn app_registry_encodes_requests_and_unsigned_validation_rejects_configuration_calls() {
+    use bridge_types::traits::AppRegistry;
+    new_tester().execute_with(|| {
+        let chain: EVMChainId = [1; 32].into();
+        let channel = H160::repeat_byte(4);
+        let app = H160::repeat_byte(5);
+        assert_noop!(
+            Pallet::<Test>::register_app(chain, app),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_noop!(
+            Pallet::<Test>::deregister_app(chain, app),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_ok!(Pallet::<Test>::register_evm_channel(
+            RuntimeOrigin::root(),
+            chain,
+            channel
+        ));
+        for register in [true, false] {
+            let payload = if register {
+                assert_ok!(Pallet::<Test>::register_app(chain, app));
+                bridge_types::channel_abi::RegisterAppPayload { app }
+                    .encode()
+                    .unwrap()
+            } else {
+                assert_ok!(Pallet::<Test>::deregister_app(chain, app));
+                bridge_types::channel_abi::RemoveAppPayload { app }
+                    .encode()
+                    .unwrap()
+            };
+            assert_eq!(
+                sp_io::storage::get(b"test/outbound").unwrap().to_vec(),
+                (
+                    chain,
+                    payload,
+                    AdditionalEVMOutboundData {
+                        target: channel,
+                        max_gas: 100_000u64.into()
+                    }
+                )
+                    .encode()
+            );
+        }
+        let call = Call::<Test>::register_evm_channel {
+            network_id: chain,
+            channel_address: channel,
+        };
+        assert_eq!(
+            Pallet::<Test>::validate_unsigned(TransactionSource::External, &call),
+            InvalidTransaction::Call.into()
+        );
+    });
+}
+
+#[test]
+fn quarantined_inbound_messages_are_rejected_for_each_protocol() {
+    use bridge_types::{evm, ton, GenericCommitment};
+    new_tester().execute_with(|| {
+        let chain: EVMChainId = [1; 32].into();
+        let channel = H160::repeat_byte(4);
+        assert_ok!(Pallet::<Test>::register_evm_channel(
+            RuntimeOrigin::root(),
+            chain,
+            channel
+        ));
+        assert_ok!(Pallet::<Test>::register_ton_channel(
+            RuntimeOrigin::root(),
+            ton::TonNetworkId::Mainnet,
+            Default::default()
+        ));
+        let cases = [
+            (
+                GenericNetworkId::EVM(chain),
+                GenericCommitment::EVM(evm::Commitment::Inbound(evm::InboundCommitment {
+                    channel,
+                    source: channel,
+                    nonce: 1,
+                    block_number: 1,
+                    payload: Default::default(),
+                })),
+                MessageId::basic(chain.into(), ThisNetworkId::get(), 1),
+            ),
+            (
+                GenericNetworkId::TON(ton::TonNetworkId::Mainnet),
+                GenericCommitment::TON(ton::Commitment::Inbound(ton::InboundCommitment {
+                    channel: Default::default(),
+                    source: Default::default(),
+                    nonce: 1,
+                    transaction_id: Default::default(),
+                    payload: Default::default(),
+                })),
+                MessageId::basic(
+                    GenericNetworkId::TON(ton::TonNetworkId::Mainnet),
+                    ThisNetworkId::get(),
+                    1,
+                ),
+            ),
+            (
+                BASE_NETWORK_ID,
+                GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                    nonce: 1,
+                    messages: vec![BridgeMessage {
+                        timepoint: Default::default(),
+                        payload: Default::default(),
+                    }]
+                    .try_into()
+                    .unwrap(),
+                }),
+                MessageId::batched(BASE_NETWORK_ID, ThisNetworkId::get(), 1, 0),
+            ),
+        ];
+        for (network, commitment, id) in cases {
+            sp_io::storage::set(
+                &bridge_types::recovery::message_key(network, id.hash()),
+                &[1],
+            );
+            assert_noop!(
+                Pallet::<Test>::validate_submission(network, &commitment, &vec![]),
+                Error::<Test>::RecoveryHalted
+            );
+            assert_eq!(ChannelNonces::<Test>::get(network), 0);
+        }
+        System::set_block_number(u64::from(u32::MAX) + 1);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &0u32.to_le_bytes());
+        assert!(!crate::recovery::inbound_allowed::<Test>());
+    });
+}
+
+#[test]
+fn evm_outbound_commitments_and_root_submissions_are_rejected() {
+    use bridge_types::{evm, GenericCommitment};
+    use frame_support::dispatch::GetDispatchInfo;
+    new_tester().execute_with(|| {
+        let chain: EVMChainId = [1; 32].into();
+        let commitment =
+            GenericCommitment::EVM(evm::Commitment::Outbound(evm::OutboundCommitment {
+                messages: Default::default(),
+                total_max_gas: Default::default(),
+                nonce: 1,
+            }));
+        let call = Call::<Test>::submit {
+            network_id: chain.into(),
+            commitment,
+            proof: vec![],
+        };
+        assert!(call.get_dispatch_info().call_weight.ref_time() > 0);
+        assert_noop!(
+            call.clone().dispatch_bypass_filter(RuntimeOrigin::none()),
+            Error::<Test>::InvalidCommitment
+        );
+        assert_noop!(
+            call.dispatch_bypass_filter(RuntimeOrigin::root()),
+            DispatchError::BadOrigin
+        );
+    });
+}
+
+#[test]
+fn app_registration_propagates_channel_failure_without_mutation() {
+    use bridge_types::traits::AppRegistry;
+    new_tester().execute_with(|| {
+        let chain = H256::repeat_byte(72);
+        EVMChannelAddresses::<Test>::insert(chain, H160::repeat_byte(1));
+        sp_io::storage::set(b"test/outbound-fails", &[1]);
+        assert_noop!(
+            Pallet::<Test>::register_app(chain, H160::repeat_byte(2)),
+            DispatchError::Unavailable
+        );
+        assert_noop!(
+            Pallet::<Test>::deregister_app(chain, H160::repeat_byte(2)),
+            DispatchError::Unavailable
         );
     });
 }

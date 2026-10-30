@@ -77,6 +77,10 @@ mod handle;
 mod http;
 mod transaction;
 
+#[cfg(test)]
+#[path = "../tests/coverage_offchain.rs"]
+mod coverage_tests;
+
 pub(crate) fn get_storage_value_or_clear<T: Decode>(
     storage: &mut StorageValueRef<'_>,
     description: &str,
@@ -281,6 +285,16 @@ impl<T: Config> Pallet<T> {
         ecdsa_public_key: &ecdsa::Public,
         author: &<T as frame_system::pallet::Config>::AccountId,
     ) -> bool {
+        // Peers submit both raw and Ethereum-style recovery IDs. Bind that ID
+        // to the signer too, so an approval cannot export a different EVM signer.
+        let recovery_id = match signature.v {
+            0 | 1 => signature.v,
+            27 | 28 => signature.v - 27,
+            _ => return false,
+        };
+        let Ok(recovery_id) = secp256k1::RecoveryId::parse(recovery_id) else {
+            return false;
+        };
         let message = eth::prepare_message(msg);
         let sig_bytes = signature.to_bytes();
         let res = secp256k1::Signature::parse_standard_slice(&sig_bytes[..64]).and_then(|sig| {
@@ -288,7 +302,8 @@ impl<T: Config> Pallet<T> {
         });
         if let Ok((signature, public_key)) = res {
             let signer_account = MultiSigner::Ecdsa(ecdsa_public_key.clone()).into_account();
-            let verified = secp256k1::verify(&message, &signature, &public_key);
+            let verified = secp256k1::recover(&message, &signature, &recovery_id)
+                .is_ok_and(|recovered| recovered == public_key);
             signer_account.encode() == author.encode() && verified
         } else {
             false
@@ -346,7 +361,8 @@ impl<T: Config> Pallet<T> {
         let fun_meta = funs.get(&method_id).ok_or(Error::<T>::UnknownMethodId)?;
         let fun = &fun_meta.function;
         let tokens = fun
-            .decode_input(&tx.input.0)
+            // The selector was validated above; ethabi decodes only the arguments.
+            .decode_input(&tx.input.0[METHOD_ID_SIZE..])
             .map_err(|_| Error::<T>::InvalidFunctionInput)?;
         let hash = parse_hash_from_call::<T>(tokens, fun_meta.tx_hash_arg_pos)?;
         let oc_request: OffchainRequest<T> =
@@ -601,6 +617,17 @@ pub struct SignatureParams {
 }
 
 impl SignatureParams {
+    /// Storage and RPC expose raw parity; Ethereum clients add 27 for `ecrecover`.
+    /// Accept the historical wire spelling without exporting 54/55 to those clients.
+    pub(crate) fn canonical_recovery_id(mut self) -> Option<Self> {
+        self.v = match self.v {
+            0 | 1 => self.v,
+            27 | 28 => self.v - 27,
+            _ => return None,
+        };
+        Some(self)
+    }
+
     pub(crate) fn from_ecdsa_signature(signature: &ecdsa::Signature) -> Self {
         let mut r = [0u8; 32];
         r.copy_from_slice(&signature.0[..32]);

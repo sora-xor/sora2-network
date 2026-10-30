@@ -181,6 +181,11 @@ pub mod pallet {
         RecoveryHalted,
     }
 
+    #[cfg(test)]
+    mod boundary_tests {
+        include!("boundary_tests.rs");
+    }
+
     impl<T: Config> Pallet<T> {
         /// Read-only admission for an authenticated, fresh bridge commitment.
         /// Fee exemption and unsigned validation use the same checks as dispatch.

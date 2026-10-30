@@ -151,7 +151,7 @@
 "optional" = true
 
 ["dependencies"."wasmtime"]
-"version" = "36.0.19"
+"version" = "36.0.20"
 "default-features" = false
 "optional" = true
 

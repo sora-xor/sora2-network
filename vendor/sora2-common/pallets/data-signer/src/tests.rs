@@ -89,6 +89,79 @@ fn open_pending_approval(network_id: bridge_types::GenericNetworkId, data: H256)
 }
 
 #[test]
+fn quorum_emits_exactly_the_authenticated_signatures_in_canonical_peer_order() {
+    new_test_ext().execute_with(|| {
+        // FRAME suppresses events at genesis; approvals are submitted in a block.
+        System::set_block_number(1);
+        let network = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let pairs: Vec<_> = (1..=BridgeMinPeers::get())
+            .map(|seed| ecdsa::Pair::from_seed(&[seed as u8; 32]))
+            .collect();
+        let peers = pairs.iter().map(Pair::public).collect::<Vec<_>>();
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(),
+            network,
+            peers.try_into().unwrap()
+        ));
+        let data = H256::repeat_byte(76);
+        open_pending_approval(network, data);
+        let threshold = bridge_types::utils::threshold(pairs.len() as u32) as usize;
+        for (index, pair) in pairs.iter().take(threshold).enumerate() {
+            assert_ok!(DataSigner::approve(
+                RuntimeOrigin::none(),
+                network,
+                data,
+                pair.sign_prehashed(&data.0)
+            ));
+            let approvals = System::events()
+                .into_iter()
+                .filter_map(|record| match record.event {
+                    RuntimeEvent::DataSigner(crate::Event::Approved {
+                        network_id,
+                        data: approved_data,
+                        signatures,
+                    }) => Some((network_id, approved_data, signatures)),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            if index + 1 < threshold {
+                assert!(
+                    approvals.is_empty(),
+                    "no quorum event before enough distinct authenticated peers"
+                );
+            } else {
+                let mut expected = pairs
+                    .iter()
+                    .take(threshold)
+                    .map(|pair| (pair.public(), pair.sign_prehashed(&data.0)))
+                    .collect::<Vec<_>>();
+                expected.sort_by_key(|(peer, _)| *peer);
+                assert_eq!(approvals.len(), 1);
+                assert_eq!(approvals[0].0, network);
+                assert_eq!(approvals[0].1, data);
+                assert_eq!(
+                    approvals[0].2.to_vec(),
+                    expected
+                        .into_iter()
+                        .map(|(_, signature)| signature)
+                        .collect::<Vec<_>>()
+                );
+            }
+        }
+        assert_eq!(DataSigner::approvals(network, data).len(), threshold);
+        assert_noop!(
+            DataSigner::approve(
+                RuntimeOrigin::none(),
+                network,
+                data,
+                pairs[0].sign_prehashed(&data.0)
+            ),
+            Error::<Test>::SignatureAlreadyExists
+        );
+    });
+}
+
+#[test]
 #[allow(deprecated)]
 fn recovery_halt_rejects_new_signatures_for_retained_pending_approvals() {
     use sp_runtime::traits::ValidateUnsigned;
@@ -1365,4 +1438,164 @@ fn permanent_commitment_quarantine_retains_signatures_and_rejects_reapproval() {
         );
         assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
     });
+}
+
+#[test]
+fn membership_audit_detects_legacy_overlap_but_allows_evm_peer_reuse() {
+    use bridge_types::GenericNetworkId;
+    new_test_ext().execute_with(|| {
+        let network = GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(),
+            network,
+            min_test_peers().try_into().unwrap()
+        ));
+        assert_ok!(DataSigner::ensure_unique_substrate_peers());
+        let peers = DataSigner::peers(network).unwrap();
+        crate::pallet::Peers::<Test>::insert(
+            GenericNetworkId::EVM([1u8; 32].into()),
+            peers.clone(),
+        );
+        assert_ok!(DataSigner::ensure_unique_substrate_peers());
+        crate::pallet::Peers::<Test>::insert(GenericNetworkId::Sub(SubNetworkId::Kusama), peers);
+        assert_noop!(
+            DataSigner::ensure_unique_substrate_peers(),
+            Error::<Test>::PeerRegisteredInOtherNetwork
+        );
+    });
+}
+
+#[test]
+fn dispatch_rejects_missing_networks_and_invalid_approval_signatures() {
+    new_test_ext().execute_with(|| {
+        let network = SubNetworkId::Mainnet.into();
+        let peer = ecdsa::Pair::from_seed(&[42; 32]).public();
+        let data = H256::repeat_byte(7);
+        assert_noop!(
+            DataSigner::add_peer(RuntimeOrigin::root(), network, peer),
+            Error::<Test>::PalletNotInitialized
+        );
+        assert_noop!(
+            DataSigner::remove_peer(RuntimeOrigin::root(), network, peer),
+            Error::<Test>::PalletNotInitialized
+        );
+        assert_noop!(
+            DataSigner::register_pending_approval(RuntimeOrigin::root(), network, data),
+            Error::<Test>::PalletNotInitialized
+        );
+        assert_noop!(
+            DataSigner::approve(
+                RuntimeOrigin::none(),
+                network,
+                data,
+                Signature::from_raw([0; 65])
+            ),
+            Error::<Test>::PalletNotInitialized
+        );
+        crate::pallet::PendingPeerUpdate::<Test>::insert(network, true);
+        assert_noop!(
+            DataSigner::finish_remove_peer(RuntimeOrigin::root(), peer),
+            Error::<Test>::PalletNotInitialized
+        );
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(),
+            network,
+            min_test_peers().try_into().unwrap()
+        ));
+        open_pending_approval(network, data);
+        assert_noop!(
+            DataSigner::approve(
+                RuntimeOrigin::none(),
+                network,
+                data,
+                Signature::from_raw([0; 65])
+            ),
+            Error::<Test>::FailedToVerifySignature
+        );
+        assert_noop!(
+            DataSigner::register_pending_approval(RuntimeOrigin::root(), network, data),
+            Error::<Test>::PendingApprovalAlreadyExists
+        );
+        assert_noop!(
+            DataSigner::clear_pending_approval(RuntimeOrigin::root(), network, H256::zero()),
+            Error::<Test>::ApprovalNotPending
+        );
+    });
+}
+
+#[test]
+fn adding_a_peer_at_capacity_rolls_back_the_update() {
+    new_test_ext().execute_with(|| {
+        let peers: Vec<_> = (0..BridgeMaxPeers::get())
+            .map(|i| ecdsa::Pair::from_seed(&[i as u8 + 1; 32]).public())
+            .collect();
+        let network = SubNetworkId::Mainnet.into();
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(),
+            network,
+            peers.try_into().unwrap()
+        ));
+        assert_noop!(
+            DataSigner::add_peer(
+                RuntimeOrigin::root(),
+                network,
+                ecdsa::Pair::from_seed(&[200; 32]).public()
+            ),
+            Error::<Test>::TooMuchPeers
+        );
+        assert!(!DataSigner::pending_peer_update(network));
+    });
+}
+
+#[test]
+fn recovery_halt_blocks_every_membership_mutation() {
+    new_test_ext().execute_with(|| {
+        let network = SubNetworkId::Mainnet.into();
+        let peer = ecdsa::Pair::from_seed(&[42; 32]).public();
+        sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
+        assert_noop!(
+            DataSigner::register_network(
+                RuntimeOrigin::root(),
+                network,
+                vec![peer].try_into().unwrap()
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            DataSigner::add_peer(RuntimeOrigin::root(), network, peer),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            DataSigner::remove_peer(RuntimeOrigin::root(), network, peer),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            DataSigner::finish_add_peer(RuntimeOrigin::root(), peer),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            DataSigner::finish_remove_peer(RuntimeOrigin::root(), peer),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            DataSigner::force_set_peers(
+                RuntimeOrigin::root(),
+                network,
+                vec![peer].try_into().unwrap()
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+    });
+}
+
+#[test]
+fn peer_acknowledgements_convert_to_the_correct_dispatchables() {
+    use bridge_types::substrate::DataSignerCall;
+    let peer = ecdsa::Pair::from_seed(&[1; 32]).public();
+    assert!(
+        matches!(Call::<Test>::from(DataSignerCall::AddPeer { peer }), Call::finish_add_peer { peer: actual } if actual == peer)
+    );
+    assert!(
+        matches!(Call::<Test>::from(DataSignerCall::RemovePeer { peer }), Call::finish_remove_peer { peer: actual } if actual == peer)
+    );
 }

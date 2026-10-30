@@ -37,7 +37,7 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
     BuildStorage,
 };
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::cell::Cell;
 
 type Block = frame_system::mocking::MockBlock<Test>;
 
@@ -58,7 +58,9 @@ parameter_types! {
     pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
-static SUBMIT_SHOULD_FAIL: AtomicBool = AtomicBool::new(false);
+thread_local! {
+    static SUBMIT_SHOULD_FAIL: Cell<bool> = const { Cell::new(false) };
+}
 
 pub type AccountId = u64;
 
@@ -112,7 +114,7 @@ impl OutboundChannel<SubNetworkId, AccountId, ()> for TestOutboundChannel {
         _payload: &[u8],
         _additional: (),
     ) -> Result<H256, sp_runtime::DispatchError> {
-        if SUBMIT_SHOULD_FAIL.load(Ordering::SeqCst) {
+        if SUBMIT_SHOULD_FAIL.with(Cell::get) {
             return Err(sp_runtime::DispatchError::Other("mock submit failure"));
         }
         Ok([1; 32].into())
@@ -149,7 +151,7 @@ impl<OuterOrigin: Default> frame_support::traits::EnsureOrigin<OuterOrigin> for 
 }
 
 pub fn set_submit_should_fail(should_fail: bool) {
-    SUBMIT_SHOULD_FAIL.store(should_fail, Ordering::SeqCst);
+    SUBMIT_SHOULD_FAIL.with(|value| value.set(should_fail));
 }
 
 // Build genesis storage according to the mock runtime.

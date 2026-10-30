@@ -87,6 +87,19 @@ pub enum AssetId {
     Custom(u8),
 }
 
+impl TryFrom<GenericAssetId> for AssetId {
+    type Error = ();
+
+    fn try_from(asset: GenericAssetId) -> Result<Self, Self::Error> {
+        match asset {
+            GenericAssetId::Liberland(LiberlandAssetId::Asset(1)) => Ok(Self::Xor),
+            GenericAssetId::Liberland(LiberlandAssetId::Asset(2)) => Ok(Self::Eth),
+            GenericAssetId::Liberland(LiberlandAssetId::Asset(3)) => Ok(Self::Dai),
+            _ => Err(()),
+        }
+    }
+}
+
 pub type Balance = u128;
 pub type Amount = i128;
 
@@ -290,8 +303,9 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
         }
     }
 
-    fn ensure_asset_exists(_asset_id: AssetId) -> bool {
-        true
+    fn ensure_asset_exists(asset_id: AssetId) -> bool {
+        // Reserve one identifier for registry rejection fixtures.
+        asset_id != AssetId::Custom(u8::MAX)
     }
 }
 
@@ -399,6 +413,14 @@ pub fn new_tester() -> sp_io::TestExternalities {
             (),
         ))
         .into();
+        SubstrateApp::authorize_asset_registration(
+            RuntimeOrigin::root(),
+            SubNetworkId::Liberland,
+            AssetId::Xor,
+            GenericAssetId::Sora(Default::default()),
+            AssetKind::Thischain,
+        )
+        .expect("XOR registration authorization failed");
         SubstrateApp::finalize_asset_registration(
             liberland_origin,
             AssetId::Xor,

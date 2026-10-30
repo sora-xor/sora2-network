@@ -216,6 +216,11 @@ pub mod pallet {
     pub(super) type AssetKinds<T: Config> =
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, AssetKind, OptionQuery>;
 
+    /// Kind selected by local root registration, never by the counterparty.
+    #[pallet::storage]
+    pub type PendingAssetKinds<T: Config> =
+        StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, AssetKind, OptionQuery>;
+
     #[pallet::storage]
     #[pallet::getter(fn sidechain_precision)]
     pub(super) type SidechainPrecision<T: Config> =
@@ -253,6 +258,8 @@ pub mod pallet {
         RelaychainAssetRegistered,
         /// This exact message remains permanently quarantined by recovery.
         RecoveryHalted,
+        AssetRegistrationNotAuthorized,
+        AssetRegistrationMismatch,
     }
 
     #[pallet::call]
@@ -320,6 +327,7 @@ pub mod pallet {
         // TODO: make benchmarks
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        #[frame_support::transactional]
         pub fn finalize_asset_registration(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -330,6 +338,13 @@ pub mod pallet {
                 SidechainPrecision::<T>::contains_key(network_id, &asset_id),
                 Error::<T>::TokenIsNotRegistered
             );
+            if let Some(existing_kind) = AssetKinds::<T>::get(network_id, &asset_id) {
+                ensure!(existing_kind == asset_kind, Error::<T>::AssetRegistrationMismatch);
+                return Ok(());
+            }
+            ensure!(PendingAssetKinds::<T>::get(network_id, &asset_id) == Some(asset_kind),
+                Error::<T>::AssetRegistrationNotAuthorized);
+            PendingAssetKinds::<T>::remove(network_id, &asset_id);
             AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
             Ok(())
         }
@@ -355,6 +370,7 @@ pub mod pallet {
 
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset(allowed_parachains.len() as u32))]
+        #[frame_support::transactional]
         pub fn register_thischain_asset(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -395,6 +411,7 @@ pub mod pallet {
 
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(allowed_parachains.len() as u32))]
+        #[frame_support::transactional]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -526,9 +543,33 @@ pub mod pallet {
             )?;
             Ok(())
         }
+
+        /// Reconstruct only a root-reviewed registration that was pending before
+        /// this guard existed. Existing active asset kinds remain immutable.
+        #[pallet::call_index(9)]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        #[frame_support::transactional]
+        pub fn authorize_pending_asset_registration(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            asset_kind: AssetKind,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(SidechainPrecision::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenIsNotRegistered);
+            ensure!(!AssetKinds::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenAlreadyRegistered);
+            ensure!(PendingAssetKinds::<T>::get(network_id, &asset_id)
+                .map_or(true, |pending| pending == asset_kind),
+                Error::<T>::AssetRegistrationMismatch);
+            PendingAssetKinds::<T>::insert(network_id, asset_id, asset_kind);
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {
+        #[frame_support::transactional]
         pub fn register_asset_inner(
             network_id: SubNetworkId,
             asset_id: AssetIdOf<T>,
@@ -565,7 +606,7 @@ pub mod pallet {
                 network_id,
                 &RawOrigin::Root,
                 &XCMAppCall::RegisterAsset {
-                    asset_id: T::AssetIdConverter::convert(asset_id),
+                    asset_id: T::AssetIdConverter::convert(asset_id.clone()),
                     sidechain_asset,
                     asset_kind,
                     minimal_xcm_amount,
@@ -573,6 +614,7 @@ pub mod pallet {
                 .prepare_message(),
                 (),
             )?;
+            PendingAssetKinds::<T>::insert(network_id, asset_id, asset_kind);
             Ok(())
         }
 
@@ -797,3 +839,6 @@ impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, Balanc
         <T as Config>::WeightInfo::burn()
     }
 }
+
+#[cfg(test)]
+mod security_tests;

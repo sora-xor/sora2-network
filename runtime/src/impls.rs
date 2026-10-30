@@ -311,6 +311,39 @@ impl<T: frame_system::Config + pallet_staking::Config + pallet_balances::Config>
 #[derive(Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, Debug, TypeInfo)]
 pub struct DispatchableSubstrateBridgeCall(bridge_types::substrate::BridgeCall);
 
+impl DispatchableSubstrateBridgeCall {
+    fn ensure_source_app(&self, origin: &crate::RuntimeOrigin) -> Result<(), DispatchError> {
+        use bridge_types::{substrate::BridgeCall, SubNetworkId};
+        let source: Result<
+            dispatch::RawOrigin<
+                bridge_types::types::CallOriginOutput<SubNetworkId, sp_core::H256, ()>,
+            >,
+            _,
+        > = origin.clone().into();
+        let Ok(source) = source else {
+            return Ok(());
+        };
+        let allowed = match &self.0 {
+            BridgeCall::SubstrateApp(_) => source.origin.network_id == SubNetworkId::Liberland,
+            BridgeCall::ParachainApp(_) => matches!(
+                source.origin.network_id,
+                SubNetworkId::Kusama
+                    | SubNetworkId::Polkadot
+                    | SubNetworkId::Rococo
+                    | SubNetworkId::Alphanet
+            ),
+            BridgeCall::DataSigner(_) | BridgeCall::MultisigVerifier(_) => true,
+            // EVM/TON apps belong to their own authenticated generic channel.
+            BridgeCall::XCMApp(_) | BridgeCall::FAApp(_) | BridgeCall::JettonApp(_) => false,
+        };
+        if allowed {
+            Ok(())
+        } else {
+            Err(DispatchError::BadOrigin)
+        }
+    }
+}
+
 impl Dispatchable for DispatchableSubstrateBridgeCall {
     type RuntimeOrigin = crate::RuntimeOrigin;
     type Config = crate::Runtime;
@@ -321,6 +354,7 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
         self,
         origin: Self::RuntimeOrigin,
     ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
+        self.ensure_source_app(&origin)?;
         frame_support::__private::log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
         match self.0 {
             bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
@@ -373,6 +407,7 @@ impl bridge_types::traits::DispatchWithOutcome for DispatchableSubstrateBridgeCa
         origin: Self::RuntimeOrigin,
     ) -> Result<bridge_types::traits::MessageDispatchOutcome, DispatchError> {
         use bridge_types::traits::MessageDispatchOutcome;
+        self.ensure_source_app(&origin)?;
         match self.0 {
             bridge_types::substrate::BridgeCall::SubstrateApp(message) => {
                 let call: substrate_bridge_app::Call<crate::Runtime> = message.try_into()?;

@@ -19,6 +19,64 @@ use sp_core::{sr25519, Pair, H160, H256};
 use sp_runtime::{generic::Era, DispatchResult, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 
+#[test]
+fn captured_legacy_bridge_peer_pair_remains_compatible_without_queue_or_index() {
+    use codec::DecodeAll;
+    use eth_bridge::requests::{OffchainRequest, OutgoingRequest, RequestStatus};
+
+    // These raw Requests rows come from the pinned public October 25 capture.
+    // Their hashes/nonces are historical evidence; the statuses below exercise
+    // pending and completed compatibility, and are not asserted capture statuses.
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("../fixtures/bridge-peer-pair-2026-10-25.json")).unwrap();
+    let decode_hex = |value: &str| {
+        value
+            .strip_prefix("0x")
+            .unwrap()
+            .as_bytes()
+            .chunks_exact(2)
+            .map(|pair| u8::from_str_radix(core::str::from_utf8(pair).unwrap(), 16).unwrap())
+            .collect::<Vec<_>>()
+    };
+    sp_io::TestExternalities::default().execute_with(|| {
+        let rows = fixture["rows"].as_array().unwrap();
+        let mut decoded = Vec::new();
+        for row in rows {
+            let key = decode_hex(row["key"].as_str().unwrap());
+            let value = decode_hex(row["value"].as_str().unwrap());
+            let request = OffchainRequest::<Runtime>::decode_all(&mut &value[..]).unwrap();
+            let OffchainRequest::Outgoing(outgoing, hash) = request else {
+                panic!("fixture must contain outgoing peer requests")
+            };
+            assert_eq!(OffchainRequest::outgoing(outgoing.clone()).hash(), hash);
+            assert_eq!(
+                eth_bridge::Requests::<Runtime>::hashed_key_for(0, hash),
+                key
+            );
+            sp_io::storage::set(&key, &value);
+            decoded.push((outgoing, hash));
+        }
+        let (OutgoingRequest::AddPeer(primary), primary_hash) = &decoded[0] else {
+            panic!("first fixture must be the primary add request")
+        };
+        let (OutgoingRequest::AddPeerCompat(compat), _) = &decoded[1] else {
+            panic!("second fixture must be the compatibility request")
+        };
+        assert_eq!(primary.nonce, 8);
+        assert_eq!(compat.nonce, 9);
+        assert_eq!(primary.author, compat.author);
+        assert_eq!(primary.timepoint, compat.timepoint);
+        assert!(eth_bridge::RequestsQueue::<Runtime>::get(0).is_empty());
+        eth_bridge::RequestStatuses::<Runtime>::insert(0, primary_hash, RequestStatus::Pending);
+        assert!(compat.should_be_skipped());
+        for status in [RequestStatus::ApprovalsReady, RequestStatus::Done] {
+            eth_bridge::RequestStatuses::<Runtime>::insert(0, primary_hash, status);
+            assert!(!compat.should_be_skipped());
+            assert_ok!(compat.finalize());
+        }
+    });
+}
+
 fn account(pair: &sr25519::Pair) -> AccountId {
     AccountId::from(pair.public())
 }
@@ -280,7 +338,7 @@ fn duplicate_approval_and_mismatched_proof_are_rejected_before_dispatch() {
 }
 
 #[test]
-fn arbitrary_peer_wrappers_require_fees_and_protocol_cleanup_remains_free() {
+fn arbitrary_peer_wrappers_are_rejected_and_protocol_cleanup_remains_free() {
     ext().execute_with(|| {
         let (pairs, id) = setup();
         bridge_multisig::Accounts::<Runtime>::insert(
@@ -291,7 +349,7 @@ fn arbitrary_peer_wrappers_require_fees_and_protocol_cleanup_remains_free() {
             RuntimeCall::BridgeMultisig(bridge_multisig::Call::as_multi_threshold_1 {
                 id: id.clone(),
                 call: Box::new(call),
-                timepoint: Default::default(),
+                timepoint: BridgeMultisig::sidechain_timepoint(10, 15),
             })
         };
         let remark = wrap(RuntimeCall::System(frame_system::Call::remark {
@@ -308,7 +366,10 @@ fn arbitrary_peer_wrappers_require_fees_and_protocol_cleanup_remains_free() {
             Err(sp_runtime::transaction_validity::InvalidTransaction::Payment.into())
         );
         let _ = Balances::make_free_balance_be(&account(&pairs[0]), balance!(1000000));
-        assert_ok!(apply(remark, &pairs[0], false));
+        assert_eq!(
+            apply(remark, &pairs[0], false),
+            Err(frame_system::Error::<Runtime>::CallFiltered.into())
+        );
         let (import, hash, _) = incoming(&id, true, 15);
         let RuntimeCall::EthBridge(eth_bridge::Call::import_incoming_request {
             incoming_request_result: Ok(request),
@@ -805,9 +866,7 @@ fn current_zero_xor_quorum_cleans_orphaned_proposal_at_full_shared_capacity() {
         assert!(!bridge_multisig::CountedNewOperations::<Runtime>::contains_key(&id, hash));
         assert!(!bridge_multisig::ProposerCountedOperations::<Runtime>::contains_key(&id, hash));
         assert!(!bridge_multisig::CancellationApprovals::<Runtime>::contains_key(&id, hash));
-        assert!(bridge_multisig::DispatchedCalls::<Runtime>::contains_key(
-            hash, timepoint
-        ));
+        assert!(BridgeMultisig::was_dispatched(&id, &hash, timepoint));
         assert_eq!(Currencies::free_balance(PSWAP, &recipient), credit_before);
         assert_eq!(
             eth_bridge::LoadToIncomingRequestHash::<Runtime>::get(0, H256::repeat_byte(211)),
@@ -890,9 +949,7 @@ fn completed_protocol_operation_rejects_cancellation_replay() {
         for peer in &pairs[..3] {
             apply_zero_xor(multi(&id, &call, 214), peer);
         }
-        assert!(bridge_multisig::DispatchedCalls::<Runtime>::contains_key(
-            hash, timepoint
-        ));
+        assert!(BridgeMultisig::was_dispatched(&id, &hash, timepoint));
         assert!(!bridge_multisig::Multisigs::<Runtime>::contains_key(
             &id, hash
         ));
@@ -909,5 +966,196 @@ fn completed_protocol_operation_rejects_cancellation_replay() {
             Currencies::free_balance(PSWAP, &recipient),
             before + balance!(10)
         );
+    });
+}
+
+#[test]
+fn wrong_timepoint_or_unknown_hash_cannot_poison_a_bridge_operation() {
+    use frame_support::assert_noop;
+    ext().execute_with(|| {
+        let (pairs, id) = setup();
+        let (call, _, recipient) = incoming(&id, true, 241);
+        let hash = sp_io::hashing::blake2_256(&call.encode());
+        let canonical = BridgeMultisig::sidechain_timepoint(10, 241);
+        let wrong = BridgeMultisig::sidechain_timepoint(10, 242);
+        let weight = call.get_dispatch_info().total_weight();
+        // A paid, hash-only first vote used to install the attacker's timepoint.
+        // It now needs the authenticated preimage before any storage is changed.
+        assert_noop!(
+            BridgeMultisig::approve_as_multi(
+                RuntimeOrigin::signed(account(&pairs[0])),
+                id.clone(),
+                Some(wrong),
+                hash,
+                weight
+            ),
+            frame_system::Error::<Runtime>::CallFiltered
+        );
+        for point in [None, Some(wrong)] {
+            assert_noop!(
+                BridgeMultisig::as_multi(
+                    RuntimeOrigin::signed(account(&pairs[0])),
+                    id.clone(),
+                    point,
+                    call.encode(),
+                    true,
+                    weight
+                ),
+                bridge_multisig::Error::<Runtime>::WrongTimepoint
+            );
+        }
+        rejected_from_pool_and_block(multi(&id, &call, 242), &pairs[0]);
+        let before = Currencies::free_balance(PSWAP, &recipient);
+        apply_zero_xor(multi(&id, &call, 241), &pairs[0]);
+        assert_noop!(
+            BridgeMultisig::approve_as_multi(
+                RuntimeOrigin::signed(account(&pairs[1])),
+                id.clone(),
+                Some(wrong),
+                hash,
+                weight
+            ),
+            bridge_multisig::Error::<Runtime>::WrongTimepoint
+        );
+        // Historical hash-only continuation is retained when its stored body is
+        // available and the original deterministic timepoint is correct.
+        apply_zero_xor(
+            RuntimeCall::BridgeMultisig(bridge_multisig::Call::approve_as_multi {
+                id: id.clone(),
+                maybe_timepoint: Some(canonical),
+                call_hash: hash,
+                max_weight: weight,
+            }),
+            &pairs[1],
+        );
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &recipient),
+            before + balance!(10)
+        );
+        assert!(BridgeMultisig::was_dispatched(&id, &hash, canonical));
+        assert!(!bridge_multisig::DispatchedCalls::<Runtime>::contains_key(
+            hash, canonical
+        ));
+    });
+}
+
+#[test]
+fn canonical_multisig_timepoints_cover_each_incoming_protocol_operation() {
+    use bridge_multisig::OperationFilter;
+    type Filter = <Runtime as bridge_multisig::Config>::OperationFilter;
+    ext().execute_with(|| {
+        let (_, id) = setup();
+        let (import, hash, _) = incoming(&id, true, 243);
+        let canonical = BridgeMultisig::sidechain_timepoint(10, 243);
+        let wrong = BridgeMultisig::sidechain_timepoint(10, 244);
+        let RuntimeCall::EthBridge(eth_bridge::Call::import_incoming_request {
+            incoming_request_result: Ok(request),
+            ..
+        }) = &import
+        else {
+            panic!("fixture")
+        };
+        let register = RuntimeCall::EthBridge(eth_bridge::Call::register_incoming_request {
+            incoming_request: request.clone(),
+        });
+        for call in [&import, &register] {
+            assert_ok!(Filter::validate(&id, Some(canonical), Some(call)));
+            assert_eq!(
+                Filter::validate(&id, Some(wrong), Some(call)),
+                Err(bridge_multisig::Error::<Runtime>::WrongTimepoint.into())
+            );
+            assert_eq!(
+                Filter::validate(&AccountId::from([244; 32]), Some(canonical), Some(call)),
+                Err(frame_system::Error::<Runtime>::CallFiltered.into())
+            );
+        }
+        assert_ok!(EthBridge::register_incoming_request(
+            RuntimeOrigin::signed(id.clone()),
+            request.clone()
+        ));
+        for call in [
+            RuntimeCall::EthBridge(eth_bridge::Call::finalize_incoming_request {
+                hash,
+                network_id: 0,
+            }),
+            RuntimeCall::EthBridge(eth_bridge::Call::abort_request {
+                hash,
+                network_id: 0,
+                error: sp_runtime::DispatchError::CannotLookup,
+            }),
+        ] {
+            assert_ok!(Filter::validate(&id, Some(canonical), Some(&call)));
+            assert_eq!(
+                Filter::validate(&id, Some(wrong), Some(&call)),
+                Err(bridge_multisig::Error::<Runtime>::WrongTimepoint.into())
+            );
+        }
+    });
+}
+
+#[test]
+fn captured_nonbridge_multisigs_cannot_dispatch_protocol_calls_or_add_cosigners() {
+    use codec::DecodeAll;
+    use frame_support::assert_noop;
+    ext().execute_with(|| {
+        let (_, id) = setup();
+        let (protocol, _, _) = incoming(&id, true, 245);
+        let canonical = BridgeMultisig::sidechain_timepoint(10, 245);
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../fixtures/bridge-multisig-accounts-checkpoint.json"
+        ))
+        .unwrap();
+        let bytes = |value: &str| -> Vec<u8> {
+            value
+                .strip_prefix("0x")
+                .unwrap()
+                .as_bytes()
+                .chunks_exact(2)
+                .map(|pair| u8::from_str_radix(core::str::from_utf8(pair).unwrap(), 16).unwrap())
+                .collect()
+        };
+        let mut checked = 0;
+        for row in fixture["accounts"].as_array().unwrap() {
+            let raw = bytes(row["value"].as_str().unwrap());
+            let membership =
+                bridge_multisig::MultisigAccount::<AccountId>::decode_all(&mut &raw[..]).unwrap();
+            if membership.signatories.len() != 1 {
+                continue;
+            }
+            let account_bytes: [u8; 32] =
+                bytes(row["account"].as_str().unwrap()).try_into().unwrap();
+            let foreign = AccountId::from(account_bytes);
+            let key = bytes(row["key"].as_str().unwrap());
+            assert_eq!(
+                bridge_multisig::Accounts::<Runtime>::hashed_key_for(&foreign),
+                key
+            );
+            sp_io::storage::set(&key, &raw);
+            let signer = membership.signatories[0].clone();
+            assert_noop!(
+                BridgeMultisig::as_multi_threshold_1(
+                    RuntimeOrigin::signed(signer.clone()),
+                    foreign.clone(),
+                    Box::new(protocol.clone()),
+                    canonical
+                ),
+                frame_system::Error::<Runtime>::CallFiltered
+            );
+            let add_cosigner = RuntimeCall::BridgeMultisig(bridge_multisig::Call::add_signatory {
+                signatory: AccountId::from([246; 32]),
+            });
+            assert_noop!(
+                BridgeMultisig::as_multi_threshold_1(
+                    RuntimeOrigin::signed(signer),
+                    foreign.clone(),
+                    Box::new(add_cosigner),
+                    canonical
+                ),
+                frame_system::Error::<Runtime>::CallFiltered
+            );
+            assert_eq!(sp_io::storage::get(&key).unwrap().as_ref(), raw.as_slice());
+            checked += 1;
+        }
+        assert_eq!(checked, 2);
     });
 }

@@ -227,7 +227,21 @@ pub mod pallet {
         RecoveryHalted,
     }
 
+    #[cfg(test)]
+    mod boundary_tests {
+        include!("boundary_tests.rs");
+    }
+
     impl<T: Config> Pallet<T> {
+        // Keep the bounded storage write defensive independently of admission checks.
+        fn append_message(
+            network_id: GenericNetworkId,
+            message: GenericBridgeMessage<T::MaxMessagePayloadSize>,
+        ) -> DispatchResult {
+            MessageQueues::<T>::try_append(network_id, message)
+                .map_err(|_| Error::<T>::QueueSizeLimitReached.into())
+        }
+
         /// Exact native queue witness for manifest-bound recovery quarantine.
         pub fn recovery_queue(
             network_id: GenericNetworkId,
@@ -483,8 +497,7 @@ pub mod pallet {
                 Error::<T>::RecoveryHalted
             );
 
-            MessageQueues::<T>::try_append(network_id, message)
-                .map_err(|_| Error::<T>::QueueSizeLimitReached)?;
+            Self::append_message(network_id, message)?;
             Self::deposit_event(Event::MessageAccepted {
                 network_id,
                 batch_nonce,

@@ -124,12 +124,17 @@ fn bridge_multisig_filter_preserves_normal_bridge_dispatch() {
         assert!(<Runtime as bridge_multisig::Config>::CallFilter::contains(
             &remark
         ));
-        assert_ok!(BridgeMultisig::as_multi_threshold_1(
-            RuntimeOrigin::signed(signer),
-            id,
-            Box::new(remark),
-            Default::default(),
-        ));
+        assert_eq!(
+            BridgeMultisig::as_multi_threshold_1(
+                RuntimeOrigin::signed(signer),
+                id,
+                Box::new(remark),
+                Default::default(),
+            )
+            .unwrap_err()
+            .error,
+            frame_system::Error::<Runtime>::CallFiltered.into()
+        );
     });
 }
 

@@ -2954,6 +2954,11 @@ pub fn validate_bridge_fee_exemption(
     let invalid = |_| {
         sp_runtime::transaction_validity::TransactionValidityError::from(InvalidTransaction::Call)
     };
+    // Reject retired signers before proof-based fee exemption. A dispatch-only
+    // guard would allow free repeated failed submissions of someone else's proof.
+    if crate::incident_recovery::account_retired(who) {
+        return Err(InvalidTransaction::BadSigner.into());
+    }
     match call {
         RuntimeCall::BridgeInboundChannel(bridge_channel::inbound::Call::submit {
             network_id,
@@ -3059,7 +3064,7 @@ pub fn validate_bridge_fee_exemption(
                 || BridgeMultisig::accounts(id)
                     .map(|account| account.threshold_num() <= 1 || !account.is_signatory(who))
                     .unwrap_or(true)
-                || bridge_multisig::DispatchedCalls::<Runtime>::contains_key(call_hash, timepoint)
+                || BridgeMultisig::was_dispatched(id, call_hash, *timepoint)
             {
                 return Err(InvalidTransaction::Call.into());
             }
@@ -3081,9 +3086,8 @@ pub fn validate_bridge_fee_exemption(
     {
         return Ok(false);
     }
-    if !EthBridge::validate_peer_protocol_call(id, protocol).map_err(invalid)? {
-        return Ok(false);
-    }
+    // The operation filter validates protocol state and the canonical timepoint
+    // together, matching dispatch admission without repeating the bridge reads.
     BridgeMultisig::validate_protocol_operation(
         who,
         id,

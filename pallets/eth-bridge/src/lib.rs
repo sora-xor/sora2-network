@@ -65,6 +65,7 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
 */
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 #![allow(
     clippy::style,
     clippy::complexity,
@@ -2664,6 +2665,11 @@ impl<T: Config> Pallet<T> {
             return Err(Error::<T>::InvalidSignature.into());
         }
         info!("Verified request approve {:?}", request_encoded);
+        // Consumers add 27 when encoding Ethereum calls. Store only raw parity,
+        // even when a peer submitted the supported historical 27/28 spelling.
+        let signature_params = signature_params
+            .canonical_recovery_id()
+            .ok_or(Error::<T>::InvalidSignature)?;
         let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
         let mut approvers = RequestApprovers::<T>::get(net_id, &hash);
         let pending_peers_len = if Self::is_additional_signature_needed(net_id, &request) {

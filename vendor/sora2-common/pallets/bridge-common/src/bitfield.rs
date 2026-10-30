@@ -104,6 +104,36 @@ impl BitField {
         bitfield
     }
 
+    /// Preserve the legacy hash/rejection sequence while imposing a work budget.
+    /// Runtime callers must not use the unbounded legacy helper on untrusted input.
+    pub fn create_random_bitfield_bounded(
+        prior: &BitField,
+        n: u32,
+        length: u32,
+        seed: u128,
+        max_attempts: u32,
+    ) -> Option<Self> {
+        if length == 0 || prior.len() < length as usize || n > length {
+            return None;
+        }
+        let mut bitfield = BitField::with_zeroes(prior.len());
+        let mut found = 0;
+        for i in 0..max_attempts {
+            if found == n {
+                return Some(bitfield);
+            }
+            // Match the legacy runtime's release arithmetic at the seed boundary.
+            let input = seed.wrapping_add(u128::from(i));
+            let randomness = sp_io::hashing::blake2_128(&input.to_be_bytes());
+            let index = (u128::from_be_bytes(randomness) % u128::from(length)) as usize;
+            if prior.is_set(index) && !bitfield.is_set(index) {
+                bitfield.set(index);
+                found += 1;
+            }
+        }
+        (found == n).then_some(bitfield)
+    }
+
     // Util:
     #[inline]
     pub fn count_set_bits(&self) -> usize {
@@ -146,6 +176,7 @@ impl DerefMut for BitField {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod test {
     #[test]
     pub fn create_bitfield_success() {

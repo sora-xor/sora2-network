@@ -363,6 +363,7 @@ macro_rules! mock_bridge_multisig_config {
         }
         impl bridge_multisig::Config for $runtime {
             type CallFilter = frame_support::traits::Everything;
+            type OperationFilter = ();
 
             type MaxPendingOperations = frame_support::traits::ConstU32<128>;
             type MaxCallBytes = frame_support::traits::ConstU32<16384>;

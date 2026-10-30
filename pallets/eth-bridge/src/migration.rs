@@ -982,6 +982,11 @@ pub fn migrate_error(err: OldDispatchError) -> DispatchError {
 }
 
 #[cfg(test)]
+#[path = "tests/coverage_migrations.rs"]
+mod coverage_tests;
+
+#[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use crate::migration::OldRequestStatus;
     use crate::requests::{IncomingRequest, OffchainRequest, RequestStatus};

@@ -43,6 +43,243 @@ use sp_keyring::sr25519::Keyring;
 use traits::MultiCurrency;
 
 #[test]
+fn app_routes_validate_networks_and_refund_registered_assets() {
+    use bridge_types::traits::BridgeApp;
+    use bridge_types::types::BridgeAppInfo;
+    let network = SubNetworkId::Liberland;
+    new_tester().execute_with(|| {
+        let invalid = bridge_types::GenericNetworkId::EVMLegacy(0);
+        assert!(!SubstrateApp::is_asset_supported(invalid, AssetId::Xor));
+        assert!(SubstrateApp::is_asset_supported(
+            network.into(),
+            AssetId::Xor
+        ));
+        assert!(!SubstrateApp::is_asset_supported(
+            network.into(),
+            AssetId::Eth
+        ));
+        crate::AssetKinds::<Test>::insert(network, AssetId::Dai, AssetKind::Sidechain);
+        assert_eq!(
+            SubstrateApp::list_apps(),
+            vec![BridgeAppInfo::Sub(network.into())]
+        );
+        assert_eq!(SubstrateApp::list_supported_assets(network.into()).len(), 2);
+        assert!(SubstrateApp::list_supported_assets(invalid).is_empty());
+        assert_noop!(
+            SubstrateApp::transfer(
+                invalid,
+                AssetId::Xor,
+                Keyring::Alice.into(),
+                GenericAccount::Liberland(Keyring::Bob.into()),
+                10
+            ),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_noop!(
+            SubstrateApp::refund(
+                invalid,
+                H256::zero(),
+                Keyring::Alice.into(),
+                AssetId::Xor,
+                10
+            ),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_noop!(
+            SubstrateApp::refund(
+                network.into(),
+                H256::zero(),
+                Keyring::Alice.into(),
+                AssetId::Eth,
+                10
+            ),
+            Error::<Test>::TokenIsNotRegistered
+        );
+        assert_ok!(SubstrateApp::refund(
+            network.into(),
+            H256::zero(),
+            Keyring::Alice.into(),
+            AssetId::Dai,
+            10
+        ));
+        assert_eq!(
+            Currencies::total_balance(AssetId::Dai, &Keyring::Alice.into()),
+            10
+        );
+        assert_ok!(SubstrateApp::transfer(
+            network.into(),
+            AssetId::Xor,
+            Keyring::Alice.into(),
+            GenericAccount::Liberland(Keyring::Bob.into()),
+            10
+        ));
+        let id = H256::repeat_byte(91);
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(network.into(), id),
+            &[1],
+        );
+        assert_noop!(
+            SubstrateApp::refund(network.into(), id, Keyring::Alice.into(), AssetId::Dai, 10),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_eq!(
+            SubstrateApp::is_asset_supported_weight(),
+            frame_support::weights::Weight::zero()
+        );
+        assert_eq!(
+            SubstrateApp::refund_weight(),
+            <() as crate::WeightInfo>::update_transaction_status()
+        );
+        assert_eq!(
+            SubstrateApp::transfer_weight(),
+            <() as crate::WeightInfo>::burn()
+        );
+    });
+}
+
+#[test]
+fn bridge_call_conversion_maps_registration_status_and_rejects_invalid_identifiers() {
+    use bridge_types::substrate::SubstrateAppCall;
+    use bridge_types::types::MessageStatus;
+    let local = GenericAssetId::Liberland(bridge_types::LiberlandAssetId::Asset(1));
+    let remote = GenericAssetId::Sora(H256::repeat_byte(2));
+    let recipient = GenericAccount::Sora(Keyring::Alice.into());
+    let sender = GenericAccount::Liberland(Keyring::Bob.into());
+    let transfer = |asset_id, recipient| SubstrateAppCall::Transfer {
+        asset_id,
+        recipient,
+        sender: sender.clone(),
+        amount: GenericBalance::Substrate(100),
+    };
+    assert_eq!(
+        crate::Call::<Test>::try_from(transfer(local, recipient.clone())).unwrap(),
+        crate::Call::mint {
+            asset_id: AssetId::Xor,
+            recipient: Keyring::Alice.into(),
+            sender: sender.clone(),
+            amount: GenericBalance::Substrate(100)
+        }
+    );
+    assert!(matches!(
+        crate::Call::<Test>::try_from(transfer(local, GenericAccount::Unknown)),
+        Err(Error::<Test>::WrongAccountId)
+    ));
+    assert!(matches!(
+        crate::Call::<Test>::try_from(transfer(remote, recipient)),
+        Err(Error::<Test>::WrongAssetId)
+    ));
+    assert_eq!(
+        crate::Call::<Test>::try_from(SubstrateAppCall::FinalizeAssetRegistration {
+            asset_id: remote,
+            sidechain_asset: local,
+            asset_kind: AssetKind::Sidechain,
+            precision: 12
+        })
+        .unwrap(),
+        crate::Call::finalize_asset_registration {
+            asset_id: AssetId::Xor,
+            sidechain_asset_id: remote,
+            asset_kind: AssetKind::Sidechain,
+            sidechain_precision: 12
+        }
+    );
+    assert_eq!(
+        crate::Call::<Test>::try_from(SubstrateAppCall::RegisterAsset {
+            asset_id: remote,
+            sidechain_asset: local
+        })
+        .unwrap(),
+        crate::Call::incoming_thischain_asset_registration {
+            asset_id: AssetId::Xor,
+            sidechain_asset_id: remote
+        }
+    );
+    assert_eq!(
+        crate::Call::<Test>::try_from(SubstrateAppCall::ReportTransferResult {
+            message_id: H256::zero(),
+            message_status: MessageStatus::Failed
+        })
+        .unwrap(),
+        crate::Call::update_transaction_status {
+            message_id: H256::zero(),
+            message_status: MessageStatus::Failed
+        }
+    );
+}
+
+#[test]
+fn status_updates_and_recovery_gates_validate_authenticated_context() {
+    use bridge_types::types::MessageStatus;
+    let origin = || {
+        dispatch::RawOrigin::new(BridgeOriginOutput::new(
+            SubNetworkId::Liberland,
+            H256::zero(),
+            bridge_types::GenericTimepoint::Sora(1),
+            (),
+        ))
+        .into()
+    };
+    new_tester().execute_with(|| {
+        assert_ok!(SubstrateApp::update_transaction_status(
+            origin(),
+            H256::zero(),
+            MessageStatus::Done
+        ));
+        assert_noop!(
+            SubstrateApp::update_transaction_status(
+                RuntimeOrigin::signed(Keyring::Alice.into()),
+                H256::zero(),
+                MessageStatus::Done
+            ),
+            sp_runtime::DispatchError::BadOrigin
+        );
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        assert_noop!(
+            SubstrateApp::update_transaction_status(origin(), H256::zero(), MessageStatus::Done),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            SubstrateApp::burn(
+                RuntimeOrigin::signed(Keyring::Alice.into()),
+                SubNetworkId::Liberland,
+                AssetId::Xor,
+                GenericAccount::Liberland(Keyring::Bob.into()),
+                1
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            SubstrateApp::register_sidechain_asset(
+                RuntimeOrigin::root(),
+                SubNetworkId::Liberland,
+                GenericAssetId::Liberland(bridge_types::LiberlandAssetId::LLD),
+                b"LLD".to_vec(),
+                b"LLD".to_vec()
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            SubstrateApp::incoming_thischain_asset_registration(
+                origin(),
+                AssetId::Xor,
+                GenericAssetId::Sora(H256::zero())
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            SubstrateApp::finalize_asset_registration(
+                origin(),
+                AssetId::Xor,
+                GenericAssetId::Sora(H256::zero()),
+                AssetKind::Thischain,
+                18
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+    });
+}
+
+#[test]
 fn it_works_deposit_event_mint_not_registered() {
     new_tester().execute_with(|| {
         let origin_liberland: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
@@ -237,6 +474,11 @@ fn it_works_incoming_thischain_asset_registration() {
         let asset_id = AssetId::Xor;
         let generic_asset_id = GenericAssetId::Sora(H256([0; 32]));
 
+        assert_ok!(SubstrateApp::authorize_asset_registration(
+            RuntimeOrigin::root(), SubNetworkId::Liberland, asset_id,
+            generic_asset_id, AssetKind::Thischain,
+        ));
+
         assert_ok!(SubstrateApp::incoming_thischain_asset_registration(
             origin_liberland,
             asset_id,
@@ -257,6 +499,11 @@ fn it_works_finalize_asset_registration() {
         .into();
         let asset_id = AssetId::Xor;
         let generic_asset_id = GenericAssetId::Sora(H256([0; 32]));
+
+        assert_ok!(SubstrateApp::authorize_asset_registration(
+            RuntimeOrigin::root(), SubNetworkId::Liberland, asset_id,
+            generic_asset_id, AssetKind::Thischain,
+        ));
 
         assert_ok!(SubstrateApp::finalize_asset_registration(
             origin_liberland,
@@ -446,5 +693,94 @@ fn recovery_chunk_failure_rolls_back_successful_credit_and_deferred_ack_together
         assert!(!crate::DeferredTransferResults::<Test>::contains_key(
             network, id
         ));
+    });
+}
+
+#[test]
+fn registration_payloads_reject_assets_from_another_domain() {
+    use bridge_types::substrate::SubstrateAppCall;
+    let remote = GenericAssetId::Sora(H256::repeat_byte(2));
+    for call in [
+        SubstrateAppCall::RegisterAsset {
+            asset_id: remote,
+            sidechain_asset: remote,
+        },
+        SubstrateAppCall::FinalizeAssetRegistration {
+            asset_id: remote,
+            sidechain_asset: remote,
+            asset_kind: AssetKind::Sidechain,
+            precision: 12,
+        },
+    ] {
+        assert!(matches!(
+            crate::Call::<Test>::try_from(call),
+            Err(Error::<Test>::WrongAssetId)
+        ));
+    }
+}
+
+#[test]
+fn direct_and_authenticated_mints_preserve_balances_under_quarantine() {
+    new_tester().execute_with(|| {
+        let network = SubNetworkId::Liberland;
+        let id = H256::repeat_byte(62);
+        let origin = || {
+            dispatch::RawOrigin::new(BridgeOriginOutput::new(
+                network,
+                id,
+                bridge_types::GenericTimepoint::Sora(1),
+                (),
+            ))
+            .into()
+        };
+        let sender = GenericAccount::Liberland(Keyring::Bob.into());
+        let mint = || {
+            SubstrateApp::mint_inner(
+                AssetId::Xor,
+                sender.clone(),
+                Keyring::Alice.into(),
+                GenericBalance::Substrate(1),
+                network,
+                id,
+                bridge_types::GenericTimepoint::Sora(1),
+            )
+        };
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(network.into(), id),
+            &[1],
+        );
+        assert_noop!(mint(), Error::<Test>::RecoveryHalted);
+        assert_noop!(
+            SubstrateApp::mint_with_outcome(
+                origin(),
+                AssetId::Xor,
+                sender.clone(),
+                Keyring::Alice.into(),
+                GenericBalance::Substrate(1)
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        sp_io::storage::clear(&bridge_types::recovery::message_key(network.into(), id));
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        assert_noop!(mint(), Error::<Test>::RecoveryHalted);
+    });
+}
+
+#[test]
+fn configured_genesis_assets_retain_network_and_custody_kind() {
+    use frame_support::traits::BuildGenesisConfig;
+    new_tester_no_registered_assets().execute_with(|| {
+        crate::GenesisConfig::<Test> {
+            assets: vec![(SubNetworkId::Liberland, AssetId::Eth, AssetKind::Sidechain)],
+        }
+        .build();
+        assert_eq!(
+            crate::AssetKinds::<Test>::get(SubNetworkId::Liberland, AssetId::Eth),
+            Some(AssetKind::Sidechain)
+        );
+        assert_eq!(
+            crate::AssetKinds::<Test>::get(SubNetworkId::Mainnet, AssetId::Eth),
+            None
+        );
     });
 }

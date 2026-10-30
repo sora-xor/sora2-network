@@ -36,8 +36,8 @@ use currencies::BasicCurrencyAdapter;
 use bridge_types::types::{AssetKind, GenericAdditionalInboundData};
 use bridge_types::GenericNetworkId;
 use bridge_types::H256;
-use frame_support::parameter_types;
 use frame_support::traits::Everything;
+use frame_support::{derive_impl, parameter_types};
 use frame_system as system;
 use sp_keyring::sr25519::Keyring;
 
@@ -78,6 +78,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
@@ -108,6 +109,7 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 1;
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
 impl pallet_balances::Config for Test {
     type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;
@@ -120,7 +122,6 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
     type RuntimeHoldReason = ();
     type FreezeIdentifier = ();
-    type MaxHolds = ();
     type MaxFreezes = ();
 }
 
@@ -131,7 +132,6 @@ parameter_type_with_key! {
 }
 
 impl tokens::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
@@ -277,6 +277,7 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Test> {
+            dev_accounts: Default::default(),
             balances: self.balances,
         }
         .assimilate_storage(&mut storage)

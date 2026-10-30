@@ -521,9 +521,14 @@ pub mod pallet {
         }
     }
 
+    #[cfg(test)]
+    mod boundary_tests {
+        include!("boundary_tests.rs");
+    }
+
     impl<T: Config> Pallet<T> {
         fn canonicalize_peers(
-            peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
+            peers: impl IntoIterator<Item = ecdsa::Public>,
             require_minimum: bool,
         ) -> Result<BoundedBTreeSet<ecdsa::Public, T::MaxPeers>, DispatchError> {
             let unique_peers = peers.into_iter().collect::<BTreeSet<_>>();
@@ -542,7 +547,7 @@ pub mod pallet {
         }
 
         fn peers_to_vec(
-            peers: &BoundedBTreeSet<ecdsa::Public, T::MaxPeers>,
+            peers: &BTreeSet<ecdsa::Public>,
         ) -> Result<BoundedVec<ecdsa::Public, T::MaxPeers>, DispatchError> {
             peers
                 .iter()

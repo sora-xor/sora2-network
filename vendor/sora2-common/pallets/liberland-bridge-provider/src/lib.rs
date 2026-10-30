@@ -29,6 +29,9 @@
 // // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod tests;
+
 use bridge_types::traits::TimepointProvider;
 use bridge_types::types::MessageDirection;
 use bridge_types::types::MessageStatus;
@@ -324,6 +327,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                             (*asset).into(),
                             who,
                             *amount,
+                            Preservation::Expendable,
                             Precision::Exact,
                             Fortitude::Polite,
                         )?;

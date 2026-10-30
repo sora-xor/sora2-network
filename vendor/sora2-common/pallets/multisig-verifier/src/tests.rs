@@ -102,7 +102,7 @@ fn it_fails_initialize_pallet_not_root() {
                 bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
                 test_peers().try_into().unwrap(),
             ),
-            frame_support::error::BadOrigin
+            sp_runtime::DispatchError::BadOrigin
         );
     });
 }
@@ -641,4 +641,233 @@ fn it_works_verify() {
             Error::<Test>::NotTrustedPeerSignature
         );
     });
+}
+
+#[test]
+fn authenticated_digest_requires_exactly_one_matching_substrate_destination() {
+    use bridge_types::GenericNetworkId;
+    new_test_ext().execute_with(|| {
+        let network = GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let hash = sp_core::H256::repeat_byte(42);
+        let pairs = test_pairs();
+        assert_ok!(TrustedVerifier::initialize(
+            RuntimeOrigin::root(),
+            network,
+            test_peers().try_into().unwrap()
+        ));
+        let matching = AuxiliaryDigestItem::Commitment(network, hash);
+        for (logs, expected) in [
+            (vec![], false),
+            (vec![matching, matching], false),
+            (
+                vec![AuxiliaryDigestItem::Commitment(
+                    SubNetworkId::Kusama.into(),
+                    hash,
+                )],
+                false,
+            ),
+            (
+                vec![AuxiliaryDigestItem::Commitment(
+                    network,
+                    sp_core::H256::zero(),
+                )],
+                false,
+            ),
+            (
+                vec![AuxiliaryDigestItem::Commitment(
+                    GenericNetworkId::EVMLegacy(1),
+                    hash,
+                )],
+                false,
+            ),
+            (
+                vec![
+                    matching,
+                    AuxiliaryDigestItem::Commitment(GenericNetworkId::EVMLegacy(1), hash),
+                ],
+                true,
+            ),
+        ] {
+            let digest = AuxiliaryDigest { logs };
+            let digest_hash = Keccak256::hash_of(&digest);
+            let proof = crate::Proof {
+                digest,
+                proof: pairs
+                    .iter()
+                    .map(|pair| pair.sign_prehashed(&digest_hash.0))
+                    .collect(),
+            };
+            if expected {
+                assert_ok!(TrustedVerifier::verify(network, hash, &proof));
+            } else {
+                assert_eq!(
+                    TrustedVerifier::verify(network, hash, &proof),
+                    Err(Error::<Test>::CommitmentNotFoundInDigest.into())
+                );
+            }
+            assert_eq!(
+                TrustedVerifier::verify_weight(&proof),
+                <() as crate::WeightInfo>::verifier_verify(5)
+            );
+        }
+    });
+}
+
+#[test]
+fn evm_signatures_bind_source_destination_and_commitment() {
+    use bridge_types::GenericNetworkId;
+    new_test_ext().execute_with(|| {
+        let network = GenericNetworkId::EVM([1u8; 32].into());
+        let hash = sp_core::H256::repeat_byte(42);
+        let pairs = test_pairs();
+        let approved = Keccak256::hash_of(&(network, ThisNetworkId::get(), hash));
+        let proof = crate::MultiEVMProof {
+            proof: pairs
+                .iter()
+                .map(|pair| pair.sign_prehashed(&approved.0))
+                .collect(),
+        };
+        assert_noop!(
+            crate::MultiEVMVerifier::<Test>::verify(network, hash, &proof),
+            Error::<Test>::NetworkNotInitialized
+        );
+        assert_ok!(TrustedVerifier::initialize(
+            RuntimeOrigin::root(),
+            network,
+            test_peers().try_into().unwrap()
+        ));
+        assert_ok!(crate::MultiEVMVerifier::<Test>::verify(
+            network, hash, &proof
+        ));
+        assert_noop!(
+            crate::MultiEVMVerifier::<Test>::verify(network, sp_core::H256::zero(), &proof),
+            Error::<Test>::NotTrustedPeerSignature
+        );
+        assert_eq!(
+            crate::MultiEVMVerifier::<Test>::verify_weight(&proof),
+            <() as crate::WeightInfo>::verifier_verify(5)
+        );
+        assert_noop!(
+            TrustedVerifier::verify_signatures(
+                network,
+                hash,
+                &[ecdsa::Signature::from_raw([0; 65])]
+            ),
+            Error::<Test>::InvalidSignature
+        );
+    });
+}
+
+#[test]
+fn recovery_peer_acknowledgements_require_live_context_and_cannot_be_replayed() {
+    use codec::Encode;
+    new_test_ext().execute_with(|| {
+        System::set_block_number(10);
+        let network = SubNetworkId::Mainnet;
+        assert_ok!(TrustedVerifier::initialize(
+            RuntimeOrigin::root(),
+            network.into(),
+            test_peers().try_into().unwrap()
+        ));
+        let added = ecdsa::Pair::from_seed(&[9; 32]).public();
+        sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
+        assert_noop!(
+            TrustedVerifier::add_peer(RuntimeOrigin::signed(1), added),
+            Error::<Test>::RecoveryHalted
+        );
+        sp_io::storage::set(b":sora-nexus:recovery:incoming-active:v1", &[1]);
+        sp_io::storage::set(
+            b":sora-nexus:recovery:bridge-inbound-context:v1",
+            &9u64.encode(),
+        );
+        assert_noop!(
+            TrustedVerifier::add_peer(RuntimeOrigin::signed(1), added),
+            Error::<Test>::RecoveryHalted
+        );
+        sp_io::storage::set(
+            b":sora-nexus:recovery:bridge-inbound-context:v1",
+            &10u64.encode(),
+        );
+        assert_ok!(TrustedVerifier::add_peer(RuntimeOrigin::signed(1), added));
+        let key = crate::recovery_peer_ack_key(network, [1; 32].into());
+        assert_eq!(
+            sp_io::storage::get(&key).unwrap().to_vec(),
+            bridge_types::substrate::DataSignerCall::AddPeer { peer: added }.encode()
+        );
+        assert_noop!(
+            TrustedVerifier::remove_peer(RuntimeOrigin::signed(1), added),
+            Error::<Test>::RecoveryAcknowledgementExists
+        );
+        assert!(
+            TrustedVerifier::get_peer_keys(bridge_types::GenericNetworkId::Sub(network))
+                .unwrap()
+                .contains(&added)
+        );
+        assert_ne!(
+            key,
+            crate::recovery_peer_ack_key(SubNetworkId::Kusama, [1; 32].into())
+        );
+    });
+}
+
+#[test]
+fn peer_bounds_and_cross_network_audit_reject_invalid_memberships() {
+    use bridge_types::GenericNetworkId;
+    new_test_ext().execute_with(|| {
+        let network = GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        assert_ok!(TrustedVerifier::initialize(
+            RuntimeOrigin::root(),
+            network,
+            test_peers().try_into().unwrap()
+        ));
+        assert_ok!(TrustedVerifier::ensure_unique_substrate_peers());
+        assert_noop!(
+            TrustedVerifier::add_peer(RuntimeOrigin::signed(1), test_peers()[0]),
+            Error::<Test>::PeerExists
+        );
+        assert_noop!(
+            TrustedVerifier::remove_peer(
+                RuntimeOrigin::signed(1),
+                ecdsa::Pair::from_seed(&[9; 32]).public()
+            ),
+            Error::<Test>::NoSuchPeer
+        );
+        let peers = TrustedVerifier::get_peer_keys(network).unwrap();
+        crate::PeerKeys::<Test>::insert(GenericNetworkId::EVM([1u8; 32].into()), peers.clone());
+        assert_ok!(TrustedVerifier::ensure_unique_substrate_peers());
+        crate::PeerKeys::<Test>::insert(GenericNetworkId::Sub(SubNetworkId::Kusama), peers);
+        assert_noop!(
+            TrustedVerifier::ensure_unique_substrate_peers(),
+            Error::<Test>::PeerRegisteredInOtherNetwork
+        );
+    });
+    new_test_ext().execute_with(|| {
+        let peers: Vec<_> = (0..BridgeMaxPeers::get())
+            .map(|i| ecdsa::Pair::from_seed(&[i as u8 + 1; 32]).public())
+            .collect();
+        assert_ok!(TrustedVerifier::initialize(
+            RuntimeOrigin::root(),
+            SubNetworkId::Mainnet.into(),
+            peers.try_into().unwrap()
+        ));
+        assert_noop!(
+            TrustedVerifier::add_peer(
+                RuntimeOrigin::signed(1),
+                ecdsa::Pair::from_seed(&[200; 32]).public()
+            ),
+            Error::<Test>::TooMuchPeers
+        );
+    });
+}
+
+#[test]
+fn bridge_peer_messages_convert_to_the_correct_dispatchables() {
+    use bridge_types::substrate::MultisigVerifierCall;
+    let peer = ecdsa::Pair::from_seed(&[1; 32]).public();
+    assert!(
+        matches!(crate::Call::<Test>::from(MultisigVerifierCall::AddPeer { peer }), crate::Call::add_peer { peer: actual } if actual == peer)
+    );
+    assert!(
+        matches!(crate::Call::<Test>::from(MultisigVerifierCall::RemovePeer { peer }), crate::Call::remove_peer { peer: actual } if actual == peer)
+    );
 }

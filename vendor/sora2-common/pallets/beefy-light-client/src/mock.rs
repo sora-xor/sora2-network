@@ -62,6 +62,7 @@ impl system::Config for Test {
     type DbWeight = ();
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
+    type RuntimeTask = RuntimeTask;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = u64;
@@ -74,6 +75,12 @@ impl system::Config for Test {
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
+    type ExtensionsWeightInfo = ();
+    type SingleBlockMigrations = ();
+    type MultiBlockMigrator = ();
+    type PreInherents = ();
+    type PostInherents = ();
+    type PostTransactions = ();
     type SS58Prefix = SS58Prefix;
     type OnSetCode = ();
     type MaxConsumers = frame_support::traits::ConstU32<16>;
@@ -83,12 +90,37 @@ impl system::Config for Test {
 
 impl beefy_light_client::Config for Test {
     type Randomness = beefy_light_client::SidechainRandomness<Test, SidechainRandomnessNetwork>;
+    type MaxValidators = frame_support::traits::ConstU32<1024>;
+    type WeightInfo = beefy_light_client::weights::SubstrateWeight<Self>;
 }
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
+    init_test_logging();
     system::GenesisConfig::<Test>::default()
         .build_storage()
         .unwrap()
         .into()
+}
+
+// Exercise diagnostic formatting as it is enabled in an operator's debug build.
+fn init_test_logging() {
+    struct TestLogger;
+    impl log::Log for TestLogger {
+        fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+            metadata.level() <= log::Level::Debug
+        }
+        fn log(&self, record: &log::Record<'_>) {
+            if self.enabled(record.metadata()) {
+                eprintln!("{}", record.args());
+            }
+        }
+        fn flush(&self) {}
+    }
+    static LOGGER: TestLogger = TestLogger;
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        let _ = log::set_logger(&LOGGER);
+        log::set_max_level(log::LevelFilter::Debug);
+    });
 }

@@ -66,6 +66,13 @@ impl frame_system::Config for Test {
     type MaxConsumers = frame_support::traits::ConstU32<16>;
     type Nonce = u64;
     type Block = Block;
+    type RuntimeTask = ();
+    type ExtensionsWeightInfo = ();
+    type SingleBlockMigrations = ();
+    type MultiBlockMigrator = ();
+    type PreInherents = ();
+    type PostInherents = ();
+    type PostTransactions = ();
 }
 
 parameter_types! {
@@ -84,8 +91,9 @@ impl pallet_balances::Config for Test {
     type MaxLocks = ();
     type RuntimeHoldReason = ();
     type FreezeIdentifier = ();
-    type MaxHolds = ();
     type MaxFreezes = ();
+    type RuntimeFreezeReason = ();
+    type DoneSlashHandler = ();
 }
 parameter_types! {
     pub const DepositBase: u64 = 1;
@@ -136,6 +144,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .unwrap();
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(1, 10), (2, 10), (3, 10), (4, 10), (5, 2)],
+        dev_accounts: None,
     }
     .assimilate_storage(&mut t)
     .unwrap();
@@ -162,6 +171,128 @@ fn now() -> BridgeTimepoint<u64> {
 }
 
 #[test]
+fn registration_and_membership_rejections_preserve_existing_accounts() {
+    new_test_ext().execute_with(|| {
+        for members in [vec![2, 1], vec![1, 1]] {
+            assert_noop!(
+                Multisig::register_multisig_inner(1, members),
+                Error::<Test>::SignatoriesAreNotUniqueOrUnordered
+            );
+        }
+        let id = Multisig::register_multisig_inner(1, vec![1, 2]).unwrap();
+        assert_noop!(
+            Multisig::register_multisig_inner(1, vec![1, 2]),
+            Error::<Test>::MultisigAlreadyExists
+        );
+        assert_noop!(
+            Multisig::remove_signatory(RuntimeOrigin::signed(id), 3),
+            Error::<Test>::NotInSignatories
+        );
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let hash = blake2_256(&call.encode());
+        let weight = call.get_dispatch_info().total_weight();
+        assert_noop!(
+            Multisig::as_multi_threshold_1(
+                RuntimeOrigin::signed(1),
+                id,
+                Box::new(call.clone()),
+                now()
+            ),
+            Error::<Test>::TooManySignatories
+        );
+        assert_noop!(
+            Multisig::as_multi(
+                RuntimeOrigin::signed(3),
+                id,
+                None,
+                call.encode(),
+                false,
+                weight
+            ),
+            Error::<Test>::SenderNotInSignatories
+        );
+        assert_noop!(
+            Multisig::approve_as_multi(RuntimeOrigin::signed(3), id, None, hash, weight),
+            Error::<Test>::SenderNotInSignatories
+        );
+        DispatchedCalls::<Test>::insert(hash, now(), ());
+        assert_noop!(
+            Multisig::cancel_as_multi(RuntimeOrigin::signed(1), id, now(), hash),
+            Error::<Test>::AlreadyDispatched
+        );
+        assert_eq!(Multisig::accounts(id).unwrap().signatories, vec![1, 2]);
+        assert!(!Multisigs::<Test>::contains_key(id, hash));
+    });
+}
+
+#[test]
+fn nested_multisig_propagates_actual_weight_for_single_and_quorum_dispatch() {
+    for members in [vec![1], vec![1, 2]] {
+        new_test_ext().execute_with(|| {
+            let outer = Multisig::register_multisig_inner(1, members.clone()).unwrap();
+            let mut inner_members = vec![3, outer];
+            inner_members.sort();
+            let inner = Multisig::register_multisig_inner(2, inner_members).unwrap();
+            let transfer =
+                RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+            let transfer_hash = blake2_256(&transfer.encode());
+            let call = RuntimeCall::Multisig(MultisigCall::as_multi {
+                id: inner,
+                maybe_timepoint: None,
+                call: transfer.encode(),
+                store_call: false,
+                max_weight: transfer.get_dispatch_info().total_weight(),
+            });
+            let outer_hash = blake2_256(&call.encode());
+            let post = if members.len() == 1 {
+                Multisig::as_multi_threshold_1(
+                    RuntimeOrigin::signed(1),
+                    outer,
+                    Box::new(call),
+                    now(),
+                )
+                .unwrap()
+            } else {
+                assert_ok!(Multisig::approve_as_multi(
+                    RuntimeOrigin::signed(1),
+                    outer,
+                    None,
+                    outer_hash,
+                    Weight::zero()
+                ));
+                Multisig::as_multi(
+                    RuntimeOrigin::signed(2),
+                    outer,
+                    Some(now()),
+                    call.encode(),
+                    false,
+                    call.get_dispatch_info().total_weight(),
+                )
+                .unwrap()
+            };
+            let actual = post
+                .actual_weight
+                .expect("nested dispatch returns metered inner work");
+            assert!(actual.ref_time() > 0);
+            assert_eq!(post.pays_fee, Pays::No);
+            assert_eq!(
+                Multisigs::<Test>::get(inner, transfer_hash)
+                    .unwrap()
+                    .approvals,
+                vec![outer]
+            );
+            assert!(!Multisigs::<Test>::contains_key(outer, outer_hash));
+            assert!(DispatchedCalls::<Test>::contains_key(outer_hash, now()));
+            assert_eq!(
+                Balances::free_balance(6),
+                0,
+                "inner transfer still requires its second member"
+            );
+        });
+    }
+}
+
+#[test]
 fn multisig_deposit_is_taken_and_returned() {
     new_test_ext().execute_with(|| {
         let multi = Multisig::multi_account_id(&1, 1, 0);
@@ -169,12 +300,24 @@ fn multisig_deposit_is_taken_and_returned() {
             RuntimeOrigin::signed(1),
             vec![1, 2, 3],
         ));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         assert_ok!(Multisig::as_multi(
             RuntimeOrigin::signed(1),
@@ -208,12 +351,24 @@ fn multisig_deposit_is_taken_and_returned_with_call_storage() {
             RuntimeOrigin::signed(1),
             vec![1, 2, 3],
         ));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         let hash = blake2_256(&data);
         assert_ok!(Multisig::as_multi(
@@ -247,13 +402,25 @@ fn multisig_deposit_is_taken_and_returned_with_alt_call_storage() {
             RuntimeOrigin::signed(1),
             vec![1, 2, 3],
         ));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
 
-        let call_weight = call.get_dispatch_info().weight;
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         let hash = blake2_256(&data);
 
@@ -303,7 +470,8 @@ fn cancel_multisig_returns_deposit() {
             vec![1, 2, 3],
         ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 }).encode();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 })
+            .encode();
         let hash = blake2_256(&call);
         assert_ok!(Multisig::approve_as_multi(
             RuntimeOrigin::signed(1),
@@ -340,8 +508,8 @@ fn already_dispatched_checking_works() {
             RuntimeOrigin::signed(1),
             vec![1, 2, 3, 4],
         ));
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let call_encoded = call.encode();
         assert_ok!(Multisig::as_multi(
             RuntimeOrigin::signed(1),
@@ -393,9 +561,13 @@ fn already_dispatched_checking_works_for_threshold_1() {
             RuntimeOrigin::signed(1),
             vec![1],
         ));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
 
-        let boxed_call = Box::new(RuntimeCall::Balances(BalancesCall::transfer {
+        let boxed_call = Box::new(RuntimeCall::Balances(BalancesCall::transfer_allow_death {
             dest: 6,
             value: 5,
         }));
@@ -429,11 +601,24 @@ fn timepoint_checking_works() {
             RuntimeOrigin::signed(1),
             vec![1, 2, 3],
         ));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 7 }).encode();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 7 })
+            .encode();
         let hash = blake2_256(&call);
 
         assert_ok!(Multisig::approve_as_multi(
@@ -444,7 +629,8 @@ fn timepoint_checking_works() {
             Weight::zero()
         ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 8 }).encode();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 8 })
+            .encode();
         let hash = blake2_256(&call);
 
         assert_ok!(Multisig::approve_as_multi(
@@ -494,11 +680,19 @@ fn multisig_2_of_2_works_with_call_storing() {
             RuntimeOrigin::signed(1),
             vec![1, 2],
         ));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 10 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 10 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         let hash = blake2_256(&data);
         assert_ok!(Multisig::as_multi(
@@ -530,12 +724,24 @@ fn multisig_2_of_2_works() {
             RuntimeOrigin::signed(1),
             vec![1, 2],
         ));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         let hash = blake2_256(&data);
         assert_ok!(Multisig::approve_as_multi(
@@ -567,12 +773,24 @@ fn multisig_3_of_3_works() {
             RuntimeOrigin::signed(1),
             vec![1, 2, 3],
         ));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         let hash = blake2_256(&data);
         assert_ok!(Multisig::approve_as_multi(
@@ -665,7 +883,7 @@ fn multisig_3_of_3_works_with_new_signatory() {
         ));
 
         let call = RuntimeCall::Multisig(MultisigCall::add_signatory { new_member: 4 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         let hash = blake2_256(&data);
         assert_ok!(Multisig::approve_as_multi(
@@ -691,12 +909,24 @@ fn multisig_3_of_3_works_with_new_signatory() {
             call_weight
         ));
 
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(4), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(4),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         let hash = blake2_256(&data);
         assert_ok!(Multisig::approve_as_multi(
@@ -737,7 +967,7 @@ fn multisig_3_of_4_works_after_removing_signatory() {
         ));
 
         let call = RuntimeCall::Multisig(MultisigCall::add_signatory { new_member: 4 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         let hash = blake2_256(&data);
         assert_ok!(Multisig::approve_as_multi(
@@ -763,12 +993,24 @@ fn multisig_3_of_4_works_after_removing_signatory() {
             call_weight
         ));
 
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(4), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(4),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         let hash = blake2_256(&data);
         assert_ok!(Multisig::approve_as_multi(
@@ -808,7 +1050,8 @@ fn cancel_multisig_works() {
             vec![1, 2, 3],
         ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 }).encode();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 })
+            .encode();
         let hash = blake2_256(&call);
         assert_ok!(Multisig::approve_as_multi(
             RuntimeOrigin::signed(1),
@@ -846,7 +1089,8 @@ fn cancel_multisig_with_call_storage_works() {
             vec![1, 2, 3],
         ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 }).encode();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 })
+            .encode();
         let hash = blake2_256(&call);
         assert_ok!(Multisig::as_multi(
             RuntimeOrigin::signed(1),
@@ -887,7 +1131,8 @@ fn cancel_multisig_with_alt_call_storage_works() {
             vec![1, 2, 3],
         ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 }).encode();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 })
+            .encode();
         let hash = blake2_256(&call);
         assert_ok!(Multisig::approve_as_multi(
             RuntimeOrigin::signed(1),
@@ -926,12 +1171,24 @@ fn multisig_2_of_2_as_multi_works() {
             vec![1, 2],
         ));
 
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         assert_ok!(Multisig::as_multi(
             RuntimeOrigin::signed(1),
@@ -964,15 +1221,28 @@ fn multisig_2_of_2_as_multi_with_many_calls_works() {
             vec![1, 2],
         ));
 
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call1 = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 10 });
-        let call1_weight = call1.get_dispatch_info().weight;
+        let call1 =
+            RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 10 });
+        let call1_weight = call1.get_dispatch_info().total_weight();
         let data1 = call1.encode();
-        let call2 = RuntimeCall::Balances(BalancesCall::transfer { dest: 7, value: 5 });
-        let call2_weight = call2.get_dispatch_info().weight;
+        let call2 = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 7, value: 5 });
+        let call2_weight = call2.get_dispatch_info().total_weight();
         let data2 = call2.encode();
 
         assert_ok!(Multisig::as_multi(
@@ -1022,12 +1292,24 @@ fn multisig_3_of_4_cannot_reissue_same_call() {
             vec![1, 2, 3, 4],
         ));
 
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 10 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 10 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         assert_ok!(Multisig::as_multi(
             RuntimeOrigin::signed(1),
@@ -1091,7 +1373,8 @@ fn duplicate_approvals_are_ignored() {
             vec![1, 2, 3],
         ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 }).encode();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 })
+            .encode();
         let hash = blake2_256(&call);
         assert_ok!(Multisig::approve_as_multi(
             RuntimeOrigin::signed(1),
@@ -1171,11 +1454,23 @@ fn weight_check_works() {
             vec![1, 2],
         ));
 
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
         let data = call.encode();
         assert_ok!(Multisig::as_multi(
             RuntimeOrigin::signed(1),
@@ -1215,12 +1510,24 @@ fn multisig_handles_no_preimage_after_all_approve() {
             vec![1, 2, 3],
         ));
 
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(1), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(2), multi, 5));
-        assert_ok!(Balances::transfer(RuntimeOrigin::signed(3), multi, 5));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(2),
+            multi,
+            5
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(3),
+            multi,
+            5
+        ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
-        let call_weight = call.get_dispatch_info().weight;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let call_weight = call.get_dispatch_info().total_weight();
         let data = call.encode();
         let hash = blake2_256(&data);
         assert_ok!(Multisig::approve_as_multi(
@@ -1267,7 +1574,8 @@ fn executes_call_on_peer_remove() {
             vec![1, 2, 3],
         ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 }).encode();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 })
+            .encode();
         let hash = blake2_256(&call);
         let timepoint = now();
         assert_ok!(Multisig::as_multi(
@@ -1306,8 +1614,9 @@ fn executes_call_on_peer_remove_with_post_call_provision() {
             vec![1, 2, 3],
         ));
 
-        let call1 = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 });
-        let call_weight = call1.get_dispatch_info().weight;
+        let call1 =
+            RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let call_weight = call1.get_dispatch_info().total_weight();
         let call = call1.encode();
         let hash = blake2_256(&call);
         let timepoint = now();
@@ -1356,7 +1665,8 @@ fn does_not_execute_call_on_peer_remove() {
             vec![1, 2, 3, 4],
         ));
 
-        let call = RuntimeCall::Balances(BalancesCall::transfer { dest: 6, value: 15 }).encode();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 })
+            .encode();
         let hash = blake2_256(&call);
         let timepoint = now();
         assert_ok!(Multisig::as_multi(
@@ -1383,5 +1693,57 @@ fn does_not_execute_call_on_peer_remove() {
             hash, timepoint
         ));
         assert!(crate::Multisigs::<Test>::contains_key(multi, hash));
+    });
+}
+
+#[test]
+fn genesis_multisig_uses_sidechain_timepoints_as_distinct_replay_keys() {
+    use frame_support::traits::BuildGenesisConfig;
+    new_test_ext().execute_with(|| {
+        crate::GenesisConfig::<Test> {
+            accounts: vec![(77, MultisigAccount::new(vec![1]))],
+        }
+        .build();
+        assert_eq!(Accounts::<Test>::get(77).unwrap().signatories, vec![1]);
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            77,
+            3
+        ));
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let first = Multisig::sidechain_timepoint(9, 1);
+        let second = Multisig::sidechain_timepoint(9, 2);
+        assert_ne!(first, second);
+        assert_ne!(
+            MultiChainHeight::<u64>::default(),
+            MultiChainHeight::Sidechain(0)
+        );
+        assert_ok!(Multisig::as_multi_threshold_1(
+            RuntimeOrigin::signed(1),
+            77,
+            Box::new(call.clone()),
+            first
+        ));
+        assert_eq!(Balances::free_balance(6), 1);
+        assert_err!(
+            Multisig::as_multi_threshold_1(
+                RuntimeOrigin::signed(1),
+                77,
+                Box::new(call.clone()),
+                first
+            ),
+            DispatchErrorWithPostInfo {
+                error: Error::<Test>::AlreadyDispatched.into(),
+                post_info: Pays::No.into()
+            }
+        );
+        assert_eq!(Balances::free_balance(6), 1);
+        assert_ok!(Multisig::as_multi_threshold_1(
+            RuntimeOrigin::signed(1),
+            77,
+            Box::new(call),
+            second
+        ));
+        assert_eq!(Balances::free_balance(6), 2);
     });
 }

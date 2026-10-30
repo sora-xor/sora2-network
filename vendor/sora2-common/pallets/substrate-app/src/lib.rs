@@ -273,6 +273,13 @@ pub mod pallet {
     pub type DeferredTransferResults<T: Config> =
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, H256, MessageStatus, OptionQuery>;
 
+    /// Local governance binds the remote identifier and asset kind before a
+    /// counterparty acknowledgement can activate an asset.
+    #[pallet::storage]
+    pub type PendingAssetRegistrations<T: Config> = StorageDoubleMap<
+        _, Identity, SubNetworkId, Identity, AssetIdOf<T>, (GenericAssetId, AssetKind), OptionQuery,
+    >;
+
     #[pallet::error]
     pub enum Error<T> {
         TokenIsNotRegistered,
@@ -289,6 +296,8 @@ pub mod pallet {
         RecoveryHalted,
         /// An existing delivery result cannot be overwritten or replayed.
         DeferredResultExists,
+        AssetRegistrationNotAuthorized,
+        AssetRegistrationMismatch,
     }
 
     #[pallet::call]
@@ -313,6 +322,7 @@ pub mod pallet {
         /// Only the relayer can call this function
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        #[frame_support::transactional]
         pub fn finalize_asset_registration(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -325,10 +335,27 @@ pub mod pallet {
                 Error::<T>::RecoveryHalted
             );
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
+            if let Some(existing_kind) = AssetKinds::<T>::get(network_id, &asset_id) {
+                // Repeated acknowledgements may not redefine custody as minting.
+                ensure!(existing_kind == asset_kind
+                    && SidechainAssetId::<T>::get(network_id, &asset_id) == Some(sidechain_asset_id)
+                    && SidechainPrecision::<T>::get(network_id, &asset_id) == Some(sidechain_precision),
+                    Error::<T>::AssetRegistrationMismatch);
+                return Ok(());
+            }
+            ensure!(
+                PendingAssetRegistrations::<T>::get(network_id, &asset_id)
+                    == Some((sidechain_asset_id, asset_kind)),
+                Error::<T>::AssetRegistrationNotAuthorized
+            );
+            ensure!(ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
+                .map_or(true, |registered| registered == asset_id),
+                Error::<T>::AssetRegistrationMismatch);
             SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
             AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
             ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id.clone());
             SidechainAssetId::<T>::insert(network_id, asset_id.clone(), sidechain_asset_id);
+            PendingAssetRegistrations::<T>::remove(network_id, &asset_id);
             Self::deposit_event(Event::<T>::AssetRegistrationFinalized(asset_id));
             Ok(())
         }
@@ -339,6 +366,7 @@ pub mod pallet {
         /// Sends the message to sidechain to finalize asset registration
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::incoming_thischain_asset_registration())]
+        #[frame_support::transactional]
         pub fn incoming_thischain_asset_registration(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -351,6 +379,17 @@ pub mod pallet {
                 Error::<T>::TokenIsNotRegistered
             );
             let asset_kind = AssetKind::Thischain;
+
+            ensure!(
+                PendingAssetRegistrations::<T>::get(network_id, &asset_id)
+                    == Some((sidechain_asset_id, asset_kind)),
+                Error::<T>::AssetRegistrationNotAuthorized
+            );
+            ensure!(!AssetKinds::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenAlreadyRegistered);
+            ensure!(ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
+                .map_or(true, |registered| registered == asset_id),
+                Error::<T>::AssetRegistrationMismatch);
 
             let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
 
@@ -373,6 +412,7 @@ pub mod pallet {
                 .prepare_message(),
                 (),
             )?;
+            PendingAssetRegistrations::<T>::remove(network_id, &asset_id);
             Self::deposit_event(Event::<T>::AssetRegistrationProceed(asset_id));
             Ok(())
         }
@@ -400,6 +440,7 @@ pub mod pallet {
         /// Sends the message to sidechain to register asset
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset())]
+        #[frame_support::transactional]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -425,12 +466,17 @@ pub mod pallet {
                 network_id,
                 &RawOrigin::Root,
                 &bridge_types::substrate::SubstrateAppCall::RegisterAsset {
-                    asset_id: T::AssetIdConverter::convert(asset_id),
+                    asset_id: T::AssetIdConverter::convert(asset_id.clone()),
                     sidechain_asset,
                 }
                 .prepare_message(),
                 (),
             )?;
+            PendingAssetRegistrations::<T>::insert(
+                network_id, &asset_id, (sidechain_asset, AssetKind::Sidechain),
+            );
+            // Reserve the remote identifier while the acknowledgement is pending.
+            ThischainAssetId::<T>::insert(network_id, sidechain_asset, asset_id);
             Ok(())
         }
 
@@ -457,6 +503,36 @@ pub mod pallet {
                 message_status,
                 timepoint,
             );
+            Ok(())
+        }
+
+        /// Authorize an incoming native-asset registration, or reconstruct a
+        /// reviewed pre-upgrade pending registration. No token rights change here.
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        #[frame_support::transactional]
+        pub fn authorize_asset_registration(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            sidechain_asset_id: GenericAssetId,
+            asset_kind: AssetKind,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(T::AssetRegistry::ensure_asset_exists(asset_id.clone()),
+                Error::<T>::TokenIsNotRegistered);
+            ensure!(!AssetKinds::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenAlreadyRegistered);
+            ensure!(PendingAssetRegistrations::<T>::get(network_id, &asset_id)
+                .map_or(true, |pending| pending == (sidechain_asset_id, asset_kind)),
+                Error::<T>::AssetRegistrationMismatch);
+            ensure!(ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
+                .map_or(true, |registered| registered == asset_id),
+                Error::<T>::AssetRegistrationMismatch);
+            PendingAssetRegistrations::<T>::insert(
+                network_id, &asset_id, (sidechain_asset_id, asset_kind),
+            );
+            ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id);
             Ok(())
         }
     }
@@ -753,3 +829,9 @@ impl<T: Config> BridgeApp<T::AccountId, GenericAccount, AssetIdOf<T>, BalanceOf<
         <T as Config>::WeightInfo::burn()
     }
 }
+
+#[cfg(test)]
+mod security_tests;
+
+#[cfg(test)]
+mod registration_tests;

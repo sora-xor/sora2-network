@@ -1,12 +1,12 @@
 {
   "package": "wasmtime-internal-cache",
-  "version": "36.0.19",
-  "crate_archive_sha256": "4108e1964b3a02b4b5604ea1a2918a0cbcab512e5de0ccf4c062fc6c06b2eb8e",
-  "upstream_commit": "0d6b8ead4e94b0ce76f925611b831b56570aef94",
+  "version": "36.0.20",
+  "crate_archive_sha256": "65f09c789d1bb2e7ab1618ac8336d783c1ff0babc38430c7f1940d01c546722b",
+  "upstream_commit": "b265f78b1e92e12240ec7bdc21c7a559d2df968e",
   "source_path": "crates/cache",
   "upstream_files": {
     "Cargo.toml": {
-      "sha256": "2ea27cf388c4f04b491f5ed51624586fd4f4f838b96bf27c09170690dde5d746",
+      "sha256": "975f7e47cb02f81cc5dad6e48866cc77d5495c0916ab64ab4e235b9bfc995688",
       "bytes": 2909
     },
     "Cargo.toml.orig": {
@@ -71,5 +71,14 @@
         "bytes": 32582
       }
     }
+  },
+  "upgrade": {
+    "from": "36.0.19",
+    "security_advisory": "RUSTSEC-2026-0424 / GHSA-6fr9-xmw9-5352",
+    "upstream_rust_source_unchanged": true,
+    "retained_local_changes": [
+      "zstd 0.14.3 security floor",
+      "usize::MAX spelling compatibility"
+    ]
   }
 }

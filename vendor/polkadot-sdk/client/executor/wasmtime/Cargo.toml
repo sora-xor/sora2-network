@@ -162,7 +162,7 @@
 "path" = "../../../primitives/wasm-interface"
 
 ["dependencies"."wasmtime"]
-"version" = "36.0.19"
+"version" = "36.0.20"
 "default-features" = false
 "features" = ["addr2line", "cache", "cranelift", "demangle", "gc", "gc-null", "parallel-compilation", "pooling-allocator", "profiling", "threads"]
 

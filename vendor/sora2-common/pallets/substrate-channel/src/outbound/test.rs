@@ -39,6 +39,38 @@ use sp_keyring::sr25519::Keyring;
 use sp_runtime::{AccountId32, BoundedVec, DispatchError};
 
 #[test]
+fn response_reservation_rejects_quarantined_future_slots_and_nonce_exhaustion() {
+    new_tester().execute_with(|| {
+        let network = BASE_NETWORK_ID;
+        assert!(BridgeOutboundChannel::can_queue_messages(network, 2));
+        let id = bridge_types::types::MessageId::batched(
+            ThisNetworkId::get(), network.into(), 1, 1,
+        ).hash();
+        let key = bridge_types::recovery::message_key(network.into(), id);
+        sp_io::storage::set(&key, &[1]);
+        assert!(BridgeOutboundChannel::can_queue_messages(network, 1));
+        assert!(!BridgeOutboundChannel::can_queue_messages(network, 2));
+        sp_io::storage::clear(&key);
+        let key = bridge_types::recovery::batch_key(1, network.into(), 1);
+        sp_io::storage::set(&key, &[1]);
+        assert!(!BridgeOutboundChannel::can_queue_messages(network, 1));
+        sp_io::storage::clear(&key);
+        ChannelNonces::<Test>::insert(network, u64::MAX);
+        assert!(!BridgeOutboundChannel::can_queue_messages(network, 1));
+    });
+}
+
+#[test]
+fn missing_interval_uses_ten_blocks() {
+    new_tester().execute_with(|| {
+        Interval::<Test>::kill();
+        assert_eq!(BridgeOutboundChannel::interval(), 10);
+        BridgeOutboundChannel::on_initialize(9);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+    });
+}
+
+#[test]
 fn test_submit() {
     new_tester().execute_with(|| {
         let who: AccountId = Keyring::Bob.into();
@@ -259,5 +291,73 @@ fn permanent_batch_quarantine_survives_global_halt_removal() {
         assert_eq!(MessageQueues::<Test>::get(BASE_NETWORK_ID), queue);
         assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
         assert!(LatestCommitment::<Test>::get(BASE_NETWORK_ID).is_none());
+    });
+}
+
+#[test]
+fn policy_weight_reservation_and_commit_hooks_preserve_interval_behavior() {
+    new_tester().execute_with(|| {
+        assert_eq!(
+            BridgeOutboundChannel::on_initialize(1),
+            frame_support::weights::Weight::zero()
+        );
+        let base =
+            <BridgeOutboundChannel as OutboundChannel<SubNetworkId, AccountId, ()>>::submit_weight(
+            );
+        sp_io::storage::set(b":sora-nexus:recovery:policy:v1", &[1]);
+        let policy =
+            <BridgeOutboundChannel as OutboundChannel<SubNetworkId, AccountId, ()>>::submit_weight(
+            );
+        assert!(policy.ref_time() > base.ref_time());
+        assert!(policy.proof_size() > base.proof_size());
+        assert_ok!(BridgeOutboundChannel::submit(
+            BASE_NETWORK_ID,
+            &RawOrigin::Root,
+            &[1, 2],
+            ()
+        ));
+        assert_eq!(
+            BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID).len(),
+            1
+        );
+        BridgeOutboundChannel::on_initialize(1);
+        BridgeOutboundChannel::on_finalize(1);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        BridgeOutboundChannel::on_initialize(10);
+        BridgeOutboundChannel::on_finalize(10);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        BridgeOutboundChannel::on_initialize(20);
+        assert!(BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID).is_empty());
+    });
+}
+
+#[test]
+fn individual_message_quarantine_and_nonce_exhaustion_preserve_the_queue() {
+    new_tester().execute_with(|| {
+        let id =
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID, &RawOrigin::Root, &[1], ()).unwrap();
+        let queue = BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID);
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(BASE_NETWORK_ID.into(), id),
+            &[1],
+        );
+        assert_noop!(
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID, &RawOrigin::Root, &[2], ()),
+            Error::<Test>::RecoveryHalted
+        );
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(
+            BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID),
+            queue
+        );
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        ChannelNonces::<Test>::insert(BASE_NETWORK_ID, u64::MAX);
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(
+            BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID),
+            queue
+        );
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), u64::MAX);
     });
 }

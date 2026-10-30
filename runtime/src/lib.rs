@@ -1865,6 +1865,7 @@ parameter_types! {
 
 impl bridge_multisig::Config for Runtime {
     type CallFilter = BridgeMultisigCallFilter;
+    type OperationFilter = bridge_multisig_filter::BridgeMultisigOperationFilter;
     type RuntimeCall = RuntimeCall;
     type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
@@ -3018,6 +3019,10 @@ impl bridge_proxy::Config for Runtime {
 #[cfg(feature = "wip")] // Trustless substrate bridge
 impl beefy_light_client::Config for Runtime {
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
+    // Remote BEEFY sets have their own explicit limit; do not infer it from
+    // this chain's local staking or authority limits. This pallet remains WIP.
+    type MaxValidators = ConstU32<1024>;
+    type WeightInfo = beefy_light_client::weights::SubstrateWeight<Self>;
 }
 
 impl dispatch::Config<dispatch::Instance2> for Runtime {
@@ -3032,9 +3037,18 @@ impl dispatch::Config<dispatch::Instance2> for Runtime {
     type BenchmarkHelper = SubstrateDispatchBenchmarkHelper;
 }
 
+pub struct SubstrateResponseCapacity;
+
+impl frame_support::traits::Contains<(SubNetworkId, u32)> for SubstrateResponseCapacity {
+    fn contains((network, responses): &(SubNetworkId, u32)) -> bool {
+        SubstrateBridgeOutboundChannel::can_queue_messages(*network, *responses)
+    }
+}
+
 impl substrate_bridge_channel::inbound::Config for Runtime {
     type Verifier = MultiVerifier;
     type MessageDispatch = incident_recovery_incoming::RecoverySubstrateMessageDispatch;
+    type ResponseCapacity = SubstrateResponseCapacity;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
@@ -3076,6 +3090,24 @@ impl Verifier for MultiVerifier {
         message: H256,
         proof: &Self::Proof,
     ) -> frame_support::pallet_prelude::DispatchResult {
+        // TON deposits use locally authorized peer signatures. Enforce the same
+        // domain-separated authorization at verification, including proofs that
+        // were disclosed before the unsigned approval call was rejected.
+        if matches!(network_id, GenericNetworkId::TON(_)) {
+            frame_support::ensure!(
+                matches!(proof, MultiProof::EVMMultisig(_)),
+                multisig_verifier::Error::<Runtime>::InvalidNetworkId
+            );
+            let approved_hash = <Keccak256 as sp_runtime::traits::Hash>::hash_of(&(
+                network_id,
+                ThisNetworkId::get(),
+                message,
+            ));
+            frame_support::ensure!(
+                BridgeDataSigner::pending_approval(network_id, approved_hash),
+                bridge_data_signer::Error::<Runtime>::ApprovalNotPending
+            );
+        }
         match proof {
             #[cfg(feature = "wip")] // Trustless substrate bridge
             MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
@@ -3095,6 +3127,8 @@ impl Verifier for MultiVerifier {
             MultiProof::Multisig(proof) => MultisigVerifier::verify_weight(proof),
             MultiProof::EVMMultisig(proof) => {
                 multisig_verifier::MultiEVMVerifier::<Runtime>::verify_weight(proof)
+                    .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
+                    .saturating_add(Weight::from_parts(0, 3_600))
             }
             #[cfg(feature = "runtime-benchmarks")]
             MultiProof::Empty => Default::default(),
@@ -4301,8 +4335,7 @@ impl_runtime_apis! {
     #[cfg(feature = "wip")] // Trustless substrate bridge
     impl beefy_light_client_runtime_api::BeefyLightClientAPI<Block, beefy_light_client::BitField> for Runtime {
         fn get_random_bitfield(network_id: SubNetworkId, prior: beefy_light_client::BitField, num_of_validators: u32) -> beefy_light_client::BitField {
-            let len = prior.len() as usize;
-            BeefyLightClient::create_random_bit_field(network_id, prior, num_of_validators).unwrap_or(beefy_light_client::BitField::with_capacity(len))
+            BeefyLightClient::create_random_bit_field(network_id, prior, num_of_validators).unwrap_or_else(|_| beefy_light_client::BitField::with_zeroes(0))
         }
     }
 
@@ -4733,6 +4766,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, evm_fungible_app, EVMFungibleApp);
+            #[cfg(feature = "wip")]
+            list_benchmark!(list, extra, beefy_light_client, BeefyLightClient);
             list_benchmark!(list, extra, jetton_app, JettonApp);
 
             list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
@@ -4825,6 +4860,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, evm_fungible_app, EVMFungibleApp);
+            #[cfg(feature = "wip")]
+            add_benchmark!(params, batches, beefy_light_client, BeefyLightClient);
             add_benchmark!(params, batches, jetton_app, JettonApp);
 
             add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
@@ -4911,3 +4948,6 @@ impl_runtime_apis! {
 // Native-only fixture exporter; appended to preserve existing production source positions.
 #[cfg(test)]
 mod incident_recovery_hashi_preview_tests;
+
+#[cfg(test)]
+mod ton_approval_gate_tests;

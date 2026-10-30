@@ -362,6 +362,9 @@ pub mod pallet {
             res
         }
 
+        // Status notifications retain refund errors for retry. Roll back asset
+        // accounting together with the transfer/mint when the app rejects it.
+        #[frame_support::transactional]
         pub fn refund(
             network_id: GenericNetworkId,
             message_id: H256,
@@ -386,6 +389,8 @@ pub mod pallet {
                 T::LiberlandApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::FAApp::is_asset_supported(network_id, asset_id) {
                 T::FAApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else {
+                return Err(Error::<T>::PathIsNotAvailable.into());
             }
             Ok(())
         }
@@ -432,6 +437,14 @@ where
         Transactions::<T>::mutate((network_id, sender), message_id, |req| {
             if let Some(req) = req {
                 if recovery_halted() && req.direction == MessageDirection::Outbound {
+                    return;
+                }
+                // Authenticated reports can arrive in distinct messages for the
+                // same transfer. Settled liabilities must never pay out twice
+                // or regress to a state that makes another refund possible.
+                if req.direction == MessageDirection::Outbound
+                    && matches!(req.status, MessageStatus::Done | MessageStatus::Refunded)
+                {
                     return;
                 }
                 if new_status == MessageStatus::Failed

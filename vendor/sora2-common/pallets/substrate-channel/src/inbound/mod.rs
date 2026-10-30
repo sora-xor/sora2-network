@@ -84,6 +84,10 @@ pub mod pallet {
         /// Max number of messages that can be queued and committed in one go for a given channel.
         type MaxMessagesPerCommit: Get<u32>;
 
+        /// Reserve room for at most one protocol response per incoming message
+        /// before consuming its nonce. The runtime must account for queued output.
+        type ResponseCapacity: frame_support::traits::Contains<(SubNetworkId, u32)>;
+
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
     }
@@ -125,9 +129,27 @@ pub mod pallet {
         CallEncodeFailed,
         /// Bridge execution remains quarantined by the recovery release.
         RecoveryHalted,
+        ResponseQueueFull,
+    }
+
+    #[cfg(test)]
+    mod boundary_tests {
+        include!("boundary_tests.rs");
     }
 
     impl<T: Config> Pallet<T> {
+        // Recheck sequence validity at the mutation boundary after proof verification.
+        fn update_channel_nonce(network_id: SubNetworkId, new_nonce: u64) -> DispatchResult {
+            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+                if nonce.checked_add(1) != Some(new_nonce) {
+                    Err(Error::<T>::InvalidNonce.into())
+                } else {
+                    *nonce = new_nonce;
+                    Ok(())
+                }
+            })
+        }
+
         /// Read-only admission for a peer-authenticated fresh Substrate batch.
         pub fn validate_submission(
             network_id: SubNetworkId,
@@ -148,6 +170,12 @@ pub mod pallet {
                 ChannelNonces::<T>::get(network_id).checked_add(1) == Some(batch.nonce),
                 Error::<T>::InvalidNonce
             );
+            // Recovery journals replies without sending them. In ordinary mode,
+            // reject a congested batch before dispatch so it remains retryable.
+            if !crate::recovery::halted() {
+                ensure!(<T::ResponseCapacity as frame_support::traits::Contains<_>>::contains(
+                    &(network_id, batch.messages.len() as u32)), Error::<T>::ResponseQueueFull);
+            }
             for index in 0..batch.messages.len() {
                 ensure!(
                     !bridge_types::recovery::message_quarantined(
@@ -188,6 +216,10 @@ pub mod pallet {
             let proof_weight = T::Verifier::verify_weight(proof);
 
             <T as Config>::WeightInfo::submit()
+                .saturating_add(T::DbWeight::get().reads(3 + 2 * T::MaxMessagesPerCommit::get() as u64))
+                .saturating_add(Weight::from_parts(0,
+                    8192u64.saturating_add((T::MaxMessagesPerCommit::get() as u64)
+                        .saturating_mul(T::MaxMessagePayloadSize::get() as u64 + 8192))))
                 .saturating_add(commitment_weight)
                 .saturating_add(proof_weight)
                 // Signed admission may verify in validation, preparation and dispatch.
@@ -219,14 +251,7 @@ pub mod pallet {
                 frame_support::fail!(Error::<T>::InvalidCommitment);
             };
             // Verify batch nonce
-            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
-                if nonce.checked_add(1) != Some(sub_commitment.nonce) {
-                    Err(Error::<T>::InvalidNonce.into())
-                } else {
-                    *nonce = sub_commitment.nonce;
-                    Ok(())
-                }
-            })?;
+            Self::update_channel_nonce(network_id, sub_commitment.nonce)?;
 
             let mut outcome = if sub_commitment.messages.is_empty() {
                 MessageDispatchOutcome::Failed

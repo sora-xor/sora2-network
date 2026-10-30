@@ -217,20 +217,134 @@ impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider
     }
 }
 
+/// Records the exact arguments delegated to non-EVM app routes. Real EVM
+/// custody and fee behavior continues to use `FungibleApp` in this runtime.
+pub struct RoutedApp<const ROUTE: u8>;
+
+impl<const ROUTE: u8> RoutedApp<ROUTE> {
+    pub fn network() -> GenericNetworkId {
+        match ROUTE {
+            0 => GenericNetworkId::EVMLegacy(42),
+            1 => GenericNetworkId::Sub(bridge_types::SubNetworkId::Kusama),
+            _ => GenericNetworkId::Sub(bridge_types::SubNetworkId::Liberland),
+        }
+    }
+}
+
+impl<Recipient: codec::Encode, const ROUTE: u8>
+    bridge_types::traits::BridgeApp<AccountId, Recipient, AssetId, Balance> for RoutedApp<ROUTE>
+{
+    fn is_asset_supported(network: GenericNetworkId, asset: AssetId) -> bool {
+        network == Self::network() && asset == XOR
+    }
+
+    fn transfer(
+        network: GenericNetworkId,
+        asset: AssetId,
+        sender: AccountId,
+        recipient: Recipient,
+        amount: Balance,
+    ) -> Result<H256, sp_runtime::DispatchError> {
+        use codec::Encode;
+        if !<Self as bridge_types::traits::BridgeApp<AccountId, Recipient, AssetId, Balance>>::is_asset_supported(network, asset) {
+            return Err(sp_runtime::DispatchError::Unavailable);
+        }
+        sp_io::storage::set(
+            b"proxy-test:transfer",
+            &(ROUTE, network, asset, sender, recipient, amount).encode(),
+        );
+        Ok(H256::repeat_byte(ROUTE))
+    }
+
+    fn refund(
+        network: GenericNetworkId,
+        message: H256,
+        recipient: AccountId,
+        asset: AssetId,
+        amount: Balance,
+    ) -> DispatchResult {
+        use codec::Encode;
+        sp_io::storage::set(
+            b"proxy-test:refund",
+            &(ROUTE, network, message, recipient, asset, amount).encode(),
+        );
+        Ok(())
+    }
+
+    fn list_supported_assets(
+        network: GenericNetworkId,
+    ) -> Vec<bridge_types::types::BridgeAssetInfo> {
+        if network == Self::network() {
+            vec![bridge_types::types::BridgeAssetInfo::Liberland]
+        } else {
+            vec![]
+        }
+    }
+
+    fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+        vec![bridge_types::types::BridgeAppInfo::Sub(Self::network())]
+    }
+
+    fn transfer_weight() -> frame_support::weights::Weight {
+        frame_support::weights::Weight::from_parts(100 + ROUTE as u64, 10)
+    }
+
+    fn refund_weight() -> frame_support::weights::Weight {
+        frame_support::weights::Weight::from_parts(50, 5)
+    }
+
+    fn is_asset_supported_weight() -> frame_support::weights::Weight {
+        frame_support::weights::Weight::from_parts(10, 1)
+    }
+}
+
 impl proxy::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type ManagerOrigin = frame_system::EnsureRoot<AccountId>;
     type AccountIdConverter = sp_runtime::traits::Identity;
     type FAApp = FungibleApp;
-    type HashiBridge = ();
-    type LiberlandApp = ();
-    type ParachainApp = ();
+    type HashiBridge = RoutedApp<0>;
+    type LiberlandApp = RoutedApp<2>;
+    type ParachainApp = RoutedApp<1>;
     type ReferencePriceProvider = ReferencePriceProvider;
     type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
 
+thread_local! {
+    static BRIDGE_LOGS: std::cell::RefCell<Vec<String>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+struct BridgeTestLogger;
+
+impl frame_support::__private::log::Log for BridgeTestLogger {
+    fn enabled(&self, metadata: &frame_support::__private::log::Metadata) -> bool {
+        metadata.target().starts_with("bridge_proxy")
+    }
+
+    fn log(&self, record: &frame_support::__private::log::Record) {
+        if self.enabled(record.metadata()) {
+            BRIDGE_LOGS.with(|messages| messages.borrow_mut().push(format!("{}", record.args())));
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+pub fn bridge_logs() -> Vec<String> {
+    BRIDGE_LOGS.with(|messages| messages.borrow().clone())
+}
+
 pub fn new_tester() -> sp_io::TestExternalities {
+    static LOGGER: BridgeTestLogger = BridgeTestLogger;
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        frame_support::__private::log::set_logger(&LOGGER).expect("install bridge test logger");
+        frame_support::__private::log::set_max_level(
+            frame_support::__private::log::LevelFilter::Trace,
+        );
+    });
+    BRIDGE_LOGS.with(|messages| messages.borrow_mut().clear());
     let mut storage = frame_system::GenesisConfig::<Test>::default()
         .build_storage()
         .unwrap();

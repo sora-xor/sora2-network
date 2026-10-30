@@ -45,6 +45,437 @@ use frame_support::assert_ok;
 use sp_keyring::Sr25519Keyring as Keyring;
 use traits::MultiCurrency;
 
+fn relayer_signature(who: &AccountId, network: EVMChainId) -> (H160, sp_core::ecdsa::Signature) {
+    use sp_core::Pair;
+    let pair = sp_core::ecdsa::Pair::from_seed(&[7; 32]);
+    let message = FungibleApp::get_claim_prehashed_message(network, who);
+    let signature = pair.sign_prehashed(&message.0);
+    let public = sp_io::crypto::secp256k1_ecdsa_recover(&signature.0, &message.0)
+        .ok()
+        .unwrap();
+    (
+        H160::from_slice(&sp_io::hashing::keccak_256(&public)[12..]),
+        signature,
+    )
+}
+
+#[test]
+fn base_fee_updates_require_newer_evm_blocks_and_expire_at_lifetime_boundary() {
+    use bridge_types::traits::EVMFeeHandler;
+    new_tester().execute_with(|| {
+        assert_noop!(
+            FungibleApp::get_latest_base_fee(BASE_NETWORK_ID),
+            Error::<Test>::BaseFeeIsNotAvailable
+        );
+        assert!(FungibleApp::can_update_base_fee(
+            BASE_NETWORK_ID,
+            10u64.into(),
+            100
+        ));
+        FungibleApp::update_base_fee(BASE_NETWORK_ID, 10u64.into(), 100);
+        assert_eq!(
+            FungibleApp::get_latest_base_fee(BASE_NETWORK_ID),
+            Ok(10u64.into())
+        );
+        assert!(!FungibleApp::can_update_base_fee(
+            BASE_NETWORK_ID,
+            20u64.into(),
+            100
+        ));
+        FungibleApp::update_base_fee(BASE_NETWORK_ID, 20u64.into(), 99);
+        assert_eq!(
+            FungibleApp::get_latest_base_fee(BASE_NETWORK_ID),
+            Ok(10u64.into())
+        );
+        System::set_block_number(101);
+        assert_eq!(
+            FungibleApp::get_latest_base_fee(BASE_NETWORK_ID),
+            Ok(10u64.into())
+        );
+        System::set_block_number(102);
+        assert_noop!(
+            FungibleApp::get_latest_base_fee(BASE_NETWORK_ID),
+            Error::<Test>::BaseFeeLifetimeExceeded
+        );
+        FungibleApp::update_base_fee(BASE_NETWORK_ID, 30u64.into(), 101);
+        assert_eq!(
+            FungibleApp::get_latest_base_fee(BASE_NETWORK_ID),
+            Ok(30u64.into())
+        );
+        let info = crate::BaseFees::<Test>::get(BASE_NETWORK_ID).unwrap();
+        assert_eq!(info.updated, 102);
+        assert_eq!(info.evm_block_number, 101);
+    });
+}
+
+#[test]
+fn transfer_fees_are_collected_and_signed_claims_pay_only_available_liability() {
+    use crate::mock::Currencies;
+    use bridge_types::traits::{EVMBridgeWithdrawFee, EVMFeeHandler};
+    new_tester().execute_with(|| {
+        let owner: AccountId = Keyring::Bob.into();
+        assert_noop!(
+            FungibleApp::get_network_fee_asset(BASE_NETWORK_ID),
+            Error::<Test>::AppIsNotRegistered
+        );
+        assert_ok!(FungibleApp::register_asset_inner(
+            BASE_NETWORK_ID,
+            ETH,
+            H160::zero(),
+            AssetKind::Sidechain,
+            18
+        ));
+        assert_eq!(FungibleApp::get_network_fee_asset(BASE_NETWORK_ID), Ok(ETH));
+        let initial = 10_000_000_000_000_000u128;
+        assert_ok!(Tokens::deposit(ETH, &owner, initial));
+        FungibleApp::update_base_fee(BASE_NETWORK_ID, 10u64.into(), 1);
+        assert_ok!(FungibleApp::withdraw_transfer_fee(
+            &owner,
+            BASE_NETWORK_ID,
+            XOR
+        ));
+        let charged = (u128::from(crate::TRANSFER_MAX_GAS) + 1) * (5_000_000_000u128 + 10);
+        assert_eq!(FungibleApp::collected_fees(BASE_NETWORK_ID), charged.into());
+        assert_eq!(Currencies::total_balance(ETH, &owner), initial - charged);
+        let (relayer, signature) = relayer_signature(&owner, BASE_NETWORK_ID);
+        FungibleApp::on_fee_paid(BASE_NETWORK_ID, relayer, (charged + 5).into());
+        assert_ok!(FungibleApp::claim_relayer_fees(
+            RuntimeOrigin::signed(owner.clone()),
+            BASE_NETWORK_ID,
+            relayer,
+            signature
+        ));
+        assert_eq!(Currencies::total_balance(ETH, &owner), initial);
+        assert_eq!(FungibleApp::collected_fees(BASE_NETWORK_ID), 0u64.into());
+        assert_eq!(
+            FungibleApp::spent_fees(BASE_NETWORK_ID, relayer),
+            5u64.into()
+        );
+        assert_noop!(
+            FungibleApp::claim_relayer_fees(
+                RuntimeOrigin::signed(owner),
+                BASE_NETWORK_ID,
+                relayer,
+                signature
+            ),
+            Error::<Test>::NotEnoughFeesCollected
+        );
+    });
+}
+
+#[test]
+fn relayer_claims_bind_account_nonce_network_and_address_and_reject_empty_claims() {
+    new_tester().execute_with(|| {
+        let owner: AccountId = Keyring::Alice.into();
+        let (relayer, signature) = relayer_signature(&owner, BASE_NETWORK_ID);
+        assert_ok!(FungibleApp::ensure_can_claim_relayer_fees(
+            &owner,
+            BASE_NETWORK_ID,
+            relayer,
+            signature
+        ));
+        assert_noop!(
+            FungibleApp::ensure_can_claim_relayer_fees(
+                &owner,
+                BASE_NETWORK_ID,
+                H160::zero(),
+                signature
+            ),
+            Error::<Test>::InvalidSignature
+        );
+        assert_noop!(
+            FungibleApp::ensure_can_claim_relayer_fees(
+                &Keyring::Bob.into(),
+                BASE_NETWORK_ID,
+                relayer,
+                signature
+            ),
+            Error::<Test>::InvalidSignature
+        );
+        assert_noop!(
+            FungibleApp::ensure_can_claim_relayer_fees(
+                &owner,
+                H256::repeat_byte(42),
+                relayer,
+                signature
+            ),
+            Error::<Test>::InvalidSignature
+        );
+        assert_noop!(
+            FungibleApp::ensure_can_claim_relayer_fees(
+                &owner,
+                BASE_NETWORK_ID,
+                relayer,
+                sp_core::ecdsa::Signature::from_raw([0; 65])
+            ),
+            Error::<Test>::InvalidSignature
+        );
+        assert_noop!(
+            FungibleApp::claim_relayer_fees(
+                RuntimeOrigin::signed(owner.clone()),
+                BASE_NETWORK_ID,
+                relayer,
+                signature
+            ),
+            Error::<Test>::NothingToClaim
+        );
+        System::inc_account_nonce(&owner);
+        assert_noop!(
+            FungibleApp::ensure_can_claim_relayer_fees(&owner, BASE_NETWORK_ID, relayer, signature),
+            Error::<Test>::InvalidSignature
+        );
+    });
+}
+
+#[test]
+fn app_trait_routes_preserve_refunds_and_reject_invalid_networks() {
+    new_tester().execute_with(|| {
+        let owner: AccountId = Keyring::Bob.into();
+        assert_ok!(Tokens::deposit(XOR, &owner, 10));
+        let invalid = GenericNetworkId::EVMLegacy(0);
+        assert!(!FungibleApp::is_asset_supported(invalid, XOR));
+        assert!(FungibleApp::list_supported_assets(invalid).is_empty());
+        assert_eq!(FungibleApp::list_apps().len(), 1);
+        assert_noop!(
+            FungibleApp::transfer(invalid, XOR, owner.clone(), H160::zero(), 10),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_noop!(
+            FungibleApp::refund(invalid, H256::zero(), owner.clone(), XOR, 10),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_noop!(
+            FungibleApp::refund_inner(BASE_NETWORK_ID, owner.clone(), XOR, 0),
+            Error::<Test>::WrongAmount
+        );
+        assert_noop!(
+            FungibleApp::refund_inner(BASE_NETWORK_ID, owner.clone(), H256::repeat_byte(55), 10),
+            Error::<Test>::TokenIsNotRegistered
+        );
+        assert_ok!(FungibleApp::transfer(
+            BASE_NETWORK_ID.into(),
+            XOR,
+            owner.clone(),
+            H160::zero(),
+            10
+        ));
+        assert_ok!(FungibleApp::refund(
+            BASE_NETWORK_ID.into(),
+            H256::zero(),
+            owner.clone(),
+            XOR,
+            10
+        ));
+        let id = H256::repeat_byte(8);
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(BASE_NETWORK_ID.into(), id),
+            &[1],
+        );
+        assert_noop!(
+            FungibleApp::refund(BASE_NETWORK_ID.into(), id, owner, XOR, 10),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_eq!(
+            FungibleApp::is_asset_supported_weight(),
+            frame_support::weights::Weight::zero()
+        );
+        assert_eq!(
+            FungibleApp::refund_weight(),
+            frame_support::weights::Weight::zero()
+        );
+        assert_eq!(
+            FungibleApp::transfer_weight(),
+            <() as crate::WeightInfo>::burn()
+        );
+    });
+}
+
+#[test]
+fn bridge_call_conversion_preserves_uint256_and_registration_fields() {
+    use bridge_types::substrate::FAAppCall;
+    let call: crate::Call<Test> = FAAppCall::Transfer {
+        sender: H160::repeat_byte(4),
+        recipient: Keyring::Alice.into(),
+        amount: H256::repeat_byte(5),
+        token: H160::repeat_byte(6),
+    }
+    .into();
+    assert_eq!(
+        call,
+        crate::Call::<Test>::mint {
+            sender: H160::repeat_byte(4),
+            recipient: Keyring::Alice.into(),
+            amount: bridge_types::U256::from_big_endian(&[5; 32]),
+            token: H160::repeat_byte(6)
+        }
+    );
+    let call: crate::Call<Test> = FAAppCall::FinalizeAssetRegistration {
+        asset_id: XOR,
+        token: H160::repeat_byte(7),
+    }
+    .into();
+    assert_eq!(
+        call,
+        crate::Call::<Test>::register_asset_internal {
+            asset_id: XOR,
+            contract: H160::repeat_byte(7)
+        }
+    );
+}
+
+#[test]
+fn existing_sidechain_asset_registration_records_both_directions_and_rejects_duplicates() {
+    new_tester().execute_with(|| {
+        let address = H160::repeat_byte(8);
+        assert_ok!(FungibleApp::register_existing_sidechain_asset(
+            RuntimeOrigin::root(),
+            BASE_NETWORK_ID,
+            address,
+            ETH,
+            12,
+        ));
+        assert_eq!(
+            FungibleApp::asset_by_address(BASE_NETWORK_ID, address),
+            Some(ETH)
+        );
+        assert_eq!(
+            FungibleApp::token_address(BASE_NETWORK_ID, ETH),
+            Some(address)
+        );
+        assert_eq!(
+            FungibleApp::asset_kind(BASE_NETWORK_ID, ETH),
+            Some(AssetKind::Sidechain)
+        );
+        assert_eq!(
+            FungibleApp::sidechain_precision(BASE_NETWORK_ID, ETH),
+            Some(12)
+        );
+        assert_noop!(
+            FungibleApp::register_existing_sidechain_asset(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                address,
+                ETH,
+                12,
+            ),
+            Error::<Test>::TokenAlreadyRegistered
+        );
+        assert_noop!(
+            FungibleApp::register_sidechain_asset(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                address,
+                b"ETH".to_vec(),
+                b"Ether".to_vec(),
+                12,
+            ),
+            Error::<Test>::TokenAlreadyRegistered
+        );
+        assert_noop!(
+            FungibleApp::register_asset_inner(
+                BASE_NETWORK_ID,
+                ETH,
+                H160::repeat_byte(9),
+                AssetKind::Sidechain,
+                12,
+            ),
+            Error::<Test>::TokenAlreadyRegistered
+        );
+        assert_noop!(
+            FungibleApp::register_thischain_asset(RuntimeOrigin::root(), BASE_NETWORK_ID, ETH),
+            Error::<Test>::TokenAlreadyRegistered
+        );
+        assert_noop!(
+            FungibleApp::register_network_with_existing_asset(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                address,
+                ETH,
+                12
+            ),
+            Error::<Test>::AppAlreadyRegistered
+        );
+        assert_noop!(
+            FungibleApp::register_network(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                address,
+                b"ETH".to_vec(),
+                b"Ether".to_vec(),
+                12
+            ),
+            Error::<Test>::AppAlreadyRegistered
+        );
+    });
+}
+
+#[test]
+fn recovery_halt_blocks_registration_and_relayer_payouts_before_mutation() {
+    new_tester().execute_with(|| {
+        sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
+        let address = H160::repeat_byte(8);
+        assert_noop!(
+            FungibleApp::register_existing_sidechain_asset(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                address,
+                ETH,
+                12
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            FungibleApp::register_sidechain_asset(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                address,
+                b"ETH".to_vec(),
+                b"Ether".to_vec(),
+                12
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            FungibleApp::register_thischain_asset(RuntimeOrigin::root(), BASE_NETWORK_ID, ETH),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            FungibleApp::register_network_with_existing_asset(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                address,
+                ETH,
+                12
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            FungibleApp::register_network(
+                RuntimeOrigin::root(),
+                BASE_NETWORK_ID,
+                address,
+                b"ETH".to_vec(),
+                b"Ether".to_vec(),
+                12
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            FungibleApp::register_asset_internal(RuntimeOrigin::root(), ETH, address),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            FungibleApp::claim_relayer_fees(
+                RuntimeOrigin::signed(Keyring::Alice.into()),
+                BASE_NETWORK_ID,
+                address,
+                sp_core::ecdsa::Signature::from_raw([0; 65])
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+    });
+}
+
 fn last_event() -> RuntimeEvent {
     System::events().pop().expect("Event expected").event
 }
@@ -493,4 +924,92 @@ fn test_register_network() {
         .unwrap();
         assert!(AppAddresses::<Test>::contains_key(network_id,));
     })
+}
+
+#[test]
+fn inbound_origin_domains_sources_and_quarantines_cannot_credit_assets() {
+    new_tester().execute_with(|| {
+        let origin = |network, additional, message_id| -> RuntimeOrigin {
+            dispatch::RawOrigin::new(CallOriginOutput {
+                network_id: network,
+                additional,
+                message_id,
+                ..Default::default()
+            })
+            .into()
+        };
+        let bad_network = bridge_types::SubNetworkId::Mainnet.into();
+        let evm_data = GenericAdditionalInboundData::EVM(AdditionalEVMInboundData {
+            source: H160::repeat_byte(2),
+        });
+        for (network, additional) in [
+            (bad_network, evm_data.clone()),
+            (BASE_NETWORK_ID.into(), GenericAdditionalInboundData::Sub),
+        ] {
+            assert_noop!(
+                FungibleApp::mint(
+                    origin(network, additional.clone(), H256::zero()),
+                    H160::repeat_byte(3),
+                    H160::zero(),
+                    Keyring::Alice.into(),
+                    1u32.into()
+                ),
+                sp_runtime::DispatchError::BadOrigin
+            );
+            assert_noop!(
+                FungibleApp::register_asset_internal(
+                    origin(network, additional, H256::zero()),
+                    ETH,
+                    H160::repeat_byte(8)
+                ),
+                sp_runtime::DispatchError::BadOrigin
+            );
+        }
+        let bad_source = GenericAdditionalInboundData::EVM(AdditionalEVMInboundData {
+            source: H160::repeat_byte(99),
+        });
+        assert_noop!(
+            FungibleApp::mint(
+                origin(BASE_NETWORK_ID.into(), bad_source.clone(), H256::zero()),
+                H160::repeat_byte(3),
+                H160::zero(),
+                Keyring::Alice.into(),
+                1u32.into()
+            ),
+            sp_runtime::DispatchError::BadOrigin
+        );
+        assert_noop!(
+            FungibleApp::register_asset_internal(
+                origin(BASE_NETWORK_ID.into(), bad_source, H256::zero()),
+                ETH,
+                H160::repeat_byte(8)
+            ),
+            sp_runtime::DispatchError::BadOrigin
+        );
+        let id = H256::repeat_byte(61);
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(BASE_NETWORK_ID.into(), id),
+            &[1],
+        );
+        assert_noop!(
+            FungibleApp::mint(
+                origin(BASE_NETWORK_ID.into(), evm_data, id),
+                H160::repeat_byte(3),
+                H160::zero(),
+                Keyring::Alice.into(),
+                1u32.into()
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            FungibleApp::register_asset_inner(
+                H256::repeat_byte(99),
+                ETH,
+                H160::repeat_byte(8),
+                AssetKind::Sidechain,
+                18
+            ),
+            Error::<Test>::AppIsNotRegistered
+        );
+    });
 }

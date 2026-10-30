@@ -963,6 +963,96 @@ fn ocw_should_not_handle_outgoing_request_twice() {
 }
 
 #[test]
+fn outgoing_approval_rejects_invalid_signature_recovery_id_without_state_changes() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let network = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice),
+            XOR.into(),
+            H160::repeat_byte(9),
+            100,
+            network,
+        ));
+        let (request, hash) = last_outgoing_request(network).unwrap();
+        let (_, account, seed) = &state.networks[&network].ocw_keypairs[0];
+        let (public, signature) = approval_params(&request, hash, seed);
+        let wrong_parity = if signature.v == 27 { 28 } else { 27 };
+
+        for recovery_id in [2, 3, 26, 29, 30, 35, 255, wrong_parity, wrong_parity - 27] {
+            let mut invalid = signature.clone();
+            invalid.v = recovery_id;
+            let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+            assert_err!(
+                EthBridge::validate_outgoing_approval(&public, &hash, &invalid, account, network),
+                Error::InvalidSignature
+            );
+            assert_err!(
+                EthBridge::approve_request(
+                    RuntimeOrigin::signed(account.clone()),
+                    public.clone(),
+                    hash,
+                    invalid,
+                    network,
+                ),
+                Error::InvalidSignature
+            );
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+        }
+    });
+}
+
+#[test]
+fn outgoing_approval_accepts_matching_signature_recovery_id_encodings() {
+    for raw_recovery_id in [false, true] {
+        for high_s in [false, true] {
+            let (mut ext, state) = ExtBuilder::default().build();
+            ext.execute_with(|| {
+                let network = ETH_NETWORK_ID;
+                let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+                Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+                assert_ok!(EthBridge::transfer_to_sidechain(
+                    RuntimeOrigin::signed(alice),
+                    XOR.into(),
+                    H160::repeat_byte(9),
+                    100,
+                    network,
+                ));
+                let (request, hash) = last_outgoing_request(network).unwrap();
+                let (_, account, seed) = &state.networks[&network].ocw_keypairs[0];
+                let (public, mut signature) = approval_params(&request, hash, seed);
+                if high_s {
+                    signature = malleate_signature(&signature);
+                }
+                if raw_recovery_id {
+                    signature.v -= 27;
+                }
+                assert_ok!(EthBridge::validate_outgoing_approval(
+                    &public, &hash, &signature, account, network,
+                ));
+                assert_ok!(EthBridge::approve_request(
+                    RuntimeOrigin::signed(account.clone()),
+                    public,
+                    hash,
+                    signature.clone(),
+                    network,
+                ));
+                assert_eq!(
+                    crate::RequestApprovals::<Runtime>::get(network, hash),
+                    BTreeSet::from([signature.canonical_recovery_id().unwrap()])
+                );
+                assert_eq!(
+                    crate::RequestApprovers::<Runtime>::get(network, hash),
+                    BTreeSet::from([account.clone()])
+                );
+            });
+        }
+    }
+}
+
+#[test]
 fn same_peer_malleated_signature_does_not_advance_quorum() {
     let (mut ext, state) = ExtBuilder::default().build();
 

@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 pub mod channel_abi;
 pub mod evm;
@@ -40,6 +41,9 @@ pub mod ton;
 pub mod traits;
 pub mod types;
 pub mod utils;
+
+#[cfg(test)]
+mod coverage_tests;
 
 use codec::{Decode, Encode};
 use derive_where::derive_where;

@@ -115,7 +115,8 @@ impl Contains<RuntimeCall> for TestBaseCallFilter {
 }
 
 impl Config for Test {
-    type CallFilter = frame_support::traits::Everything;
+    type CallFilter = TestMultisigCallFilter;
+    type OperationFilter = ();
 
     type MaxPendingOperations = frame_support::traits::ConstU32<128>;
     type MaxCallBytes = frame_support::traits::ConstU32<16384>;
@@ -173,6 +174,106 @@ fn expect_event<E: Into<RuntimeEvent>>(e: E) {
 
 fn now() -> BridgeTimepoint<u64> {
     Multisig::thischain_timepoint()
+}
+
+#[test]
+fn registration_and_membership_bounds_reject_without_mutating_accounts() {
+    new_test_ext().execute_with(|| {
+        for members in [vec![2, 1], vec![1, 1]] {
+            assert_noop!(
+                Multisig::register_multisig_inner(1, members),
+                Error::<Test>::SignatoriesAreNotUniqueOrUnordered
+            );
+        }
+        let id = Multisig::register_multisig_inner(1, vec![1, 2, 3, 4]).unwrap();
+        assert_noop!(
+            Multisig::register_multisig_inner(1, vec![1, 2]),
+            Error::<Test>::MultisigAlreadyExists
+        );
+        assert_noop!(
+            Multisig::add_signatory(RuntimeOrigin::signed(id), 5),
+            Error::<Test>::TooManySignatories
+        );
+        assert_noop!(
+            Multisig::remove_signatory(RuntimeOrigin::signed(id), 5),
+            Error::<Test>::NotInSignatories
+        );
+        assert_eq!(
+            Multisig::accounts(id).unwrap().signatories,
+            vec![1, 2, 3, 4]
+        );
+        let single = Multisig::register_multisig_inner(2, vec![2]).unwrap();
+        assert_noop!(
+            Multisig::remove_signatory(RuntimeOrigin::signed(single), 2),
+            Error::<Test>::TooFewSignatories
+        );
+        assert_eq!(Multisig::accounts(single).unwrap().signatories, vec![2]);
+    });
+}
+
+#[test]
+fn nonmembers_and_wrong_threshold_cannot_admit_or_cancel_dispatched_calls() {
+    new_test_ext().execute_with(|| {
+        let id = Multisig::register_multisig_inner(1, vec![1, 2]).unwrap();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let hash = blake2_256(&call.encode());
+        let weight = call.get_dispatch_info().total_weight();
+        assert_noop!(
+            Multisig::as_multi_threshold_1(
+                RuntimeOrigin::signed(1),
+                id,
+                Box::new(call.clone()),
+                now()
+            ),
+            Error::<Test>::TooManySignatories
+        );
+        assert_noop!(
+            Multisig::as_multi(
+                RuntimeOrigin::signed(3),
+                id,
+                None,
+                call.encode(),
+                false,
+                weight
+            ),
+            Error::<Test>::SenderNotInSignatories
+        );
+        assert_noop!(
+            Multisig::approve_as_multi(RuntimeOrigin::signed(3), id, None, hash, weight),
+            Error::<Test>::SenderNotInSignatories
+        );
+        DispatchedCalls::<Test>::insert(hash, now(), ());
+        assert_noop!(
+            Multisig::cancel_as_multi(RuntimeOrigin::signed(1), id, now(), hash),
+            Error::<Test>::AlreadyDispatched
+        );
+        assert!(!Multisigs::<Test>::contains_key(id, hash));
+        assert!(!Calls::<Test>::contains_key(hash));
+    });
+}
+
+#[test]
+fn cancellation_budget_bounds_validation_and_admission_declares_inner_call_weight() {
+    new_test_ext().execute_with(|| {
+        let validation = Multisig::protocol_validation_weight();
+        let cancellation = Multisig::cancellation_weight();
+        assert!(cancellation.all_gte(validation.saturating_mul(3)));
+        assert!(cancellation.ref_time() > 0);
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let inner_weight = call.get_dispatch_info().total_weight();
+        // Weight must remain conservative even for an unknown account that will
+        // fail admission, so invalid transactions cannot bypass metering.
+        let admission = RuntimeCall::Multisig(MultisigCall::as_multi {
+            id: 999,
+            maybe_timepoint: None,
+            call: call.encode(),
+            store_call: false,
+            max_weight: inner_weight,
+        })
+        .get_dispatch_info()
+        .total_weight();
+        assert!(admission.all_gte(inner_weight.saturating_add(validation)));
+    });
 }
 
 #[test]
@@ -1543,13 +1644,9 @@ fn peer_removal_defers_execution_to_a_weighted_approval() {
             true,
             Weight::zero()
         ));
-        assert!(!crate::DispatchedCalls::<Test>::contains_key(
-            hash, timepoint
-        ));
+        assert!(!Multisig::was_dispatched(&multi, &hash, timepoint));
         assert_ok!(Multisig::remove_signatory(RuntimeOrigin::signed(multi), 3));
-        assert!(!crate::DispatchedCalls::<Test>::contains_key(
-            hash, timepoint
-        ));
+        assert!(!Multisig::was_dispatched(&multi, &hash, timepoint));
         let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
         let weight = call.get_dispatch_info().total_weight();
         assert_ok!(Multisig::as_multi(
@@ -1560,9 +1657,7 @@ fn peer_removal_defers_execution_to_a_weighted_approval() {
             true,
             weight
         ));
-        assert!(crate::DispatchedCalls::<Test>::contains_key(
-            hash, timepoint
-        ));
+        assert!(Multisig::was_dispatched(&multi, &hash, timepoint));
         assert!(!crate::Multisigs::<Test>::contains_key(multi, hash));
     });
 }
@@ -1599,9 +1694,7 @@ fn executes_call_on_peer_remove_with_post_call_provision() {
             Weight::zero()
         ));
         assert_ok!(Multisig::remove_signatory(RuntimeOrigin::signed(multi), 3));
-        assert!(!crate::DispatchedCalls::<Test>::contains_key(
-            hash, timepoint
-        ));
+        assert!(!Multisig::was_dispatched(&multi, &hash, timepoint));
         assert!(crate::Multisigs::<Test>::contains_key(multi, hash));
         assert_ok!(Multisig::as_multi(
             RuntimeOrigin::signed(2),
@@ -1611,9 +1704,7 @@ fn executes_call_on_peer_remove_with_post_call_provision() {
             false,
             call_weight
         ));
-        assert!(crate::DispatchedCalls::<Test>::contains_key(
-            hash, timepoint
-        ));
+        assert!(Multisig::was_dispatched(&multi, &hash, timepoint));
         assert!(!crate::Multisigs::<Test>::contains_key(multi, hash));
     });
 }
@@ -1647,13 +1738,9 @@ fn does_not_execute_call_on_peer_remove() {
             true,
             Weight::zero()
         ));
-        assert!(!crate::DispatchedCalls::<Test>::contains_key(
-            hash, timepoint
-        ));
+        assert!(!Multisig::was_dispatched(&multi, &hash, timepoint));
         assert_ok!(Multisig::remove_signatory(RuntimeOrigin::signed(multi), 3));
-        assert!(!crate::DispatchedCalls::<Test>::contains_key(
-            hash, timepoint
-        ));
+        assert!(!Multisig::was_dispatched(&multi, &hash, timepoint));
         assert!(crate::Multisigs::<Test>::contains_key(multi, hash));
     });
 }
@@ -2018,7 +2105,7 @@ fn quorum_cancellation_removes_oversized_legacy_call_and_releases_capacity() {
         assert!(!crate::Multisigs::<Test>::contains_key(multi, hash));
         assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 0);
         assert_eq!(crate::PendingOperationsByProposer::<Test>::get(multi, 1), 0);
-        assert!(!crate::DispatchedCalls::<Test>::contains_key(hash, now()));
+        assert!(!Multisig::was_dispatched(&multi, &hash, now()));
         assert_eq!(Balances::free_balance(6), 0);
     });
 }
@@ -2045,7 +2132,7 @@ fn quorum_cancellation_frees_full_capacity_without_depositor_or_call_bytes() {
         let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 0 });
         let hash = blake2_256(&call.encode());
         // A different account can dispatch the same payload/timepoint, removing
-        // shared call bytes and recording a global marker while our entry stays.
+        // shared call bytes and recording its own marker while our entry stays.
         let foreign = Multisig::multi_account_id(&5, 1, 0);
         assert_ok!(Multisig::register_multisig(
             RuntimeOrigin::signed(5),
@@ -2061,7 +2148,8 @@ fn quorum_cancellation_frees_full_capacity_without_depositor_or_call_bytes() {
                 call.get_dispatch_info().total_weight()
             ));
         }
-        assert!(crate::DispatchedCalls::<Test>::contains_key(hash, now()));
+        assert!(Multisig::was_dispatched(&foreign, &hash, now()));
+        assert!(!Multisig::was_dispatched(&multi, &hash, now()));
         assert!(crate::Multisigs::<Test>::contains_key(multi, hash));
         assert!(!crate::Calls::<Test>::contains_key(hash));
         assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 128);
@@ -2149,7 +2237,8 @@ fn quorum_cancellation_frees_full_capacity_without_depositor_or_call_bytes() {
             multi, hash
         ));
         assert_eq!(Balances::free_balance(6), 0);
-        assert!(crate::DispatchedCalls::<Test>::contains_key(hash, now()));
+        assert!(Multisig::was_dispatched(&foreign, &hash, now()));
+        assert!(!Multisig::was_dispatched(&multi, &hash, now()));
         assert_err!(
             Multisig::approve_cancellation(&4, &multi, now(), &hash, |_| true),
             Error::<Test>::NotFound
@@ -2505,5 +2594,583 @@ fn dispatch_only_decrements_marked_new_operations() {
             call.get_dispatch_info().total_weight()
         ));
         assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 0);
+    });
+}
+
+#[test]
+fn protocol_admission_checks_membership_timepoint_duplicates_and_execution_weight() {
+    new_test_ext().execute_with(|| {
+        let id = Multisig::register_multisig_inner(1, vec![1, 2, 3, 4]).unwrap();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let hash = blake2_256(&call.encode());
+        let weight = call.get_dispatch_info().total_weight();
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &1, &999, None, &hash, &call, false, weight, false
+            ),
+            Error::<Test>::UnknownMultisigAccount
+        );
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &5, &id, None, &hash, &call, false, weight, false
+            ),
+            Error::<Test>::NotInSignatories
+        );
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &id,
+                Some(now()),
+                &hash,
+                &call,
+                false,
+                weight,
+                true
+            ),
+            Error::<Test>::TooManySignatories
+        );
+        assert_ok!(Multisig::validate_protocol_operation(
+            &1,
+            &id,
+            None,
+            &hash,
+            &call,
+            false,
+            Weight::zero(),
+            false
+        ));
+        assert!(!Multisigs::<Test>::contains_key(id, hash));
+        assert_ok!(Multisig::approve_as_multi(
+            RuntimeOrigin::signed(1),
+            id,
+            None,
+            hash,
+            Weight::zero()
+        ));
+        let when = now();
+        let operation = Multisigs::<Test>::get(id, hash).unwrap();
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &2, &id, None, &hash, &call, false, weight, false
+            ),
+            Error::<Test>::NoTimepoint
+        );
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &2,
+                &id,
+                Some(Multisig::sidechain_timepoint(99, 1)),
+                &hash,
+                &call,
+                false,
+                weight,
+                false
+            ),
+            Error::<Test>::WrongTimepoint
+        );
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &id,
+                Some(when),
+                &hash,
+                &call,
+                false,
+                weight,
+                false
+            ),
+            Error::<Test>::AlreadyApproved
+        );
+        assert_ok!(Multisig::validate_protocol_operation(
+            &1,
+            &id,
+            Some(when),
+            &hash,
+            &call,
+            true,
+            Weight::zero(),
+            false
+        ));
+        assert_ok!(Multisig::validate_protocol_operation(
+            &2,
+            &id,
+            Some(when),
+            &hash,
+            &call,
+            false,
+            Weight::zero(),
+            false
+        ));
+        assert_eq!(Multisigs::<Test>::get(id, hash), Some(operation));
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(2),
+            id,
+            Some(when),
+            call.encode(),
+            true,
+            weight
+        ));
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &id,
+                Some(when),
+                &hash,
+                &call,
+                true,
+                weight,
+                false
+            ),
+            Error::<Test>::AlreadyApproved
+        );
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &3,
+                &id,
+                Some(when),
+                &hash,
+                &call,
+                false,
+                Weight::zero(),
+                false
+            ),
+            Error::<Test>::WeightTooLow
+        );
+        assert_ok!(Multisig::validate_protocol_operation(
+            &3,
+            &id,
+            Some(when),
+            &hash,
+            &call,
+            false,
+            weight,
+            false
+        ));
+        DispatchedCalls::<Test>::insert(hash, when, ());
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &3,
+                &id,
+                Some(when),
+                &hash,
+                &call,
+                false,
+                weight,
+                false
+            ),
+            Error::<Test>::AlreadyDispatched
+        );
+    });
+}
+
+#[test]
+fn threshold_one_protocol_admission_rejects_replay_and_invalid_account_state() {
+    new_test_ext().execute_with(|| {
+        let id = Multisig::register_multisig_inner(1, vec![1]).unwrap();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let hash = blake2_256(&call.encode());
+        let when = Multisig::sidechain_timepoint(17, 2);
+        let weight = call.get_dispatch_info().total_weight();
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &id,
+                Some(when),
+                &hash,
+                &call,
+                false,
+                weight,
+                false
+            ),
+            Error::<Test>::MinimumThreshold
+        );
+        assert_err!(
+            Multisig::validate_protocol_operation(&1, &id, None, &hash, &call, false, weight, true),
+            Error::<Test>::NoTimepoint
+        );
+        assert_ok!(Multisig::validate_protocol_operation(
+            &1,
+            &id,
+            Some(when),
+            &hash,
+            &call,
+            false,
+            weight,
+            true
+        ));
+        DispatchedCalls::<Test>::insert(hash, when, ());
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &id,
+                Some(when),
+                &hash,
+                &call,
+                false,
+                weight,
+                true
+            ),
+            Error::<Test>::AlreadyDispatched
+        );
+        Accounts::<Test>::insert(id, MultisigAccount::new(Vec::<u64>::new()));
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &id,
+                Some(when),
+                &hash,
+                &call,
+                false,
+                weight,
+                true
+            ),
+            Error::<Test>::TooFewSignatories
+        );
+    });
+}
+
+#[test]
+fn protocol_call_decoder_rejects_trailing_bytes_and_oversize_payloads() {
+    new_test_ext().execute_with(|| {
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let data = call.encode();
+        let hash = blake2_256(&data);
+        assert_eq!(
+            Multisig::decode_call(&hash, Some(&data)),
+            Some(call.clone())
+        );
+        assert_eq!(Multisig::decode_call(&hash, Some(&[])), None);
+        let mut trailing = data.clone();
+        trailing.push(0);
+        assert_eq!(Multisig::decode_call(&hash, Some(&trailing)), None);
+        let max_call_bytes: u32 = <Test as Config>::MaxCallBytes::get();
+        let oversized = vec![0; max_call_bytes as usize + 1];
+        assert_eq!(Multisig::decode_call(&hash, Some(&oversized)), None);
+        let oversized_call = RuntimeCall::System(frame_system::Call::remark { remark: oversized });
+        let id = Multisig::register_multisig_inner(1, vec![1, 2, 3]).unwrap();
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &id,
+                None,
+                &hash,
+                &oversized_call,
+                false,
+                Weight::MAX,
+                false
+            ),
+            Error::<Test>::CallTooLarge
+        );
+    });
+}
+
+// Model a runtime call-filter change independently of FRAME's outer call filter.
+pub struct TestMultisigCallFilter;
+impl Contains<RuntimeCall> for TestMultisigCallFilter {
+    fn contains(_: &RuntimeCall) -> bool {
+        !sp_io::storage::exists(b"test/multisig-call-filter-closed")
+    }
+}
+
+#[test]
+fn private_admission_defenses_reject_oversized_preimages_and_replayed_pending_calls() {
+    new_test_ext().execute_with(|| {
+        let id = Multisig::register_multisig_inner(1, vec![1, 2]).unwrap();
+        let oversized = RuntimeCall::System(frame_system::Call::remark {
+            remark: vec![0; 16_385],
+        });
+        let data = oversized.encode();
+        assert_noop!(
+            Multisig::operate(
+                Multisig::accounts(id).unwrap(),
+                2,
+                1,
+                id,
+                None,
+                CallOrHash::Call(data.clone(), true),
+                Weight::MAX
+            ),
+            Error::<Test>::CallTooLarge
+        );
+        assert_noop!(
+            Multisig::inner_as_multi_threshold_1(1, id, Box::new(oversized), now()),
+            Error::<Test>::CallTooLarge
+        );
+        assert!(Multisig::get_call(&blake2_256(&data), Some(&data)).is_none());
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let hash = blake2_256(&call.encode());
+        assert_ok!(Multisig::approve_as_multi(
+            RuntimeOrigin::signed(1),
+            id,
+            None,
+            hash,
+            Weight::zero()
+        ));
+        DispatchedCalls::<Test>::insert(hash, now(), ());
+        assert_noop!(
+            Multisig::operate(
+                Multisig::accounts(id).unwrap(),
+                2,
+                2,
+                id,
+                Some(now()),
+                CallOrHash::Hash(hash),
+                Weight::MAX
+            ),
+            Error::<Test>::AlreadyDispatched
+        );
+        assert_eq!(Multisigs::<Test>::get(id, hash).unwrap().approvals, vec![1]);
+    });
+}
+
+#[test]
+fn filtered_pending_call_is_cleaned_up_without_dispatching_or_refunding_fees() {
+    new_test_ext().execute_with(|| {
+        let id = Multisig::register_multisig_inner(1, vec![1, 2]).unwrap();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let bytes = call.encode();
+        let hash = blake2_256(&bytes);
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(1),
+            id,
+            None,
+            bytes.clone(),
+            true,
+            Weight::zero()
+        ));
+        sp_io::storage::set(b"test/multisig-call-filter-closed", &[1]);
+        assert_noop!(
+            Multisig::inner_as_multi_threshold_1(1, id, Box::new(call.clone()), now()),
+            frame_system::Error::<Test>::CallFiltered
+        );
+        assert_noop!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &id,
+                Some(now()),
+                &hash,
+                &call,
+                true,
+                Weight::MAX,
+                false
+            ),
+            frame_system::Error::<Test>::CallFiltered
+        );
+        let post = Multisig::dispatch_call(&2, &id, 2, hash, bytes.len(), now(), call).unwrap();
+        assert_eq!(post.pays_fee, Pays::Yes);
+        assert!(post.actual_weight.is_some());
+        assert_eq!(Balances::free_balance(6), 0);
+        assert!(!Multisigs::<Test>::contains_key(id, hash));
+        assert!(!Calls::<Test>::contains_key(hash));
+        assert_eq!(NewPendingOperations::<Test>::get(id), 0);
+        assert_eq!(PendingOperationsByProposer::<Test>::get(id, 1), 0);
+        assert!(Multisig::was_dispatched(&id, &hash, now()));
+        expect_event(Event::<Test>::MultisigExecuted(
+            2,
+            now(),
+            id,
+            hash,
+            Some(frame_system::Error::<Test>::CallFiltered.into()),
+        ));
+    });
+}
+
+#[test]
+fn protocol_admission_rechecks_capacity_and_shared_replay_markers_before_recording() {
+    new_test_ext().execute_with(|| {
+        let id = Multisig::register_multisig_inner(1, vec![1, 2]).unwrap();
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let hash = blake2_256(&call.encode());
+        NewPendingOperations::<Test>::insert(id, 128);
+        assert_noop!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &id,
+                None,
+                &hash,
+                &call,
+                false,
+                Weight::MAX,
+                false
+            ),
+            Error::<Test>::TooManyPendingOperations
+        );
+        NewPendingOperations::<Test>::remove(id);
+        DispatchedCalls::<Test>::insert(hash, now(), ());
+        assert_noop!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &id,
+                None,
+                &hash,
+                &call,
+                false,
+                Weight::MAX,
+                false
+            ),
+            Error::<Test>::AlreadyDispatched
+        );
+        assert!(!Multisigs::<Test>::contains_key(id, hash));
+        let declared = RuntimeCall::Multisig(MultisigCall::as_multi {
+            id,
+            maybe_timepoint: None,
+            call: call.encode(),
+            store_call: false,
+            max_weight: Weight::MAX,
+        })
+        .get_dispatch_info()
+        .total_weight();
+        assert!(declared.all_gte(Multisig::protocol_validation_weight()));
+    });
+}
+
+#[test]
+fn cancellation_rejects_empty_membership_and_orphan_markers_preserve_unrelated_proposer_counts() {
+    new_test_ext().execute_with(|| {
+        let id = Multisig::register_multisig_inner(1, vec![1, 2]).unwrap();
+        let hash = [76; 32];
+        Accounts::<Test>::insert(id, MultisigAccount::new(vec![]));
+        assert_noop!(
+            Multisig::validate_cancellation(&1, &id, now(), &hash, |_| true),
+            Error::<Test>::TooFewSignatories
+        );
+        ProposerCountedOperations::<Test>::insert(id, hash, ());
+        PendingOperationsByProposer::<Test>::insert(id, 1, 7);
+        Multisig::remove_pending_operation(&id, &hash);
+        assert!(!ProposerCountedOperations::<Test>::contains_key(id, hash));
+        assert_eq!(PendingOperationsByProposer::<Test>::get(id, 1), 7);
+    });
+}
+
+#[test]
+fn failed_foreign_dispatch_cannot_consume_another_accounts_replay_marker() {
+    new_test_ext().execute_with(|| {
+        let victim = Multisig::multi_account_id(&1, 1, 0);
+        let foreign = Multisig::multi_account_id(&5, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2]
+        ));
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(5),
+            vec![5, 6]
+        ));
+        assert_ok!(Balances::transfer_allow_death(
+            RuntimeOrigin::signed(1),
+            victim,
+            5
+        ));
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 4 });
+        let hash = blake2_256(&call.encode());
+        let weight = call.get_dispatch_info().total_weight();
+        let before = Balances::free_balance(6);
+        // The foreign multisig has no funds. Its inner failure still consumes its
+        // own operation, but cannot poison the identical call/timepoint for victim.
+        for signer in [5, 6] {
+            assert_ok!(Multisig::as_multi(
+                RuntimeOrigin::signed(signer),
+                foreign,
+                Some(now()),
+                call.encode(),
+                true,
+                weight
+            ));
+        }
+        assert_eq!(Balances::free_balance(6), before);
+        assert!(Multisig::was_dispatched(&foreign, &hash, now()));
+        assert!(!Multisig::was_dispatched(&victim, &hash, now()));
+        assert!(!DispatchedCalls::<Test>::contains_key(hash, now()));
+        assert_noop!(
+            Multisig::as_multi(
+                RuntimeOrigin::signed(5),
+                foreign,
+                Some(now()),
+                call.encode(),
+                true,
+                weight
+            ),
+            Error::<Test>::AlreadyDispatched
+        );
+        for signer in [1, 2] {
+            assert_ok!(Multisig::as_multi(
+                RuntimeOrigin::signed(signer),
+                victim,
+                Some(now()),
+                call.encode(),
+                true,
+                weight
+            ));
+        }
+        assert_eq!(Balances::free_balance(6), before + 4);
+        assert!(Multisig::was_dispatched(&victim, &hash, now()));
+        assert_noop!(
+            Multisig::as_multi(
+                RuntimeOrigin::signed(1),
+                victim,
+                Some(now()),
+                call.encode(),
+                true,
+                weight
+            ),
+            Error::<Test>::AlreadyDispatched
+        );
+    });
+}
+
+#[test]
+fn legacy_global_marker_remains_a_replay_barrier_without_migration() {
+    new_test_ext().execute_with(|| {
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 4 });
+        let hash = blake2_256(&call.encode());
+        DispatchedCalls::<Test>::insert(hash, now(), ());
+        for (creator, members) in [(1, vec![1]), (5, vec![5, 6])] {
+            let id = Multisig::multi_account_id(&creator, 1, 0);
+            assert_ok!(Multisig::register_multisig(
+                RuntimeOrigin::signed(creator),
+                members.clone()
+            ));
+            assert!(Multisig::was_dispatched(&id, &hash, now()));
+            assert_noop!(
+                Multisig::validate_protocol_operation(
+                    &creator,
+                    &id,
+                    Some(now()),
+                    &hash,
+                    &call,
+                    true,
+                    Weight::MAX,
+                    members.len() == 1
+                ),
+                Error::<Test>::AlreadyDispatched
+            );
+            if members.len() == 1 {
+                assert_noop!(
+                    Multisig::as_multi_threshold_1(
+                        RuntimeOrigin::signed(creator),
+                        id,
+                        Box::new(call.clone()),
+                        now()
+                    ),
+                    Error::<Test>::AlreadyDispatched
+                );
+            } else {
+                assert_noop!(
+                    Multisig::as_multi(
+                        RuntimeOrigin::signed(creator),
+                        id,
+                        Some(now()),
+                        call.encode(),
+                        true,
+                        Weight::MAX
+                    ),
+                    Error::<Test>::AlreadyDispatched
+                );
+            }
+            assert!(!AccountDispatchedCalls::<Test>::contains_key(
+                id,
+                (hash, now())
+            ));
+        }
+        assert!(DispatchedCalls::<Test>::contains_key(hash, now()));
     });
 }

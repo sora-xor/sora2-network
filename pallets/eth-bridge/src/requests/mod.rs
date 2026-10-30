@@ -809,7 +809,7 @@ impl<T: Config> OffchainRequest<T> {
     }
 
     /// The request's timepoint.
-    pub(crate) fn timepoint(&self) -> Timepoint<T> {
+    pub fn timepoint(&self) -> Timepoint<T> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.timepoint(),
             OffchainRequest::LoadIncoming(request) => request.timepoint(),
@@ -1018,3 +1018,8 @@ impl AssetKind {
         self == &Self::Thischain || self == &Self::SidechainOwned
     }
 }
+
+#[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[path = "../tests/coverage_encoded_requests.rs"]
+mod coverage_encoded_requests;

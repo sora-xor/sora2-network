@@ -1,23 +1,53 @@
 # SORA Nexus recovery restart kit
 
-Chain `sora-nexus-recovery-28191817`, node `4.8.13-fb3ff0a3b`, built from
-`sora-xor/sora2-network` commit `fb3ff0a3bf19d626ed277e2cddb030ee8dfb380c`.
+**First start:** stop → build/pull → unpack → run. **Later restarts:** run only.
 
-## Before you start
+## 1. Prepare
 
-- Stop every old node that holds your validator keys, including backups and
-  sentries. Two nodes signing with the same keys get slashed.
-- Download the snapshot `sora-nexus-recovery-28191817-db.tar.zst` (13.5 GB). The
-  kit checks its SHA-256 before unpacking. Your data directory needs 20 GB free.
-- Use the data directory your node ran with before: its `--base-path`, or the
-  directory you mounted at `/chain`. The kit takes your keystore and network key
-  from `chains/sora-substrate-main-net/keystore` and
-  `chains/sora-substrate-main-net/network/secret_ed25519` there. If you kept them
-  elsewhere, pass `--keystore-path` and `--node-key-file` to `run`.
+- Stop all old nodes using your validator keys, including backups, to avoid double-signing.
+- Download `sora-nexus-recovery-28191817-db.tar.zst` (13.5 GB) from the release
+  files. Allow another 20 GB free for unpacking.
+- Replace `/srv/sora` below with your existing **base path**: the directory
+  containing `chains/`, not `db/full`.
 
-## Docker
+**Dropping a file into the old database is not enough.** `unpack` creates:
 
+```text
+/srv/sora/chains/sora-nexus-recovery-28191817/db/full
 ```
+
+Keep the old chain directory: `run` reuses its validator and network keys.
+For custom key locations, pass your existing `--keystore-path` and `--node-key-file`.
+
+## 2. Choose one method
+
+### From source (Linux)
+
+Download the **full** `sora-nexus-recovery-28191817-kit.tar.gz`; the GitHub folder
+alone lacks required files. Put it beside the snapshot. As the node's user:
+
+```sh
+tar -xzf sora-nexus-recovery-28191817-kit.tar.gz
+cd sora-nexus-recovery-28191817-kit
+
+# Build once (~30–60 minutes; ~40 GB build space).
+./sora-recovery build
+
+# Unpack once (requires zstd).
+./sora-recovery unpack ../sora-nexus-recovery-28191817-db.tar.zst --base-path /srv/sora
+
+# Start the node and recovery feeder (requires Python 3.8+).
+./sora-recovery run --base-path /srv/sora --name "<your node name>"
+```
+
+For systemd, replace the old `ExecStart` with this `run` command using the
+absolute kit path; set `TimeoutStopSec=120`.
+
+### Docker
+
+From the directory containing the snapshot:
+
+```sh
 docker pull sora2/substrate:recovery-28191817
 
 docker run --rm -v /srv/sora:/chain -v "$PWD":/download:ro sora2/substrate:recovery-28191817 \
@@ -29,50 +59,30 @@ docker run -d --name sora-recovery --init --restart unless-stopped --stop-timeou
 docker logs -f sora-recovery
 ```
 
-Replace `/srv/sora` with your data directory. The release sheet gives the image
-digest to pull it by. Without registry access, load the same image from the
-release files with `docker load -i sora-nexus-recovery-28191817-image.tar.gz`. The
-image runs as uid 10000, like the previous release image. If that user cannot
-write the directory, `unpack` says how to fix it. To build the image yourself,
-run `docker build -t sora2/substrate:recovery-28191817 .` in this kit; it compiles
-the same commit.
+Use the image digest from the release sheet. The data directory must be
+writable by uid 10000.
 
-## From source (Linux)
+Both methods start validators; bootnodes/RPC nodes add `--full-node`.
+At least **11 of 15 validators** must start from the snapshot to establish finality.
 
-```
-./sora-recovery build
-./sora-recovery unpack sora-nexus-recovery-28191817-db.tar.zst --base-path /srv/sora
+## 3. Check progress
+
+Confirm your usual peer ID appears. Validators: wait for `recovery-feeder: complete`;
+keep the node running. If it reports `STOPPED`, keep the node running and
+report that line. Do not edit/delete recovery files to bypass it.
+
+## 4. Later restarts
+
+From the same kit directory:
+
+```sh
 ./sora-recovery run --base-path /srv/sora --name "<your node name>"
 ```
 
-`build` fetches the pinned commit and compiles it in 30-60 minutes. If a tool is
-missing it prints the command that installs it. Run `unpack` and `run` as the
-user that owns the data directory. Under systemd, use
-`ExecStart=/path/to/kit/sora-recovery run --base-path /srv/sora --name "<your node name>"`
-with `TimeoutStopSec=120`.
+Or restart your updated systemd service / existing Docker container
+(`docker restart sora-recovery`). **Do not repeat `build` or `unpack`.**
 
-## Running
-
-`run` starts the node as a validator on the recovery chain spec, with the
-recovery feeder beside it. Add the options you normally use: `--name`,
-`--public-addr`, `--port`, `--rpc-port`, `--prometheus-external`,
-`--telemetry-url` and so on. The kit sets `--chain`, `--base-path`,
-`--recovery-inherent-dir` and `--state-pruning archive` itself and rejects options
-that conflict with them. `--print` shows the commands without starting them.
-
-Bootnodes and RPC nodes add `--full-node`: no validator role and no feeder.
-Bootnodes must keep their network keys so their peer IDs stay the same. A node
-that joins after the restart can skip the snapshot with `--sync warp` once the
-recovery chain has finalized blocks; at least 11 of the 15 validators must start
-from the snapshot for that finality to exist.
-
-What you should see:
-
-- `sora-recovery: network identity 12D3Koo...`, your usual peer ID.
-- `recovery-feeder: block N (Applying): wrote envelope K/2214 ...` for each new
-  block while the maintenance work is applied. With every validator up this takes
-  about 3 h 45 min.
-- `recovery-feeder: complete`, then ordinary blocks.
-
-If a `recovery-feeder` line says `STOPPED`, leave the node running and report
-that line. Do not edit the kit or remove files to get past it.
+The feeder resumes unfinished work or exits after detecting completion.
+Keep the kit, recovery chain spec, database and keys. Use this node release
+until a compatible upgrade is provided; it is not required forever.
+**Do not switch back to the old binary or old mainnet command.**
