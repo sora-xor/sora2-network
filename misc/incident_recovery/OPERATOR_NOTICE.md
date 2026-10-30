@@ -119,6 +119,32 @@ are reconciled. Previously issued external authorizations may still be redeemabl
 the local fork cannot invalidate them. Do not advertise cancellation as proof of
 external non-redemption, or manually refund quarantined liabilities.
 
+### Bridge transfers after the checkpoint
+
+Bridge peers signed these withdrawals on the abandoned branch after the
+checkpoint. The fork restores their SORA-side debits, and this release debits no
+sender again: each keeps its checkpoint balance, or its trusted-CSV replacement
+account receives it. `cnSBot6vTtpckdo7HQhjk2hiAAKfDJX34DZsyLVs7B5Y2Gv6T` is not
+the attacker, and its funds are not reverted. The bridge reserve bears the paid
+amounts. The two signed, unclaimed withdrawals stay redeemable on Ethereum
+(bridge contract `0x313416870a4da6f12505a550b67bb73c8e21d5d3`).
+
+| SORA sender | Ethereum recipient | Amount | On Ethereum |
+|---|---|---|---|
+| `cnSBot6vTtpckdo7HQhjk2hiAAKfDJX34DZsyLVs7B5Y2Gv6T` | `0x94b3c5fc67b0c63befcc74d7afcd333baa697b2a` | 8,750,000.0000 PSWAP, 7,507.0626 DAI | paid |
+| `cnSBot6vTtpckdo7HQhjk2hiAAKfDJX34DZsyLVs7B5Y2Gv6T` | `0x94b3c5fc67b0c63befcc74d7afcd333baa697b2a` | 43,000.0000 VAL | signed, unclaimed |
+| `cnSgmhqLV3sXSz72o4JjMZeBLX39Y6vN4vwjdaXAmULsGQHZe` | `0xaf6fd7a11087bfbaddc5c4e1ab14ab0c592af63f` (attacker) | 148.6001 DAI, 8.0235 XOR | paid |
+| `cnW7wojJ6GgJz5VtqjAMT5CUmkuKXfT4MDsPzyRUWF2qyc8wV` | `0x95d64b2a397c4de7027e02fb0389965a68b8b376` | 176.7523 of asset `0x00513be65493a7fc3e2128d4230061a530acf40478a4affa20bbba27a310673e` | paid |
+| `cnTBZzshYXajet389PSAHKsyZ72ASL7XZhNCiudFJJ24okTDD` (in the CSV) | `0xaf6fd7a11087bfbaddc5c4e1ab14ab0c592af63f` (attacker) | 13,992,342.6464 PSWAP, 2,029.9013 DAI | paid |
+| `cnTBZzshYXajet389PSAHKsyZ72ASL7XZhNCiudFJJ24okTDD` (in the CSV) | `0xaf6fd7a11087bfbaddc5c4e1ab14ab0c592af63f` (attacker) | 20,601.8127 VAL | signed, unclaimed |
+| `cnTYBcwoqVSiruign6ZsJbLvFnH4iRiNFm2tdA6idWZwAEupM` (in the CSV) | `0xaf6fd7a11087bfbaddc5c4e1ab14ab0c592af63f` (attacker) | 18,868,090.1949 PSWAP | paid |
+
+The fork also drops the one incoming deposit credited on the abandoned branch:
+11.6148 XOR to `cnSBot6vTtpckdo7HQhjk2hiAAKfDJX34DZsyLVs7B5Y2Gv6T` from Ethereum
+transaction `0xdbd364b227386e144e17a652628c1813d6087c11f1428f61e95116193de341a1`.
+The recovery chain has no request for that transaction. Once the bridge reopens,
+credit it from that transaction through the normal incoming path, not manually.
+
 Indexers and wallets must use the recovery fork anchor and executing-code
 identity. Spec version alone cannot distinguish the deployed 134 runtime from
 the immutable 134 substitute. Confirm TS/SS entitlement queries use the original
