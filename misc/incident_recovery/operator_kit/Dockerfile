@@ -4,7 +4,7 @@
 # then packages it with this kit's chain spec, work bundle and feeder. From the
 # kit directory:
 #
-#   docker build -t sora-nexus-recovery:28191817 .
+#   docker build -t sora2/substrate:recovery-28191817 .
 #
 # The image keeps the old release image's conventions: user substrate (uid 10000)
 # and the data directory /chain.

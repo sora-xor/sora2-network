@@ -60,9 +60,9 @@ The release's operator kit (`operator_kit/`) does steps 2, 4, 5 and 6 below:
 `sora-recovery unpack` checks and unpacks the snapshot, and `sora-recovery run`
 starts the node with the release chain spec, your existing keystore and network
 key, and the recovery feeder. It ships as `sora-nexus-recovery-28191817-kit.tar.gz`
-for building and running from source, and as the Docker image
-`sora-nexus-recovery:28191817` built from the kit's Dockerfile. Its README has the
-commands for both; the steps below are what it does.
+for building and running from source, and as the Docker Hub image
+`sora2/substrate:recovery-28191817` built from the kit's Dockerfile. Its README
+has the commands for both; the steps below are what it does.
 
 1. Stop every old node that holds validator keys, including backup and sentry
    nodes, and keep them stopped. Recovery slots and GRANDPA sets after 7956 are

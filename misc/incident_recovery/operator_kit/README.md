@@ -18,22 +18,24 @@ Chain `sora-nexus-recovery-28191817`, node `4.8.13-fb3ff0a3b`, built from
 ## Docker
 
 ```
-docker load -i sora-nexus-recovery-28191817-image.tar.gz
+docker pull sora2/substrate:recovery-28191817
 
-docker run --rm -v /srv/sora:/chain -v "$PWD":/download:ro sora-nexus-recovery:28191817 \
+docker run --rm -v /srv/sora:/chain -v "$PWD":/download:ro sora2/substrate:recovery-28191817 \
   unpack /download/sora-nexus-recovery-28191817-db.tar.zst
 
 docker run -d --name sora-recovery --init --restart unless-stopped --stop-timeout 120 \
-  -v /srv/sora:/chain -p 30333:30333 sora-nexus-recovery:28191817 --name "<your node name>"
+  -v /srv/sora:/chain -p 30333:30333 sora2/substrate:recovery-28191817 --name "<your node name>"
 
 docker logs -f sora-recovery
 ```
 
-Replace `/srv/sora` with your data directory. The image runs as uid 10000, like
-the previous release image. If that user cannot write the directory, `unpack`
-says how to fix it. To build the image yourself instead of loading it, run
-`docker build -t sora-nexus-recovery:28191817 .` in this kit; it compiles the
-same commit.
+Replace `/srv/sora` with your data directory. The release sheet gives the image
+digest to pull it by. Without registry access, load the same image from the
+release files with `docker load -i sora-nexus-recovery-28191817-image.tar.gz`. The
+image runs as uid 10000, like the previous release image. If that user cannot
+write the directory, `unpack` says how to fix it. To build the image yourself,
+run `docker build -t sora2/substrate:recovery-28191817 .` in this kit; it compiles
+the same commit.
 
 ## From source (Linux)
 
