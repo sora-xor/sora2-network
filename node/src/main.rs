@@ -51,6 +51,7 @@ mod eth_bridge_metrics;
 mod fork_off;
 mod recovery;
 mod recovery_evidence;
+mod recovery_hashi;
 mod rpc;
 
 #[allow(

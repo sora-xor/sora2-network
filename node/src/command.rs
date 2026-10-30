@@ -412,6 +412,9 @@ pub fn run() -> sc_cli::Result<()> {
                             None,
                             cli.recovery_inherent_dir.clone(),
                             cli.recovery_evidence_dir.clone(),
+                            cli.recovery_hashi_witness_dir
+                                .clone()
+                                .zip(cli.recovery_hashi_release_sha256),
                         )
                         .map_err(sc_cli::Error::Service)
                     }
@@ -422,6 +425,9 @@ pub fn run() -> sc_cli::Result<()> {
                             None,
                             cli.recovery_inherent_dir.clone(),
                             cli.recovery_evidence_dir.clone(),
+                            cli.recovery_hashi_witness_dir
+                                .clone()
+                                .zip(cli.recovery_hashi_release_sha256),
                         )
                         .map_err(sc_cli::Error::Service)
                     }
@@ -438,6 +444,9 @@ pub fn run() -> sc_cli::Result<()> {
                             None,
                             cli.recovery_inherent_dir.clone(),
                             cli.recovery_evidence_dir.clone(),
+                            cli.recovery_hashi_witness_dir
+                                .clone()
+                                .zip(cli.recovery_hashi_release_sha256),
                         )
                         .map_err(sc_cli::Error::Service)
                     }
@@ -448,6 +457,9 @@ pub fn run() -> sc_cli::Result<()> {
                             None,
                             cli.recovery_inherent_dir.clone(),
                             cli.recovery_evidence_dir.clone(),
+                            cli.recovery_hashi_witness_dir
+                                .clone()
+                                .zip(cli.recovery_hashi_release_sha256),
                         )
                         .map_err(sc_cli::Error::Service)
                     }

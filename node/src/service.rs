@@ -734,6 +734,7 @@ pub fn new_full<FullNetwork>(
     telemetry_worker_handle: Option<TelemetryWorkerHandle>,
     recovery_inherent_dir: Option<PathBuf>,
     recovery_evidence_dir: Option<PathBuf>,
+    recovery_hashi: Option<(PathBuf, sp_core::H256)>,
 ) -> Result<TaskManager, ServiceError>
 where
     FullNetwork: NetworkBackend<Block, <Block as BlockT>::Hash> + 'static,
@@ -777,6 +778,13 @@ where
         false,
         recovery_evidence.clone(),
     )?;
+    let hashi_witness_pump = recovery_hashi
+        .as_ref()
+        .map(|(directory, pin)| {
+            crate::recovery_hashi::LocalRequestPump::open(directory, *pin, client.clone(), &config)
+        })
+        .transpose()
+        .map_err(ServiceError::Other)?;
     if framenode_chain_spec::recovery::config(&*config.chain_spec).is_some() && !disable_beefy {
         return Err(ServiceError::Other(
             "BEEFY must remain disabled for production recovery".into(),
@@ -1121,6 +1129,14 @@ where
                 sc_finality_grandpa::run_grandpa_voter(grandpa_config)?,
             );
         }
+    }
+
+    if let Some(pump) = hashi_witness_pump {
+        task_manager.spawn_handle().spawn_blocking(
+            "recovery-hashi-witness",
+            Some("recovery"),
+            pump.run(),
+        );
     }
 
     Ok(task_manager)
