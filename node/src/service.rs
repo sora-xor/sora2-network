@@ -473,10 +473,9 @@ pub fn new_partial(
             |public_key| {
                 // Availability checks only need the public key and key type.
                 // Do not deserialize a secret pair during bootstrap.
-                Ok(keystore_container.keystore().has_keys(&[(
-                    public_key.to_raw_vec(),
-                    eth_bridge::KEY_TYPE,
-                )]))
+                Ok(keystore_container
+                    .keystore()
+                    .has_keys(&[(public_key.to_raw_vec(), eth_bridge::KEY_TYPE)]))
             },
             || {
                 let path = bridge_config_path(config)?;

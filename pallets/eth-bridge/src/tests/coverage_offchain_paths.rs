@@ -160,9 +160,12 @@ fn cancellation_handler_never_signs_receipt_based_refunds() {
             input: input.into(),
             ..Default::default()
         });
-        assert_eq!(EthBridge::handle_offchain_request(
-            OffchainRequest::LoadIncoming(LoadIncomingRequest::Meta(load, hash))
-        ), Err(Error::PublicApprovalsRequireSettlement));
+        assert_eq!(
+            EthBridge::handle_offchain_request(OffchainRequest::LoadIncoming(
+                LoadIncomingRequest::Meta(load, hash)
+            )),
+            Err(Error::PublicApprovalsRequireSettlement)
+        );
         assert!(state.pending_txs().is_empty());
         assert!(state.pool_state.read().transactions.is_empty());
     });
@@ -667,42 +670,93 @@ fn canonical_log_import_supersedes_public_pending_or_failed_wrong_kind_load() {
             let tx_hash = H256::repeat_byte(0xab);
             let author = common::mock::alice();
             let bridge = crate::BridgeAccount::<Runtime>::get(network).unwrap();
-            assert_ok!(EthBridge::request_from_sidechain(RuntimeOrigin::signed(author.clone()),
-                tx_hash, IncomingTransactionRequestKind::AddAsset.into(), network));
+            assert_ok!(EthBridge::request_from_sidechain(
+                RuntimeOrigin::signed(author.clone()),
+                tx_hash,
+                IncomingTransactionRequestKind::AddAsset.into(),
+                network
+            ));
             if failed {
-                assert_ok!(EthBridge::abort_request(RuntimeOrigin::signed(bridge.clone()), tx_hash,
-                    Error::UnknownEvent.into(), network));
+                assert_ok!(EthBridge::abort_request(
+                    RuntimeOrigin::signed(bridge.clone()),
+                    tx_hash,
+                    Error::UnknownEvent.into(),
+                    network
+                ));
             }
-            assert!(!crate::LoadToIncomingRequestHash::<Runtime>::contains_key(network, tx_hash));
+            assert!(!crate::LoadToIncomingRequestHash::<Runtime>::contains_key(
+                network, tx_hash
+            ));
             let log = deposit_log(tx_hash);
             push_global_json_rpc_response(vec![log]);
             let mut cursor = 5;
             assert_ok!(EthBridge::handle_logs(5, 7, &mut cursor, network));
-            assert_eq!(state.pool_state.read().transactions.len(), 1,
-                "a public wrong-kind hint cannot suppress the genuine deposit log");
-            let load = crate::requests::LoadIncomingTransactionRequest::new(author.clone(), tx_hash,
+            assert_eq!(
+                state.pool_state.read().transactions.len(),
+                1,
+                "a public wrong-kind hint cannot suppress the genuine deposit log"
+            );
+            let load = crate::requests::LoadIncomingTransactionRequest::new(
+                author.clone(),
+                tx_hash,
                 bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(5, 0),
-                IncomingTransactionRequestKind::Transfer, network);
+                IncomingTransactionRequestKind::Transfer,
+                network,
+            );
             let incoming = IncomingRequest::try_from_contract_event(
                 crate::contract::ContractEvent::Deposit(crate::contract::DepositEvent::new(
-                    author.clone(), 10.into(), crate::RegisteredSidechainToken::<Runtime>::get(network, common::XOR).unwrap(),
-                    H256::zero())), load.clone(), 5).unwrap();
-            let IncomingRequest::Transfer(ref transfer) = incoming else { panic!("deposit fixture") };
+                    author.clone(),
+                    10.into(),
+                    crate::RegisteredSidechainToken::<Runtime>::get(network, common::XOR).unwrap(),
+                    H256::zero(),
+                )),
+                load.clone(),
+                5,
+            )
+            .unwrap();
+            let IncomingRequest::Transfer(ref transfer) = incoming else {
+                panic!("deposit fixture")
+            };
             let expected_amount = transfer.amount;
             assert!(expected_amount > 0);
             let incoming_hash = crate::requests::OffchainRequest::incoming(incoming.clone()).hash();
             let load = crate::requests::LoadIncomingRequest::Transaction(load);
-            let call = crate::Call::import_incoming_request { load_incoming_request: load.clone(),
-                incoming_request_result: Ok(incoming.clone()) };
-            assert_eq!(EthBridge::validate_peer_protocol_call(&bridge, &call), Ok(true));
+            let call = crate::Call::import_incoming_request {
+                load_incoming_request: load.clone(),
+                incoming_request_result: Ok(incoming.clone()),
+            };
+            assert_eq!(
+                EthBridge::validate_peer_protocol_call(&bridge, &call),
+                Ok(true)
+            );
             let before = Assets::free_balance(&common::XOR, &author).unwrap();
-            assert_ok!(EthBridge::import_incoming_request(RuntimeOrigin::signed(bridge.clone()), load.clone(), Ok(incoming.clone())));
-            assert_eq!(crate::RequestStatuses::<Runtime>::get(network, incoming_hash), Some(RequestStatus::Done));
-            assert_eq!(Assets::free_balance(&common::XOR, &author).unwrap(), before + expected_amount);
-            assert!(!EthBridge::should_import_sidechain_transaction(network, tx_hash));
+            assert_ok!(EthBridge::import_incoming_request(
+                RuntimeOrigin::signed(bridge.clone()),
+                load.clone(),
+                Ok(incoming.clone())
+            ));
+            assert_eq!(
+                crate::RequestStatuses::<Runtime>::get(network, incoming_hash),
+                Some(RequestStatus::Done)
+            );
+            assert_eq!(
+                Assets::free_balance(&common::XOR, &author).unwrap(),
+                before + expected_amount
+            );
+            assert!(!EthBridge::should_import_sidechain_transaction(
+                network, tx_hash
+            ));
             assert!(EthBridge::validate_peer_protocol_call(&bridge, &call).is_err());
-            assert!(EthBridge::import_incoming_request(RuntimeOrigin::signed(bridge), load, Ok(incoming)).is_err());
-            assert_eq!(Assets::free_balance(&common::XOR, &author).unwrap(), before + expected_amount);
+            assert!(EthBridge::import_incoming_request(
+                RuntimeOrigin::signed(bridge),
+                load,
+                Ok(incoming)
+            )
+            .is_err());
+            assert_eq!(
+                Assets::free_balance(&common::XOR, &author).unwrap(),
+                before + expected_amount
+            );
             assert!(!crate::RequestsQueue::<Runtime>::get(network).contains(&tx_hash));
         });
     }
@@ -717,24 +771,48 @@ fn failed_canonical_import_is_not_reopened_by_a_public_hint_or_log_scan() {
         let author = common::mock::alice();
         let bridge = crate::BridgeAccount::<Runtime>::get(network).unwrap();
         let load = crate::requests::LoadIncomingRequest::Transaction(
-            crate::requests::LoadIncomingTransactionRequest::new(author.clone(), tx_hash,
+            crate::requests::LoadIncomingTransactionRequest::new(
+                author.clone(),
+                tx_hash,
                 bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(5, 0),
-                IncomingTransactionRequestKind::Transfer, network));
-        assert_ok!(EthBridge::import_incoming_request(RuntimeOrigin::signed(bridge), load,
-            Err(Error::UnknownAssetId.into())));
-        assert!(!crate::LoadToIncomingRequestHash::<Runtime>::contains_key(network, tx_hash));
+                IncomingTransactionRequestKind::Transfer,
+                network,
+            ),
+        );
+        assert_ok!(EthBridge::import_incoming_request(
+            RuntimeOrigin::signed(bridge),
+            load,
+            Err(Error::UnknownAssetId.into())
+        ));
+        assert!(!crate::LoadToIncomingRequestHash::<Runtime>::contains_key(
+            network, tx_hash
+        ));
         for redirect in [false, true] {
             let requests = EthBridge::get_requests(&[tx_hash], Some(network), redirect).unwrap();
             assert_eq!(requests.len(), 1);
-            assert!(matches!(&requests[0], (OffchainRequest::LoadIncoming(_), RequestStatus::Failed(_))));
+            assert!(matches!(
+                &requests[0],
+                (OffchainRequest::LoadIncoming(_), RequestStatus::Failed(_))
+            ));
         }
         for consumed_incoming in [false, true] {
             if consumed_incoming {
-                crate::LoadToIncomingRequestHash::<Runtime>::insert(network, tx_hash, H256::repeat_byte(0xad));
+                crate::LoadToIncomingRequestHash::<Runtime>::insert(
+                    network,
+                    tx_hash,
+                    H256::repeat_byte(0xad),
+                );
             }
-            assert!(!EthBridge::should_import_sidechain_transaction(network, tx_hash));
-            assert!(EthBridge::request_from_sidechain(RuntimeOrigin::signed(author.clone()), tx_hash,
-                IncomingTransactionRequestKind::Transfer.into(), network).is_err());
+            assert!(!EthBridge::should_import_sidechain_transaction(
+                network, tx_hash
+            ));
+            assert!(EthBridge::request_from_sidechain(
+                RuntimeOrigin::signed(author.clone()),
+                tx_hash,
+                IncomingTransactionRequestKind::Transfer.into(),
+                network
+            )
+            .is_err());
             push_global_json_rpc_response(vec![deposit_log(tx_hash)]);
             let mut cursor = 5;
             assert_ok!(EthBridge::handle_logs(5, 7, &mut cursor, network));

@@ -1288,7 +1288,8 @@ fn cancelling_prepared_incoming_restores_accounting_when_outbound_price_is_unava
 }
 
 #[test]
-fn actual_approval_weight_reclaims_enough_for_valid_peer_submissions_beyond_declared_block_capacity() {
+fn actual_approval_weight_reclaims_enough_for_valid_peer_submissions_beyond_declared_block_capacity(
+) {
     use common::AssetInfoProvider;
     use eth_bridge::requests::{OutgoingRequest, RequestStatus};
     use sp_runtime::{traits::IdentifyAccount, MultiSigner};

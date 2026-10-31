@@ -226,8 +226,10 @@ fn cancellation_parser_requires_failed_mined_transaction_and_request_owner() {
             );
         }
         push_global_json_rpc_response(tx.clone());
-        assert_eq!(EthBridge::parse_cancel_incoming_request(receipt.clone(), load.clone(), hash),
-            Err(Error::PublicApprovalsRequireSettlement));
+        assert_eq!(
+            EthBridge::parse_cancel_incoming_request(receipt.clone(), load.clone(), hash),
+            Err(Error::PublicApprovalsRequireSettlement)
+        );
         let mut other = load.clone();
         other.author = common::mock::bob();
         push_global_json_rpc_response(tx.clone());

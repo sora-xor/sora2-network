@@ -998,8 +998,10 @@ fn should_fail_add_peer_compat_without_corresponding_add_peer_request() {
         let expected_error: DispatchError = Error::UnknownRequest.into();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, compat_hash),
-            Some(RequestStatus::Broken(expected_error,
-                Error::PublicApprovalsRequireSettlement.into()))
+            Some(RequestStatus::Broken(
+                expected_error,
+                Error::PublicApprovalsRequireSettlement.into()
+            ))
         );
     });
 }
@@ -1097,8 +1099,10 @@ fn should_fail_remove_peer_compat_without_corresponding_remove_peer_request() {
         let expected_error: DispatchError = Error::UnknownRequest.into();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, compat_hash),
-            Some(RequestStatus::Broken(expected_error,
-                Error::PublicApprovalsRequireSettlement.into()))
+            Some(RequestStatus::Broken(
+                expected_error,
+                Error::PublicApprovalsRequireSettlement.into()
+            ))
         );
     });
 }
@@ -1156,8 +1160,10 @@ fn should_fail_remove_peer_without_corresponding_compat_request() {
         let expected_error: DispatchError = Error::UnknownRequest.into();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, remove_hash),
-            Some(RequestStatus::Broken(expected_error,
-                Error::PublicApprovalsRequireSettlement.into()))
+            Some(RequestStatus::Broken(
+                expected_error,
+                Error::PublicApprovalsRequireSettlement.into()
+            ))
         );
     });
 }
