@@ -45,6 +45,7 @@ use secp256k1::{PublicKey, SecretKey};
 use sp_core::{ecdsa, H256};
 use std::collections::BTreeSet;
 
+mod approval_admission;
 mod approval_recovery;
 mod approval_terminal;
 mod approval_weight;

@@ -3,7 +3,7 @@ use super::{last_outgoing_request, Assets, Error, ETH_NETWORK_ID};
 use crate::offchain::SignatureParams;
 use crate::requests::{OutgoingRequest, RequestStatus};
 use common::{eth, XOR};
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_err_ignore_postinfo, assert_noop, assert_ok};
 use sp_core::{ecdsa, sr25519, H256};
 use std::collections::BTreeSet;
 
@@ -89,16 +89,10 @@ fn ready_legacy_and_current_approvals_are_immutable_under_late_peer_submission()
                 Error::RequestIsNotReady
             );
             assert_noop!(
-                EthBridge::inner_approve_request(
-                    public.clone(),
-                    hash,
-                    proof.clone(),
-                    late_author.clone(),
-                    net,
-                ),
+                EthBridge::retryable_outgoing_request(net, hash),
                 Error::RequestIsNotReady
             );
-            assert_noop!(
+            assert_err_ignore_postinfo!(
                 EthBridge::approve_request(
                     RuntimeOrigin::signed(late_author.clone()),
                     public,

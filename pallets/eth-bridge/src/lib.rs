@@ -91,7 +91,9 @@ use common::{
 };
 use core::stringify;
 use frame_support::__private::log::{debug, error, info, warn};
-use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo, GetDispatchInfo, Pays};
+use frame_support::dispatch::{
+    DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, GetDispatchInfo, Pays,
+};
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::offchain::storage_lock::{StorageLock, Time};
@@ -1094,8 +1096,10 @@ pub mod pallet {
             debug!("called approve_request");
             let author = ensure_signed(origin)?;
             let net_id = network_id;
-            Self::ensure_peer(&author, net_id)?;
-            Self::inner_approve_request(ocw_public, hash, signature_params, author, net_id)
+            let target = Self::ensure_peer(&author, net_id)
+                .and_then(|_| Self::retryable_outgoing_request(net_id, hash))
+                .map_err(|error| Self::approval_rejection(net_id, hash, error))?;
+            Self::inner_approve_request(target, ocw_public, hash, signature_params, author, net_id)
                 // Validation and preparation reconcile the same pre-dispatch
                 // signatures too. Refund only unused recovery work, keeping the
                 // allowance for both admission passes and dispatch.
@@ -1293,24 +1297,8 @@ pub mod pallet {
             hash: H256,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_signed(origin)?;
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
-            crate::recovery::ensure_outgoing_active::<T>(network_id, hash)?;
-            let request = Requests::<T>::get(network_id, hash)
-                .and_then(|request| request.into_outgoing().map(|x| x.0))
-                .ok_or(Error::<T>::UnknownRequest)?;
-            let status =
-                RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?;
-            ensure!(
-                Self::outgoing_finalization_retryable(&status),
-                Error::<T>::RequestIsNotReady
-            );
-            ensure!(
-                !Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
-                    network_id, &hash
-                ),
-                Error::<T>::DeprecatedLegacyXor
-            );
-            ensure!(!request.should_be_skipped(), Error::<T>::RequestIsNotReady);
+            let request = Self::finalizable_outgoing_request(network_id, hash)
+                .map_err(|error| Self::approval_rejection(network_id, hash, error))?;
             let encoded = request.to_eth_abi(hash)?;
             let (approvals, approvers, recoveries) =
                 Self::current_request_approvals(network_id, hash, encoded.as_raw())?;
@@ -2028,10 +2016,24 @@ impl<T: Config> Pallet<T> {
 
     /// Validate an authenticated peer protocol call without changing storage.
     /// Arbitrary bridge/user/admin calls return false and remain fee-paying.
+    /// Non-peer approvals and finalizations that cannot reach quorum are
+    /// rejected instead. Dispatch would fail them after a declaration that, for
+    /// an absent request, covers a message of twice the operational block length.
     pub fn validate_peer_protocol_call(
         account: &T::AccountId,
         call: &Call<T>,
     ) -> Result<bool, DispatchError> {
+        if let Call::finalize_approved_request { network_id, hash } = call {
+            // Public by design, so it remains fee-paying. Dispatch counts only
+            // recorded approvers that are current peers, so fewer cannot finalize.
+            let request = Self::finalizable_outgoing_request(*network_id, *hash)?;
+            let recorded = RequestApprovers::<T>::get(network_id, hash);
+            ensure!(
+                Self::has_current_approval_quorum(*network_id, &request, &recorded)?,
+                Error::<T>::InsufficientCurrentApprovals
+            );
+            return Ok(false);
+        }
         let Some(network) = Self::peer_protocol_network(call) else {
             return Ok(false);
         };
@@ -2062,9 +2064,10 @@ impl<T: Config> Pallet<T> {
             ..
         } = call
         {
-            if !Peers::<T>::get(network).contains(account) {
-                return Ok(false);
-            }
+            ensure!(
+                Peers::<T>::get(network).contains(account),
+                Error::<T>::Forbidden
+            );
             Self::validate_outgoing_approval(ocw_public, hash, signature_params, account, network)?;
             return Ok(true);
         }
@@ -2800,13 +2803,12 @@ impl<T: Config> Pallet<T> {
         Ok(().into())
     }
 
-    fn inner_approve_request(
-        ocw_public: ecdsa::Public,
-        hash: H256,
-        signature_params: SignatureParams,
-        author: <T as frame_system::pallet::Config>::AccountId,
+    /// Checks that precede ABI encoding and signature recovery for both
+    /// approval and permissionless finalization.
+    fn retryable_outgoing_request(
         net_id: T::NetworkId,
-    ) -> Result<(Weight, u32, u64), DispatchError> {
+        hash: H256,
+    ) -> Result<(OutgoingRequest<T>, RequestStatus), DispatchError> {
         ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
         crate::recovery::ensure_outgoing_active::<T>(net_id, hash)?;
         let request = Requests::<T>::get(net_id, hash)
@@ -2824,6 +2826,53 @@ impl<T: Config> Pallet<T> {
             !Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(net_id, &hash),
             Error::<T>::DeprecatedLegacyXor
         );
+        Ok((request, current_status))
+    }
+
+    /// The checks `finalize_approved_request` makes before ABI encoding or
+    /// signature recovery. Pool validation requires them for this public call.
+    fn finalizable_outgoing_request(
+        net_id: T::NetworkId,
+        hash: H256,
+    ) -> Result<OutgoingRequest<T>, DispatchError> {
+        let (request, _) = Self::retryable_outgoing_request(net_id, hash)?;
+        ensure!(!request.should_be_skipped(), Error::<T>::RequestIsNotReady);
+        Ok(request)
+    }
+
+    /// Failure before ABI encoding or signature recovery: not a peer, recovery
+    /// halt or quarantine, an unknown request or an unready status. Report only
+    /// that work, base reads and at most two decodes of the stored value, so
+    /// CheckWeight reclaims the rest of the declaration. For an absent request
+    /// it covers a message of twice the operational block length; retaining it
+    /// would let failed calls, including wrapped ones, fill blocks.
+    fn approval_rejection(
+        net_id: T::NetworkId,
+        hash: H256,
+        error: DispatchError,
+    ) -> DispatchErrorWithPostInfo {
+        let stored = sp_io::storage::read(&Requests::<T>::hashed_key_for(net_id, hash), &mut [], 0)
+            .map_or(0, u64::from);
+        DispatchErrorWithPostInfo {
+            post_info: Some(
+                <T as Config>::WeightInfo::approve_request()
+                    .max(<T as Config>::WeightInfo::approve_request_finalize())
+                    .saturating_add(Self::approval_metadata_read_weight())
+                    .saturating_add(Self::approval_message_weight(stored.saturating_mul(2))),
+            )
+            .into(),
+            error,
+        }
+    }
+
+    fn inner_approve_request(
+        (request, current_status): (OutgoingRequest<T>, RequestStatus),
+        ocw_public: ecdsa::Public,
+        hash: H256,
+        signature_params: SignatureParams,
+        author: <T as frame_system::pallet::Config>::AccountId,
+        net_id: T::NetworkId,
+    ) -> Result<(Weight, u32, u64), DispatchError> {
         let request_encoded = request.to_eth_abi(hash)?;
         if !Self::verify_message(
             request_encoded.as_raw(),

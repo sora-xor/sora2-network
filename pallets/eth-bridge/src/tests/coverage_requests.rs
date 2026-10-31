@@ -8,7 +8,7 @@ use crate::{BridgeSignatureVersion, BridgeStatus, EthAddress};
 use bridge_multisig::{BridgeTimepoint, MultiChainHeight};
 use codec::{Decode, Encode};
 use ethabi::Token;
-use frame_support::{assert_err, assert_noop, assert_ok};
+use frame_support::{assert_err, assert_err_ignore_postinfo, assert_noop, assert_ok};
 use sp_core::H256;
 
 fn timepoint() -> crate::Timepoint<Runtime> {
@@ -1125,12 +1125,12 @@ fn outgoing_protocol_admission_rejects_bad_signatures_duplicates_and_approval_ov
             signature_params,
             network_id: 0,
         };
-        assert_eq!(
+        assert_err!(
             EthBridge::validate_peer_protocol_call(
                 &state.authority_account_id,
                 &call(signature.clone())
             ),
-            Ok(false)
+            Error::Forbidden
         );
         let mut invalid = signature.clone();
         invalid.r = [0xff; 32];
@@ -1366,7 +1366,10 @@ fn receipt_cancellation_preserves_signed_peer_addition_and_its_reference() {
         assert_noop!(incoming.finalize(), Error::PublicApprovalsRequireSettlement);
         crate::RequestStatuses::<Runtime>::insert(0, hash, RequestStatus::Frozen);
         assert_ok!(incoming.cancel());
-        assert_eq!(crate::RequestStatuses::<Runtime>::get(0, hash), Some(RequestStatus::ApprovalsReady));
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(0, hash),
+            Some(RequestStatus::ApprovalsReady)
+        );
         assert_eq!(crate::PendingPeer::<Runtime>::get(0), Some(peer.clone()));
         assert_eq!(System::consumers(&peer), 1);
         assert_eq!(crate::RequestApprovers::<Runtime>::get(0, hash).len(), 1);
@@ -1383,7 +1386,11 @@ fn receipt_cancellation_preserves_signed_peer_addition_and_its_reference() {
         assert_eq!(done.timepoint(), timepoint());
         assert_eq!(done.at_height(), 92);
         assert_ok!(done.validate());
-        crate::RequestStatuses::<Runtime>::insert(0, hash, RequestStatus::Failed(Error::Cancelled.into()));
+        crate::RequestStatuses::<Runtime>::insert(
+            0,
+            hash,
+            RequestStatus::Failed(Error::Cancelled.into()),
+        );
         assert_err!(done.validate(), Error::RequestIsNotReady);
         assert_ok!(done.cancel());
         assert_eq!(
@@ -2182,7 +2189,7 @@ fn approval_admission_rejects_waiting_peer_removals_and_retired_transfers() {
             EthBridge::validate_outgoing_approval(&public, &transfer_hash, &signature, &peer, 0),
             Error::DeprecatedLegacyXor
         );
-        assert_err!(
+        assert_err_ignore_postinfo!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(peer.clone()),
                 public,

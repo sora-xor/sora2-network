@@ -98,7 +98,7 @@ fn recovery_halt_blocks_new_debits_approvals_and_outgoing_cancellation_refunds()
             ),
             Error::RecoveryHalted
         );
-        assert_err!(
+        assert_err_ignore_postinfo!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(account.clone()),
                 public,
@@ -400,7 +400,7 @@ fn approve_request_rejects_all_additional_signatures_after_quorum_is_reached() {
         let (_signer, duplicate_account_id, duplicate_seed) = &keypairs[0];
         let (duplicate_public, duplicate_signature) =
             approval_params(&request, hash, duplicate_seed);
-        assert_err!(
+        assert_err_ignore_postinfo!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(duplicate_account_id.clone()),
                 duplicate_public,
@@ -419,7 +419,7 @@ fn approve_request_rejects_all_additional_signatures_after_quorum_is_reached() {
         System::reset_events();
         let (_signer, late_account_id, late_seed) = &keypairs[sigs_needed];
         let (late_public, late_signature) = approval_params(&request, hash, late_seed);
-        assert_err!(
+        assert_err_ignore_postinfo!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(late_account_id.clone()),
                 late_public,
@@ -1467,7 +1467,7 @@ fn permanent_request_quarantine_blocks_approval_refund_and_execution_after_halt_
         let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
         assert_err!(request.cancel(), Error::RecoveryHalted);
         assert_err!(request.finalize(hash), Error::RecoveryHalted);
-        assert_err!(
+        assert_err_ignore_postinfo!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(account.clone()),
                 public,
@@ -1726,10 +1726,10 @@ fn permissionless_recheck_finishes_existing_quorum_after_threshold_drop() {
                 crate::RequestStatuses::<Runtime>::get(net, hash),
                 Some(RequestStatus::ApprovalsReady)
             );
-            frame_support::assert_noop!(
+            frame_support::assert_storage_noop!(assert_err_ignore_postinfo!(
                 EthBridge::finalize_approved_request(RuntimeOrigin::signed(alice), net, hash),
                 Error::RequestIsNotReady
-            );
+            ));
         });
     }
 }
