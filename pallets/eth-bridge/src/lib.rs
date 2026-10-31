@@ -2016,9 +2016,11 @@ impl<T: Config> Pallet<T> {
 
     /// Validate an authenticated peer protocol call without changing storage.
     /// Arbitrary bridge/user/admin calls return false and remain fee-paying.
-    /// Non-peer approvals and finalizations that cannot reach quorum are
-    /// rejected instead. Dispatch would fail them after a declaration that, for
-    /// an absent request, covers a message of twice the operational block length.
+    /// Protocol calls from accounts that can never make them (non-peers, or
+    /// anyone but the bridge account for its calls) and finalizations that
+    /// cannot reach quorum are rejected instead. Dispatch would fail them after
+    /// a declaration that, for an absent approval request, covers a message of
+    /// twice the operational block length.
     pub fn validate_peer_protocol_call(
         account: &T::AccountId,
         call: &Call<T>,
@@ -2044,9 +2046,7 @@ impl<T: Config> Pallet<T> {
         } = call
         {
             let peers = Peers::<T>::get(network);
-            if !peers.contains(account) {
-                return Ok(false);
-            }
+            ensure!(peers.contains(account), Error::<T>::Forbidden);
             let id = BridgeAccount::<T>::get(network).ok_or(Error::<T>::UnknownNetwork)?;
             bridge_multisig::Pallet::<T>::validate_cancellation(
                 account,
@@ -2071,9 +2071,11 @@ impl<T: Config> Pallet<T> {
             Self::validate_outgoing_approval(ocw_public, hash, signature_params, account, network)?;
             return Ok(true);
         }
-        if BridgeAccount::<T>::get(network).as_ref() != Some(account) {
-            return Ok(false);
-        }
+        // Only the bridge multisig account can make the remaining calls.
+        ensure!(
+            BridgeAccount::<T>::get(network).as_ref() == Some(account),
+            Error::<T>::Forbidden
+        );
         ensure!(
             BridgeStatuses::<T>::contains_key(network),
             Error::<T>::UnknownNetwork

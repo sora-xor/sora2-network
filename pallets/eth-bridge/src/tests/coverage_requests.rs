@@ -474,10 +474,14 @@ fn peer_protocol_admission_authenticates_request_identity_and_lifecycle() {
             incoming_request: incoming.clone(),
         };
         assert_eq!(EthBridge::peer_protocol_network(&call), Some(0));
-        assert_eq!(
-            EthBridge::validate_peer_protocol_call(&outsider, &call),
-            Ok(false)
-        );
+        // Only the bridge account can make it, so others are not fee-paying calls.
+        let peer = state.networks[&0].ocw_keypairs[0].1.clone();
+        for other in [&outsider, &peer] {
+            assert_err!(
+                EthBridge::validate_peer_protocol_call(other, &call),
+                Error::Forbidden
+            );
+        }
         assert_eq!(
             EthBridge::validate_peer_protocol_call(&account, &call),
             Ok(true)
@@ -531,6 +535,14 @@ fn peer_protocol_admission_authenticates_request_identity_and_lifecycle() {
             EthBridge::validate_peer_protocol_call(&account, &abort),
             Ok(true)
         );
+        for other in [&outsider, &peer] {
+            for protocol in [&finalize, &abort] {
+                assert_err!(
+                    EthBridge::validate_peer_protocol_call(other, protocol),
+                    Error::Forbidden
+                );
+            }
+        }
         crate::RequestStatuses::<Runtime>::insert(0, hash, RequestStatus::Done);
         assert_err!(
             EthBridge::validate_peer_protocol_call(&account, &finalize),
@@ -594,6 +606,14 @@ fn imported_request_admission_rejects_mismatched_and_duplicate_replay_keys() {
             EthBridge::validate_peer_protocol_call(&account, &call(Ok(incoming.clone().into()))),
             Ok(true)
         );
+        let peer = state.networks[&0].ocw_keypairs[0].1.clone();
+        let outsider: super::mock::AccountId = [0x76; 32].into();
+        for other in [&peer, &outsider] {
+            assert_err!(
+                EthBridge::validate_peer_protocol_call(other, &call(Ok(incoming.clone().into()))),
+                Error::Forbidden
+            );
+        }
         assert_eq!(
             EthBridge::validate_peer_protocol_call(
                 &account,
@@ -1045,9 +1065,9 @@ fn current_peers_cancel_an_orphaned_multisig_only_after_quorum() {
             timepoint: when,
         };
         let outsider: super::mock::AccountId = [0xc2; 32].into();
-        assert_eq!(
+        assert_err!(
             EthBridge::validate_peer_protocol_call(&outsider, &call),
-            Ok(false)
+            Error::Forbidden
         );
         assert_err!(
             EthBridge::cancel_pending_multisig(RuntimeOrigin::signed(outsider), 0, hash, when),

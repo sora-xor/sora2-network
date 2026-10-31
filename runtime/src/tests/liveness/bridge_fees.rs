@@ -717,14 +717,6 @@ fn rejected_from_pool_and_block(call: RuntimeCall, pair: &sr25519::Pair) {
     );
 }
 
-fn rejected_nonpeer(call: RuntimeCall, pair: &sr25519::Pair) {
-    rejected_with_reason(
-        call,
-        pair,
-        sp_runtime::transaction_validity::InvalidTransaction::Payment,
-    );
-}
-
 fn rejected_with_reason(
     call: RuntimeCall,
     pair: &sr25519::Pair,
@@ -880,7 +872,7 @@ fn current_zero_xor_quorum_cleans_orphaned_proposal_at_full_shared_capacity() {
         rejected_from_pool_and_block(multi(&id, &honest, 212), &pairs[1]);
         let outsider = sr25519::Pair::from_seed(&[110; 32]);
         System::inc_providers(&account(&outsider));
-        rejected_nonpeer(cancellation(hash, timepoint), &outsider);
+        rejected_from_pool_and_block(cancellation(hash, timepoint), &outsider);
         rejected_from_pool_and_block(
             cancellation(
                 hash,
@@ -888,7 +880,7 @@ fn current_zero_xor_quorum_cleans_orphaned_proposal_at_full_shared_capacity() {
             ),
             &pairs[1],
         );
-        rejected_nonpeer(cancellation(hash, timepoint), &pairs[0]);
+        rejected_from_pool_and_block(cancellation(hash, timepoint), &pairs[0]);
 
         for peer in &pairs[1..3] {
             apply_zero_xor(cancellation(hash, timepoint), peer);
@@ -964,7 +956,7 @@ fn cancellation_quorum_discards_removed_members_votes() {
             pairs[4].clone(),
         ];
         set_bridge_members(&id, &current);
-        rejected_nonpeer(cancellation(hash, timepoint), &pairs[1]);
+        rejected_from_pool_and_block(cancellation(hash, timepoint), &pairs[1]);
         for (index, peer) in pairs[2..4].iter().enumerate() {
             apply_zero_xor(cancellation(hash, timepoint), peer);
             let (_, votes) =
