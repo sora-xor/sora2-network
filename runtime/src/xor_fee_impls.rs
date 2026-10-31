@@ -2983,6 +2983,22 @@ pub fn validate_bridge_fee_exemption(
         RuntimeCall::EthBridge(protocol) => {
             return EthBridge::validate_peer_protocol_call(who, protocol).map_err(invalid)
         }
+        #[cfg(feature = "wip")]
+        RuntimeCall::XorFee(xor_fee::Call::xorless_call { call, .. }) => {
+            // xorless preserves the signed origin. Follow only these wrappers;
+            // other wrappers may change origin or enforce their own admission.
+            let mut inner = call.as_ref();
+            while let RuntimeCall::XorFee(xor_fee::Call::xorless_call { call: nested, .. }) = inner
+            {
+                inner = nested.as_ref();
+            }
+            if let RuntimeCall::EthBridge(protocol) = inner {
+                EthBridge::validate_peer_protocol_call(who, protocol).map_err(invalid)?;
+            }
+            // Nested protocol validation must not grant the outer wrapper a
+            // fee exemption, even when a direct protocol call would be free.
+            return Ok(false);
+        }
         _ => {}
     }
     let (id, timepoint, hash, inner, store, max_weight, threshold_one) = match call {

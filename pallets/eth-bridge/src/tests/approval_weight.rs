@@ -19,7 +19,9 @@ use std::collections::BTreeSet;
 fn fallback() -> u64 {
     let limits: frame_system::limits::BlockLength =
         <Runtime as frame_system::Config>::BlockLength::get();
-    2 * u64::from(*limits.max.get(DispatchClass::Operational))
+    u64::from(*limits.max.get(DispatchClass::Operational))
+        .saturating_mul(2)
+        .saturating_add(1024)
 }
 
 fn migration(tokens: usize) -> OffchainRequest<Runtime> {
@@ -105,6 +107,42 @@ fn approval_byte_bound_uses_global_fallback_for_absent_empty_and_non_outgoing_va
             assert_eq!(EthBridge::approval_message_byte_bound(0, hash), fallback());
             assert_eq!(declared_weights(hash), expected_weights);
         }
+    });
+}
+
+#[test]
+fn fallback_bound_covers_outgoing_tag_at_maximum_operational_storage_length() {
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let limits: frame_system::limits::BlockLength =
+            <Runtime as frame_system::Config>::BlockLength::get();
+        let maximum = *limits.max.get(DispatchClass::Operational);
+        assert!(maximum > 0);
+        let hash = H256::repeat_byte(9);
+        let key = Requests::<Runtime>::hashed_key_for(0, hash);
+        let absent_bound = EthBridge::approval_message_byte_bound(0, hash);
+        let absent_weights = declared_weights(hash);
+        assert_eq!(absent_bound, 2 * u64::from(maximum) + 1024);
+
+        // Only the tag/length classifier is exercised. This is not a decoded
+        // request or an admission fixture: the scalar invariant assumes the
+        // stored payload length is within the operational envelope.
+        let mut bytes = vec![0u8; maximum as usize];
+        sp_io::storage::set(&key, &bytes);
+        assert_eq!(
+            EthBridge::approval_message_byte_bound(0, hash),
+            absent_bound
+        );
+        assert_eq!(declared_weights(hash), absent_weights);
+
+        // A non-outgoing tag of the same maximum length retains the fallback.
+        bytes[0] = 1;
+        sp_io::storage::set(&key, &bytes);
+        assert_eq!(
+            EthBridge::approval_message_byte_bound(0, hash),
+            absent_bound
+        );
+        assert_eq!(declared_weights(hash), absent_weights);
     });
 }
 

@@ -37,6 +37,8 @@ mod remote;
 mod staking_async;
 mod staking_reward_compatibility;
 mod xor_fee;
+#[cfg(not(feature = "wip"))]
+mod xorless_disabled;
 
 use crate::{
     genesis_config_presets, Currencies, Polkamarkt, PolkamarktCanonicalStableAssetId, Referrals,

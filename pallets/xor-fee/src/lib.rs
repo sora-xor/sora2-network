@@ -1401,12 +1401,22 @@ pub mod pallet {
         #[allow(clippy::boxed_local)]
         #[pallet::call_index(3)]
         #[pallet::weight({
-            let dispatch_info = call.get_dispatch_info();
-            (
-				<T as Config>::WeightInfo::xorless_call()
-					.saturating_add(dispatch_info.total_weight()),
-				dispatch_info.class,
-			)
+            #[cfg(feature = "wip")]
+            {
+                let dispatch_info = call.get_dispatch_info();
+                (
+                    <T as Config>::WeightInfo::xorless_call()
+                        .saturating_add(dispatch_info.total_weight()),
+                    dispatch_info.class,
+                )
+            }
+            #[cfg(not(feature = "wip"))]
+            {
+                // This path never dispatches the inner call. Inheriting its
+                // weight lets a flat-fee wrapper reserve an entire bridge
+                // approval allowance while doing only a cheap rejection.
+                <T as Config>::WeightInfo::xorless_call()
+            }
         })]
         pub fn xorless_call(
             origin: OriginFor<T>,

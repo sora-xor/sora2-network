@@ -1288,9 +1288,7 @@ pub mod pallet {
         /// failed local finalization. Signatures authorize the operation; the
         /// submitter only pays to retry its bounded local accounting.
         #[pallet::call_index(19)]
-        #[pallet::weight(<T as Config>::WeightInfo::approve_request_finalize()
-            .saturating_add(Pallet::<T>::approval_reconciliation_weight(*network_id, *hash))
-            .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        #[pallet::weight(Pallet::<T>::finalization_declared_weight(*network_id, *hash))]
         pub fn finalize_approved_request(
             origin: OriginFor<T>,
             network_id: BridgeNetworkId<T>,
@@ -1299,6 +1297,13 @@ pub mod pallet {
             let _ = ensure_signed(origin)?;
             let request = Self::finalizable_outgoing_request(network_id, hash)
                 .map_err(|error| Self::approval_rejection(network_id, hash, error))?;
+            // Applied signed transactions perform these pre-signature checks in
+            // both validate and prepare. Capture their byte bound before local
+            // finalization can change any request or bridge metadata. The extra
+            // length/tag query is charged explicitly with the two admissions.
+            let admission_weight = Self::finalization_admission_weight(
+                Self::approval_message_byte_bound(network_id, hash),
+            );
             let encoded = request.to_eth_abi(hash)?;
             let (approvals, approvers, recoveries) =
                 Self::current_request_approvals(network_id, hash, encoded.as_raw())?;
@@ -1317,7 +1322,8 @@ pub mod pallet {
                         .saturating_add(
                             Self::approval_message_weight(encoded.as_raw().len() as u64),
                         )
-                        .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()),
+                        .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
+                        .saturating_add(admission_weight),
                 ),
                 Pays::Yes,
             )
@@ -2026,12 +2032,21 @@ impl<T: Config> Pallet<T> {
         call: &Call<T>,
     ) -> Result<bool, DispatchError> {
         if let Call::finalize_approved_request { network_id, hash } = call {
-            // Public by design, so it remains fee-paying. Dispatch counts only
-            // recorded approvers that are current peers, so fewer cannot finalize.
+            // Public by design, so it remains fee-paying. A recorded current-peer
+            // quorum is only a cheap necessary condition: retained signatures may
+            // belong to an earlier contract or signature domain. Admission and
+            // fee withdrawal must require the same live-domain quorum as dispatch.
             let request = Self::finalizable_outgoing_request(*network_id, *hash)?;
             let recorded = RequestApprovers::<T>::get(network_id, hash);
             ensure!(
                 Self::has_current_approval_quorum(*network_id, &request, &recorded)?,
+                Error::<T>::InsufficientCurrentApprovals
+            );
+            let encoded = request.to_eth_abi(*hash)?;
+            let (_, approvers, _) =
+                Self::current_request_approvals(*network_id, *hash, encoded.as_raw())?;
+            ensure!(
+                Self::has_current_approval_quorum(*network_id, &request, &approvers)?,
                 Error::<T>::InsufficientCurrentApprovals
             );
             return Ok(false);
@@ -2842,6 +2857,35 @@ impl<T: Config> Pallet<T> {
         Ok(request)
     }
 
+    /// Covers pre-signature request/status/quorum admission without adding a
+    /// secp256k1 recovery allowance. The byte bound supplied by finalization
+    /// covers at most two full stored-request decodes, including the legacy-XOR
+    /// check; unknown/non-outgoing values retain the operational-call envelope.
+    /// Keep both applied-extrinsic admission passes in successful actual weight.
+    fn approval_pre_signature_weight(message_byte_bound: u64) -> Weight {
+        <T as Config>::WeightInfo::approve_request()
+            .max(<T as Config>::WeightInfo::approve_request_finalize())
+            .saturating_add(Self::approval_metadata_read_weight())
+            .saturating_add(Self::approval_message_weight(message_byte_bound))
+    }
+
+    /// Retain both signed-extension admission passes and the dispatch-time
+    /// bound capture. Each admission verifies the full current-domain quorum:
+    /// add MAX_PEERS reconciliation and a second message envelope for ABI/hash
+    /// work alongside the pre-signature storage-decode envelope. The migration
+    /// benchmark covers full decoding, ABI construction and hashing; no request
+    /// or bound is reread by this pure weight calculation.
+    /// The host may read the whole value for the later bound capture even though
+    /// Wasm receives only its tag, so retain its message and metadata allowance.
+    fn finalization_admission_weight(message_byte_bound: u64) -> Weight {
+        Self::approval_pre_signature_weight(message_byte_bound)
+            .saturating_add(Self::approval_reconciliation_weight_for(MAX_PEERS as u32))
+            .saturating_add(Self::approval_message_weight(message_byte_bound))
+            .saturating_mul(2)
+            .saturating_add(Self::approval_metadata_read_weight())
+            .saturating_add(Self::approval_message_weight(message_byte_bound))
+    }
+
     /// Failure before ABI encoding or signature recovery: not a peer, recovery
     /// halt or quarantine, an unknown request or an unready status. Report only
     /// that work, base reads and at most two decodes of the stored value, so
@@ -2856,12 +2900,9 @@ impl<T: Config> Pallet<T> {
         let stored = sp_io::storage::read(&Requests::<T>::hashed_key_for(net_id, hash), &mut [], 0)
             .map_or(0, u64::from);
         DispatchErrorWithPostInfo {
-            post_info: Some(
-                <T as Config>::WeightInfo::approve_request()
-                    .max(<T as Config>::WeightInfo::approve_request_finalize())
-                    .saturating_add(Self::approval_metadata_read_weight())
-                    .saturating_add(Self::approval_message_weight(stored.saturating_mul(2))),
-            )
+            post_info: Some(Self::approval_pre_signature_weight(
+                stored.saturating_mul(2),
+            ))
             .into(),
             error,
         }
@@ -2930,6 +2971,19 @@ impl<T: Config> Pallet<T> {
         ))
     }
 
+    /// Compute the finalization declaration with one request-bound query, as
+    /// before admission accounting was added. Reuse that bound for the existing
+    /// reconciliation components, both new admissions and the charged capture.
+    pub fn finalization_declared_weight(network: BridgeNetworkId<T>, hash: H256) -> Weight {
+        let message_byte_bound = Self::approval_message_byte_bound(network, hash);
+        <T as Config>::WeightInfo::approve_request_finalize()
+            .saturating_add(Self::approval_reconciliation_weight_for(MAX_PEERS as u32))
+            .saturating_add(Self::approval_message_weight(message_byte_bound).saturating_mul(2))
+            .saturating_add(Self::approval_metadata_read_weight())
+            .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
+            .saturating_add(Self::finalization_admission_weight(message_byte_bound))
+    }
+
     /// Covers at most MAX_PEERS secp256k1 recoveries and the bounded signer sets.
     /// Keep this allowance in both fee validation and dispatch weight accounting.
     pub fn approval_reconciliation_weight(network: BridgeNetworkId<T>, hash: H256) -> Weight {
@@ -2945,6 +2999,8 @@ impl<T: Config> Pallet<T> {
     /// their enum tag into Wasm; storage::read also returns the full value length.
     /// A public load hint can occupy a future outgoing hash, so every other tag
     /// (or absent value) must retain the full admitted operational-call envelope.
+    /// Assuming the stored payload fits that envelope, use the same fixed margin
+    /// in both branches so a prior hint never supplies a smaller scalar bound.
     pub fn approval_message_byte_bound(network: BridgeNetworkId<T>, hash: H256) -> u64 {
         let mut tag = [u8::MAX; 1];
         let length =
@@ -2960,7 +3016,8 @@ impl<T: Config> Pallet<T> {
                     .max
                     .get(frame_support::dispatch::DispatchClass::Operational),
             )
-            .saturating_mul(2),
+            .saturating_mul(2)
+            .saturating_add(1024),
         }
     }
 
