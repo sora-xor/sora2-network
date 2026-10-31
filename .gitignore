@@ -50,9 +50,10 @@ pallets/sccp/fuzz/corpus/
 pallets/sccp/fuzz/artifacts/
 pallets/sccp/fuzz/Cargo.lock
 
-# Generated security docs
+# Security reviews, audit reports and their evidence never go in git
 docs/security*
-/security_best_practices_report.md
+**/security_best_practices_report.md
+misc/*security-review*/
 
 # Root-level local build outputs
 /.tmp-docker-substrate*/
