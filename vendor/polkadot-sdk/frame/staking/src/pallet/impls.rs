@@ -44,14 +44,14 @@ use sp_runtime::{
 use sp_staking::{
     currency_to_vote::CurrencyToVote,
     offence::{OffenceDetails, OnOffenceHandler},
-    EraIndex, OnStakingUpdate, Page, SessionIndex, Stake,
+    EraIndex, EraPayout, OnStakingUpdate, Page, SessionIndex, Stake,
     StakingAccount::{self, Controller, Stash},
     StakingInterface,
 };
 
 use crate::{
     asset, election_size_tracker::StaticTracker, log, slashing, weights::WeightInfo, ActiveEraInfo,
-    AdditionalPayout, BalanceOf, EraInfo, EraPayout, Exposure, Forcing, IndividualExposure,
+    AdditionalPayout, BalanceOf, EraInfo, Exposure, Forcing, IndividualExposure,
     LedgerIntegrityState, MaxNominationsOf, MaxWinnersOf, Nominations, NominationsQuota,
     PositiveImbalanceOf, RewardDestination, SessionInterface, StakingLedger, UnlockChunk,
     ValidatorPrefs, STAKING_ID,
@@ -2405,7 +2405,7 @@ impl<T: Config> Pallet<T> {
         );
 
         use frame_support::traits::fungible::Inspect;
-        if T::CurrencyToVote::will_downscale(T::Currency::total_issuance()).map_or(false, |x| x) {
+        if T::CurrencyToVote::will_downscale(T::Currency::total_issuance()).unwrap_or(false) {
             log!(warn, "total issuance will cause T::CurrencyToVote to downscale -- report to maintainers.")
         }
 

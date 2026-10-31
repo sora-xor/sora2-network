@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::iroha_crypto::TestKeypair as Keypair;
 use crate::mock::*;
 use crate::{
     Account, Balances as IrohaBalances, Error, MigratedAccounts, Pallet, PendingMultiSigAccounts,
@@ -36,21 +37,17 @@ use crate::{
 use codec::Encode;
 use common::prelude::Balance;
 use common::{AssetInfoProvider, VAL};
-use ed25519_dalek_iroha::{Digest, Keypair, PublicKey, SecretKey};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use frame_support::dispatch::{CheckIfFeeless, GetDispatchInfo, Pays, PostDispatchInfo};
 use frame_support::traits::OnInitialize;
 use referrals::Referrers;
-use sha3::Sha3_256;
 use sp_core::crypto::AccountId32;
 
 type Assets = assets::Pallet<Runtime>;
 
 fn test_keypair(seed: u8) -> Keypair {
-    let secret = SecretKey::from_bytes(&[seed; 32]).expect("test secret key must be valid");
-    let public = PublicKey::from(&secret);
-    Keypair { secret, public }
+    Keypair::from_seed([seed; 32])
 }
 
 fn public_key_hex(keypair: &Keypair) -> String {
@@ -62,11 +59,7 @@ fn signature_for(iroha_address: &str, account: &AccountId32, keypair: &Keypair) 
     let iroha_address = iroha_address.to_string();
     let message =
         Pallet::<Runtime>::migration_signing_message(&iroha_address, &public_key, account);
-    let mut prehashed_message = Sha3_256::default();
-    prehashed_message.update(message.as_bytes());
-    let signature = keypair
-        .sign_prehashed(prehashed_message, None)
-        .expect("test signature should be produced");
+    let signature = keypair.sign(message.as_bytes());
     hex::encode(signature.to_bytes())
 }
 
@@ -380,6 +373,54 @@ fn test_migrate_multi_sig() {
             Assets::free_balance(&VAL, &multi_account).unwrap(),
             Balance::from(1000u128)
         );
+    });
+}
+
+#[test]
+fn consumed_key_cannot_displace_a_replacement_pending_approver() {
+    new_test_ext().execute_with(|| {
+        let address = "did_sora_multi_sig@sora".to_string();
+        let consumed_key = test_keypair(1);
+        let remaining_key = test_keypair(2);
+        install_public_keys(&address, &[&consumed_key, &remaining_key]);
+        assert_ok!(migrate_with_key(ALICE, &address, &consumed_key));
+        let key_flags = PublicKeys::<Runtime>::get(&address);
+        assert_eq!(
+            key_flags.iter().map(|(used, _)| *used).collect::<Vec<_>>(),
+            vec![true, false]
+        );
+
+        // The recovery adapter changes only the already-owned approval slot.
+        assert!(PendingMultiSigAccounts::<Runtime>::contains_key(&address));
+        PendingMultiSigAccounts::<Runtime>::mutate(&address, |pending| {
+            assert_eq!(pending.approving_accounts, vec![ALICE]);
+            assert_eq!(pending.migrate_at, None);
+            pending.approving_accounts[0] = CHARLIE;
+        });
+        assert_eq!(PublicKeys::<Runtime>::get(&address), key_flags);
+        let other_account = AccountId32::new([99; 32]);
+        // Even a valid signature from the consumed Iroha key cannot take a
+        // second slot by naming another SORA Nexus account.
+        assert_noop!(
+            migrate_with_key(other_account.clone(), &address, &consumed_key),
+            Error::<Runtime>::PublicKeyAlreadyUsed
+        );
+        assert_ok!(migrate_with_key(BOB, &address, &remaining_key));
+        let multi = |mut accounts: [AccountId32; 2]| {
+            accounts.sort();
+            pallet_multisig::Pallet::<Runtime>::multi_account_id(&accounts, 2)
+        };
+        assert_eq!(
+            Assets::free_balance(&VAL, &multi([CHARLIE, BOB])).unwrap(),
+            1000
+        );
+        assert_eq!(
+            Assets::free_balance(&VAL, &multi([other_account, BOB])).unwrap(),
+            0
+        );
+        assert_eq!(Assets::free_balance(&VAL, &multi([ALICE, BOB])).unwrap(), 0);
+        assert!(MigratedAccounts::<Runtime>::contains_key(&address));
+        assert!(!PendingMultiSigAccounts::<Runtime>::contains_key(&address));
     });
 }
 

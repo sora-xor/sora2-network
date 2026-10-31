@@ -27,6 +27,7 @@ REQUIRED_FOLLOWUP_INPUTS = [
     "pallets/kensetsu/src/lib.rs", "pallets/kensetsu/src/tests.rs",
     "pallets/apollo-platform/src/lib.rs", "pallets/apollo-platform/src/tests.rs",
     "common/src/mock.rs", "runtime/src/tests/liveness/retired_lending.rs",
+    "runtime/src/tests/liveness/payout_batch_fees.rs",
 ]
 REQUIRED_DELETIONS = ["runtime/src/migration_fees.rs", "runtime/src/tests/liveness/migration_sponsorship.rs"]
 EXPECTED_BASE = "bb38216396835fae45de9c38104e4927a96eb36c"

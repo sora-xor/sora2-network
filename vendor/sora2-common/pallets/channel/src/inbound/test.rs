@@ -292,6 +292,10 @@ pub fn new_tester() -> sp_io::TestExternalities {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn test_submit() {
     new_tester().execute_with(|| {
         let origin = RuntimeOrigin::signed(Keyring::Bob.into());
@@ -351,6 +355,10 @@ fn test_submit() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn test_submit_with_invalid_nonce() {
     new_tester().execute_with(|| {
         let origin = RuntimeOrigin::signed(Keyring::Bob.into());
@@ -394,6 +402,10 @@ fn test_submit_with_invalid_nonce() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn test_submit_with_invalid_network_id() {
     new_tester().execute_with(|| {
         let origin = RuntimeOrigin::signed(Keyring::Bob.into());
@@ -427,6 +439,10 @@ fn test_submit_with_invalid_network_id() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn authenticated_deliveries_stay_free_and_consume_failed_batch_nonces() {
     new_tester().execute_with(|| {
         use frame_support::dispatch::{GetDispatchInfo, Pays};
@@ -536,6 +552,10 @@ fn signed_status_report_refunds_authenticated_remote_failure_reporting() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn unauthenticated_or_wrong_type_submission_is_rejected_before_execution() {
     new_tester().execute_with(|| {
         let commitment =
@@ -583,5 +603,74 @@ fn unauthenticated_or_wrong_type_submission_is_rejected_before_execution() {
         );
         assert!(Pallet::<Test>::pre_dispatch(&wrong_type).is_err());
         assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+    });
+}
+
+#[test]
+fn recovery_halt_requires_exact_current_context_and_still_checks_authentication() {
+    new_tester().execute_with(|| {
+        let commitment =
+            bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: vec![BridgeMessage {
+                    timepoint: Default::default(),
+                    payload: vec![1].try_into().unwrap(),
+                }]
+                .try_into()
+                .unwrap(),
+            });
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        let validate =
+            || Pallet::<Test>::validate_submission(BASE_NETWORK_ID, &commitment, &vec![255]);
+        assert_noop!(validate(), Error::<Test>::RecoveryHalted);
+        let number: u32 = System::block_number().try_into().unwrap();
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &number.to_le_bytes());
+        assert_ok!(Pallet::<Test>::validate_submission(
+            BASE_NETWORK_ID,
+            &commitment,
+            &vec![]
+        ));
+        // A recovery context never supplies or replaces a valid counterpart proof.
+        assert!(validate().is_err());
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        let malformed = [number.to_le_bytes().as_slice(), &[0]].concat();
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &malformed);
+        assert_noop!(validate(), Error::<Test>::RecoveryHalted);
+    });
+}
+
+#[test]
+fn recovery_context_cannot_admit_abandoned_outbound_status_reports() {
+    new_tester().execute_with(|| {
+        let chain: EVMChainId = [1u8; 32].into();
+        let channel = H160::repeat_byte(4);
+        EVMChannelAddresses::<Test>::insert(chain, channel);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        let number: u32 = System::block_number().try_into().unwrap();
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &number.to_le_bytes());
+        let report = bridge_types::evm::StatusReport {
+            channel,
+            block_number: 10,
+            relayer: H160::repeat_byte(3),
+            nonce: 1,
+            results: vec![false].try_into().unwrap(),
+            gas_spent: 100.into(),
+            base_fee: 10.into(),
+        };
+        assert_noop!(
+            Pallet::<Test>::submit(
+                RuntimeOrigin::signed(Keyring::Bob.into()),
+                GenericNetworkId::EVM(chain),
+                bridge_types::GenericCommitment::EVM(bridge_types::evm::Commitment::StatusReport(
+                    report
+                )),
+                vec![]
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_eq!(
+            ReportedChannelNonces::<Test>::get(GenericNetworkId::EVM(chain)),
+            0
+        );
     });
 }

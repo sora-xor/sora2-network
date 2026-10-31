@@ -5,12 +5,84 @@ Release tooling for building, rehearsing, and submitting a runtime upgrade.
 ## Requirements
 
 - Python 3.11+
+- Rust 1.99.1 (`rustup toolchain install 1.99.1 --profile minimal`) for the four native bindings
 - `cargo`
 - `subwasm` for metadata review (`cargo install --locked subwasm`)
 
   Or
 
 - Docker
+
+### Python dependency maintenance
+
+`requirements.txt` selects all 29 runtime dependencies for CPython 3.11+:
+25 published Python pins and four reviewed local native sources. Each native
+source has a locked Rust dependency graph and exact Maturin build backend.
+Use a **new virtual environment** for this migration: updating requirements in
+an existing environment does not remove the old vulnerable `ecdsa` and
+`smoldot-light` packages.
+From the repository root:
+
+```bash
+python3 -m venv misc/runtime_upgrade/.venv-secure
+misc/runtime_upgrade/.venv-secure/bin/python misc/runtime_upgrade/install_dependencies.py
+misc/runtime_upgrade/.venv-secure/bin/python -m pip check
+misc/runtime_upgrade/.venv-secure/bin/python -m unittest discover -s misc/runtime_upgrade/tests -v
+misc/runtime_upgrade/.venv-secure/bin/python misc/runtime_upgrade/main.py --help
+```
+
+The 2026-10-24 migration removes Python `ecdsa`, which has no patched release for
+[CVE-2024-23342](https://github.com/advisories/GHSA-wj6h-64fc-37mp).
+The helper now imports a reviewed source snapshot of `substrate-interface` 1.8.1
+from [vendor/](vendor/README.md). Its BIP32 derivation and ECDSA backend use
+`coincurve` 21.0.0 / libsecp256k1. SR25519 remains the governance CLI's signing
+scheme. Existing URI, seed, mnemonic, governance call and signed-extrinsic formats
+are covered by offline compatibility tests.
+
+The unused Python `smoldot-light` 0.1.0 extension is also removed: its published
+source lock includes vulnerable `ruzstd` 0.8.2, `lru` 0.12.5 and Wasmtime 36.0.3.
+The installed macOS extension confirms the first two versions; pip-audit does
+not inspect these bundled Rust libraries. Light-client mode is explicitly
+unsupported by this CLI snapshot. HTTP and WebSocket governance RPC behavior
+is unchanged. See [the native-dependency evidence](vendor/native-dependency-review.json).
+
+The dependency refresh also updates `certifi` to 2026.10.23 and `urllib3` to 2.8.0.
+The three Substrate cryptographic bindings and `pydantic-core` are built from
+verified upstream source. Their rebuilt Rust dependencies remove vulnerable
+PyO3 versions, old `keccak`/`rand`, and LRU's iterator auto-trait defect. The
+installer resolves local source paths relative to its own directory, so it
+works from any caller directory and inside Docker. Do not replace those source
+paths with upstream wheel pins: that would restore the bundled defects.
+
+Run `pip-audit --strict --path <venv-site-packages>` from a separate audit
+environment after installation. Audit all four `vendor/native/*/Cargo.lock`
+files with `cargo audit --deny warnings` as well; Python advisory scans do not
+inspect Rust code inside wheels. CI performs both audits and runs the offline
+compatibility suite. Upstream provenance and the maintenance procedure are
+documented in [vendor/README.md](vendor/README.md).
+
+The Docker image uses pinned official Python 3.13.17/Debian Trixie and Rust
+1.99.1 build images. Its separate builder produces the reviewed native wheels;
+the runtime image installs those wheels without retaining a Rust compiler.
+On 2026-10-24, both stages built successfully on Linux arm64. The installed
+wheels pass 149 offline tests. The final image includes a freshly generated
+runtime WASM with its SHA-256 checked, runs as a non-root user, and passes CLI
+help, `pip check`, and an installed-path audit with zero vulnerabilities across
+30 distributions including pip. No Rust or C compiler remains in the runtime
+image. See the [validation record](vendor/native-dependency-review.json) for the
+image, wheel, native binary, lockfile, and WASM hashes.
+
+Local validation uses the explicit `colima-sora-release-verify` Docker context.
+Its DNS repair is confined to that profile and was checked after a full restart;
+the global Docker context remains unchanged. Colima 0.10.3 can skip DNS setup
+when dnsmasq has a pending upgrade ([upstream issue](https://github.com/abiosoft/colima/issues/1611)).
+The profile's idempotent after-boot repair configures dnsmasq from the current
+systemd-networkd DNS servers and interface address. This guest has no
+systemd-resolved service, so replacing its resolver file with a systemd-resolved
+symlink would not repair it.
+
+Files inside past `runtime-upgrade-*` packages are retained release evidence with
+checksums; dependency maintenance applies to this active tooling directory.
 
 ## Build The Candidate Runtime
 
@@ -110,7 +182,7 @@ The governance helper now has explicit subcommands for the live `wss://ws.mof.so
 1. Install packages:
 
 ```bash
-pip install -r misc/runtime_upgrade/requirements.txt
+python misc/runtime_upgrade/install_dependencies.py
 ```
 
 2. Upload the SCALE-encoded `set_code` preimage:

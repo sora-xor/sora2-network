@@ -40,7 +40,6 @@ use common::{
 };
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
-use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, dispatch, parameter_types};
 use frame_system;

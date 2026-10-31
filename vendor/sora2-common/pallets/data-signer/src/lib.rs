@@ -183,6 +183,8 @@ pub mod pallet {
         ApprovalNotPending,
         PendingApprovalAlreadyExists,
         PeerRegisteredInOtherNetwork,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
     }
 
     /// Peers
@@ -230,6 +232,10 @@ pub mod pallet {
             network_id: GenericNetworkId,
             peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             let peers = Self::canonicalize_peers(peers, true)?;
             Self::ensure_no_substrate_peer_overlap(network_id, peers.iter())?;
@@ -256,6 +262,14 @@ pub mod pallet {
             data: H256,
             signature: ecdsa::Signature,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::commitment_quarantined(network_id, data),
+                Error::<T>::RecoveryHalted
+            );
+            ensure!(
+                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                Error::<T>::RecoveryHalted
+            );
             ensure_none(origin)?;
             let peers = Peers::<T>::get(network_id).ok_or(Error::<T>::PalletNotInitialized)?;
             ensure!(
@@ -304,6 +318,10 @@ pub mod pallet {
             network_id: GenericNetworkId,
             peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 !PendingPeerUpdate::<T>::get(network_id),
@@ -343,6 +361,10 @@ pub mod pallet {
             network_id: GenericNetworkId,
             peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 !PendingPeerUpdate::<T>::get(network_id),
@@ -373,6 +395,10 @@ pub mod pallet {
             origin: OriginFor<T>,
             peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                Error::<T>::RecoveryHalted
+            );
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin)?;
             let network_id: GenericNetworkId = network_id.into();
             ensure!(
@@ -403,6 +429,10 @@ pub mod pallet {
             origin: OriginFor<T>,
             _peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                Error::<T>::RecoveryHalted
+            );
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin)?;
             let network_id: GenericNetworkId = network_id.into();
             ensure!(
@@ -420,6 +450,10 @@ pub mod pallet {
             network_id: GenericNetworkId,
             peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             let peers = Self::canonicalize_peers(peers, false)?;
             Self::ensure_no_substrate_peer_overlap(network_id, peers.iter())?;
@@ -440,6 +474,14 @@ pub mod pallet {
             network_id: GenericNetworkId,
             data: H256,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::commitment_quarantined(network_id, data),
+                Error::<T>::RecoveryHalted
+            );
+            ensure!(
+                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 Peers::<T>::contains_key(network_id),
@@ -463,6 +505,10 @@ pub mod pallet {
             network_id: GenericNetworkId,
             data: H256,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::commitment_quarantined(network_id, data),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 PendingApprovals::<T>::get(network_id, data),
@@ -547,17 +593,27 @@ pub mod pallet {
         }
     }
 
+    // Keep the deployed bridge worker wire format and fee policy during this SDK migration.
+    // The FRAME macro recognizes this exact attribute when retaining legacy admission.
+    #[allow(deprecated)]
     #[pallet::validate_unsigned]
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;
         // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+            if sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1") {
+                return InvalidTransaction::Call.into();
+            }
             if let Call::approve {
                 network_id,
                 data,
                 signature,
             } = call
             {
+                ensure!(
+                    !bridge_types::recovery::commitment_quarantined(*network_id, *data),
+                    InvalidTransaction::Stale
+                );
                 let peers = Peers::<T>::get(network_id).ok_or(InvalidTransaction::BadSigner)?;
                 ensure!(
                     PendingApprovals::<T>::get(network_id, *data),

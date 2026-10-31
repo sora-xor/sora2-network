@@ -1,0 +1,94 @@
+{
+  "files": {
+    "binding_amendments.py": {
+      "reviewedAmendment": "Shared idempotent metadata derivation for original/repaired native preparers; actual current profile, lock and template manifest only.",
+      "sha256": "95b1cd991ff9a7e2fde719eb05d948fc95d6e9a96dbf562a5001ea15028dd95c",
+      "upstream": "misc/incident_recovery/production_native.py reviewed source-derived binding promotion"
+    },
+    "original/prepare.py": {
+      "beforeBuildBindingAmendmentSha256": "b690d7685d9ae80772baf60a10e2bd5a06349f0f4ba182fef41bde0ce3a0c4e9",
+      "buildBindingAmendment": "Derive actual runtime feature profile, reviewed additive host lock and current SDK-template manifest before native compilation; embed identical JSON and install host lock during preparation.",
+      "sha256": "68bc98a44e9a0b10cbb086623276c6ccdbea50b22c276af5080fe7c9d4499f88",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-operation-recorder-candidate-v1/prepare.py"
+    },
+    "original/template/recorder/Cargo.toml": {
+      "amendmentSha256": "e4f979d4d15749e0e75319e7e405a7dee64f6d08b18ad3b1c72e72628085afe0",
+      "beforeSha256": "8ebfe8de6103a697183a4266c9d5ae4a9fc687cfa186a085ab8a31c9c4c816da",
+      "exactReplacement": [
+        "flate2 = \"1\"",
+        "flate2 = \"=1.1.10\""
+      ],
+      "reviewedAmendment": "artifacts/recovery-28191817/fixtures/native-operation-recorder-host-lock-amendment-v1/amend.py",
+      "sha256": "b5917cf1c9f77615796b9179c981d3dbdb9e6153ada78add74b34a6ebd48cc8f",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-operation-recorder-candidate-v1/template/recorder/Cargo.toml"
+    },
+    "original/template/recorder/src/main.rs": {
+      "authorizationDomainAmendment": "Policy format v2 and forward-upgrade v2: explicit chain-spec/release nonce and persisted first-child branch anchor; preserve both through native repair handover; synthetic fixture constructors only.",
+      "beforeAuthorizationDomainSha256": "74b1c25592437668d02a2a67c86d9f2609cb84886f150bbe2e63dae68d0970cd",
+      "sha256": "87a3500a8acbe9d78b0a231e551bd9bff46f7f257cd843f192e07ecd29bf79a1",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-operation-recorder-sdk-repair-v1/after/utils/native-operation-recorder/src/main.rs"
+    },
+    "original/template/recorder/src/replay.rs": {
+      "sha256": "cb0e22b1e5955073207e9650373711f71bc0caafffb2951f715301479e89d7f5",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-operation-recorder-sdk-repair-v1/after/utils/native-operation-recorder/src/replay.rs"
+    },
+    "original/template/recorder/src/snapshot.rs": {
+      "sha256": "a32cb7e467aec80837ae81a6e15314dd077d2aff291a84f53d247f9d933a687a",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-operation-recorder-test-path-repair-v1/after/utils/native-operation-recorder/src/snapshot.rs"
+    },
+    "original/template/runtime-native-wrapper.rs": {
+      "sha256": "d3cc6f663cb3897c44428c68ab93ecdffe3417134b0d33f9a1c594b0e30dfffd",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-operation-recorder-candidate-v1/template/runtime-native-wrapper.rs"
+    },
+    "repaired/lock/allowed-host-packages.json": {
+      "sha256": "79d075629349543de37c55fb25d8cfba5c3c33d1e6ebc7a69c46c4af21ce7931",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/lock/allowed-host-packages.json"
+    },
+    "repaired/lock/amended.lock": {
+      "sha256": "3ba3e7255f293d0f24e6ad069e1210fa8fabeeabcec30e352dd8e7a1f58c66d8",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/lock/amended.lock"
+    },
+    "repaired/lock/input-pins.json": {
+      "sha256": "0c295a203e49ceb8fc47ed952d1c5cc4a78aa3c39a1f7eece3a9b291180dd02f",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/lock/input-pins.json"
+    },
+    "repaired/lock/original.lock": {
+      "sha256": "45351520f33542c5048458c55182480c4cbab33d5e14574f1c2128ac35ebd176",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/lock/original.lock"
+    },
+    "repaired/lock/verify_lock.py": {
+      "sha256": "5ff74e52dbc5c331097705ce58a348fa9f54eee96029e14f5abd05e3f4fc2512",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/lock/verify_lock.py"
+    },
+    "repaired/prepare.py": {
+      "sha256": "df85d9c77dae82988aeb9bc27f44fe5c5b6d5e10a2e76afd49e5a66b1d407989",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/prepare.py"
+    },
+    "repaired/template/recorder/Cargo.toml": {
+      "sha256": "b5917cf1c9f77615796b9179c981d3dbdb9e6153ada78add74b34a6ebd48cc8f",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/template/recorder/Cargo.toml"
+    },
+    "repaired/template/recorder/src/main.rs": {
+      "authorizationDomainAmendment": "Policy format v2 and forward-upgrade v2: explicit chain-spec/release nonce and persisted first-child branch anchor; preserve both through native repair handover; synthetic fixture constructors only.",
+      "beforeAuthorizationDomainSha256": "2727a64c1f337eb69b929240b681abad207340659d25f705e47ad5904213f025",
+      "sha256": "691c70984420abbced077652ec57be15d2e477b0d3642d41ee5fe023619d9119",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-recorder-timepoint-json-repair-v1/after/utils/native-operation-recorder/src/main.rs"
+    },
+    "repaired/template/recorder/src/replay.rs": {
+      "sha256": "cb0e22b1e5955073207e9650373711f71bc0caafffb2951f715301479e89d7f5",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/template/recorder/src/replay.rs"
+    },
+    "repaired/template/recorder/src/snapshot.rs": {
+      "sha256": "a32cb7e467aec80837ae81a6e15314dd077d2aff291a84f53d247f9d933a687a",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/template/recorder/src/snapshot.rs"
+    },
+    "repaired/template/runtime-native-wrapper.rs": {
+      "sha256": "d3cc6f663cb3897c44428c68ab93ecdffe3417134b0d33f9a1c594b0e30dfffd",
+      "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/template/runtime-native-wrapper.rs"
+    }
+  },
+  "nativeExecuted": false,
+  "productionReady": false,
+  "runtimeBusinessSourcesChanged": false,
+  "schema": "sora-nexus-production-native-reviewed-assets-v1"
+}

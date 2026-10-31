@@ -1,0 +1,80 @@
+{
+  "reviewed_at": "2026-10-24",
+  "package": "smoldot",
+  "version": "2.0.26",
+  "git_commit": "d7f51595e2236193a263636ce4142fab1c425622",
+  "npm_tarball": "https://registry.npmjs.org/smoldot/-/smoldot-2.0.26.tgz",
+  "npm_integrity": "sha512-F+qYmH4z2s2FK+CxGj8moYcd1ekSIKH8ywkdqlOz88Dat35iB1DIYL11aILN46YSGMzQW/lbJNS307zBSDN5Ig==",
+  "source_lock_sha256": "9ca20ff32c54f6814c1786627a9d84d8f3dd54775f7cf4ffe5e383ce07df6376",
+  "embedded_wasm_sha256": "523a960afe5d9e6f891a46c20c73806215bca406d2156e2b99521932a5ec90d7",
+  "embedded_wasm_bytes": 5024647,
+  "detected_binary_versions": [
+    "curve25519-dalek 4.1.2",
+    "event-listener 4.0.3",
+    "event-listener 5.3.0",
+    "keccak 0.1.5",
+    "lru 0.12.3",
+    "rand 0.8.5",
+    "ruzstd 0.6.0"
+  ],
+  "matched_findings_for_detected_packages": [
+    {
+      "kind": "vulnerability",
+      "package": "curve25519-dalek",
+      "version": "4.1.2",
+      "advisory": "RUSTSEC-2024-0344",
+      "title": "Timing variability in `curve25519-dalek`'s `Scalar29::sub`/`Scalar52::sub`"
+    },
+    {
+      "kind": "vulnerability",
+      "package": "ruzstd",
+      "version": "0.6.0",
+      "advisory": "RUSTSEC-2026-0344",
+      "title": "Decompression bomb in `ruzstd`: a tiny input can exhaust memory (OOM)"
+    },
+    {
+      "kind": "unsound",
+      "package": "event-listener",
+      "version": "5.3.0",
+      "advisory": "RUSTSEC-2026-0221",
+      "title": "`event-listener` allows `!Send` tags to cross thread boundaries via `StackSlot`"
+    },
+    {
+      "kind": "unsound",
+      "package": "keccak",
+      "version": "0.1.5",
+      "advisory": "RUSTSEC-2026-0012",
+      "title": "Unsoundness in opt-in ARMv8 assembly backend for `keccak`"
+    },
+    {
+      "kind": "unsound",
+      "package": "lru",
+      "version": "0.12.3",
+      "advisory": "RUSTSEC-2026-0253",
+      "title": "Potential use-after-free due to lack of panic safety in `LruCache::pop()`"
+    },
+    {
+      "kind": "unsound",
+      "package": "lru",
+      "version": "0.12.3",
+      "advisory": "RUSTSEC-2026-0002",
+      "title": "`IterMut` violates Stacked Borrows by invalidating internal pointer"
+    },
+    {
+      "kind": "unsound",
+      "package": "rand",
+      "version": "0.8.5",
+      "advisory": "RUSTSEC-2026-0097",
+      "title": "Rand is unsound with a custom logger using `rand::rng()`"
+    },
+    {
+      "kind": "yanked",
+      "package": "keccak",
+      "version": "0.1.5",
+      "advisory": null,
+      "title": null
+    }
+  ],
+  "scope": "The exact npm gitHead source workspace includes non-Wasm full-node dependencies (including Wasmtime); its 27 full-lock vulnerability matches must not all be attributed to the browser binary. The selected package versions above are additionally confirmed in the actual installed embedded Wasm.",
+  "resolution": "Remove the unused optional @substrate/connect dependency from its RPC-provider consumer. The existing ScProvider accepts an explicitly supplied client interface, and current operational tooling uses HTTP/WebSocket RPC. No vulnerable light-client binary is shipped through this optional default path."
+}

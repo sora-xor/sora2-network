@@ -555,6 +555,9 @@ impl<T: Config> Pallet<T> {
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
+        if crate::recovery::halted() {
+            return;
+        }
         let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);
 
         let substrate_finalized_height = match Self::handle_substrate() {

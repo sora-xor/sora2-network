@@ -53,6 +53,7 @@ fn setup() -> (Vec<sr25519::Pair>, AccountId) {
 fn signed(call: RuntimeCall, pair: &sr25519::Pair) -> UncheckedExtrinsic {
     let who = account(pair);
     let extra: SignedExtra = (
+        frame_system::AuthorizeCall::new(),
         frame_system::CheckSpecVersion::<Runtime>::new(),
         frame_system::CheckTxVersion::<Runtime>::new(),
         frame_system::CheckGenesis::<Runtime>::new(),
@@ -412,7 +413,7 @@ fn zero_xor_outgoing_peer_approval_checks_real_signature_and_rejects_replay() {
         let proof=eth_bridge::offchain::SignatureParams {r,s,v:signature.0[64]};
         let call=RuntimeCall::EthBridge(eth_bridge::Call::approve_request {ocw_public:peer.public(),hash,signature_params:proof.clone(),network_id:0});
         let transaction=|call:RuntimeCall| {
-            let extra:SignedExtra=(frame_system::CheckSpecVersion::<Runtime>::new(),frame_system::CheckTxVersion::<Runtime>::new(),frame_system::CheckGenesis::<Runtime>::new(),frame_system::CheckEra::<Runtime>::from(Era::Immortal),frame_system::CheckNonce::<Runtime>::from(System::account_nonce(&who)),frame_system::CheckWeight::<Runtime>::new(),crate::charge_tx_payment_extension());
+            let extra:SignedExtra=(frame_system::AuthorizeCall::new(),frame_system::CheckSpecVersion::<Runtime>::new(),frame_system::CheckTxVersion::<Runtime>::new(),frame_system::CheckGenesis::<Runtime>::new(),frame_system::CheckEra::<Runtime>::from(Era::Immortal),frame_system::CheckNonce::<Runtime>::from(System::account_nonce(&who)),frame_system::CheckWeight::<Runtime>::new(),crate::charge_tx_payment_extension());
             let payload=crate::SignedPayload::new(call.clone(),extra.clone()).unwrap();
             let signature=payload.using_encoded(|payload|peer.sign(payload));
             UncheckedExtrinsic::new_signed(call,who.clone(),Signature::Ecdsa(signature),extra)
@@ -516,6 +517,7 @@ fn outgoing_approval_retains_validation_weight_before_and_at_quorum() {
             let declared_weight = call.get_dispatch_info().call_weight;
             let class = call.get_dispatch_info().class;
             let extra: SignedExtra = (
+                frame_system::AuthorizeCall::new(),
                 frame_system::CheckSpecVersion::<Runtime>::new(),
                 frame_system::CheckTxVersion::<Runtime>::new(),
                 frame_system::CheckGenesis::<Runtime>::new(),

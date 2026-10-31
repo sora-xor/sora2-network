@@ -1,0 +1,28 @@
+[package]
+name = "py-bip39-bindings"
+description = "Python bindings for tiny-bip39 RUST crate"
+authors=["JAMdot Technologies"]
+version = "0.3.0"
+repository = "https://github.com/polkascan/py-bip39-bindings"
+homepage = "https://github.com/polkascan/py-bip39-bindings"
+license = "Apache-2.0"
+readme = "README.md"
+edition = "2021"
+
+[dependencies]
+hmac = "0.12.1"
+pbkdf2 = { version = "0.12.2", default-features = false }
+sha2 = "0.10.9"
+tiny-bip39 = { version = "2.0.0", default-features = true }
+
+[lib]
+name = "bip39"
+crate-type = ["cdylib"]
+
+[dependencies.pyo3]
+version = "0.29.2"
+features = ["extension-module"]
+
+
+# These Python extensions build independently of the blockchain workspace.
+[workspace]

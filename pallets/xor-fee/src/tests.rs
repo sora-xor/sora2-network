@@ -54,11 +54,11 @@ use frame_support::assert_err;
 use frame_support::dispatch::GetDispatchInfo;
 #[cfg(feature = "wip")] // Dynamic fee
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays};
-use frame_support::error::BadOrigin;
 use frame_support::traits::{Currency, OnRuntimeUpgrade, StorageVersion};
 use frame_support::weights::{Weight, WeightToFee};
 use frame_support::{assert_noop, assert_ok};
 use sp_arithmetic::traits::Zero;
+use sp_runtime::traits::BadOrigin;
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidityError};
 use sp_runtime::{DispatchError, FixedPointNumber, FixedU128};

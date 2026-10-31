@@ -123,6 +123,8 @@ pub mod pallet {
         ContractExists,
         /// Call encoding failed.
         CallEncodeFailed,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
     }
 
     impl<T: Config> Pallet<T> {
@@ -135,6 +137,10 @@ pub mod pallet {
             >,
             proof: &<T::Verifier as Verifier>::Proof,
         ) -> DispatchResult {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             let bridge_types::GenericCommitment::Sub(batch) = commitment else {
                 frame_support::fail!(Error::<T>::InvalidCommitment);
             };
@@ -142,6 +148,21 @@ pub mod pallet {
                 ChannelNonces::<T>::get(network_id).checked_add(1) == Some(batch.nonce),
                 Error::<T>::InvalidNonce
             );
+            for index in 0..batch.messages.len() {
+                ensure!(
+                    !bridge_types::recovery::message_quarantined(
+                        network_id.into(),
+                        MessageId::batched(
+                            network_id.into(),
+                            T::ThisNetworkId::get(),
+                            batch.nonce,
+                            index as u64
+                        )
+                        .hash(),
+                    ),
+                    Error::<T>::RecoveryHalted
+                );
+            }
             T::Verifier::verify(network_id.into(), commitment.hash(), proof)
         }
 
@@ -236,6 +257,9 @@ pub mod pallet {
         }
     }
 
+    // Keep the deployed bridge worker wire format and fee policy during this SDK migration.
+    // The FRAME macro recognizes this exact attribute when retaining legacy admission.
+    #[allow(deprecated)]
     #[pallet::validate_unsigned]
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;

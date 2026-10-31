@@ -1,0 +1,75 @@
+{
+  "package": "wasmtime-internal-cache",
+  "version": "36.0.19",
+  "crate_archive_sha256": "4108e1964b3a02b4b5604ea1a2918a0cbcab512e5de0ccf4c062fc6c06b2eb8e",
+  "upstream_commit": "0d6b8ead4e94b0ce76f925611b831b56570aef94",
+  "source_path": "crates/cache",
+  "upstream_files": {
+    "Cargo.toml": {
+      "sha256": "2ea27cf388c4f04b491f5ed51624586fd4f4f838b96bf27c09170690dde5d746",
+      "bytes": 2909
+    },
+    "Cargo.toml.orig": {
+      "sha256": "08e2dfff32004a8d4a897a4b3bf58f49371bd63cafe7446e881e99c811af8e66",
+      "bytes": 1072
+    },
+    "LICENSE": {
+      "sha256": "268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5",
+      "bytes": 12243
+    },
+    "build.rs": {
+      "sha256": "a72f374466896cfa6d47f1c823745fa213956b730ee9b20c7f7a2729d6c873b6",
+      "bytes": 336
+    },
+    "src/config/tests.rs": {
+      "sha256": "a92564e1a76327d6cee089b50616b1df11c52eeb6cad11928c220738938fa479",
+      "bytes": 16306
+    },
+    "src/config.rs": {
+      "sha256": "a399b321934dee59a5afb4f6676d2c0205bd0fc5273de9dcdcca3c0571a6a950",
+      "bytes": 23352
+    },
+    "src/lib.rs": {
+      "sha256": "e18a345ee1f90aec428ab3df76ea47949f0f73d92085e6c6a006fc0ce4093ee9",
+      "bytes": 12830
+    },
+    "src/tests.rs": {
+      "sha256": "77ed12aa325a29ce61c6636cec21ed6451ffed15c007a8a4d90cad32c6276139",
+      "bytes": 3370
+    },
+    "src/worker/tests/system_time_stub.rs": {
+      "sha256": "17c1651e1a1dbb3cad353449ebe8e64f509a7b21ecea37b7284bb29f9a4284e9",
+      "bytes": 692
+    },
+    "src/worker/tests.rs": {
+      "sha256": "e7d96e3c75cecb49327aa1759eaed0572b2ad18e28c78155393220ef1f066122",
+      "bytes": 26612
+    },
+    "src/worker.rs": {
+      "sha256": "62f06af5a4cdd7cb65f25e0a277ea9c69ec27f4d620b60eeb4083803f78bcc80",
+      "bytes": 32598
+    },
+    "tests/cache_write_default_config.rs": {
+      "sha256": "bdd4758c9dd7f300a7726b04fda7989a295695fe4c5168faeb16ea2ebc1bde3b",
+      "bytes": 403
+    }
+  },
+  "rust_source_changes": true,
+  "manifest_change": {
+    "dependencies.zstd.version": {
+      "from": "0.13.0",
+      "to": "0.14.3"
+    }
+  },
+  "compatibility_patch": {
+    "file": "SORA-COMPAT.patch",
+    "sha256": "52d4593effc1156046a2e9ff3337d3e4871d6b949de855bf7f9321745c5d6354",
+    "reason": "Replace the two deprecated usize::max_value() calls with the equivalent usize::MAX constant for the pinned toolchain Clippy gate. No queue semantics change.",
+    "local_files": {
+      "src/worker.rs": {
+        "sha256": "531eac51254c195f153098aa9f822c15d02ed2d44553176edf416b8b313da540",
+        "bytes": 32582
+      }
+    }
+  }
+}

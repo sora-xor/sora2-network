@@ -1,0 +1,5 @@
+# Native extension linker configuration is reviewed source, not a Cargo cache.
+!**/.cargo/
+!**/.cargo/config.toml
+.hypothesis/
+.pytest_cache/

@@ -321,6 +321,7 @@ impl<T: Config> IncomingTransfer<T> {
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_incoming_transaction_active::<T>(self.network_id, self.tx_hash)?;
         ensure!(
             !crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_asset(
                 self.network_id,
@@ -355,6 +356,13 @@ impl<T: Config> IncomingTransfer<T> {
 
     /// If the asset kind is owned, then the `amount` of funds is reserved on the bridge account.
     pub fn prepare(&self) -> Result<(), DispatchError> {
+        let resolution = crate::recovery::transfer_resolution(self)?;
+        // An excluded sidechain claim never creates locally issued backing. An owned
+        // claim uses native reservation admission; excluded finalization returns that
+        // reservation to pooled custody, and recovery restores its lock accounting.
+        if !self.asset_kind.is_owned() && resolution.as_ref().is_some_and(|value| value.excluded) {
+            return Ok(());
+        }
         let generic_network_id =
             GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
         let asset_kind = if self.asset_kind.is_owned() {
@@ -380,6 +388,7 @@ impl<T: Config> IncomingTransfer<T> {
 
     /// Unreserves previously reserved amount of funds if the asset kind is owned.
     pub fn unreserve(&self) -> DispatchResult {
+        crate::recovery::ensure_incoming_transaction_active::<T>(self.network_id, self.tx_hash)?;
         if self.asset_kind.is_owned() {
             let bridge_acc = crate::Pallet::<T>::bridge_account(self.network_id)
                 .ok_or(Error::<T>::UnknownNetwork)?;
@@ -391,6 +400,7 @@ impl<T: Config> IncomingTransfer<T> {
 
     /// Calls `.unreserve`.
     pub fn cancel(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_incoming_transaction_active::<T>(self.network_id, self.tx_hash)?;
         let generic_network_id =
             GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
         let asset_kind = if self.asset_kind.is_owned() {
@@ -413,8 +423,27 @@ impl<T: Config> IncomingTransfer<T> {
     /// otherwise the amount is minted.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         self.validate()?;
+        let resolution = crate::recovery::transfer_resolution(self)?;
         let bridge_account_id = crate::Pallet::<T>::bridge_account(self.network_id)
             .ok_or(Error::<T>::UnknownNetwork)?;
+        if let Some(resolution) = resolution.as_ref().filter(|value| value.excluded) {
+            if self.asset_kind.is_owned() {
+                // Authentication establishes the incoming claim, not title to the
+                // bridge's pooled checkpoint assets. Extinguish it without burning
+                // custody or crediting a recipient. The recovery executive restores
+                // this native preparation's lock counter in the same outer transaction.
+                self.unreserve()?;
+            }
+            crate::recovery::consume_transfer(resolution.clone());
+            return Ok(self.tx_hash);
+        }
+        // Preserve the original request and its authenticated replay identity.
+        // A committed maintenance resolution takes precedence; ordinary native
+        // delivery uses the permanent map after bridge-account authentication.
+        let beneficiary = match resolution.as_ref() {
+            Some(value) => value.beneficiary.clone(),
+            None => crate::recovery::ordinary_account::<T>(&self.to)?,
+        };
         let transfer_fee = Self::fee_amount();
         let amount = if self.should_take_fee {
             self.amount - transfer_fee
@@ -432,22 +461,30 @@ impl<T: Config> IncomingTransfer<T> {
                         transfer_fee,
                     )?;
                 }
-                Assets::<T>::transfer_from(&self.asset_id, &bridge_account_id, &self.to, amount)?;
+                Assets::<T>::transfer_from(
+                    &self.asset_id,
+                    &bridge_account_id,
+                    &beneficiary,
+                    amount,
+                )?;
                 Ok(())
             })?;
         } else {
-            Assets::<T>::mint_to(&self.asset_id, &bridge_account_id, &self.to, amount)?;
+            Assets::<T>::mint_to(&self.asset_id, &bridge_account_id, &beneficiary, amount)?;
         }
         T::MessageStatusNotifier::inbound_request(
             GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into()),
             self.tx_hash,
             GenericAccount::EVM(self.from),
-            self.to.clone(),
+            beneficiary.clone(),
             self.asset_id,
             self.amount,
             GenericTimepoint::EVM(self.at_height),
             MessageStatus::Done,
         );
+        if let Some(resolution) = resolution {
+            crate::recovery::consume_transfer(resolution);
+        }
         Ok(self.tx_hash)
     }
 
@@ -513,6 +550,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     /// with the `tx_input`, otherwise an error is thrown. After that, a status of the request
     /// is changed to `Frozen` to stop receiving approvals.
     pub fn prepare(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
         ensure!(
             !self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer(),
             Error::<T>::DeprecatedLegacyXor
@@ -543,6 +581,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
 
     /// Changes the request's status back to `ApprovalsReady`.
     pub fn cancel(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
         if self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer() {
             crate::RequestStatuses::<T>::insert(
                 self.network_id,
@@ -566,6 +605,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     /// Calls `cancel` on the request, changes its status to `Failed` and takes it approvals to
     /// make it available for resubmission.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
         ensure!(
             !self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer(),
             Error::<T>::DeprecatedLegacyXor
@@ -610,6 +650,7 @@ pub struct IncomingMarkAsDoneRequest<T: Config> {
 impl<T: Config> IncomingMarkAsDoneRequest<T> {
     /// Checks that the marking request status is `ApprovalsReady`.
     pub fn validate(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
         ensure!(
             !crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
                 self.network_id,

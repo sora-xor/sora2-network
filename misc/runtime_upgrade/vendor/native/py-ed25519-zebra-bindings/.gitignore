@@ -1,0 +1,5 @@
+/target/
+/venv
+/.idea/
+.python-version
+__pycache__

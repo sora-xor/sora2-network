@@ -1,0 +1,367 @@
+# Vendored from polkadot-stable2609; see SORA-PATCH.md.
+
+"bench" = [{ "name" = "bench", "harness" = false }]
+
+["package"]
+"name" = "sp-core"
+"version" = "28.0.0"
+"authors" = ["Parity Technologies <admin@parity.io>"]
+"edition" = "2021"
+"license" = "Apache-2.0"
+"homepage" = "https://paritytech.github.io/polkadot-sdk/"
+"repository" = "https://github.com/paritytech/polkadot-sdk.git"
+"description" = "Shareable Substrate types."
+"documentation" = "https://docs.rs/sp-core"
+
+["package"."metadata"]
+
+["package"."metadata"."docs"]
+
+["package"."metadata"."docs"."rs"]
+"targets" = ["x86_64-unknown-linux-gnu"]
+
+["lints"]
+
+["lints"."rust"]
+
+["lints"."rust"."suspicious_double_ref_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."rust"."unexpected_cfgs"]
+"level" = "warn"
+"check-cfg" = ["cfg(build_opt_level, values(\"3\"))", "cfg(build_profile, values(\"debug\", \"release\"))", "cfg(enable_alloc_error_handler)", "cfg(fuzzing)", "cfg(ignore_flaky_test)", "cfg(revive_debug)", "cfg(substrate_runtime)"]
+
+["lints"."clippy"]
+
+["lints"."clippy"."all"]
+"level" = "allow"
+"priority" = 0
+
+["lints"."clippy"."bind_instead_of_map"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."borrowed-box"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."complexity"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."correctness"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."default_constructed_unit_structs"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."derivable_impls"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."eq_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."erasing_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."extra-unused-type-parameters"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."identity-op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."if-same-then-else"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless-lifetimes"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless_option_as_deref"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."nonminimal-bool"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."option-map-unit-fn"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."stable_sort_primitive"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."too-many-arguments"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."type_complexity"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unit_arg"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unnecessary_cast"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."useless_conversion"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."while_immutable_condition"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."zero-prefixed-literal"]
+"level" = "allow"
+"priority" = 2
+
+["lib"]
+"bench" = false
+
+["dependencies"]
+
+["dependencies"."bip39"]
+"version" = "2.2.0"
+"default-features" = false
+"features" = ["alloc"]
+
+["dependencies"."bitflags"]
+"version" = "1.3.2"
+
+["dependencies"."bounded-collections"]
+"version" = "0.3.2"
+"default-features" = false
+"features" = ["scale-codec"]
+
+["dependencies"."bs58"]
+"version" = "0.5.1"
+"default-features" = false
+"optional" = true
+
+["dependencies"."codec"]
+"version" = "3.7.5"
+"default-features" = false
+"package" = "parity-scale-codec"
+"features" = ["derive", "max-encoded-len"]
+
+["dependencies"."futures"]
+"version" = "0.3.31"
+"optional" = true
+
+["dependencies"."hash-db"]
+"version" = "0.16.0"
+"default-features" = false
+
+["dependencies"."hash256-std-hasher"]
+"version" = "0.15.2"
+"default-features" = false
+
+["dependencies"."impl-serde"]
+"version" = "0.5.0"
+"default-features" = false
+"optional" = true
+
+["dependencies"."itertools"]
+"version" = "0.11"
+"optional" = true
+
+["dependencies"."log"]
+"version" = "0.4.22"
+"default-features" = false
+
+["dependencies"."parking_lot"]
+"version" = "0.12.1"
+"default-features" = true
+"optional" = true
+
+["dependencies"."paste"]
+"package" = "pastey"
+"version" = "0.2.3"
+"default-features" = true
+
+["dependencies"."primitive-types"]
+"version" = "0.13.1"
+"default-features" = false
+"features" = ["num-traits", "codec", "scale-info"]
+
+["dependencies"."rand"]
+"version" = "0.8.5"
+"default-features" = true
+"features" = ["small_rng"]
+"optional" = true
+
+["dependencies"."scale-info"]
+"version" = "2.11.6"
+"default-features" = false
+"features" = ["derive"]
+
+["dependencies"."secrecy"]
+"version" = "0.8.0"
+"default-features" = false
+"features" = ["alloc"]
+
+["dependencies"."serde"]
+"version" = "1.0.214"
+"default-features" = false
+"optional" = true
+"features" = ["alloc", "derive"]
+
+["dependencies"."sp-debug-derive"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-externalities"]
+"default-features" = false
+"optional" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-std"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-storage"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."ss58-registry"]
+"version" = "1.34.0"
+"default-features" = false
+
+["dependencies"."substrate-bip39"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."thiserror"]
+"version" = "1.0.64"
+"optional" = true
+
+["dependencies"."tracing"]
+"version" = "0.1.37"
+"default-features" = true
+"optional" = true
+
+["dependencies"."zeroize"]
+"version" = "1.7.0"
+"default-features" = false
+
+["dependencies"."array-bytes"]
+"version" = "6.2.2"
+"default-features" = true
+
+["dependencies"."blake2"]
+"version" = "0.10.4"
+"default-features" = false
+"optional" = true
+
+["dependencies"."ed25519-zebra"]
+"version" = "4.0.3"
+"default-features" = false
+
+["dependencies"."libsecp256k1"]
+"package" = "sora-secp256k1-compat"
+"path" = "../../../sora-secp256k1-compat"
+"default-features" = false
+
+["dependencies"."merlin"]
+"version" = "3.0"
+"default-features" = false
+
+["dependencies"."schnorrkel"]
+"version" = "0.11.4"
+"default-features" = false
+"features" = ["preaudit_deprecated"]
+
+["dependencies"."sp-crypto-hashing"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."k256"]
+"version" = "0.14.0"
+"default-features" = false
+"features" = ["alloc", "ecdsa"]
+
+["dependencies"."secp256k1"]
+"version" = "0.28.0"
+"default-features" = false
+"features" = ["alloc", "recovery"]
+"optional" = true
+
+["dependencies"."sha2"]
+"version" = "0.10.7"
+"default-features" = false
+"optional" = true
+
+["dependencies"."w3f-bls"]
+"version" = "0.1.9"
+"default-features" = false
+"optional" = true
+
+["dependencies"."ark-vrf"]
+"version" = "0.5.3"
+"default-features" = false
+"optional" = true
+"features" = ["bandersnatch", "ring"]
+
+["dependencies"."crypto-bigint"]
+"version" = "0.7.10"
+"default-features" = false
+
+["target"]
+
+["target"."cfg(not(substrate_runtime))"]
+
+["target"."cfg(not(substrate_runtime))"."dependencies"]
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."sp-externalities"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."futures"]
+"version" = "0.3.31"
+"features" = ["alloc"]
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."dyn-clone"]
+"version" = "1.0.16"
+
+["dev-dependencies"]
+
+["dev-dependencies"."criterion"]
+"version" = "0.5.1"
+"default-features" = true
+
+["dev-dependencies"."regex"]
+"version" = "1.10.2"
+
+["dev-dependencies"."serde_json"]
+"version" = "1.0.132"
+"default-features" = true
+
+["features"]
+"default" = ["std"]
+"std" = ["ark-vrf?/std", "bip39/rand", "bip39/std", "blake2/std", "bounded-collections/std", "bs58/std", "codec/std", "ed25519-zebra/std", "full_crypto", "futures/std", "futures/thread-pool", "hash-db/std", "hash256-std-hasher/std", "impl-serde/std", "itertools", "k256/std", "libsecp256k1/std", "log/std", "merlin/std", "parking_lot", "primitive-types/byteorder", "primitive-types/rustc-hex", "primitive-types/serde", "primitive-types/std", "rand", "scale-info/std", "schnorrkel/std", "secp256k1/global-context", "secp256k1/std", "serde/std", "sha2?/std", "sp-crypto-hashing/std", "sp-debug-derive/std", "sp-externalities/std", "sp-std/std", "sp-storage/std", "ss58-registry/std", "substrate-bip39/std", "thiserror", "tracing", "w3f-bls?/std", "zeroize/alloc", "zeroize/std"]
+"serde" = ["blake2", "bounded-collections/serde", "bs58/alloc", "dep:serde", "impl-serde", "k256/serde", "primitive-types/serde_no_std", "scale-info/serde", "sp-storage/serde"]
+"full_crypto" = ["blake2"]
+"bls-experimental" = ["sha2", "w3f-bls"]
+"bandersnatch-experimental" = ["ark-vrf"]

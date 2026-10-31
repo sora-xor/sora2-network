@@ -170,6 +170,7 @@ impl<T: Config> Pallet<T> {
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
     /// key and sends the approve as a signed transaction.
     fn handle_outgoing_request(request: OutgoingRequest<T>, hash: H256) -> Result<(), Error<T>> {
+        crate::recovery::ensure_outgoing_active::<T>(request.network_id(), hash)?;
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
             error!(
@@ -425,6 +426,7 @@ impl<T: Config> Pallet<T> {
     /// There are 4 flows. 3 for incoming request: handle 'mark as done', handle 'cancel outgoing
     /// request' and for the rest, and only one for all outgoing requests.
     fn handle_offchain_request(request: OffchainRequest<T>) -> Result<(), Error<T>> {
+        crate::recovery::ensure_request_active::<T>(&request)?;
         debug!("Handling request: {:?}", request.hash());
         match request {
             OffchainRequest::LoadIncoming(request) => {
@@ -1059,6 +1061,9 @@ impl<T: Config> Pallet<T> {
 
         let mut stale_hashes = BTreeSet::new();
         for request_hash in RequestsQueue::<T>::get(network_id) {
+            if bridge_types::recovery::hashi_quarantined(network_id, request_hash) {
+                continue;
+            }
             let request = match Requests::<T>::get(network_id, request_hash) {
                 Some(v) => v,
                 _ => {
@@ -1066,6 +1071,9 @@ impl<T: Config> Pallet<T> {
                     continue;
                 }
             };
+            if crate::recovery::ensure_request_active::<T>(&request).is_err() {
+                continue;
+            }
             if request.should_be_skipped() {
                 debug!("Temporary skip request: {:?}", request_hash);
                 continue;

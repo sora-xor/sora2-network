@@ -1,0 +1,105 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-25T14:15:34.713694+00:00",
+  "purpose": "Independent offline council-package encoding check against fresh live and candidate metadata",
+  "policy": "Network sockets, RPC and submission forbidden; no keys or signatures used",
+  "signaturesCreated": 0,
+  "transactionsSubmitted": 0,
+  "candidateSha256": "535b6499c78769a62701520d0bdf17ef65f07319450ca69a5264e99410e1910f",
+  "candidateVersion": {
+    "spec": 137,
+    "transaction": 133
+  },
+  "liveVersion": {
+    "spec": 134,
+    "transaction": 131
+  },
+  "liveBlock": 28191490,
+  "proposalHash": "0x31d3bee4e348dc89b97d2fde74f3d49be846c4127b75d640f513b747066bc36c",
+  "proposalLen": 1959175,
+  "councilThreshold": 5,
+  "councilLengthBound": 39,
+  "technicalThreshold": 3,
+  "technicalLengthBound": 42,
+  "fastTrackVotingPeriod": 1800,
+  "fastTrackDelay": 0,
+  "independentRawEncodingChecks": 4,
+  "metadataHelperComparisons": [
+    {
+      "metadata": "live",
+      "artifact": "runtime.preimage.call",
+      "bytes": 1959175,
+      "sha256": "6cd6958a396f8ac9f90ac7fbb8d2b8a9386faf1fbcba2f6cbac05e1757e6c7a4",
+      "result": "passed"
+    },
+    {
+      "metadata": "live",
+      "artifact": "council-propose.hex",
+      "bytes": 43,
+      "sha256": "a68a77d9dafbbd2473b668a35a7268c83862372d25eb4d603847b5c37c893bc0",
+      "result": "passed"
+    },
+    {
+      "metadata": "live",
+      "artifact": "technical-fast-track.hex",
+      "bytes": 46,
+      "sha256": "b3190178a2cfda340c81dddd175b9e025ba8ec2e407066405eaf5c60bee646f7",
+      "result": "passed"
+    },
+    {
+      "metadata": "live",
+      "artifact": "note-preimage.hex",
+      "bytes": 1959181,
+      "sha256": "1f31a9223d1bb9ede7a6f1cf43320d3a657a921c6fd783b13e365874c6085e63",
+      "result": "passed"
+    },
+    {
+      "metadata": "candidate",
+      "artifact": "runtime.preimage.call",
+      "bytes": 1959175,
+      "sha256": "6cd6958a396f8ac9f90ac7fbb8d2b8a9386faf1fbcba2f6cbac05e1757e6c7a4",
+      "result": "passed"
+    },
+    {
+      "metadata": "candidate",
+      "artifact": "council-propose.hex",
+      "bytes": 43,
+      "sha256": "a68a77d9dafbbd2473b668a35a7268c83862372d25eb4d603847b5c37c893bc0",
+      "result": "passed"
+    },
+    {
+      "metadata": "candidate",
+      "artifact": "technical-fast-track.hex",
+      "bytes": 46,
+      "sha256": "b3190178a2cfda340c81dddd175b9e025ba8ec2e407066405eaf5c60bee646f7",
+      "result": "passed"
+    },
+    {
+      "metadata": "candidate",
+      "artifact": "note-preimage.hex",
+      "bytes": 1959181,
+      "sha256": "1f31a9223d1bb9ede7a6f1cf43320d3a657a921c6fd783b13e365874c6085e63",
+      "result": "passed"
+    }
+  ],
+  "inputSha256": {
+    "sora-nexus-runtime-137.compact.compressed.wasm": "535b6499c78769a62701520d0bdf17ef65f07319450ca69a5264e99410e1910f",
+    "runtime.preimage.call": "6cd6958a396f8ac9f90ac7fbb8d2b8a9386faf1fbcba2f6cbac05e1757e6c7a4",
+    "runtime.preimage.hex": "3c689fcf2ea941a44d7ab9c2d9b96ccf636591dd7b1eb621e626d0a82caa8080",
+    "runtime.preimage.json": "2c7d2429c5babc0601e477174ebf4891d9ca2f2228bcb82ac9c13411f982d8b2",
+    "note-preimage.hex": "0123758ca9d5da1741d04776a769d455c6c9535b244f9735cae8fabd086be84a",
+    "council-propose.hex": "f8e012323bb82f9a73455e9e27e895df2a6ce71a579363b915e083802fa67924",
+    "technical-fast-track.hex": "b0825fddee69b5b31e048f266e4ad0c1ec0c04a7721c0b43f1d6422531b19484",
+    "governance-params.json": "269f87a8b32df54100b4c08994461f9995074a90565f6cc19c47e3b7798bc99d",
+    "evidence/live-governance.json": "269f87a8b32df54100b4c08994461f9995074a90565f6cc19c47e3b7798bc99d",
+    "evidence/live-metadata.scale": "70fb15b7f598a58fc71a174af66df68b9136a2e87ec51dcd56aa279165cd6ba4",
+    "evidence/candidate-metadata.scale": "1d9f129aca091cfa515a03537752e94814bb475a6329c832b74793a03b5c5805",
+    "evidence/runtime-info.json": "983179a75b2cee40b6adc0b56faed234a9b206d03fd0a9d7667bb5bd53907668",
+    "evidence/rehearsal-summary.json": "6e34a7276e1ca733d9069bfacc1edeb1b42ae0bcbe320f4fdb348b05238dd379"
+  },
+  "helperSha256": "3fdb31f2efd7734d89f0dea2b502a5dc493d28d77d5ea3784917a539ba71d1c6",
+  "limitations": [
+    "Public RPC evidence is trusted; this offline review does not independently verify chain state or finality.",
+    "Membership and active runtime must be rechecked before signing; no enactment readiness claim is made."
+  ]
+}

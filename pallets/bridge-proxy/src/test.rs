@@ -50,6 +50,55 @@ use sp_keyring::sr25519::Keyring;
 use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::types::{MessageDirection, MessageId, MessageStatus};
 
+#[test]
+fn recovery_halt_keeps_failed_outgoing_liability_quarantined() {
+    use bridge_types::traits::MessageStatusNotifier;
+    new_tester().execute_with(|| {
+        let owner: AccountId = Keyring::Alice.into();
+        let network = GenericNetworkId::EVM(BASE_EVM_NETWORK_ID);
+        let id = bridge_types::H256::repeat_byte(42);
+        let request = BridgeRequest {
+            source: GenericAccount::Sora(owner.clone()),
+            dest: GenericAccount::EVM(H160::default()),
+            asset_id: XOR,
+            amount: 1_000,
+            status: MessageStatus::Committed,
+            start_timepoint: GenericTimepoint::Sora(1),
+            end_timepoint: GenericTimepoint::Pending,
+            direction: MessageDirection::Outbound,
+        };
+        crate::Senders::<Test>::insert(network, id, owner.clone());
+        Transactions::<Test>::insert((network, owner.clone()), id, request.clone());
+        sp_io::storage::set(common::recovery::BRIDGE_HALT_STORAGE_KEY, &[1]);
+        let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        BridgeProxy::update_status(
+            network,
+            id,
+            MessageStatus::Failed,
+            GenericTimepoint::Sora(2),
+        );
+        assert_eq!(
+            Transactions::<Test>::get((network, owner.clone()), id),
+            Some(request)
+        );
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
+        assert_noop!(
+            BridgeProxy::refund(network, id, GenericAccount::Sora(owner.clone()), XOR, 1_000),
+            crate::Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            BridgeProxy::burn(
+                RawOrigin::Signed(owner).into(),
+                network,
+                XOR,
+                GenericAccount::EVM(H160::default()),
+                1_000
+            ),
+            crate::Error::<Test>::RecoveryHalted
+        );
+    });
+}
+
 fn assert_event(event: RuntimeEvent) {
     System::events()
         .iter()
@@ -534,4 +583,44 @@ fn transfer_limit_works() {
             balance!(17500)
         );
     })
+}
+
+#[test]
+fn permanent_message_quarantine_preserves_status_and_refund_evidence_after_halt_removal() {
+    use bridge_types::traits::MessageStatusNotifier;
+    new_tester().execute_with(|| {
+        let owner: AccountId = Keyring::Alice.into();
+        let network = GenericNetworkId::EVM(BASE_EVM_NETWORK_ID);
+        let id = bridge_types::H256::repeat_byte(42);
+        let request = BridgeRequest {
+            source: GenericAccount::Sora(owner.clone()),
+            dest: GenericAccount::EVM(H160::default()),
+            asset_id: XOR,
+            amount: 1_000,
+            status: MessageStatus::Committed,
+            start_timepoint: GenericTimepoint::Sora(1),
+            end_timepoint: GenericTimepoint::Pending,
+            direction: MessageDirection::Outbound,
+        };
+        crate::Senders::<Test>::insert(network, id, owner.clone());
+        Transactions::<Test>::insert((network, owner.clone()), id, request.clone());
+        sp_io::storage::set(&bridge_types::recovery::message_key(network, id), &[1]);
+        sp_io::storage::clear(common::recovery::BRIDGE_HALT_STORAGE_KEY);
+        let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        BridgeProxy::update_status(
+            network,
+            id,
+            MessageStatus::Failed,
+            GenericTimepoint::Sora(2),
+        );
+        assert_eq!(
+            Transactions::<Test>::get((network, owner.clone()), id),
+            Some(request)
+        );
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
+        assert_noop!(
+            BridgeProxy::refund(network, id, GenericAccount::Sora(owner.clone()), XOR, 1_000),
+            crate::Error::<Test>::RecoveryHalted
+        );
+    });
 }

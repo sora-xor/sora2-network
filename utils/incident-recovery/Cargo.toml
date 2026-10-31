@@ -1,0 +1,85 @@
+[package]
+name = "incident-recovery"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+default = []
+# Exact runtime adapter types/commitments for structural work assembly only.
+runtime-work-types = ["dep:framenode-runtime", "dep:bridge-types", "dep:eth-bridge"]
+# Public synthetic bridge fixtures only; does not enable release admission.
+bridge-fixture = ["dep:permissions", "runtime-work-types", "dep:pallet-staking", "dep:bridge-types", "dep:bridge-multisig", "dep:frame-support", "dep:frame-system", "dep:multisig-verifier", "dep:substrate-bridge-app", "dep:substrate-bridge-channel", "dep:bridge-channel", "dep:jetton-app", "dep:parachain-bridge-app", "dep:xcm", "dep:dispatch"]
+
+# Read-only retained client evidence; never opens a node service or writable backend.
+retained-client-evidence = ["dep:sc-consensus-babe", "dep:sc-consensus-epochs", "dep:sc-finality-grandpa", "dep:sp-consensus-babe", "dep:sp-consensus-grandpa", "dep:rocksdb"]
+
+# Explicit fresh-output reconstruction only; original DB is still opened read-only.
+retained-predecessor = ["retained-client-evidence", "dep:sc-client-api", "dep:sc-client-db", "dep:sp-blockchain", "dep:fs2"]
+
+[[bin]]
+name = "retained-client-evidence"
+path = "src/bin/retained-client-evidence.rs"
+required-features = ["retained-client-evidence"]
+
+[dependencies]
+clap = { version = "=4.6.0", features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3", features = ["derive"] }
+common = { path = "../../common" }
+flate2 = "1"
+framenode-runtime = { path = "../../runtime", optional = true, default-features = false, features = ["std"] }
+eth-bridge = { path = "../../pallets/eth-bridge", optional = true, default-features = false, features = ["std"] }
+bridge-multisig = { path = "../../vendor/pallet-multisig", package = "pallet-multisig", optional = true, default-features = false, features = ["std"] }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", optional = true }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true }
+multisig-verifier = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", optional = true }
+substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", optional = true }
+substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", optional = true }
+frame-metadata = "=23.0.1"
+hex = "0.4"
+scale-info = { version = "2", features = ["derive"] }
+scale-value = "=0.18.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.11.1"
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sp-version = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sp-trie = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sc-executor = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+
+
+# Existing locked runtime crates, enabled only for disposable public diagnostics.
+dispatch = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", optional = true }
+bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", optional = true }
+jetton-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", optional = true }
+parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", optional = true }
+xcm = { package = "staging-xcm", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true }
+
+# Every crate is already present in the workspace lock; this corridor adds no registry/git version.
+sc-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true }
+sc-consensus-epochs = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true }
+sc-finality-grandpa = { package = "sc-consensus-grandpa", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true }
+sp-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true }
+sp-consensus-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true }
+rocksdb = { version = "0.24.0", default-features = false, features = ["snappy"], optional = true }
+
+sc-client-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true }
+
+sc-client-db = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true, features = ["rocksdb"] }
+
+sp-blockchain = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true }
+
+fs2 = { version = "0.4.3", optional = true }
+
+# Existing locked async staking types for real-signed public rehearsal calls only.
+pallet-staking = { package = "pallet-staking-async", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", optional = true, default-features = false, features = ["std"] }
+
+# Existing scoped permission API for explicit public fixture network registration only.
+permissions = { path = "../../pallets/permissions", optional = true, default-features = false, features = ["std"] }

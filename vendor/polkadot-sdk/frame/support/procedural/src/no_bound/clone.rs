@@ -1,0 +1,129 @@
+// This file is part of Substrate.
+
+// Copyright (C) Parity Technologies (UK) Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// 	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+use syn::spanned::Spanned;
+
+/// Derive Clone but do not bound any generic.
+pub fn derive_clone_no_bound(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+	let input = syn::parse_macro_input!(input as syn::DeriveInput);
+
+	let name = &input.ident;
+	let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+	// Field types may be Copy or non-Copy, and a proc macro cannot resolve that
+	// property. Clone them through one generic operation without adding bounds
+	// to the containing type's generic parameters.
+	let has_fields = match &input.data {
+		syn::Data::Struct(data) => !data.fields.is_empty(),
+		syn::Data::Enum(data) => data.variants.iter().any(|variant| !variant.fields.is_empty()),
+		syn::Data::Union(_) => false,
+	};
+	let clone_field_name =
+		syn::Ident::new("__clone_no_bound_field", proc_macro2::Span::mixed_site());
+	let clone_field = has_fields.then(|| {
+		quote::quote! {
+			#[inline]
+			fn #clone_field_name<Field: ::core::clone::Clone>(field: &Field) -> Field {
+				::core::clone::Clone::clone(field)
+			}
+		}
+	});
+
+	let impl_ = match input.data {
+		syn::Data::Struct(struct_) => match struct_.fields {
+			syn::Fields::Named(named) => {
+				let fields = named.named.iter().map(|i| &i.ident).map(|i| {
+					quote::quote_spanned!(i.span() =>
+						#i: #clone_field_name(&self.#i)
+					)
+				});
+
+				quote::quote!( Self { #( #fields, )* } )
+			},
+			syn::Fields::Unnamed(unnamed) => {
+				let fields =
+					unnamed.unnamed.iter().enumerate().map(|(i, _)| syn::Index::from(i)).map(|i| {
+						quote::quote_spanned!(i.span() =>
+							#clone_field_name(&self.#i)
+						)
+					});
+
+				quote::quote!( Self ( #( #fields, )* ) )
+			},
+			syn::Fields::Unit => {
+				quote::quote!(Self)
+			},
+		},
+		syn::Data::Enum(enum_) if enum_.variants.is_empty() => quote::quote!(match *self {}),
+		syn::Data::Enum(enum_) => {
+			let variants = enum_.variants.iter().map(|variant| {
+				let ident = &variant.ident;
+				match &variant.fields {
+					syn::Fields::Named(named) => {
+						let captured = named.named.iter().map(|i| &i.ident);
+						let cloned = captured.clone().map(|i| {
+							::quote::quote_spanned!(i.span() =>
+								#i: #clone_field_name(#i)
+							)
+						});
+						quote::quote!(
+							Self::#ident { #( ref #captured, )* } => Self::#ident { #( #cloned, )*}
+						)
+					},
+					syn::Fields::Unnamed(unnamed) => {
+						let captured = unnamed
+							.unnamed
+							.iter()
+							.enumerate()
+							.map(|(i, f)| syn::Ident::new(&format!("_{}", i), f.span()));
+						let cloned = captured.clone().map(|i| {
+							quote::quote_spanned!(i.span() =>
+								#clone_field_name(#i)
+							)
+						});
+						quote::quote!(
+							Self::#ident ( #( ref #captured, )* ) => Self::#ident ( #( #cloned, )*)
+						)
+					},
+					syn::Fields::Unit => quote::quote!( Self::#ident => Self::#ident ),
+				}
+			});
+
+			quote::quote!(match self {
+				#( #variants, )*
+			})
+		},
+		syn::Data::Union(_) => {
+			let msg = "Union type not supported by `derive(CloneNoBound)`";
+			return syn::Error::new(input.span(), msg).to_compile_error().into();
+		},
+	};
+
+	quote::quote!(
+		const _: () = {
+			#[automatically_derived]
+			#[allow(deprecated)]
+			impl #impl_generics ::core::clone::Clone for #name #ty_generics #where_clause {
+				fn clone(&self) -> Self {
+					#clone_field
+					#impl_
+				}
+			}
+		};
+	)
+	.into()
+}

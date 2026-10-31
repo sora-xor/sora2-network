@@ -1,0 +1,5 @@
+error: Invalid attribute: Duplicate attribute
+  --> tests/pallet_ui/storage_multiple_getters.rs:37:3
+   |
+37 |     #[pallet::getter(fn foo_error)]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

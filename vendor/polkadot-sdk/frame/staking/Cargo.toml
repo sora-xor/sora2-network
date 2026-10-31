@@ -1,126 +1,278 @@
-[package]
-name = "pallet-staking"
-version = "46.0.0"
-authors = ["Parity Technologies <admin@parity.io>"]
-edition = "2021"
-license = "Apache-2.0"
-homepage = "https://paritytech.github.io/polkadot-sdk/"
-repository = "https://github.com/paritytech/polkadot-sdk.git"
-description = "FRAME pallet staking"
-readme = "README.md"
+# Vendored from polkadot-stable2609; see SORA-PATCH.md.
 
-# Preserve the lint policy inherited from polkadot-stable2603-3 upstream.
-[lints.rust]
-suspicious_double_ref_op = { level = "allow", priority = 2 }
-# `substrate_runtime` is a common `cfg` condition name used in the repo.
-unexpected_cfgs = { level = "warn", check-cfg = [
-	'cfg(build_opt_level, values("3"))',
-	'cfg(build_profile, values("debug", "release"))',
-	'cfg(enable_alloc_error_handler)',
-	'cfg(fuzzing)',
-	'cfg(ignore_flaky_test)',
-	'cfg(substrate_runtime)',
-] }
+["package"]
+"name" = "pallet-staking"
+"version" = "50.0.0"
+"authors" = ["Parity Technologies <admin@parity.io>"]
+"edition" = "2021"
+"license" = "Apache-2.0"
+"homepage" = "https://paritytech.github.io/polkadot-sdk/"
+"repository" = "https://github.com/paritytech/polkadot-sdk.git"
+"description" = "FRAME pallet staking"
+"readme" = "README.md"
 
-[lints.clippy]
-all = { level = "allow", priority = 0 }
-bind_instead_of_map = { level = "allow", priority = 2 }              # stylistic
-borrowed-box = { level = "allow", priority = 2 }                     # Reasonable to fix this one
-complexity = { level = "warn", priority = 1 }
-correctness = { level = "warn", priority = 1 }
-default_constructed_unit_structs = { level = "allow", priority = 2 } # stylistic
-derivable_impls = { level = "allow", priority = 2 }                  # false positives
-eq_op = { level = "allow", priority = 2 }                            # In tests we test equality.
-erasing_op = { level = "allow", priority = 2 }                       # E.g. 0 * DOLLARS
-extra-unused-type-parameters = { level = "allow", priority = 2 }     # stylistic
-identity-op = { level = "allow", priority = 2 }                      # One case where we do 0 +
-if-same-then-else = { level = "allow", priority = 2 }
-needless-lifetimes = { level = "allow", priority = 2 }               # generated code
-needless_option_as_deref = { level = "allow", priority = 2 }         # false positives
-nonminimal-bool = { level = "allow", priority = 2 }                  # maybe
-option-map-unit-fn = { level = "allow", priority = 2 }               # stylistic
-stable_sort_primitive = { level = "allow", priority = 2 }            # prefer stable sort
-too-many-arguments = { level = "allow", priority = 2 }               # (Turning this on would lead to)
-type_complexity = { level = "allow", priority = 2 }                  # raison d'etre
-unit_arg = { level = "allow", priority = 2 }                         # stylistic
-unnecessary_cast = { level = "allow", priority = 2 }                 # Types may change
-useless_conversion = { level = "allow", priority = 2 }               # Types may change
-while_immutable_condition = { level = "allow", priority = 2 }        # false positives
-zero-prefixed-literal = { level = "allow", priority = 2 }            # 00_1000_000
+["package"."metadata"]
 
-[package.metadata.docs.rs]
-targets = ["x86_64-unknown-linux-gnu"]
+["package"."metadata"."docs"]
 
-[dependencies]
-codec = { features = ["derive"], version = "3.7.5", package = "parity-scale-codec", default-features = false }
-frame-benchmarking = { optional = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-frame-election-provider-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-log = { version = "0.4.22", default-features = false }
-pallet-authorship = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-pallet-session = { features = ["historical"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-rand_chacha = { optional = true, version = "0.3.1", default-features = false }
-scale-info = { features = ["derive", "serde"], version = "2.11.6", default-features = false }
-serde = { features = ["alloc", "derive"], version = "1.0.214", default-features = false }
-sp-application-crypto = { features = ["serde"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-sp-runtime = { features = ["serde"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-sp-staking = { features = ["serde"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+["package"."metadata"."docs"."rs"]
+"targets" = ["x86_64-unknown-linux-gnu"]
 
-[dev-dependencies]
-frame-benchmarking = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-frame-election-provider-support = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-frame-support = { features = ["experimental"], default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-pallet-bags-list = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-pallet-balances = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-pallet-staking-reward-curve = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-pallet-timestamp = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-rand_chacha = { version = "0.3.1", default-features = true }
-sp-core = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-sp-npos-elections = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-sp-tracing = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-substrate-test-utils = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+["lints"]
 
-[features]
-default = ["std"]
-std = [
-	"codec/std",
-	"frame-benchmarking?/std",
-	"frame-election-provider-support/std",
-	"frame-support/std",
-	"frame-system/std",
-	"log/std",
-	"pallet-authorship/std",
-	"pallet-session/std",
-	"scale-info/std",
-	"serde/std",
-	"sp-application-crypto/std",
-	"sp-io/std",
-	"sp-runtime/std",
-	"sp-staking/std",
-]
-runtime-benchmarks = [
-	"frame-benchmarking/runtime-benchmarks",
-	"frame-election-provider-support/runtime-benchmarks",
-	"frame-support/runtime-benchmarks",
-	"frame-system/runtime-benchmarks",
-	"pallet-bags-list/runtime-benchmarks",
-	"pallet-balances/runtime-benchmarks",
-	"pallet-session/runtime-benchmarks",
-	"pallet-timestamp/runtime-benchmarks",
-	"rand_chacha",
-	"sp-runtime/runtime-benchmarks",
-	"sp-staking/runtime-benchmarks",
-]
-try-runtime = [
-	"frame-election-provider-support/try-runtime",
-	"frame-support/try-runtime",
-	"frame-system/try-runtime",
-	"pallet-authorship/try-runtime",
-	"pallet-bags-list/try-runtime",
-	"pallet-balances/try-runtime",
-	"pallet-session/try-runtime",
-	"pallet-timestamp/try-runtime",
-	"sp-runtime/try-runtime",
-]
+["lints"."rust"]
+
+["lints"."rust"."suspicious_double_ref_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."rust"."unexpected_cfgs"]
+"level" = "warn"
+"check-cfg" = ["cfg(build_opt_level, values(\"3\"))", "cfg(build_profile, values(\"debug\", \"release\"))", "cfg(enable_alloc_error_handler)", "cfg(fuzzing)", "cfg(ignore_flaky_test)", "cfg(revive_debug)", "cfg(substrate_runtime)"]
+
+["lints"."clippy"]
+
+["lints"."clippy"."all"]
+"level" = "allow"
+"priority" = 0
+
+["lints"."clippy"."bind_instead_of_map"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."borrowed-box"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."complexity"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."correctness"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."default_constructed_unit_structs"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."derivable_impls"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."eq_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."erasing_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."extra-unused-type-parameters"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."identity-op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."if-same-then-else"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless-lifetimes"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless_option_as_deref"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."nonminimal-bool"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."option-map-unit-fn"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."stable_sort_primitive"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."too-many-arguments"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."type_complexity"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unit_arg"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unnecessary_cast"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."useless_conversion"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."while_immutable_condition"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."zero-prefixed-literal"]
+"level" = "allow"
+"priority" = 2
+
+["dependencies"]
+
+["dependencies"."codec"]
+"version" = "3.7.5"
+"default-features" = false
+"package" = "parity-scale-codec"
+"features" = ["derive"]
+
+["dependencies"."frame-election-provider-support"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."frame-support"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."frame-system"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."log"]
+"version" = "0.4.22"
+"default-features" = false
+
+["dependencies"."pallet-authorship"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."pallet-session"]
+"default-features" = false
+"features" = ["historical"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."scale-info"]
+"version" = "2.11.6"
+"default-features" = false
+"features" = ["derive", "serde"]
+
+["dependencies"."serde"]
+"version" = "1.0.214"
+"default-features" = false
+"features" = ["alloc", "derive"]
+
+["dependencies"."sp-application-crypto"]
+"default-features" = false
+"features" = ["serde"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-io"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-runtime"]
+"default-features" = false
+"features" = ["serde"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-staking"]
+"default-features" = false
+"features" = ["serde"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."frame-benchmarking"]
+"default-features" = false
+"optional" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."rand_chacha"]
+"version" = "0.3.1"
+"default-features" = false
+"optional" = true
+
+["dev-dependencies"]
+
+["dev-dependencies"."frame-benchmarking"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."frame-election-provider-support"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."frame-support"]
+"default-features" = true
+"features" = ["experimental"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."pallet-bags-list"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."pallet-balances"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."pallet-staking-reward-curve"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."pallet-timestamp"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."rand_chacha"]
+"version" = "0.3.1"
+"default-features" = true
+
+["dev-dependencies"."sp-core"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."sp-npos-elections"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."sp-tracing"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."substrate-test-utils"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["features"]
+"default" = ["std"]
+"std" = ["codec/std", "frame-benchmarking?/std", "frame-election-provider-support/std", "frame-support/std", "frame-system/std", "log/std", "pallet-authorship/std", "pallet-bags-list/std", "pallet-balances/std", "pallet-session/std", "pallet-timestamp/std", "scale-info/std", "serde/std", "sp-application-crypto/std", "sp-io/std", "sp-npos-elections/std", "sp-runtime/std", "sp-staking/std", "sp-tracing/std"]
+"runtime-benchmarks" = ["frame-benchmarking/runtime-benchmarks", "frame-election-provider-support/runtime-benchmarks", "frame-support/runtime-benchmarks", "frame-system/runtime-benchmarks", "pallet-bags-list/runtime-benchmarks", "pallet-balances/runtime-benchmarks", "pallet-session/runtime-benchmarks", "pallet-timestamp/runtime-benchmarks", "rand_chacha", "sp-runtime/runtime-benchmarks", "sp-staking/runtime-benchmarks"]
+"try-runtime" = ["frame-election-provider-support/try-runtime", "frame-support/try-runtime", "frame-system/try-runtime", "pallet-authorship/try-runtime", "pallet-bags-list/try-runtime", "pallet-balances/try-runtime", "pallet-session/try-runtime", "pallet-timestamp/try-runtime", "sp-runtime/try-runtime"]

@@ -89,6 +89,48 @@ fn open_pending_approval(network_id: bridge_types::GenericNetworkId, data: H256)
 }
 
 #[test]
+#[allow(deprecated)]
+fn recovery_halt_rejects_new_signatures_for_retained_pending_approvals() {
+    use sp_runtime::traits::ValidateUnsigned;
+    new_test_ext().execute_with(|| {
+        let network = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, keys) = test_peers();
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(),
+            network,
+            peers.try_into().unwrap()
+        ));
+        let data = H256::repeat_byte(17);
+        open_pending_approval(network, data);
+        let signature = keys[0].sign_prehashed(&data.0);
+        sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
+        let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        let call = Call::<Test>::approve {
+            network_id: network,
+            data,
+            signature: signature.clone(),
+        };
+        assert_eq!(
+            DataSigner::validate_unsigned(TransactionSource::InBlock, &call),
+            InvalidTransaction::Call.into()
+        );
+        assert_noop!(
+            DataSigner::approve(RuntimeOrigin::none(), network, data, signature),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            DataSigner::register_pending_approval(
+                RuntimeOrigin::root(),
+                network,
+                H256::repeat_byte(18)
+            ),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
+    });
+}
+
+#[test]
 fn it_works_register_network() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1010,6 +1052,10 @@ fn it_clears_pending_approval_and_stored_signatures() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_works_validate_unsigned() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1051,6 +1097,10 @@ fn it_works_validate_unsigned() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_no_network() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1085,6 +1135,10 @@ fn it_fails_validate_unsigned_no_network() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_when_hash_is_not_pending() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1115,6 +1169,10 @@ fn it_fails_validate_unsigned_when_hash_is_not_pending() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_bad_proof() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1148,6 +1206,10 @@ fn it_fails_validate_unsigned_bad_proof() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_bad_signer() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1181,6 +1243,10 @@ fn it_fails_validate_unsigned_bad_signer() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_transaction_stale() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1223,6 +1289,10 @@ fn it_fails_validate_unsigned_transaction_stale() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_invalid_call() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1252,4 +1322,47 @@ fn testing_signer() {
     let (peers, pairs) = test_peers();
 
     assert_eq!(peers[0], pairs[0].public());
+}
+
+#[test]
+#[allow(deprecated)]
+fn permanent_commitment_quarantine_retains_signatures_and_rejects_reapproval() {
+    use sp_runtime::traits::ValidateUnsigned;
+    new_test_ext().execute_with(|| {
+        let network = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, keys) = test_peers();
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(),
+            network,
+            peers.try_into().unwrap()
+        ));
+        let data = H256::repeat_byte(17);
+        open_pending_approval(network, data);
+        let signature = keys[0].sign_prehashed(&data.0);
+        sp_io::storage::set(&bridge_types::recovery::commitment_key(network, data), &[1]);
+        sp_io::storage::clear(b":sora-nexus:recovery:bridge-halt:v1");
+        let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        let call = Call::<Test>::approve {
+            network_id: network,
+            data,
+            signature: signature.clone(),
+        };
+        assert_eq!(
+            DataSigner::validate_unsigned(TransactionSource::InBlock, &call),
+            InvalidTransaction::Stale.into()
+        );
+        assert_noop!(
+            DataSigner::approve(RuntimeOrigin::none(), network, data, signature),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            DataSigner::register_pending_approval(RuntimeOrigin::root(), network, data),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            DataSigner::clear_pending_approval(RuntimeOrigin::root(), network, data),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
+    });
 }

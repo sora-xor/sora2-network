@@ -1,0 +1,32 @@
+{
+  "name": "@polkadot/wasm-crypto-wasm",
+  "version": "7.5.4",
+  "description": "Polkadot crypto Wasm rebuilt from reviewed maintained Rust dependencies for SORA Nexus",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./packageInfo": {
+      "import": "./dist/esm/packageInfo.js",
+      "require": "./dist/cjs/packageInfo.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "build-provenance.json",
+    "SORA-PATCH.md",
+    "LICENSE",
+    "SORA-LICENSE"
+  ],
+  "engines": {
+    "node": ">=24"
+  }
+}

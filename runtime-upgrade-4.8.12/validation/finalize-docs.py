@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+from decimal import Decimal
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -28,6 +29,11 @@ for report in [native, build, policy, compatibility, governance]:
 assert native["sourceTreeAfterPatch"] == build["sourceTreeAfterPatch"] == provenance["sourceTreeAfterPatch"]
 assert build["candidateSha256"] == policy["candidate"]["sha256"] == compatibility["inputs"]["candidate"]["sha256"] == governance["candidateSha256"] == candidate["sha256"]
 assert native["totalFailed"] == 0 and native["followupRegressionsPassed"] == 6
+assert native["payoutBatchRegressionsPassed"] == 9 and len(native["requiredPayoutBatchRegressions"]) == 9
+assert policy["checks"].get("payoutBatchFeeDiscount") is True and policy["payoutBatchFees"]["passed"] is True
+assert policy["payoutBatchFees"]["divisor"] == "100" and policy["payoutBatchFees"]["cases"]
+assert policy["inputs"]["payoutBatchHelperSha256"] == sha((HERE / "payout-batch-fixture.cjs").read_bytes())
+assert compatibility["checks"].get("payoutBatchPreservesAllEncodingsAndConstants") is True
 required_retirement_tests = {
     "tests::liveness::retired_lending::retired_kensetsu_operations_are_paid_failures_even_in_batches",
     "tests::liveness::retired_lending::retired_apollo_operations_are_paid_failures_even_in_batches",
@@ -38,7 +44,7 @@ required_retirement_tests = {
     "tests::liveness::retired_lending::retired_lending_workers_submit_nothing_with_funded_keeper_keys",
 }
 assert native.get("retirementRegressionsPassed") == 7 and set(native.get("requiredRetirementRegressions", [])) == required_retirement_tests, "Fresh lending retirement regressions must pass before documentation is rendered"
-assert native["newRuntimeRegressionsPassed"] >= 39 and len(native["suites"]) == 13
+assert native["newRuntimeRegressionsPassed"] >= 48 and len(native["suites"]) == 13
 assert {"kensetsu", "apollo_platform"} <= {row["crate"] for row in native["suites"]}
 assert all(row["failed"] == 0 for row in native["suites"])
 assert policy.get("checks", {}).get("retiredLendingExitsAndGuards") is True and policy.get("retiredLending", {}).get("passed") is True, "Exact-Wasm lending retirement evidence must pass before documentation is rendered"
@@ -57,7 +63,29 @@ chain_passed = chain.get("status") == "passed" and chain.get("sourceTree") == pr
 lint_passed = lint.get("status") == "passed" and lint.get("sourceTreeAfterPatch") == provenance["sourceTreeAfterPatch"]
 if args.require_final_gates:
     assert chain_passed and lint_passed, "Fresh chain-spec and Clippy gates must pass"
+def xor_amount(value):
+    return format(Decimal(str(value)) / Decimal(10 ** 18), ".9f").rstrip("0").rstrip(".")
+
+
+batch_examples = ["| Local fixture | Payouts | Admission quote (XOR) | Ordinary admission quote (XOR) | Actual fee (XOR) | Same actual weight at ordinary price (XOR) |",
+                  "| --- | ---: | ---: | ---: | ---: | ---: |"]
+for row in policy["payoutBatchFees"]["cases"]:
+    if row["label"].endswith(".success"):
+        batch_examples.append("| " + " | ".join([
+            row["label"].removeprefix("payoutFee."), str(row["payoutCount"]), xor_amount(row["quotedFee"]),
+            xor_amount(row["ordinaryQuotedFeeCounterfactual"]),
+            xor_amount(row["xorCharged"]), xor_amount(row["ordinaryActualFeeCounterfactual"]),
+        ]) + " |")
+assert len(batch_examples) >= 8, "All batch variants need single- and two-payout examples"
 values = {
+    "PAYOUT_BATCH_EXAMPLES": "\n".join(batch_examples),
+    "PAYOUT_FIXTURE_MULTIPLIER": format(Decimal(policy["payoutBatchFees"]["multiplier"]) / Decimal(10 ** 18), "f"),
+    "BASELINE_SPEC": str(info["preflight"]["runtimeVersion"]["specVersion"]),
+    "GOVERNANCE_QUEUE_STATUS": (
+        "The finalized external proposal queue is occupied. Resolve the existing proposal through normal governance; the guarded council call rejects replacement of that queue."
+        if settings["activation"]["existingQueuedProposal"] is not None else
+        "The finalized external proposal queue is clear. The guarded council call checks it remains clear before registering this proposal."
+    ),
     "CANDIDATE_SHA256": candidate["sha256"], "CANDIDATE_BYTES": f'{candidate["bytes"]:,}',
     "SOURCE_TREE": provenance["sourceTreeAfterPatch"], "SOURCE_BASE": provenance["baseCommit"],
     "NATIVE_PASSED": f'{native["totalPassed"]:,}', "NATIVE_IGNORED": str(native["totalIgnored"]),
@@ -91,7 +119,7 @@ inputs = ["runtime-upgrade-4.8.12-info.json", "council-settings.json",
           "validation/source-provenance.json", "validation/native-tests.json", "validation/wasm-build.json",
           "validation/fee-policy-wasm-rehearsal.json", "validation/wasm-compatibility.json",
           "validation/governance-call-check.json", "validation/clippy.json",
-          "validation/retired-lending-fixture.cjs"]
+          "validation/retired-lending-fixture.cjs", "validation/payout-batch-fixture.cjs"]
 if chain_path.exists():
     inputs.append("validation/chain-spec-runtimes.json")
 inputs += ["validation/docs/" + name + ".in" for name in documents]

@@ -1,0 +1,340 @@
+# Exact stable2609 package with a scoped voter poll-order fix; see SORA-PATCH.md.
+
+
+["package"]
+"name" = "sc-consensus-grandpa"
+"version" = "0.45.0"
+"authors" = ["Parity Technologies <admin@parity.io>"]
+"edition" = "2021"
+"license" = "GPL-3.0-or-later WITH Classpath-exception-2.0"
+"homepage" = "https://paritytech.github.io/polkadot-sdk/"
+"repository" = "https://github.com/paritytech/polkadot-sdk.git"
+"description" = "Integration of the GRANDPA finality gadget into substrate."
+"documentation" = "https://docs.rs/sc-consensus-grandpa"
+"readme" = "README.md"
+
+["package"."metadata"]
+
+["package"."metadata"."docs"]
+
+["package"."metadata"."docs"."rs"]
+"targets" = ["x86_64-unknown-linux-gnu"]
+
+["lints"]
+
+["lints"."rust"]
+
+["lints"."rust"."suspicious_double_ref_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."rust"."unexpected_cfgs"]
+"level" = "warn"
+"check-cfg" = ["cfg(build_opt_level, values(\"3\"))","cfg(build_profile, values(\"debug\", \"release\"))","cfg(enable_alloc_error_handler)","cfg(fuzzing)","cfg(ignore_flaky_test)","cfg(revive_debug)","cfg(substrate_runtime)"]
+
+["lints"."clippy"]
+
+["lints"."clippy"."all"]
+"level" = "allow"
+"priority" = 0
+
+["lints"."clippy"."bind_instead_of_map"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."borrowed-box"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."complexity"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."correctness"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."default_constructed_unit_structs"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."derivable_impls"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."eq_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."erasing_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."extra-unused-type-parameters"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."identity-op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."if-same-then-else"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless-lifetimes"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless_option_as_deref"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."nonminimal-bool"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."option-map-unit-fn"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."stable_sort_primitive"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."too-many-arguments"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."type_complexity"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unit_arg"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unnecessary_cast"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."useless_conversion"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."while_immutable_condition"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."zero-prefixed-literal"]
+"level" = "allow"
+"priority" = 2
+
+["dependencies"]
+
+["dependencies"."ahash"]
+"version" = "0.8.2"
+
+["dependencies"."array-bytes"]
+"version" = "6.2.2"
+"default-features" = true
+
+["dependencies"."async-trait"]
+"version" = "0.1.88"
+
+["dependencies"."codec"]
+"version" = "3.7.5"
+"default-features" = true
+"package" = "parity-scale-codec"
+"features" = ["derive"]
+
+["dependencies"."dyn-clone"]
+"version" = "1.0.16"
+
+["dependencies"."finality-grandpa"]
+"version" = "0.16.3"
+"default-features" = true
+"features" = ["derive-codec"]
+
+["dependencies"."fork-tree"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."futures"]
+"version" = "0.3.31"
+
+["dependencies"."futures-timer"]
+"version" = "3.0.2"
+
+["dependencies"."log"]
+"version" = "0.4.22"
+"default-features" = true
+
+["dependencies"."parking_lot"]
+"version" = "0.12.1"
+"default-features" = true
+
+["dependencies"."prometheus-endpoint"]
+"default-features" = true
+"package" = "substrate-prometheus-endpoint"
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."rand"]
+"version" = "0.8.5"
+"default-features" = true
+
+["dependencies"."sc-block-builder"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-chain-spec"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-client-api"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-client-db"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-consensus"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-network"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-network-common"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-network-gossip"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-network-sync"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-network-types"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-telemetry"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-transaction-pool-api"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-utils"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."serde_json"]
+"version" = "1.0.132"
+"default-features" = true
+
+["dependencies"."sp-api"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-application-crypto"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-arithmetic"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-blockchain"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-consensus"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-consensus-grandpa"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-core"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-crypto-hashing"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-keystore"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-runtime"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."thiserror"]
+"version" = "1.0.64"
+
+["dev-dependencies"]
+
+["dev-dependencies"."assert_matches"]
+"version" = "1.5.0"
+
+["dev-dependencies"."finality-grandpa"]
+"version" = "0.16.3"
+"default-features" = true
+"features" = ["derive-codec","test-helpers"]
+
+["dev-dependencies"."sc-network-test"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."sp-keyring"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."sp-tracing"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."substrate-test-runtime-client"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."tokio"]
+"version" = "1.45.0"
+"default-features" = true

@@ -1,0 +1,15 @@
+{
+  "upstream_commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "source_path": "substrate/primitives/tracing",
+  "differences": [
+    {
+      "path": [
+        "dependencies",
+        "tracing-subscriber",
+        "version"
+      ],
+      "upstream": "=0.3.19",
+      "local": "0.3.23"
+    }
+  ]
+}

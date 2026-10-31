@@ -1,8 +1,6 @@
 // This file is part of the SORA network and Polkaswap app.
 // SPDX-License-Identifier: BSD-4-Clause
 
-#![allow(deprecated)]
-
 use super::*;
 use crate::{Executive, RuntimeCall, Signature, SignedExtra, UncheckedExtrinsic, XorFee};
 use codec::Decode;
@@ -76,7 +74,7 @@ pub(super) fn report_call(
             let slot = (first_slot..first_slot + crate::EpochDuration::get())
                 .find(|slot| {
                     let digest = (randomness, sp_consensus_babe::Slot::from(*slot))
-                        .using_encoded(sp_core::blake2_256);
+                        .using_encoded(sp_io::hashing::blake2_256);
                     (sp_core::U256::from_big_endian(&digest) % sp_core::U256::from(VALIDATORS))
                         .as_u32()
                         == index
@@ -203,6 +201,7 @@ fn reporter_account(pair: &sr25519::Pair) -> AccountId {
 fn signed_extrinsic(call: RuntimeCall, pair: &sr25519::Pair) -> UncheckedExtrinsic {
     let who = reporter_account(pair);
     let extra: SignedExtra = (
+        frame_system::AuthorizeCall::new(),
         frame_system::CheckSpecVersion::<Runtime>::new(),
         frame_system::CheckTxVersion::<Runtime>::new(),
         frame_system::CheckGenesis::<Runtime>::new(),
@@ -263,7 +262,13 @@ fn apply_paid(call: RuntimeCall, pair: &sr25519::Pair) -> DispatchResult {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Assert that the preserved legacy unsigned admission boundary rejects equivocation reports"
+)]
 fn valid_equivocation_reports_reject_every_unsigned_admission_path() {
+    use sp_runtime::traits::ValidateUnsigned;
+
     for consensus in CONSENSUS {
         for legacy_unsigned_name in [false, true] {
             ext().execute_with(|| {

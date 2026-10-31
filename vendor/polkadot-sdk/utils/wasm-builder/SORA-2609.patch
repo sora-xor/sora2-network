@@ -1,0 +1,248 @@
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -126,6 +126,7 @@
+ mod metadata_hash;
+ mod prerequisites;
+ mod version;
++mod wasm_metadata;
+ mod wasm_project;
+ 
+ pub use builder::{WasmBuilder, WasmBuilderSelectProject};
+--- a/src/wasm_metadata.rs
++++ b/src/wasm_metadata.rs
+@@ -0,0 +1,88 @@
++// Copyright (C) Parity Technologies (UK) Ltd.
++// SPDX-License-Identifier: Apache-2.0
++
++//! Parse the complete module while keeping custom metadata opaque.
++
++use core::convert::Infallible;
++use wasm_encoder::{
++	reencode::{self, Reencode},
++	Module,
++};
++
++pub(crate) fn has_runtime_version_section(
++	bytes: &[u8],
++) -> Result<bool, reencode::Error<Infallible>> {
++	#[derive(Default)]
++	struct Metadata {
++		has_runtime_version: bool,
++	}
++	impl Reencode for Metadata {
++		type Error = Infallible;
++		fn parse_custom_section(
++			&mut self,
++			_module: &mut Module,
++			section: wasmparser::CustomSectionReader<'_>,
++		) -> Result<(), reencode::Error<Self::Error>> {
++			self.has_runtime_version |= section.name() == "runtime_version";
++			// The old parser did not interpret optional name/debug metadata. The
++			// encoded output is discarded, so no custom payload needs copying.
++			Ok(())
++		}
++	}
++	let mut metadata = Metadata::default();
++	// Parser::parse_all alone only outlines sections and function bodies. Full
++	// reencoding also parses their contents, preserving the former malformed-
++	// module rejection without adding stricter semantic validation.
++	metadata.parse_core_module(&mut Module::new(), wasmparser::Parser::new(0), bytes)?;
++	Ok(metadata.has_runtime_version)
++}
++
++#[cfg(test)]
++mod tests {
++	use super::*;
++	use wasm_encoder::{CustomSection, ExportKind, ExportSection, RawSection};
++
++	fn with_runtime_version() -> Module {
++		let mut module = Module::new();
++		module.section(&CustomSection {
++			name: "runtime_version".into(),
++			data: (&b"version"[..]).into(),
++		});
++		module
++	}
++
++	#[test]
++	fn missing_runtime_version_is_reported() {
++		assert!(!has_runtime_version_section(&Module::new().finish()).unwrap());
++	}
++
++	#[test]
++	fn malformed_instruction_is_rejected_even_after_metadata_was_found() {
++		let mut module = with_runtime_version();
++		module.section(&RawSection { id: 1, data: &[1, 0x60, 0, 0] });
++		module.section(&RawSection { id: 3, data: &[1, 0] });
++		module.section(&RawSection { id: 10, data: &[1, 3, 0, 0xff, 0x0b] });
++		assert!(has_runtime_version_section(&module.finish()).is_err());
++	}
++
++	#[test]
++	fn malformed_section_entry_is_rejected_even_after_metadata_was_found() {
++		let mut module = with_runtime_version();
++		module.section(&RawSection { id: 1, data: &[1, 0xff] });
++		assert!(has_runtime_version_section(&module.finish()).is_err());
++	}
++
++	#[test]
++	fn optional_name_metadata_remains_opaque() {
++		let mut module = with_runtime_version();
++		module.section(&CustomSection { name: "name".into(), data: (&b"\xff\xff"[..]).into() });
++		assert!(has_runtime_version_section(&module.finish()).unwrap());
++	}
++
++	#[test]
++	fn parsing_does_not_add_semantic_type_validation() {
++		let mut module = with_runtime_version();
++		module.section(ExportSection::new().export("unresolved", ExportKind::Func, 99));
++		assert!(has_runtime_version_section(&module.finish()).unwrap());
++	}
++}
+--- a/src/wasm_project.rs
++++ b/src/wasm_project.rs
+@@ -21,10 +21,10 @@
+ 	copy_file_if_changed, write_file_if_changed, CargoCommandVersioned, RuntimeTarget, OFFLINE,
+ };
+ 
++use crate::wasm_metadata::has_runtime_version_section;
+ use build_helper::rerun_if_changed;
+ use cargo_metadata::{DependencyKind, Metadata, MetadataCommand};
+ use console::style;
+-use parity_wasm::elements::{deserialize_buffer, Module};
+ use polkavm_linker::TargetInstructionSet;
+ use std::{
+ 	borrow::ToOwned,
+@@ -342,15 +342,12 @@
+ fn ensure_runtime_version_wasm_section_exists(blob_path: &Path) {
+ 	let blob = fs::read(blob_path).expect("`{blob_path}` was just written and should exist; qed");
+ 
+-	let module: Module = match deserialize_buffer(&blob) {
+-		Ok(m) => m,
+-		Err(e) => {
+-			println!("Failed to deserialize `{}`: {e:?}", blob_path.display());
+-			process::exit(1);
+-		},
+-	};
+-
+-	if !module.custom_sections().any(|cs| cs.name() == "runtime_version") {
++	let has_runtime_version = has_runtime_version_section(&blob).unwrap_or_else(|error| {
++		println!("Failed to deserialize `{}`: {error:?}", blob_path.display());
++		process::exit(1);
++	});
++
++	if !has_runtime_version {
+ 		println!(
+ 			"Couldn't find the `runtime_version` section. \
+ 				  Please ensure that you are using the `sp_version::runtime_version` attribute macro!"
+@@ -363,7 +360,8 @@
+ ///
+ /// We add the bloaty and the compressed/compact wasm file to the `rerun-if-changed` files.
+ /// Cargo/Rustc determines based on the timestamp of the `invoked.timestamp` file that can be found
+-/// in the `OUT_DIR/..`, if it needs to rerun a `build.rs` script. The problem is that this
++/// in `OUT_DIR/../run` (or `OUT_DIR/..` with older Cargo), if it needs to rerun a `build.rs`
++/// script. The problem is that this
+ /// `invoked.timestamp` is created when the `build.rs` is executed and the wasm binaries are created
+ /// later. This leads to them having a later mtime than the `invoked.timestamp` file and thus,
+ /// cargo/rustc always re-executes the `build.rs` script. To hack around this, we copy the mtime of
+@@ -372,12 +370,7 @@
+ 	bloaty_wasm: &WasmBinaryBloaty,
+ 	compressed_or_compact_wasm: Option<&WasmBinary>,
+ ) -> std::io::Result<()> {
+-	let out_dir = build_helper::out_dir();
+-	let invoked_timestamp = out_dir.join("../invoked.timestamp");
+-
+-	// Get the mtime of the `invoked.timestamp`
+-	let metadata = fs::metadata(invoked_timestamp)?;
+-	let mtime = filetime::FileTime::from_last_modification_time(&metadata);
++	let mtime = invoked_timestamp_mtime(&build_helper::out_dir())?;
+ 
+ 	filetime::set_file_mtime(bloaty_wasm.bloaty_path(), mtime)?;
+ 	if let Some(binary) = compressed_or_compact_wasm.as_ref() {
+@@ -385,6 +378,18 @@
+ 	}
+ 
+ 	Ok(())
++}
++
++/// Read Cargo's build-script timestamp, accepting both current and legacy layouts.
++fn invoked_timestamp_mtime(out_dir: &Path) -> std::io::Result<filetime::FileTime> {
++	let metadata = fs::metadata(out_dir.join("../run/invoked.timestamp")).or_else(|error| {
++		if error.kind() == std::io::ErrorKind::NotFound {
++			fs::metadata(out_dir.join("../invoked.timestamp"))
++		} else {
++			Err(error)
++		}
++	})?;
++	Ok(filetime::FileTime::from_last_modification_time(&metadata))
+ }
+ 
+ /// Find the `Cargo.lock` relative to the `OUT_DIR` environment variable.
+@@ -1326,3 +1331,67 @@
+ 		unsafe { jobserver::Client::from_env() }
+ 	})
+ }
++
++#[cfg(test)]
++mod tests {
++	use super::*;
++	use filetime::FileTime;
++
++	fn timestamp_fixture() -> (tempfile::TempDir, PathBuf) {
++		let directory = tempfile::tempdir().unwrap();
++		let out_dir = directory.path().join("out");
++		fs::create_dir(&out_dir).unwrap();
++		(directory, out_dir)
++	}
++
++	fn write_timestamp(path: &Path, seconds: i64) -> FileTime {
++		fs::create_dir_all(path.parent().unwrap()).unwrap();
++		fs::write(path, []).unwrap();
++		let mtime = FileTime::from_unix_time(seconds, 0);
++		filetime::set_file_mtime(path, mtime).unwrap();
++		mtime
++	}
++
++	#[test]
++	fn invoked_timestamp_supports_current_cargo_layout() {
++		let (directory, out_dir) = timestamp_fixture();
++		let expected = write_timestamp(&directory.path().join("run/invoked.timestamp"), 1_000_000);
++		assert_eq!(invoked_timestamp_mtime(&out_dir).unwrap(), expected);
++	}
++
++	#[test]
++	fn invoked_timestamp_supports_legacy_cargo_layout() {
++		let (directory, out_dir) = timestamp_fixture();
++		let expected = write_timestamp(&directory.path().join("invoked.timestamp"), 1_000_000);
++		assert_eq!(invoked_timestamp_mtime(&out_dir).unwrap(), expected);
++	}
++
++	#[test]
++	fn invoked_timestamp_prefers_current_cargo_layout() {
++		let (directory, out_dir) = timestamp_fixture();
++		write_timestamp(&directory.path().join("invoked.timestamp"), 1_000_000);
++		let expected = write_timestamp(&directory.path().join("run/invoked.timestamp"), 2_000_000);
++		assert_eq!(invoked_timestamp_mtime(&out_dir).unwrap(), expected);
++	}
++
++	#[test]
++	fn invoked_timestamp_reports_missing_timestamp() {
++		let (_directory, out_dir) = timestamp_fixture();
++		assert_eq!(
++			invoked_timestamp_mtime(&out_dir).unwrap_err().kind(),
++			std::io::ErrorKind::NotFound,
++		);
++	}
++
++	#[test]
++	fn invoked_timestamp_preserves_non_missing_io_errors() {
++		let (directory, out_dir) = timestamp_fixture();
++		write_timestamp(&directory.path().join("invoked.timestamp"), 1_000_000);
++		// A non-directory component must not be hidden by the valid legacy timestamp.
++		fs::write(directory.path().join("run"), []).unwrap();
++		assert_eq!(
++			invoked_timestamp_mtime(&out_dir).unwrap_err().kind(),
++			std::io::ErrorKind::NotADirectory,
++		);
++	}
++}

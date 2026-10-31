@@ -68,6 +68,59 @@ fn malleate_signature(signature: &SignatureParams) -> SignatureParams {
     malleated
 }
 
+#[test]
+fn recovery_halt_blocks_new_debits_approvals_and_outgoing_cancellation_refunds() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100_000u32.into()).unwrap();
+        let recipient = EthAddress::repeat_byte(7);
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            recipient,
+            100u32.into(),
+            net_id
+        ));
+        let (request, hash) = last_outgoing_request(net_id).unwrap();
+        let (_, account, seed) = &state.networks[&net_id].ocw_keypairs[0];
+        let (public, signature) = approval_params(&request, hash, seed);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        assert_err!(
+            EthBridge::transfer_to_sidechain(
+                RuntimeOrigin::signed(alice),
+                XOR.into(),
+                recipient,
+                100u32.into(),
+                net_id
+            ),
+            Error::RecoveryHalted
+        );
+        assert_err!(
+            EthBridge::approve_request(
+                RuntimeOrigin::signed(account.clone()),
+                public,
+                hash,
+                signature,
+                net_id
+            ),
+            Error::RecoveryHalted
+        );
+        assert_err!(
+            EthBridge::inner_abort_request(
+                &OffchainRequest::outgoing(request),
+                hash,
+                Error::Forbidden.into(),
+                net_id
+            ),
+            Error::RecoveryHalted
+        );
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+    });
+}
+
 fn approval_params(
     request: &OutgoingRequest<Runtime>,
     request_hash: H256,
@@ -1331,5 +1384,121 @@ fn should_use_legacy_master_contract_path_for_val_only() {
 
         assert!(!xor_req.uses_legacy_master_contract_path());
         assert!(val_req.uses_legacy_master_contract_path());
+    });
+}
+
+#[test]
+fn permanent_request_quarantine_blocks_approval_refund_and_execution_after_halt_removal() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100_000u32.into()).unwrap();
+        let recipient = EthAddress::repeat_byte(7);
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            recipient,
+            100u32.into(),
+            net_id
+        ));
+        let (request, hash) = last_outgoing_request(net_id).unwrap();
+        let (_, account, seed) = &state.networks[&net_id].ocw_keypairs[0];
+        let (public, signature) = approval_params(&request, hash, seed);
+        sp_io::storage::set(&bridge_types::recovery::hashi_key(net_id, hash), &[1]);
+        sp_io::storage::clear(crate::recovery::HALT_KEY);
+        let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        assert_err!(request.cancel(), Error::RecoveryHalted);
+        assert_err!(request.finalize(hash), Error::RecoveryHalted);
+        assert_err!(
+            EthBridge::approve_request(
+                RuntimeOrigin::signed(account.clone()),
+                public,
+                hash,
+                signature,
+                net_id
+            ),
+            Error::RecoveryHalted
+        );
+        assert_err!(
+            EthBridge::inner_abort_request(
+                &OffchainRequest::outgoing(request),
+                hash,
+                Error::Forbidden.into(),
+                net_id
+            ),
+            Error::RecoveryHalted
+        );
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+    });
+}
+
+#[test]
+fn permanent_quarantine_blocks_referenced_incoming_work_and_legacy_aggregate_burn() {
+    use crate::requests::{
+        IncomingCancelOutgoingRequest, IncomingMetaRequestKind, IncomingRequest,
+        LoadIncomingMetaRequest, LoadIncomingRequest,
+    };
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let network = ETH_NETWORK_ID;
+        let owner = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &owner, &owner, 1_000u32.into()).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(owner.clone()),
+            XOR.into(),
+            EthAddress::repeat_byte(7),
+            100u32.into(),
+            network
+        ));
+        let (outgoing, id) = last_outgoing_request(network).unwrap();
+        let incoming = IncomingRequest::CancelOutgoingRequest(IncomingCancelOutgoingRequest {
+            outgoing_request: outgoing,
+            outgoing_request_hash: id,
+            initial_request_hash: H256::repeat_byte(20),
+            tx_input: vec![],
+            author: owner.clone(),
+            tx_hash: H256::repeat_byte(21),
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: network,
+        });
+        let request = OffchainRequest::incoming(incoming.clone());
+        crate::Requests::<Runtime>::insert(network, request.hash(), &request);
+        crate::RequestStatuses::<Runtime>::insert(network, request.hash(), RequestStatus::Pending);
+        let load = LoadIncomingRequest::Meta(
+            LoadIncomingMetaRequest::new(
+                owner,
+                id,
+                Default::default(),
+                IncomingMetaRequestKind::MarkAsDone,
+                network,
+            ),
+            H256::repeat_byte(22),
+        );
+        sp_io::storage::set(&bridge_types::recovery::hashi_key(network, id), &[1]);
+        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        sp_io::storage::clear(crate::recovery::HALT_KEY);
+        let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        assert_err!(
+            EthBridge::finalize_incoming_request_inner(&incoming, request.hash(), network),
+            Error::RecoveryHalted
+        );
+        assert_err!(
+            EthBridge::inner_abort_request(
+                &request,
+                request.hash(),
+                Error::Forbidden.into(),
+                network
+            ),
+            Error::RecoveryHalted
+        );
+        assert_err!(load.validate(), Error::RecoveryHalted);
+        assert!(
+            crate::recovery::ensure_request_active::<Runtime>(&OffchainRequest::LoadIncoming(load))
+                .is_err()
+        );
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
     });
 }

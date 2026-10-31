@@ -1330,6 +1330,8 @@ pub mod pallet {
     }
 
     /// Validate unsigned call to this pallet.
+    // Preserve explicit rejection of the legacy bare keeper calls.
+    #[allow(deprecated)]
     #[pallet::validate_unsigned]
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;

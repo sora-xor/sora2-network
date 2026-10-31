@@ -45,7 +45,6 @@ pub use pallet::*;
 /// Soratopia game pallet
 #[frame_support::pallet]
 pub mod pallet {
-    use super::*;
     use crate::weights::WeightInfo;
     use common::{AccountIdOf, AssetManager, Balance, XOR};
     use frame_support::{pallet_prelude::*, transactional};

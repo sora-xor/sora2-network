@@ -1,0 +1,188 @@
+{
+  "sourceReport": {
+    "schema": "sora-nexus-offline-evm-hashi-candidate-verification-v1",
+    "candidateOnly": true,
+    "range": {
+      "schema": "sora-nexus-evm-receipt-range-consistency-v1",
+      "candidateOnly": true,
+      "suppliedAnchor": {
+        "number": "100",
+        "hash": "0x5f56d42c8812670fd01c20ee8b56b9e3e46f31e0f02da13f8790d89d0c90bfbd"
+      },
+      "declaredChainId": "1",
+      "fromNumber": "100",
+      "blocks": [
+        {
+          "number": "100",
+          "hash": "0x5f56d42c8812670fd01c20ee8b56b9e3e46f31e0f02da13f8790d89d0c90bfbd",
+          "parentHash": "0x9999999999999999999999999999999999999999999999999999999999999999",
+          "transactionsRoot": "0xc6a022c25b58c86c6b3a2c78af13e801af9613f4dfdae042fe2e7be961a28817",
+          "receiptsRoot": "0x05d0b4f2d88169858da77e1d05b45e1f01ce9f22acc82a928e45eb4265ca08d9",
+          "transactions": 1,
+          "logs": 1
+        }
+      ],
+      "logs": [
+        {
+          "blockNumber": "100",
+          "blockHash": "0x5f56d42c8812670fd01c20ee8b56b9e3e46f31e0f02da13f8790d89d0c90bfbd",
+          "transactionIndex": 0,
+          "transactionHash": "0xf6e75d83069a187b5d5bac033e6b153b93624b562da53fd6f01e9ddcdbd69097",
+          "transactionType": 0,
+          "signatureChainId": "1",
+          "transactionDestination": "0x3535353535353535353535353535353535353535",
+          "receiptLogIndex": 0,
+          "logIndex": 0,
+          "address": "0x4141414141414141414141414141414141414141",
+          "topics": [
+            "0x85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+          ],
+          "data": "0x1111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000000700000000000000000000000022222222222222222222222222222222222222220000000000000000000000000000000000000000000000000000000000000000",
+          "status": 1
+        }
+      ],
+      "decodedInputBytes": 992,
+      "decodedRlpNodes": 36,
+      "headerAncestryToSuppliedAnchorVerified": true,
+      "completeTransactionTriesVerified": true,
+      "completeReceiptTriesVerified": true,
+      "transactionHashInclusionVerified": true,
+      "bloomAndGasConsistencyVerified": true,
+      "actualReceiptLogsOnly": true,
+      "externalFinalityVerified": false,
+      "trustAnchorApproved": false,
+      "sourceChainIdentityVerified": false,
+      "globalNetworkCompletenessVerified": false,
+      "requiredRangeCoverageVerified": false,
+      "transactionSignaturesVerified": false,
+      "executionValidityVerified": false,
+      "senderAttributionVerified": false,
+      "nativeHashiAssociationVerified": false,
+      "productionReady": false
+    },
+    "extraction": {
+      "schema": "sora-nexus-hashi-verified-receipt-log-extraction-v1",
+      "scope": {
+        "schema": "sora-nexus-hashi-deposit-scope-v1",
+        "nativeNetwork": "0",
+        "declaredChainId": "1",
+        "declaredGenesisHash": "0x6464646464646464646464646464646464646464646464646464646464646464",
+        "epochs": [
+          {
+            "fromNumber": "100",
+            "throughNumber": "100",
+            "contracts": [
+              {
+                "address": "0x4141414141414141414141414141414141414141",
+                "kind": "bridge"
+              }
+            ]
+          }
+        ]
+      },
+      "deposits": [
+        {
+          "nativeNetwork": "0",
+          "nativeMessageId": "0xf6e75d83069a187b5d5bac033e6b153b93624b562da53fd6f01e9ddcdbd69097",
+          "blockNumber": "100",
+          "blockHash": "0x5f56d42c8812670fd01c20ee8b56b9e3e46f31e0f02da13f8790d89d0c90bfbd",
+          "transactionIndex": 0,
+          "transactionHash": "0xf6e75d83069a187b5d5bac033e6b153b93624b562da53fd6f01e9ddcdbd69097",
+          "receiptLogIndex": 0,
+          "logIndex": 0,
+          "sourceContract": "0x4141414141414141414141414141414141414141",
+          "sourceContractKind": "bridge",
+          "epochFromNumber": "100",
+          "epochThroughNumber": "100",
+          "originalDestination": "0x1111111111111111111111111111111111111111111111111111111111111111",
+          "rawAmount": "7",
+          "token": "0x2222222222222222222222222222222222222222",
+          "sidechainAsset": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "rawTopic": "0x85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8",
+          "rawData": "0x1111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000000700000000000000000000000022222222222222222222222222222222222222220000000000000000000000000000000000000000000000000000000000000000",
+          "nativeEventContainsSender": false,
+          "senderAttributionVerified": false,
+          "beneficialOwnershipVerified": false,
+          "nativeCreditAmountComputed": false,
+          "nativeAssociationVerified": false,
+          "heldReasons": [
+            "source-configuration-asset-mapping-denomination-precision-and-native-state-unverified"
+          ]
+        }
+      ],
+      "ambiguousNativeTransactions": [],
+      "completeMatchingLogsInDeclaredScopeExtracted": true,
+      "matchingLogsHaveUniqueNativeTransactionIdentity": true,
+      "originalDestinationPreserved": true,
+      "callAmountsUsed": false,
+      "configurationEpochsAuthenticated": false,
+      "historicalContractsExhaustivelyDiscovered": false,
+      "nativeAssetConversionVerified": false,
+      "nativeLoadAuthorDerived": false,
+      "nativeHashiAssociationVerified": false,
+      "finalizedIncomingInventoryVerified": false,
+      "productionReady": false
+    },
+    "externalFinalityVerified": false,
+    "trustAnchorApproved": false,
+    "allRequiredRangesCovered": false,
+    "allSupportedNetworksCovered": false,
+    "sourceActorIsBeneficialOwner": false,
+    "bridgeReopeningAuthorized": false,
+    "releaseGatePromoted": false,
+    "productionReady": false,
+    "compositionBlocks": [
+      {
+        "number": "100",
+        "timestamp": "1100",
+        "transactionHashes": [
+          "0xf6e75d83069a187b5d5bac033e6b153b93624b562da53fd6f01e9ddcdbd69097"
+        ]
+      }
+    ],
+    "inputs": {
+      "range": {
+        "file": "/Users/takemiyamakoto/dev/sora2-network/artifacts/recovery-28191817/fixtures/incoming-history-composition-candidate-v1/example-attempt-2/0.range.json",
+        "sha256": "92b2d172a3d2b11945996272fb094412f86d4989e87e78e09e926eb174c865e5",
+        "bytes": 2143
+      },
+      "anchor": {
+        "file": "/Users/takemiyamakoto/dev/sora2-network/artifacts/recovery-28191817/fixtures/incoming-history-composition-candidate-v1/example-attempt-2/0.anchor.json",
+        "sha256": "f6e37134e578a682f45f0c4b4c66888a26cc78289499e86933a4a1d37200c65a",
+        "bytes": 93
+      },
+      "scope": {
+        "file": "/Users/takemiyamakoto/dev/sora2-network/artifacts/recovery-28191817/fixtures/incoming-history-composition-candidate-v1/example-attempt-2/0.scope.json",
+        "sha256": "3982c3b8f72ffa2c787ac493cb32ed33685835697a0aba3abe28a55f276a83c4",
+        "bytes": 321
+      }
+    },
+    "verifier": {
+      "nodeExecutableSha256": "7296c3dda88793e08d1089d839a782178c4bba6bb22f5c40ab2a75263fb071bd",
+      "segmentAdapterSha256": "e8cfec050678502cef4bed84f7823b54c8d546d56e282b381ae50a4498650322",
+      "frozenFiles": [
+        {
+          "file": "kernel.cjs",
+          "sha256": "3428bb415fec2add20d8d5f4b8b8ab882aa8c87ec0fbf6b44019e210c6140ef5"
+        },
+        {
+          "file": "deposits.cjs",
+          "sha256": "9af296800615fd7dc816931ca87975cb3b255a0d7fa50c96f08fbd6e0ecf375f"
+        },
+        {
+          "file": "cli.cjs",
+          "sha256": "9b36c7fbd1d426f40111cd92f80dbe1aa6ab1f7d400445a03343c5687e85f0f5"
+        },
+        {
+          "file": "dependencies.json",
+          "sha256": "d8e36f617e1a4094453bac1833428d75cbbd82f451c9a4ed01962d77219fb3d1"
+        }
+      ]
+    }
+  },
+  "rawTransaction": "0xe08001830186a09435353535353535353535353535353535353535358080250101",
+  "expectedEvidenceHash": "0x9965fc5f012d1a2dd26918ed1901ebd3096a09669f7cd7d0175445528aee2e57",
+  "syntheticOnly": true,
+  "realExternalExecutionVerified": false,
+  "productionReady": false
+}

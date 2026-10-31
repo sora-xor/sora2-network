@@ -73,6 +73,8 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
 
 #[macro_use]
 extern crate alloc;
+
+pub mod recovery;
 extern crate jsonrpc_core as jsonrpc;
 
 use crate::offchain::SignatureParams;
@@ -126,6 +128,11 @@ pub mod weights;
 
 mod benchmarking;
 mod contract;
+// Public host fixture tooling uses the exact native event decoder; no Wasm API changes.
+#[cfg(feature = "std")]
+pub use contract::{
+    ContractEvent as PublicFixtureContractEvent, DepositEvent as PublicFixtureDepositEvent,
+};
 mod macros;
 pub mod migration;
 pub mod offchain;
@@ -380,7 +387,7 @@ pub mod pallet {
     use common::{ContentSource, Description};
     use frame_support::__private::log;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::{GetCallMetadata, StorageVersion};
+    use frame_support::traits::{GetCallMetadata, IsSubType, StorageVersion};
     use frame_support::transactional;
     use frame_support::weights::WeightToFeePolynomial;
     use frame_system::pallet_prelude::*;
@@ -403,6 +410,8 @@ pub mod pallet {
         /// The overarching dispatch call type.
         type RuntimeCall: From<Call<Self>>
             + From<bridge_multisig::Call<Self>>
+            + IsSubType<Call<Self>>
+            + IsSubType<bridge_multisig::Call<Self>>
             + Codec
             + Clone
             + GetCallMetadata
@@ -429,6 +438,9 @@ pub mod pallet {
         >;
 
         type BridgeAssetLockChecker: BridgeAssetLockChecker<Self::AssetId, Balance>;
+
+        /// Permanent beneficiary/query ownership resolution after native authentication.
+        type IncomingAccountResolver: crate::recovery::IncomingAccountResolver<Self::AccountId>;
 
         type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
 
@@ -471,6 +483,9 @@ pub mod pallet {
         ///
         /// Note: only one worker is expected to be used.
         fn offchain_worker(block_number: frame_system::pallet_prelude::BlockNumberFor<T>) {
+            if crate::recovery::halted() {
+                return;
+            }
             debug!("Entering off-chain workers {:?}", block_number);
             let marker_ref = StorageValueRef::persistent(STORAGE_PEER_MARKER_KEY);
             let legacy_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
@@ -557,6 +572,7 @@ pub mod pallet {
             initial_peers: Vec<<T as frame_system::pallet::Config>::AccountId>,
             signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             ensure_root(origin)?;
             let net_id = NextNetworkId::<T>::get();
             ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
@@ -593,6 +609,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
@@ -630,6 +647,7 @@ pub mod pallet {
             decimals: u8,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called add_sidechain_token");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -675,6 +693,7 @@ pub mod pallet {
             amount: Balance,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called transfer_to_sidechain");
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
@@ -703,13 +722,17 @@ pub mod pallet {
 
         #[transactional]
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
         pub fn request_from_sidechain(
             origin: OriginFor<T>,
             eth_tx_hash: H256,
             kind: IncomingRequestKind,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
@@ -756,12 +779,16 @@ pub mod pallet {
         /// - `request` - an incoming request.
         /// - `network_id` - network identifier.
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
         pub fn finalize_incoming_request(
             origin: OriginFor<T>,
             hash: H256,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called finalize_incoming_request");
             let _ = Self::ensure_bridge_account(origin, network_id)?;
             let request =
@@ -791,6 +818,7 @@ pub mod pallet {
             address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called change_peers_out");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -840,6 +868,7 @@ pub mod pallet {
             peer_address: Option<EthAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called change_peers_out");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -906,6 +935,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called prepare_for_migration");
             ensure_root(origin)?;
             if BridgeSignatureVersions::<T>::get(network_id) == BridgeSignatureVersion::V1
@@ -948,6 +978,7 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
             new_signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called prepare_for_migration");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -975,11 +1006,15 @@ pub mod pallet {
         ///
         /// Can only be called by a bridge account.
         #[pallet::call_index(10)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
         pub fn register_incoming_request(
             origin: OriginFor<T>,
             incoming_request: IncomingRequest<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called register_incoming_request");
             let net_id = incoming_request.network_id();
             let _ = Self::ensure_bridge_account(origin, net_id)?;
@@ -1000,6 +1035,7 @@ pub mod pallet {
         #[pallet::call_index(11)]
         #[pallet::weight({
             <T as Config>::WeightInfo::request_from_sidechain()
+                .saturating_add(crate::recovery::resolution_weight::<T>())
                 .saturating_add(<T as Config>::WeightInfo::register_incoming_request())
                 .saturating_add(if incoming_request_result.is_ok() {
                     <T as Config>::WeightInfo::finalize_incoming_request()
@@ -1012,6 +1048,10 @@ pub mod pallet {
             load_incoming_request: LoadIncomingRequest<T>,
             incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called import_incoming_request");
             let net_id = load_incoming_request.network_id();
             let _ = Self::ensure_bridge_account(origin, net_id)?;
@@ -1093,6 +1133,7 @@ pub mod pallet {
             address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             let _ = ensure_root(origin)?;
             let mut peers = Peers::<T>::get(network_id);
             if !peers.contains(&who) {
@@ -1127,6 +1168,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             log::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
             ensure!(
@@ -1155,6 +1197,7 @@ pub mod pallet {
             token_address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             log::debug!(
                 "called register_existing_sidechain_asset. asset_id: {:?}",
                 asset_id
@@ -1194,7 +1237,9 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
             hash: H256,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             ensure_root(origin)?;
+            crate::recovery::ensure_outgoing_active::<T>(network_id, hash)?;
             let status =
                 RequestStatuses::<T>::get(network_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
             ensure!(
@@ -1458,6 +1503,8 @@ pub mod pallet {
         /// The request has reached the maximum number of stored approvals.
         TooManyApprovals,
         DuplicateApproval,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
     }
 
     impl<T: Config> Error<T> {
@@ -1927,8 +1974,9 @@ impl<T: Config> Pallet<T> {
             } => {
                 load_incoming_request.validate()?;
                 let hash = load_incoming_request.hash();
+                let retained = Self::retained_recovery_load(load_incoming_request)?;
                 ensure!(
-                    !Requests::<T>::contains_key(network, hash),
+                    retained || !Requests::<T>::contains_key(network, hash),
                     Error::<T>::DuplicatedRequest
                 );
                 ensure!(
@@ -1958,9 +2006,13 @@ impl<T: Config> Pallet<T> {
                     RequestStatuses::<T>::get(network, hash) == Some(RequestStatus::Pending),
                     Error::<T>::ExpectedPendingRequest
                 );
+                crate::recovery::ensure_incoming_active::<T>(incoming)?;
                 incoming.validate()?;
             }
             Call::abort_request { hash, .. } => {
+                let request =
+                    Requests::<T>::get(network, hash).ok_or(Error::<T>::UnknownRequest)?;
+                crate::recovery::ensure_request_active::<T>(&request)?;
                 ensure!(
                     Requests::<T>::contains_key(network, hash),
                     Error::<T>::UnknownRequest
@@ -1979,6 +2031,11 @@ impl<T: Config> Pallet<T> {
         incoming: &IncomingRequest<T>,
         network: T::NetworkId,
     ) -> DispatchResult {
+        crate::recovery::ensure_incoming_active::<T>(incoming)?;
+        ensure!(
+            crate::recovery::inbound_allowed::<T>(),
+            Error::<T>::RecoveryHalted
+        );
         ensure!(
             !LoadToIncomingRequestHash::<T>::contains_key(network, incoming.hash()),
             Error::<T>::RequestIsAlreadyRegistered
@@ -2007,6 +2064,8 @@ impl<T: Config> Pallet<T> {
         author: &T::AccountId,
         network: T::NetworkId,
     ) -> DispatchResult {
+        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+        crate::recovery::ensure_outgoing_active::<T>(network, *hash)?;
         Self::ensure_peer(author, network)?;
         let request = Requests::<T>::get(network, hash)
             .and_then(|request| request.into_outgoing().map(|x| x.0))
@@ -2053,7 +2112,14 @@ impl<T: Config> Pallet<T> {
     /// 4. There is no registered request with the same hash.
     /// 5. The request's `validate` and `prepare` should pass.
     fn add_request(request: &OffchainRequest<T>) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(request)?;
+        ensure!(
+            !crate::recovery::halted()
+                || (request.as_outgoing().is_none() && crate::recovery::inbound_allowed::<T>()),
+            Error::<T>::RecoveryHalted
+        );
         let net_id = request.network_id();
+        crate::recovery::ensure_outgoing_active::<T>(net_id, request.hash())?;
         let bridge_status = BridgeStatuses::<T>::get(net_id).ok_or(Error::<T>::UnknownNetwork)?;
         if request.is_incoming() {
             Self::register_incoming_request_inner(request, net_id)?;
@@ -2104,10 +2170,11 @@ impl<T: Config> Pallet<T> {
             queue_len < T::MaxRequestsPerQueue::get() as usize,
             Error::<T>::RequestsQueueFull
         );
+        let index_author = crate::recovery::incoming_index_author::<T>(request)?;
         request.validate()?;
         request.prepare()?;
         Self::clear_request_signatures(net_id, &hash);
-        Self::record_account_request(request.author(), net_id, hash);
+        Self::record_account_request(&index_author, net_id, hash);
         Requests::<T>::insert(net_id, &hash, request);
         RequestsQueue::<T>::mutate(net_id, |queue| queue.push(hash));
         RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
@@ -2123,13 +2190,18 @@ impl<T: Config> Pallet<T> {
         incoming_request: &OffchainRequest<T>,
         network_id: T::NetworkId,
     ) -> Result<H256, DispatchError> {
+        crate::recovery::ensure_request_active::<T>(incoming_request)?;
+        ensure!(
+            crate::recovery::inbound_allowed::<T>(),
+            Error::<T>::RecoveryHalted
+        );
         let replay_key = incoming_request
             .as_incoming()
             .ok_or(Error::<T>::ExpectedIncomingRequest)?
             .0
             .hash();
         let incoming_request_hash = incoming_request.hash();
-        let request_author = incoming_request.author().clone();
+        let request_author = crate::recovery::incoming_index_author::<T>(incoming_request)?;
         ensure!(
             !LoadToIncomingRequestHash::<T>::contains_key(network_id, replay_key),
             Error::<T>::RequestIsAlreadyRegistered
@@ -2210,13 +2282,30 @@ impl<T: Config> Pallet<T> {
         hash: H256,
         network_id: T::NetworkId,
     ) -> DispatchResult {
+        crate::recovery::ensure_incoming_active::<T>(request)?;
+        ensure!(
+            crate::recovery::inbound_allowed::<T>(),
+            Error::<T>::RecoveryHalted
+        );
         ensure!(
             RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?
                 == RequestStatus::Pending,
             Error::<T>::ExpectedPendingRequest
         );
+        // A policy/resolver failure is not a failed external transfer. Reject it
+        // before finalize's ordinary cancellation fallback can alter reserves,
+        // request statuses or queue/replay bookkeeping.
+        if let IncomingRequest::Transfer(transfer) = request {
+            crate::recovery::ordinary_account::<T>(&transfer.to)?;
+        }
         let error_opt = request.finalize().err();
         if let Some(e) = error_opt {
+            // Recovery's outer transaction owns rollback. The ordinary cancellation
+            // path would relock/refund while outbound activity is deliberately halted.
+            // Propagate the failure instead of invoking cancellation (which may panic).
+            if crate::recovery::halted() {
+                return Err(e);
+            }
             error!("Incoming request failed {:?} {:?}", hash, e);
             Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
             RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
@@ -2245,6 +2334,9 @@ impl<T: Config> Pallet<T> {
 
     #[inline]
     pub(crate) fn clear_request_signatures(network_id: T::NetworkId, hash: &H256) {
+        if bridge_types::recovery::hashi_quarantined(network_id, *hash) {
+            return;
+        }
         RequestApprovals::<T>::remove(network_id, hash);
         RequestApprovers::<T>::remove(network_id, hash);
     }
@@ -2400,15 +2492,47 @@ impl<T: Config> Pallet<T> {
         error: DispatchError,
         network_id: T::NetworkId,
     ) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(request)?;
+        ensure!(
+            !crate::recovery::halted()
+                || (request.as_outgoing().is_none() && crate::recovery::inbound_allowed::<T>()),
+            Error::<T>::RecoveryHalted
+        );
         ensure!(
             RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?
                 == RequestStatus::Pending,
             Error::<T>::ExpectedPendingRequest
         );
+        crate::recovery::ensure_outgoing_active::<T>(network_id, hash)?;
         cancel!(request, hash, network_id, error);
         Self::remove_request_from_queue(network_id, &hash);
         Self::deposit_event(Event::RequestAborted(hash));
         Ok(())
+    }
+
+    /// The same exact admission is used by protocol validation and dispatch.
+    /// Merely being halted does not authorize reuse outside the internal
+    /// authenticated recovery inbound context.
+    fn retained_recovery_load(load: &LoadIncomingRequest<T>) -> Result<bool, DispatchError> {
+        if !crate::recovery::halted() || !crate::recovery::inbound_allowed::<T>() {
+            return Ok(false);
+        }
+        let network = load.network_id();
+        let hash = load.hash();
+        if Requests::<T>::get(network, hash) != Some(OffchainRequest::LoadIncoming(load.clone())) {
+            return Ok(false);
+        }
+        ensure!(
+            RequestStatuses::<T>::get(network, hash) == Some(RequestStatus::Pending)
+                && !LoadToIncomingRequestHash::<T>::contains_key(network, hash)
+                && RequestsQueue::<T>::get(network)
+                    .iter()
+                    .filter(|id| **id == hash)
+                    .count()
+                    == 1,
+            Error::<T>::RequestIsAlreadyRegistered
+        );
+        Ok(true)
     }
 
     fn inner_import_incoming_request(
@@ -2416,9 +2540,34 @@ impl<T: Config> Pallet<T> {
         load_incoming_request: LoadIncomingRequest<T>,
         incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
     ) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(&OffchainRequest::LoadIncoming(
+            load_incoming_request.clone(),
+        ))?;
+        if let Ok(incoming) = &incoming_request_result {
+            crate::recovery::ensure_incoming_active::<T>(incoming)?;
+        }
+        ensure!(
+            crate::recovery::inbound_allowed::<T>(),
+            Error::<T>::RecoveryHalted
+        );
+        // Resolve both ownership roles before even the nonfinancial load half
+        // can be registered. Its kind alone does not establish the type of the
+        // authenticated incoming result, and policy failure must not enter the
+        // ordinary abort/cancellation fallback after partial bookkeeping.
+        if let Ok(IncomingRequest::Transfer(transfer)) = &incoming_request_result {
+            crate::recovery::ordinary_account::<T>(&transfer.author)?;
+            crate::recovery::ordinary_account::<T>(&transfer.to)?;
+        }
         let replay_key = load_incoming_request.hash();
+        let retained_load = Self::retained_recovery_load(&load_incoming_request)?;
         let load_incoming = OffchainRequest::LoadIncoming(load_incoming_request);
-        Self::add_request(&load_incoming)?;
+        // A checkpoint may already contain the load half of this exact receipt.
+        // Recovery still authenticates the complete import with a fresh native
+        // quorum; retaining this nonfinancial bookkeeping must not resubmit it,
+        // change its author/timepoint, or bypass a consumed replay identity.
+        if !retained_load {
+            Self::add_request(&load_incoming)?;
+        }
         match incoming_request_result {
             Ok(incoming_request) => {
                 if net_id != incoming_request.network_id() {
@@ -2486,6 +2635,8 @@ impl<T: Config> Pallet<T> {
         author: <T as frame_system::pallet::Config>::AccountId,
         net_id: T::NetworkId,
     ) -> Result<Option<Weight>, DispatchError> {
+        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+        crate::recovery::ensure_outgoing_active::<T>(net_id, hash)?;
         let request = Requests::<T>::get(net_id, hash)
             .and_then(|x| x.into_outgoing().map(|x| x.0))
             .ok_or(Error::<T>::UnknownRequest)?;

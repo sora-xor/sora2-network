@@ -84,3 +84,41 @@ docs/security*
 /misc/slash-investigation/*.tar.gz
 /misc/slash-investigation/lifecycle-release-metadata.json
 /misc/slash-investigation/candidate-source.patch
+
+# Local runtime rehearsal state snapshots
+/runtime-rehearsal-*/validation/**/*.snap
+
+# Rehearsal and validation outputs are local evidence, not source. Harness code,
+# the npm manifests CI audits and governance release packages stay tracked.
+/runtime-rehearsal-*/**/*.json
+/runtime-rehearsal-*/**/*.gz
+/runtime-rehearsal-*/**/*.log
+/runtime-rehearsal-*/**/*.stderr
+/runtime-rehearsal-*/**/*.stdout
+/runtime-rehearsal-*/**/*.scale
+/runtime-rehearsal-*/**/*.wasm
+/runtime-rehearsal-*/**/*.txt
+/runtime-rehearsal-*/**/*.patch
+/runtime-rehearsal-*/**/attempts/
+/runtime-rehearsal-*/**/diagnostic*/
+/runtime-rehearsal-*/**/imported-migration-evidence/
+/runtime-rehearsal-*/**/node_modules
+!/runtime-rehearsal-*/**/package.json
+!/runtime-rehearsal-*/**/package-lock.json
+!/runtime-rehearsal-*/council/**
+/runtime-upgrade-*/validation/**/*.json
+/runtime-upgrade-*/validation/**/*.gz
+/runtime-upgrade-*/validation/**/*.log
+/runtime-upgrade-*/validation/**/*.stderr
+/runtime-upgrade-*/validation/**/*.stdout
+/runtime-upgrade-*/validation/**/*.scale
+/runtime-upgrade-*/validation/**/*.wasm
+/runtime-upgrade-*/validation/**/*.txt
+/runtime-upgrade-*/validation/**/*.patch
+/runtime-upgrade-*/validation/**/node_modules
+!/runtime-upgrade-*/validation/**/package.json
+!/runtime-upgrade-*/validation/**/package-lock.json
+!/runtime-upgrade-*/validation/**/rehearsal-package.json
+!/runtime-upgrade-*/validation/**/rehearsal-package-lock.json
+# Metadata fixture read by misc/runtime_upgrade/tests/test_governance_compatibility.py.
+!/runtime-upgrade-4.8.11/validation/deployed-spec-132-metadata.scale

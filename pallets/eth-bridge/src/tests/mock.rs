@@ -267,6 +267,7 @@ impl Config for Runtime {
     type WeightToFee = WeightToFixedFee;
     type MessageStatusNotifier = ();
     type BridgeAssetLockChecker = ();
+    type IncomingAccountResolver = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type Denominator = TestDenominator;
     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
@@ -840,15 +841,13 @@ impl ExtBuilder {
                 .encode(),
             );
             bridge_network_configs.push(ext_network.config.clone());
-            endowed_accounts.extend(ext_network.config.assets.iter().cloned().map(
-                |asset_config| {
-                    (
-                        ext_network.config.bridge_account_id.clone(),
-                        asset_config.asset_id().clone(),
-                        0,
-                    )
-                },
-            ));
+            endowed_accounts.extend(ext_network.config.assets.iter().map(|asset_config| {
+                (
+                    ext_network.config.bridge_account_id.clone(),
+                    asset_config.asset_id().clone(),
+                    0,
+                )
+            }));
             if self.endow_reserve_assets {
                 endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
                     |(asset_id, _balance)| {

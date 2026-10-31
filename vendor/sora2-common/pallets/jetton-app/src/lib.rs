@@ -137,7 +137,6 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config<RuntimeEvent: From<Event<Self>>> {
-
         type CallOrigin: EnsureOrigin<
             Self::RuntimeOrigin,
             Success = CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
@@ -238,6 +237,8 @@ pub mod pallet {
         WrongRequestStatus,
         OperationNotSupported,
         WrongAccountPrefix,
+        /// This exact message remains permanently quarantined by recovery.
+        RecoveryHalted,
     }
 
     #[pallet::genesis_config]
@@ -314,6 +315,10 @@ pub mod pallet {
             else {
                 fail!(DispatchError::BadOrigin);
             };
+            ensure!(
+                !bridge_types::recovery::message_quarantined(network_id.into(), message_id),
+                Error::<T>::RecoveryHalted
+            );
             let sender = sender.address().ok_or(Error::<T>::WrongAccountPrefix)?;
             let token = token.address().ok_or(Error::<T>::WrongAccountPrefix)?;
             let asset_id = AssetsByAddresses::<T>::get(token)

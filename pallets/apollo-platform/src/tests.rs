@@ -6021,6 +6021,10 @@ mod test {
     }
 
     #[test]
+    #[expect(
+        deprecated,
+        reason = "Keep proving that the retired bare keeper interface rejects unsigned liquidation"
+    )]
     fn unsigned_liquidation_is_rejected_regardless_of_quota() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -7729,6 +7733,10 @@ mod test {
         });
     }
     #[test]
+    #[expect(
+        deprecated,
+        reason = "Verify legacy unsigned validation and preparation reject retired keeper calls without state changes"
+    )]
     fn funded_liquidation_rejects_unsigned_and_root_origins_without_side_effects() {
         ExtBuilder::default().build().execute_with(|| {
             use frame_support::dispatch::{GetDispatchInfo, Pays};

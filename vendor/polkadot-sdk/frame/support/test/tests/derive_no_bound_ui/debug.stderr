@@ -1,0 +1,7 @@
+error[E0277]: `<T as Config>::C` doesn't implement `std::fmt::Debug`
+  --> tests/derive_no_bound_ui/debug.rs:24:2
+   |
+24 |     c: T::C,
+   |     ^ the trait `std::fmt::Debug` is not implemented for `<T as Config>::C`
+   |
+   = note: required for the cast from `&<T as Config>::C` to `&dyn std::fmt::Debug`

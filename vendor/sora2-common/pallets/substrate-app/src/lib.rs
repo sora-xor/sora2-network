@@ -40,6 +40,8 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod recovery;
+
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
 extern crate alloc;
@@ -264,6 +266,13 @@ pub mod pallet {
         OptionQuery,
     >;
 
+    /// Acknowledgements for manifest-authorized incoming transfers are retained
+    /// without consuming any outbound queue slot or nonce while recovery is halted.
+    /// Reopening and delivery require a separate reconciled release.
+    #[pallet::storage]
+    pub type DeferredTransferResults<T: Config> =
+        StorageDoubleMap<_, Identity, SubNetworkId, Identity, H256, MessageStatus, OptionQuery>;
+
     #[pallet::error]
     pub enum Error<T> {
         TokenIsNotRegistered,
@@ -276,6 +285,10 @@ pub mod pallet {
         UnknownPrecision,
         WrongAssetId,
         WrongAccountId,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
+        /// An existing delivery result cannot be overwritten or replayed.
+        DeferredResultExists,
     }
 
     #[pallet::call]
@@ -307,6 +320,10 @@ pub mod pallet {
             asset_kind: AssetKind,
             sidechain_precision: u8,
         ) -> DispatchResult {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
             SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
             AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
@@ -327,6 +344,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             sidechain_asset_id: GenericAssetId,
         ) -> DispatchResult {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
             ensure!(
                 T::AssetRegistry::ensure_asset_exists(asset_id.clone()),
@@ -389,6 +407,7 @@ pub mod pallet {
             symbol: AssetSymbolOf<T>,
             name: AssetNameOf<T>,
         ) -> DispatchResult {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             ensure_root(origin)?;
 
             // Ensure that asset had not been registered for current network id
@@ -425,6 +444,7 @@ pub mod pallet {
             message_id: H256,
             message_status: MessageStatus,
         ) -> DispatchResult {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             let CallOriginOutput {
                 network_id,
                 timepoint,
@@ -450,6 +470,10 @@ pub mod pallet {
             recipient: AccountIdOf<T>,
             amount: GenericBalance,
         ) -> Result<bridge_types::traits::MessageDispatchOutcome, DispatchError> {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             frame_support::storage::with_storage_layer(|| {
                 let CallOriginOutput {
                     network_id,
@@ -457,6 +481,14 @@ pub mod pallet {
                     timepoint,
                     ..
                 } = T::CallOrigin::ensure_origin(origin)?;
+                ensure!(
+                    !bridge_types::recovery::message_quarantined(network_id.into(), message_id),
+                    Error::<T>::RecoveryHalted
+                );
+                ensure!(
+                    !DeferredTransferResults::<T>::contains_key(network_id, message_id),
+                    Error::<T>::DeferredResultExists
+                );
                 // A caught mint error must not commit any partial mint/unlock mutations.
                 let outcome = match frame_support::storage::with_storage_layer(|| {
                     Self::mint_inner(
@@ -473,16 +505,20 @@ pub mod pallet {
                     bridge_types::traits::MessageDispatchOutcome::Applied => MessageStatus::Done,
                     bridge_types::traits::MessageDispatchOutcome::Failed => MessageStatus::Failed,
                 };
-                T::OutboundChannel::submit(
-                    network_id,
-                    &RawOrigin::Root,
-                    &SubstrateAppCall::ReportTransferResult {
-                        message_id,
-                        message_status,
-                    }
-                    .prepare_message(),
-                    (),
-                )?;
+                if crate::recovery::halted() {
+                    DeferredTransferResults::<T>::insert(network_id, message_id, message_status);
+                } else {
+                    T::OutboundChannel::submit(
+                        network_id,
+                        &RawOrigin::Root,
+                        &SubstrateAppCall::ReportTransferResult {
+                            message_id,
+                            message_status,
+                        }
+                        .prepare_message(),
+                        (),
+                    )?;
+                }
                 Ok(outcome)
             })
         }
@@ -496,6 +532,14 @@ pub mod pallet {
             message_id: H256,
             timepoint: bridge_types::GenericTimepoint,
         ) -> DispatchResult {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
+            ensure!(
+                !bridge_types::recovery::message_quarantined(network_id.into(), message_id),
+                Error::<T>::RecoveryHalted
+            );
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
@@ -543,6 +587,7 @@ pub mod pallet {
             recipient: GenericAccount,
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
 
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
@@ -648,11 +693,15 @@ impl<T: Config> BridgeApp<T::AccountId, GenericAccount, AssetIdOf<T>, BalanceOf<
 
     fn refund(
         network_id: GenericNetworkId,
-        _message_id: bridge_types::H256,
+        message_id: bridge_types::H256,
         recipient: T::AccountId,
         asset_id: AssetIdOf<T>,
         amount: BalanceOf<T>,
     ) -> DispatchResult {
+        ensure!(
+            !bridge_types::recovery::message_quarantined(network_id, message_id),
+            Error::<T>::RecoveryHalted
+        );
         let network_id = network_id.sub().ok_or(Error::<T>::InvalidNetwork)?;
         let asset_kind =
             AssetKinds::<T>::get(network_id, &asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;

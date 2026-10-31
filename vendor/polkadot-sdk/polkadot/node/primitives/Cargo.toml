@@ -1,0 +1,201 @@
+# Vendored from polkadot-stable2609; see SORA-PATCH.md.
+
+
+["package"]
+"name" = "polkadot-node-primitives"
+"description" = "Primitives types for the Node-side"
+"version" = "27.0.0"
+"authors" = ["Parity Technologies <admin@parity.io>"]
+"edition" = "2021"
+"license" = "GPL-3.0-only"
+"homepage" = "https://paritytech.github.io/polkadot-sdk/"
+"repository" = "https://github.com/paritytech/polkadot-sdk.git"
+
+["lints"]
+
+["lints"."rust"]
+
+["lints"."rust"."suspicious_double_ref_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."rust"."unexpected_cfgs"]
+"level" = "warn"
+"check-cfg" = ["cfg(build_opt_level, values(\"3\"))", "cfg(build_profile, values(\"debug\", \"release\"))", "cfg(enable_alloc_error_handler)", "cfg(fuzzing)", "cfg(ignore_flaky_test)", "cfg(revive_debug)", "cfg(substrate_runtime)"]
+
+["lints"."clippy"]
+
+["lints"."clippy"."all"]
+"level" = "allow"
+"priority" = 0
+
+["lints"."clippy"."bind_instead_of_map"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."borrowed-box"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."complexity"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."correctness"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."default_constructed_unit_structs"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."derivable_impls"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."eq_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."erasing_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."extra-unused-type-parameters"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."identity-op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."if-same-then-else"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless-lifetimes"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless_option_as_deref"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."nonminimal-bool"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."option-map-unit-fn"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."stable_sort_primitive"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."too-many-arguments"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."type_complexity"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unit_arg"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unnecessary_cast"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."useless_conversion"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."while_immutable_condition"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."zero-prefixed-literal"]
+"level" = "allow"
+"priority" = 2
+
+["dependencies"]
+
+["dependencies"."bitvec"]
+"version" = "1.0.1"
+"default-features" = false
+"features" = ["alloc"]
+
+["dependencies"."bounded-vec"]
+"version" = "0.7"
+
+["dependencies"."codec"]
+"version" = "3.7.5"
+"default-features" = false
+"package" = "parity-scale-codec"
+"features" = ["derive"]
+
+["dependencies"."futures"]
+"version" = "0.3.31"
+
+["dependencies"."futures-timer"]
+"version" = "3.0.2"
+
+["dependencies"."polkadot-parachain-primitives"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."polkadot-primitives"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-keystore"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."schnorrkel"]
+"version" = "0.11.4"
+"default-features" = true
+
+["dependencies"."serde"]
+"version" = "1.0.214"
+"default-features" = true
+"features" = ["derive"]
+
+["dependencies"."sp-application-crypto"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-consensus-babe"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-consensus-slots"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-keystore"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-maybe-compressed-blob"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-runtime"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."thiserror"]
+"version" = "1.0.64"

@@ -97,6 +97,28 @@ def verify():
     require(all(rehearsal["checks"].values()), "A required exact-Wasm check failed")
     require(len(rehearsal["unsignedChecks"]) == 4 and all(row["passed"] for row in rehearsal["unsignedChecks"]), "Four unsigned report paths were not checked")
     require(len(rehearsal["signedChecks"]) >= 9 and all(row["passed"] and int(row["xorCharged"]) > 0 for row in rehearsal["signedChecks"]), "Signed report fee checks incomplete")
+    signer = rehearsal["signer"]
+    require(int(signer["spendable"]) > int(signer["minimumSpendable"]), "Report payer lacks spendable funding")
+    if signer.get("syntheticFunding"):
+        funding = rehearsal["syntheticPayerFunding"]
+        require(all(funding[key] is True for key in ["passed", "fixtureOnly", "afterUpgradePreservationChecks",
+                    "nonceFrozenAndReferencesPreserved", "issuanceDeltaMatchesFunding"]) and
+                rehearsal["syntheticFixturesEnabled"] is True and funding["account"] == signer["address"],
+                "Report payer synthetic funding is not fully disclosed")
+        number = lambda value: int(value, 0) if isinstance(value, str) else int(value)
+        added = number(funding["added"])
+        require(added > 0 and number(funding["issuanceAfter"]) - number(funding["issuanceBefore"]) == added and
+                number(funding["after"]["data"]["free"]) - number(funding["before"]["data"]["free"]) == added,
+                "Report payer funding does not match native issuance")
+        restored = json.loads(json.dumps(funding["after"]))
+        restored["data"]["free"] = funding["before"]["data"]["free"]
+        require(restored == funding["before"], "Report fixture funding changed locks, nonce or account references")
+        overrides = [row for row in rehearsal["fixtureOverrides"] if row["kind"] == "equivocationPayerFunding"]
+        require(len(overrides) == 2 and {(row["pallet"], row["name"]) for row in overrides} ==
+                {("system", "account"), ("balances", "totalIssuance")} and
+                {row["key"] for row in overrides} == set(signer["storageOverrides"]) and
+                all(row["fixtureOnly"] and row["value"] and "parentStateBefore" in row for row in overrides),
+                "Report fixture funding key/value overrides are incomplete")
     for field, name in [("scriptSha256", "rehearse-equivocation-fees.cjs"), ("snapshotSha256", "snapshot.json"), ("packageLockSha256", "package-lock.json")]:
         require(rehearsal["inputs"][field] == sha256((ROOT / "validation" / name).read_bytes()), "Rehearsal input changed: " + name)
     require(compatibility["inputs"]["candidate"]["sha256"] == digest, "Compatibility used another Wasm")
@@ -110,6 +132,19 @@ def verify():
     comparator_spec = importlib.util.spec_from_file_location("package_metadata_comparison", ROOT / "validation/compare-metadata.py")
     comparator = importlib.util.module_from_spec(comparator_spec)
     comparator_spec.loader.exec_module(comparator)
+    batch_abi = compatibility["payoutBatchMetadataComparison"]
+    require(batch_abi["previousCandidateSha256"] == "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221" and
+            batch_abi["previousMetadataSha256"] == "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f" and
+            batch_abi["previousMetadataSha256"] == sha256((ROOT / "validation/pre-batch-candidate-metadata.json").read_bytes()),
+            "Batch ABI comparison must use the sealed retirement candidate")
+    batch_comparison = comparator.Comparison(load("validation/pre-batch-candidate-metadata.json")["V14"],
+                                            load("validation/candidate-metadata.json")["V14"]).run()
+    require(batch_comparison["compatibleExistingScaleEncoding"] and not batch_comparison["additions"] and
+            not batch_comparison["constantValueChanges"] and batch_abi["allEncodingsAndConstantsPreserved"] and
+            batch_abi["noAbiAdditions"], "Batch fee change modified metadata encodings or constants")
+    require(batch_abi["candidateMetadataSha256"] == sha256((ROOT / "validation/candidate-metadata.json").read_bytes()) and
+            batch_abi["reportSha256"] == sha256((ROOT / "validation/payout-batch-metadata-compatibility.json").read_bytes()),
+            "Batch ABI comparison used stale inputs")
     expected_additions = comparator.RETIREMENT_ADDITIONS
     require(len(expected_additions) == 5 and predecessor_abi["allowedRetirementAdditions"] == expected_additions,
             "Retirement additions differ from the exact typed allowlist")
@@ -165,6 +200,7 @@ def verify():
         "bridgeCapacityCleanupPreservesProtocolAndRejectsReplay",
         "paidMigrationSuccessAndFailure", "zeroXorMigrationRejectsBeforeExecution",
         "retiredLendingExitsAndGuards",
+        "payoutBatchFeeDiscount",
         "protectedStakingStateAndXorIssuancePreservedByUpgrade", "noPublicTransactionSubmission",
     }
     require(required_policy_checks <= set(policy["checks"]), "Missing required fee policy coverage")
@@ -173,6 +209,62 @@ def verify():
     for field, name in [("scriptSha256", "rehearse-fee-policy.cjs"), ("snapshotSha256", "snapshot.json"), ("packageLockSha256", "package-lock.json")]:
         require(policy["inputs"][field] == sha256((ROOT / "validation" / name).read_bytes()),
                 "Fee policy rehearsal input changed: " + name)
+
+    require(policy["inputs"]["payoutBatchHelperSha256"] ==
+            sha256((ROOT / "validation/payout-batch-fixture.cjs").read_bytes()), "Payout batch fixture changed")
+    payout_batch = policy["payoutBatchFees"]
+    require(payout_batch["passed"] is True and payout_batch["divisor"] == "100" and payout_batch["cases"],
+            "Exact-Wasm payout batch fee evidence is missing")
+    batch_safeguards = {
+        "nonemptyFlatPayoutsOnly", "mixedNestedAndXorlessNotDiscounted", "perSubmittedPayoutFloorRetained",
+        "failuresAndReplaysRemainPaid", "interruptedSuffixRetainsFloor", "atomicRollbackPreserved",
+        "zeroXorRejectedBeforeExecution", "overweightRejectedBeforeExecution",
+        "declaredWeightRetainedAndActualBounded", "congestionMultiplierIncluded", "queryDetailsAndActualFeeEventsMatch",
+    }
+    require(set(payout_batch["safeguards"]) == batch_safeguards and
+            all(value is True for value in payout_batch["safeguards"].values()), "Payout batch safeguard coverage incomplete")
+    batch_cases = {row["label"]: row for row in payout_batch["cases"]}
+    require(len(batch_cases) == len(payout_batch["cases"]) and all(row["passed"] is True for row in batch_cases.values()),
+            "Payout batch cases contain duplicates or failures")
+    required_batch_cases = {"payoutFee." + kind + suffix for kind in ["batch", "batchAll", "forceBatch"]
+                            for suffix in [".1.success", ".2.success", ".replay", ".invalidEra", ".empty.fullFee", ".mixed.fullFee", ".nested.fullFee"]}
+    required_batch_cases |= {"payoutFee." + suffix for suffix in ["batchAll.atomicRollback", "batch.interruptedSuffix",
+                            "forceBatch.continuesAfterFailure", "xorless.fullFee", "batch.unfunded", "batch.overweight", "batch.nextFeeMultiplier"]}
+    require(required_batch_cases <= set(batch_cases), "Required payout batch fee cases are missing")
+    for kind in ["batch", "batchAll", "forceBatch"]:
+        success = "payoutFee." + kind + ".3.success"
+        overweight = "payoutFee." + kind + ".3.overweight"
+        require((success in batch_cases) != (overweight in batch_cases), "Three-payout batch admission outcome is missing or ambiguous")
+        if overweight in batch_cases:
+            require("payoutFee." + kind + ".3.overweightQuote" in batch_cases, "Overweight payout quote was not checked")
+    require(payout_batch["minimumPerPayoutBeforeMultiplier"] == "70000000000000" and
+            int(payout_batch["multiplier"]) > 0, "Payout fee floor or multiplier differs")
+    for label, case in batch_cases.items():
+        if "xorCharged" in case:
+            rows = [row for row in policy["signedChecks"] if row["method"] == label]
+            require(len(rows) == 1 and rows[0]["passed"] and rows[0]["actualFeeEventVerified"] and
+                    case["actualFeeEventMatchesBalance"] and case["queryDetailsMatch"] and
+                    case["xorCharged"] == rows[0]["xorCharged"] and case["quotedFee"] == rows[0]["quotedFee"] and
+                    0 < int(case["xorCharged"]) <= int(case["quotedFee"]), "Payout fee event/debit/quote mismatch: " + label)
+            require(all(int(case["actualWeight"][component], 0) <= int(str(case["declaredWeight"][component]), 0)
+                        for component in ["refTime", "proofSize"]), "Payout weight exceeded the declared reservation")
+            if case["discounted"]:
+                floor = case["payoutCount"] * int(payout_batch["minimumPerPayoutBeforeMultiplier"]) * int(payout_batch["multiplier"]) // 10 ** 18
+                require(int(case["xorCharged"]) >= floor, "Payout fee floor was lost")
+            else:
+                require(case["xorCharged"] == case["ordinaryActualFeeCounterfactual"], "Excluded batch shape received a discount")
+            if label.endswith(".success"):
+                require(case["refunded"] and case["rewardEvents"] == case["payoutCount"] * 17,
+                        "Successful payout did not preserve VAL delivery and actual-weight refund")
+            if label.endswith((".replay", ".invalidEra", ".atomicRollback", ".interruptedSuffix")):
+                require(case["rewardEvents"] == 0, "Failed/replayed/rolled-back payout delivered rewards")
+        if "expectedInvalidReason" in case:
+            reason = case["expectedInvalidReason"]
+            require(reason in {"Payment", "ExhaustsResources"}, "Unexpected payout admission failure")
+            invalid = {"err": {"invalid": {reason[0].lower() + reason[1:]: None}}}
+            require(set(case["sources"]) == {"External", "Local", "InBlock"} and
+                    all(value == invalid for value in case["sources"].values()) and case["apply"] == invalid and
+                    case["balanceNonceAndEventsPreserved"], "Payout rejection changed state or skipped a source")
 
     require(policy["inputs"]["retirementHelperSha256"] ==
             sha256((ROOT / "validation/retired-lending-fixture.cjs").read_bytes()),
@@ -259,8 +351,22 @@ def verify():
     lint = evidence("clippy", provenance)
     require(lint["exitCode"] == 0 and lint["profiles"] == ["mainnet", "try-runtime", "extended"],
             "Fresh three-profile Clippy evidence incomplete")
-    require(native["totalFailed"] == 0 and native["newRuntimeRegressionsPassed"] >= 39, "Native fee policy regressions incomplete")
+    require(native["totalFailed"] == 0 and native["newRuntimeRegressionsPassed"] >= 48, "Native fee policy regressions incomplete")
     require(native["capacityExecutiveRegressionsPassed"] == 2, "Capacity/quorum Executive regressions incomplete")
+    required_payout_batch_tests = {
+        'tests::liveness::payout_batch_fees::signed_payout_batches_pay_val_once_and_charge_replays_for_all_variants',
+        'tests::liveness::payout_batch_fees::invalid_and_interrupted_payout_batches_pay_for_every_submitted_call',
+        'tests::liveness::payout_batch_fees::failed_atomic_payout_batch_rolls_back_rewards_and_claims_but_keeps_xor_fee',
+        'tests::liveness::payout_batch_fees::force_payout_batch_continues_after_invalid_page_and_still_charges_all_items',
+        'tests::liveness::payout_batch_fees::payout_batches_require_xor_before_validation_and_execution',
+        'tests::liveness::payout_batch_fees::payout_discount_excludes_empty_mixed_nested_and_other_wrapped_calls',
+        'tests::liveness::payout_batch_fees::payout_batch_fee_quotes_preserve_length_tips_multipliers_and_extension_weight',
+        'tests::liveness::payout_batch_fees::payout_batch_must_fund_full_quote_even_when_execution_would_refund',
+        'tests::liveness::payout_batch_fees::payout_batch_discount_preserves_extrinsic_and_block_weight_admission_limits',
+    }
+    require(native["payoutBatchRegressionsPassed"] == 9 and
+            set(native["requiredPayoutBatchRegressions"]) == required_payout_batch_tests,
+            "Native payout-batch Executive regressions incomplete")
     required_followup_tests = {
         "tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum",
         "tests::liveness::migration_fees::migration_success_delivers_val_and_keeps_xor_fee",
@@ -290,7 +396,8 @@ def verify():
             "Fresh native evidence must include both retired lending pallet suites")
     require(provenance["baseCommit"] == "bb38216396835fae45de9c38104e4927a96eb36c",
             "Follow-up source does not use the reviewed bb382163 base")
-    require(set(provenance["requiredFollowupInputs"]) <= set(provenance["files"]),
+    require("runtime/src/tests/liveness/payout_batch_fees.rs" in provenance["requiredFollowupInputs"] and
+            set(provenance["requiredFollowupInputs"]) <= set(provenance["files"]),
             "Follow-up production and regression sources are not bound")
     required_deletions = {"runtime/src/migration_fees.rs", "runtime/src/tests/liveness/migration_sponsorship.rs"}
     require(set(provenance["requiredDeletions"]) == required_deletions and
@@ -304,6 +411,7 @@ def verify():
     require(chain_specs["schemaVersion"] == 1 and chain_specs["status"] == "passed" and
             chain_specs["sourceTree"] == provenance["sourceTreeAfterPatch"] and
             chain_specs["sourceBaseCommit"] == provenance["baseCommit"] and
+            chain_specs["preBatchBaseCommit"] == "7fe885f651e682bde75f77f1ecbbc542d202a7b6" and
             chain_specs["chainSpecBaseCommit"] == "3b95216336fb4baf419ec4271f97c09e66f3579f" and not chain_specs["networkUsed"],
             "Regenerated chain specs used another source or a network service")
     require(chain_specs["provenanceSha256"] == sha256((ROOT / "validation/source-provenance.json").read_bytes()) and
@@ -333,6 +441,11 @@ def verify():
                 len(runtime["metadataSelfChecks"]) >= 9, "Chain-spec runtime lacks current capacity ABI or strict comparator checks")
         require({row["path"] for row in runtime["specs"]} == expected_specs[profile], "Chain-spec set differs")
         for spec in runtime["specs"]:
+            batch_comparison = spec["payoutBatchMetadataComparison"]
+            require(spec["preBatchBaseCommit"] == chain_specs["preBatchBaseCommit"] and
+                    spec["payoutBatchPreservesAllEncodingsAndConstants"] and
+                    batch_comparison["compatibleExistingScaleEncoding"] and not batch_comparison["additions"] and
+                    not batch_comparison["constantValueChanges"], "Payout batch fee change modified feature ABI/constants")
             require(spec["sourceBaseCommit"] == provenance["baseCommit"] and
                     spec["chainSpecBaseCommit"] == chain_specs["chainSpecBaseCommit"] and
                     spec["codeSha256"] == wasm_info["sha256"] and spec["codeBytes"] == wasm_info["bytes"] and

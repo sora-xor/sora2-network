@@ -70,6 +70,7 @@ pub mod migrations;
 mod outcome_fee;
 pub mod permissions;
 mod primitives;
+pub mod recovery;
 pub mod serialization;
 pub mod storage;
 mod swap_amount;

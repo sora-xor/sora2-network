@@ -1,0 +1,13 @@
+error: free type alias without body
+  --> tests/pallet_ui/storage_incomplete_item.rs:36:2
+   |
+36 |     type Foo;
+   |     ^^^^^^^^-
+   |             |
+   |             help: provide a definition for the type: `= <type>;`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `pallet`
+  --> tests/pallet_ui/storage_incomplete_item.rs:35:4
+   |
+35 |     #[pallet::storage]
+   |       ^^^^^^ use of unresolved module or unlinked crate `pallet`

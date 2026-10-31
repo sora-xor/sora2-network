@@ -129,7 +129,7 @@ extern crate alloc;
 use core::cmp::Ord;
 use core::convert::{TryFrom, TryInto};
 use core::str::FromStr;
-use core::{fmt, i64, marker::PhantomData};
+use core::{fmt, marker::PhantomData};
 
 use typenum::Unsigned;
 

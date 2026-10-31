@@ -1,0 +1,161 @@
+--- a/src/generic/unchecked_extrinsic.rs
++++ b/src/generic/unchecked_extrinsic.rs
+@@ -543,7 +543,17 @@
+ 			}
+ 		}
+ 
+-		let mut clone_bytes = CloneBytes(&mut input, Vec::with_capacity(len));
++		// The compact length prefix is untrusted until the call has been decoded. In
++		// particular, a tiny malformed extrinsic must not reserve gigabytes merely
++		// because its prefix claims that size. Unknown-length streams retain the
++		// previous incremental allocation behavior. Do not make this optimization
++		// introduce an error when an Input cannot report its remaining length.
++		let initial_capacity = input
++			.remaining_len()
++			.ok()
++			.flatten()
++			.map_or(0, |remaining| len.min(remaining).min(MAX_CALL_SIZE));
++		let mut clone_bytes = CloneBytes(&mut input, Vec::with_capacity(initial_capacity));
+ 
+ 		// Adds 1 byte to the `MAX_CALL_SIZE` as the decoding fails exactly at the given value and
+ 		// the maximum should be allowed to fit in.
+@@ -1125,9 +1135,7 @@
+ 			let signature = is_signed.then(|| Decode::decode(input)).transpose()?;
+ 			let function = Decode::decode(input)?;
+ 
+-			if let Some((before_length, after_length)) =
+-				input.remaining_len()?.and_then(|a| before_length.map(|b| (b, a)))
+-			{
++			if let Some((before_length, after_length)) = before_length.zip(input.remaining_len()?) {
+ 				let length = before_length.saturating_sub(after_length);
+ 
+ 				if length != expected_length.0 as usize {
+--- a/src/traits/transaction_extension/dispatch_transaction.rs
++++ b/src/traits/transaction_extension/dispatch_transaction.rs
+@@ -82,7 +82,8 @@
+ 		extension_version: ExtensionVersion,
+ 		substitute: impl FnOnce(
+ 			Self::Origin,
+-		) -> crate::DispatchResultWithInfo<<Call as Dispatchable>::PostInfo>,
++		)
++			-> crate::DispatchResultWithInfo<<Call as Dispatchable>::PostInfo>,
+ 	) -> Self::Result;
+ }
+ 
+@@ -169,7 +170,8 @@
+ 		extension_version: ExtensionVersion,
+ 		substitute: impl FnOnce(
+ 			Self::Origin,
+-		) -> crate::DispatchResultWithInfo<<Call as Dispatchable>::PostInfo>,
++		)
++			-> crate::DispatchResultWithInfo<<Call as Dispatchable>::PostInfo>,
+ 	) -> Self::Result {
+ 		let (pre, origin) =
+ 			self.validate_and_prepare(origin, &call, info, len, extension_version)?;
+--- a/src/transaction_validity.rs
++++ b/src/transaction_validity.rs
+@@ -29,7 +29,7 @@
+ pub type TransactionPriority = u64;
+ 
+ /// Minimum number of blocks a transaction will remain valid for.
+-/// `TransactionLongevity::max_value()` means "forever".
++/// `TransactionLongevity::MAX` means "forever".
+ pub type TransactionLongevity = u64;
+ 
+ /// Tag for a transaction. No two transactions with the same tag should be placed on-chain.
+@@ -324,7 +324,7 @@
+ 			priority: 0,
+ 			requires: vec![],
+ 			provides: vec![],
+-			longevity: TransactionLongevity::max_value(),
++			longevity: TransactionLongevity::MAX,
+ 			propagate: true,
+ 		}
+ 	}
+--- a/tests/extrinsic_allocation.rs
++++ b/tests/extrinsic_allocation.rs
+@@ -0,0 +1,84 @@
++//! Regressions for allocation decisions made before an extrinsic length is validated.
++
++#![cfg(feature = "std")]
++
++use codec::{Compact, Decode, Encode, Error, Input};
++use sp_runtime::generic::UncheckedExtrinsic;
++use std::{
++	alloc::{GlobalAlloc, Layout, System},
++	cell::Cell,
++	sync::atomic::{AtomicUsize, Ordering},
++};
++
++struct RecordingAllocator;
++
++thread_local! {
++	static RECORD: Cell<bool> = const { Cell::new(false) };
++}
++
++static MAX_ALLOCATION: AtomicUsize = AtomicUsize::new(0);
++
++fn record(size: usize) {
++	if RECORD.try_with(Cell::get).unwrap_or(false) {
++		MAX_ALLOCATION.fetch_max(size, Ordering::Relaxed);
++	}
++}
++
++// SAFETY: Allocation and deallocation are delegated unchanged to the system
++// allocator. Recording uses only preinitialized thread-local/atomic values.
++unsafe impl GlobalAlloc for RecordingAllocator {
++	unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
++		record(layout.size());
++		unsafe { System.alloc(layout) }
++	}
++
++	unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
++		unsafe { System.dealloc(ptr, layout) }
++	}
++
++	unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, size: usize) -> *mut u8 {
++		record(size);
++		unsafe { System.realloc(ptr, layout, size) }
++	}
++}
++
++#[global_allocator]
++static ALLOCATOR: RecordingAllocator = RecordingAllocator;
++
++struct UnknownLength<'a>(&'a [u8]);
++
++impl Input for UnknownLength<'_> {
++	fn remaining_len(&mut self) -> Result<Option<usize>, Error> {
++		Ok(None)
++	}
++
++	fn read(&mut self, into: &mut [u8]) -> Result<(), Error> {
++		self.0.read(into)
++	}
++}
++
++#[test]
++fn forged_extrinsic_length_cannot_drive_eager_allocation() {
++	type Extrinsic = UncheckedExtrinsic<u64, Vec<u8>, (), ()>;
++
++	// The call is an empty Vec and the complete payload is two bytes, but the
++	// encoded prefix claims nearly four GiB. Exercise real decoding with both
++	// slice and streaming Inputs while recording actual allocator requests.
++	let mut encoded = Compact(u32::MAX).encode();
++	encoded.extend([5, 0]);
++	for unknown_length in [false, true] {
++		MAX_ALLOCATION.store(0, Ordering::Relaxed);
++		RECORD.with(|enabled| enabled.set(true));
++		let result = if unknown_length {
++			Extrinsic::decode(&mut UnknownLength(&encoded))
++		} else {
++			Extrinsic::decode(&mut encoded.as_slice())
++		};
++		RECORD.with(|enabled| enabled.set(false));
++		assert_eq!(result.unwrap_err().to_string(), "Invalid length prefix");
++		assert!(
++			MAX_ALLOCATION.load(Ordering::Relaxed) <= 1024,
++			"malformed tiny extrinsic triggered an excessive allocation"
++		);
++	}
++}

@@ -157,7 +157,6 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config<RuntimeEvent: From<Event<Self>>> {
-
         type OutboundChannel: OutboundChannel<SubNetworkId, Self::AccountId, ()>;
 
         type CallOrigin: EnsureOrigin<
@@ -252,6 +251,8 @@ pub mod pallet {
         RelaychainAssetNotRegistered,
         NotRelayTransferableAsset,
         RelaychainAssetRegistered,
+        /// This exact message remains permanently quarantined by recovery.
+        RecoveryHalted,
     }
 
     #[pallet::call]
@@ -274,6 +275,10 @@ pub mod pallet {
                 timepoint,
                 ..
             } = T::CallOrigin::ensure_origin(origin.clone())?;
+            ensure!(
+                !bridge_types::recovery::message_quarantined(network_id.into(), message_id),
+                Error::<T>::RecoveryHalted
+            );
 
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -728,11 +733,15 @@ impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, Balanc
 
     fn refund(
         network_id: GenericNetworkId,
-        _message_id: bridge_types::H256,
+        message_id: bridge_types::H256,
         recipient: T::AccountId,
         asset_id: AssetIdOf<T>,
         amount: BalanceOf<T>,
     ) -> DispatchResult {
+        ensure!(
+            !bridge_types::recovery::message_quarantined(network_id, message_id),
+            sp_runtime::DispatchError::Other("recovery outgoing quarantine")
+        );
         let network_id = network_id.sub().ok_or(Error::<T>::InvalidNetwork)?;
         let asset_kind =
             AssetKinds::<T>::get(network_id, &asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;

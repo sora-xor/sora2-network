@@ -95,8 +95,8 @@ impl BridgeMultisigCallFilter {
             RuntimeCall::BridgeMultisig(bridge_multisig::Call::approve_as_multi {
                 call_hash,
                 ..
-            }) => bridge_multisig::Calls::<Runtime>::get(call_hash)
-                .map(|(call, ..)| Self::permits_encoded(&call, next))
+            }) => bridge_multisig::Pallet::<Runtime>::decode_call(call_hash, None)
+                .map(|call| Self::permits(&call, next))
                 .unwrap_or(false),
             #[cfg(feature = "private-net")]
             RuntimeCall::Sudo(

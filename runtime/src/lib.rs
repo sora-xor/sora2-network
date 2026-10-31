@@ -50,11 +50,31 @@ mod babe_config;
 mod bags_thresholds;
 mod bridge_multisig_filter;
 pub use bridge_multisig_filter::BridgeMultisigCallFilter;
+mod authorized_heartbeat_payment;
 /// Constant values used within the runtime.
 pub mod constants;
 mod impls;
+pub mod incident_recovery;
+pub mod incident_recovery_babe_reports;
+#[cfg(test)]
+mod incident_recovery_bridge_history_tests;
+#[cfg(test)]
+mod incident_recovery_bridge_preview_tests;
+pub mod incident_recovery_consensus;
+#[cfg(test)]
+mod incident_recovery_elections_tests;
+pub mod incident_recovery_evm_source;
+pub mod incident_recovery_incoming;
+mod incident_recovery_origin;
+pub mod incident_recovery_outgoing;
+#[cfg(test)]
+mod incident_recovery_preview_audits;
+#[cfg(test)]
+mod incident_recovery_staking_tests;
 mod liveness;
 pub mod migrations;
+pub mod staking_async;
+pub mod staking_async_migration;
 mod xor_fee_impls;
 
 #[cfg(test)]
@@ -285,8 +305,6 @@ use sp_core::{ConstU64, Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
 #[cfg(feature = "std")]
 use sp_runtime::serde::{Serialize, Serializer};
-#[allow(deprecated)]
-use sp_runtime::traits::transaction_extension::AsTransactionExtension;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, Header as HeaderT, IdentifyAccount, IdentityLookup,
     NumberFor, OpaqueKeys, SaturatedConversion, Verify,
@@ -304,8 +322,6 @@ use sp_staking::currency_to_vote::U128CurrencyToVote;
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
-#[cfg(feature = "std")]
-use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::assert_eq_size;
 use traits::{parameter_type_with_key, MultiCurrency};
@@ -451,21 +467,12 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 134,
+    spec_version: 138,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 131,
+    transaction_version: 134,
     system_version: 0,
 };
-
-/// The version infromation used to identify this runtime when compiled natively.
-#[cfg(feature = "std")]
-pub fn native_version() -> NativeVersion {
-    NativeVersion {
-        runtime_version: VERSION,
-        can_author_with: Default::default(),
-    }
-}
 
 pub const FARMING_PSWAP_PER_DAY: Balance = balance!(2500000);
 pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 2 * HOURS;
@@ -540,7 +547,7 @@ parameter_types! {
     pub MigrationMaxServiceWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
     pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
-    pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::MAX;
     pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
     pub const ElectionsCandidacyBond: Balance = balance!(1);
     // 1 storage item created, key size is 32 bytes, value size is 16+16.
@@ -624,7 +631,7 @@ impl frame_system::Config for Runtime {
     type ExtensionsWeightInfo = ();
     type SingleBlockMigrations = migrations::Migrations;
     type MultiBlockMigrator = MultiBlockMigrations;
-    type PreInherents = ();
+    type PreInherents = incident_recovery::RecoveryLineage;
     type PostInherents = ();
     type PostTransactions = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
@@ -634,18 +641,13 @@ impl pallet_babe::Config for Runtime {
     type EpochDuration = EpochDuration;
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
-    type DisabledValidators = Session;
+    type DisabledValidators = incident_recovery_consensus::RecoveryDisabledValidators;
     type WeightInfo = liveness::EquivocationWeights;
     type MaxAuthorities = MaxAuthorities;
     type MaxNominators = MaxNominators;
     type KeyOwnerProof =
         <Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
-    type EquivocationReportSystem = pallet_babe::EquivocationReportSystem<
-        Self,
-        liveness::EquivocationReports,
-        Historical,
-        ReportLongevity,
-    >;
+    type EquivocationReportSystem = incident_recovery_babe_reports::RecoveryBabeReports;
 }
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
@@ -773,12 +775,7 @@ impl pallet_grandpa::Config for Runtime {
     type MaxNominators = MaxNominators;
     type MaxSetIdSessionEntries = MaxSetIdSessionEntries;
     type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
-    type EquivocationReportSystem = pallet_grandpa::EquivocationReportSystem<
-        Self,
-        liveness::EquivocationReports,
-        Historical,
-        ReportLongevity,
-    >;
+    type EquivocationReportSystem = incident_recovery_consensus::RecoveryGrandpaReports;
 }
 
 parameter_types! {
@@ -794,9 +791,10 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+    type SessionManager =
+        pallet_session::historical::NoteHistoricalRoot<Self, staking_async::LocalSession>;
     type Keys = opaque::SessionKeys;
-    type ShouldEndSession = Babe;
+    type ShouldEndSession = incident_recovery::RecoverySessionBoundary;
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
     type RuntimeEvent = RuntimeEvent;
     type ValidatorId = AccountId;
@@ -811,7 +809,7 @@ impl pallet_session::Config for Runtime {
 impl pallet_session::historical::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
-    type FullIdentificationOf = pallet_staking::DefaultExposureOf<Runtime>;
+    type FullIdentificationOf = staking_async::DefaultExposureOf;
 }
 
 impl pallet_authorship::Config for Runtime {
@@ -819,14 +817,8 @@ impl pallet_authorship::Config for Runtime {
     type EventHandler = (impls::StakingRewardPoints, ImOnline);
 }
 
-/// A reasonable benchmarking config for staking pallet.
-pub struct StakingBenchmarkingConfig;
-impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
-    type MaxValidators = ConstU32<1000>;
-    type MaxNominators = ConstU32<1000>;
-}
-
 parameter_types! {
+    pub const StakingRewardPotId: PalletId = PalletId(*b"sora/stk");
     pub const MaxExposurePageSize: u32 = 256;
     pub const MaxControllersInDeprecationBatch: u32 = 5900;
 }
@@ -839,36 +831,43 @@ type StakingAdminOrigin = EitherOfDiverse<
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 >;
 
+impl staking_async::Config for Runtime {}
+
 impl pallet_staking::Config for Runtime {
     type OldCurrency = Balances;
     type Currency = Balances;
     type RuntimeHoldReason = RuntimeHoldReason;
     type CurrencyBalance = Balance;
-    type UnixTime = Timestamp;
     type CurrencyToVote = U128CurrencyToVote;
     type RewardRemainder = ();
-    type RuntimeEvent = RuntimeEvent;
     type Slash = ();
     type Reward = ();
     type SessionsPerEra = SessionsPerEra;
+    type PlanningEraOffset = ConstU32<1>;
+    type NominatorFastUnbondDuration = BondingDuration;
     type BondingDuration = BondingDuration;
     type SlashDeferDuration = SlashDeferDuration;
+    type SlashDeferOffset = ConstU32<1>;
     type AdminOrigin = StakingAdminOrigin;
-    type SessionInterface = liveness::SlashOnlySessionInterface;
     type EraPayout = xor_fee_impls::ValEraPayout;
     type AdditionalPayout = xor_fee_impls::StakingValPayout;
-    type NextNewSession = Session;
     type MaxValidatorSet = MaxActiveValidators;
     type VoterList = BagsList;
-    type ElectionProvider = ElectionProviderMultiPhase;
-    type BenchmarkingConfig = StakingBenchmarkingConfig;
+    type ElectionProvider = staking_async::LocalElection;
     type MaxUnlockingChunks = ConstU32<32>;
     type NominationsQuota = pallet_staking::FixedNominationsQuota<MAX_QUOTA_NOMINATIONS>;
     type MaxExposurePageSize = MaxExposurePageSize;
     type MaxControllersInDeprecationBatch = MaxControllersInDeprecationBatch;
-    type GenesisElectionProvider = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type HistoryDepth = frame_support::traits::ConstU32<84>;
     type EventListeners = ();
+    type DisableMinting = ConstBool<false>;
+    type UnclaimedRewardHandler = ();
+    type RewardPots = pallet_staking::Seed<StakingRewardPotId>;
+    type StakerRewardCalculator = pallet_staking::reward::DefaultStakerRewardCalculator<Self>;
+    type MaxEraDuration = frame_support::traits::ConstU64<{ u64::MAX }>;
+    type MaxPruningItems = ConstU32<100>;
+    type RcClientInterface = staking_async::LocalSession;
+    type IsValidatorInactive = ();
     type Filter = Nothing;
     type TargetList = pallet_staking::UseValidatorsMap<Self>;
     type WeightInfo = ();
@@ -925,7 +924,7 @@ parameter_types! {
         .targets_count((MaxElectableTargets::get() as u32).into())
         .build();
     pub NposSolutionPriority: TransactionPriority =
-        Perbill::from_percent(90) * TransactionPriority::max_value();
+        Perbill::from_percent(90) * TransactionPriority::MAX;
 }
 
 generate_solution_type!(
@@ -946,7 +945,7 @@ impl onchain::Config for OnChainSeqPhragmen {
     type Sort = ConstBool<true>;
     type System = Runtime;
     type Solver = SequentialPhragmen<AccountId, OnChainAccuracy>;
-    type DataProvider = Staking;
+    type DataProvider = staking_async::LocalElectionData;
     type WeightInfo = ();
     type Bounds = ElectionBoundsOnChain;
     type MaxBackersPerWinner = MaxBackersPerWinner;
@@ -1001,7 +1000,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type BetterSignedThreshold = ();
     type OffchainRepeat = OffchainRepeat;
     type MinerTxPriority = NposSolutionPriority;
-    type DataProvider = Staking;
+    type DataProvider = staking_async::LocalElectionData;
     type Fallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type GovernanceFallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type Solver = SequentialPhragmen<
@@ -1109,7 +1108,7 @@ impl pallet_balances::Config for Runtime {
     /// The ubiquitous event type.
     type RuntimeEvent = RuntimeEvent;
     type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
+    type AccountStore = incident_recovery::RecoveryNativeAccounts;
     type WeightInfo = ();
     type FreezeIdentifier = ();
     type MaxLocks = MaxLocks;
@@ -1149,7 +1148,7 @@ impl tokens::Config for Runtime {
     type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
+    type CurrencyHooks = incident_recovery::RecoveryCurrencyHooks;
     type MaxLocks = MaxLocksTokens;
     type MaxReserves = ();
     type ReserveIdentifier = ();
@@ -1602,6 +1601,7 @@ where
             .saturating_sub(1);
         let charge_tx_payment = charge_tx_payment_extension();
         let extra: SignedExtra = (
+            frame_system::AuthorizeCall::new(),
             frame_system::CheckSpecVersion::<Runtime>::new(),
             frame_system::CheckTxVersion::<Runtime>::new(),
             frame_system::CheckGenesis::<Runtime>::new(),
@@ -1633,6 +1633,35 @@ where
 {
     fn create_bare(call: RuntimeCall) -> UncheckedExtrinsic {
         UncheckedExtrinsic::new_bare(call)
+    }
+}
+
+impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    type Extension = SignedExtra;
+
+    fn create_transaction(call: RuntimeCall, extension: Self::Extension) -> Self::Extrinsic {
+        UncheckedExtrinsic::new_transaction(call, extension)
+    }
+}
+
+impl<LocalCall> frame_system::offchain::CreateAuthorizedTransaction<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_extension() -> Self::Extension {
+        (
+            frame_system::AuthorizeCall::new(),
+            frame_system::CheckSpecVersion::new(),
+            frame_system::CheckTxVersion::new(),
+            frame_system::CheckGenesis::new(),
+            frame_system::CheckEra::from(generic::Era::Immortal),
+            frame_system::CheckNonce::from(0),
+            frame_system::CheckWeight::new(),
+            charge_tx_payment_extension(),
+        )
     }
 }
 
@@ -1961,6 +1990,7 @@ impl eth_bridge::Config for Runtime {
     type WeightToFee = XorFee;
     type MessageStatusNotifier = BridgeProxy;
     type BridgeAssetLockChecker = BridgeProxy;
+    type IncomingAccountResolver = incident_recovery_incoming::PersistentAccountResolver;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type Denominator = Denomination;
     type MaxRequestsPerQueue = MaxEthBridgeRequestsPerQueue;
@@ -2268,7 +2298,7 @@ impl liveness::Config for Runtime {
 impl pallet_offences::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
-    type OnOffenceHandler = Staking;
+    type OnOffenceHandler = staking_async::LocalOffences;
 }
 
 parameter_types! {
@@ -2552,7 +2582,7 @@ parameter_types! {
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
-        Perbill::from_percent(10) * TransactionPriority::max_value();
+        Perbill::from_percent(10) * TransactionPriority::MAX;
     // 10 blocks, if tx spoils, worker will resend it
     pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 10;
     pub const KensetsuMaxAccruesPerBlock: u32 = 10;
@@ -2585,7 +2615,7 @@ impl kensetsu::Config for Runtime {
 
 parameter_types! {
     pub ApolloOffchainWorkerTxPriority: TransactionPriority =
-        Perbill::from_percent(10) * TransactionPriority::max_value();
+        Perbill::from_percent(10) * TransactionPriority::MAX;
     pub ApolloOffchainWorkerTxLongevity: TransactionLongevity = 100;
     pub const ApolloMaxLiquidationsPerBlock: u32 = 1;
 }
@@ -2820,7 +2850,7 @@ parameter_types! {
 
 impl bridge_channel::inbound::Config for Runtime {
     type Verifier = MultiVerifier;
-    type MessageDispatch = Dispatch;
+    type MessageDispatch = incident_recovery_incoming::RecoveryGenericMessageDispatch;
     type WeightInfo = ();
     type ThisNetworkId = ThisNetworkId;
     type UnsignedPriority = DataSignerPriority;
@@ -2860,7 +2890,7 @@ parameter_types! {
     pub const DescendantsUntilFinalized: u8 = 30;
     pub const VerifyPoW: bool = true;
     // Not as important as some essential transactions (e.g. im_online or similar ones)
-    pub EthereumLightClientPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    pub EthereumLightClientPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::MAX;
     // We don't want to have not relevant imports be stuck in transaction pool
     // for too long
     pub EthereumLightClientLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
@@ -3004,7 +3034,7 @@ impl dispatch::Config<dispatch::Instance2> for Runtime {
 
 impl substrate_bridge_channel::inbound::Config for Runtime {
     type Verifier = MultiVerifier;
-    type MessageDispatch = SubstrateDispatch;
+    type MessageDispatch = incident_recovery_incoming::RecoverySubstrateMessageDispatch;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
@@ -3127,7 +3157,7 @@ parameter_types! {
     pub const BridgeMaxPeers: u32 = 50;
     pub const BridgeMinPeers: u32 = 4;
     // Not as important as some essential transactions (e.g. im_online or similar ones)
-    pub DataSignerPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    pub DataSignerPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::MAX;
     // We don't want to have not relevant imports be stuck in transaction pool
     // for too long
     pub DataSignerLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
@@ -3266,6 +3296,7 @@ impl denomination::Config for Runtime {
 }
 
 construct_runtime! {
+    #[dispatch_origin_guard(crate::incident_recovery_origin::check, crate::incident_recovery_origin::weight)]
     pub enum Runtime {
         System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>} = 0,
 
@@ -3292,8 +3323,9 @@ construct_runtime! {
         // Resolve the boundary block's author against the incoming session and era.
         Authorship: pallet_authorship::{Pallet, Storage} = 16,
         Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config<T>, Event, ValidateUnsigned} = 15,
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, Config<T>} = 36,
         Liveness: liveness::{Pallet, Storage} = 120,
+        StakingAsyncBridge: staking_async::{Pallet, Storage} = 121,
 
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
@@ -3759,20 +3791,16 @@ pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 pub type SignedBlock = generic::SignedBlock<Block>;
 /// BlockId type as expected by this runtime.
 pub type BlockId = generic::BlockId<Block>;
-#[allow(deprecated)]
-pub type ChargeTxPaymentInnerExtension = AsTransactionExtension<ChargeTransactionPayment<Runtime>>;
-pub type ChargeTxPaymentExtension =
-    pallet_skip_feeless_payment::SkipCheckIfFeeless<Runtime, ChargeTxPaymentInnerExtension>;
+// The adapter contains SkipCheckIfFeeless so its bare-heartbeat guard remains outermost.
+pub type ChargeTxPaymentExtension = authorized_heartbeat_payment::AuthorizedHeartbeatPayment;
 
-#[allow(deprecated)]
 pub fn charge_tx_payment_extension() -> ChargeTxPaymentExtension {
-    ChargeTxPaymentExtension::from(AsTransactionExtension(
-        ChargeTransactionPayment::<Runtime>::new(),
-    ))
+    ChargeTxPaymentExtension::from(ChargeTransactionPayment::<Runtime>::new())
 }
 
-/// The SignedExtension to the basic transaction logic.
+/// The transaction extension pipeline for signed and authorized transactions.
 pub type SignedExtra = (
+    frame_system::AuthorizeCall<Runtime>,
     frame_system::CheckSpecVersion<Runtime>,
     frame_system::CheckTxVersion<Runtime>,
     frame_system::CheckGenesis<Runtime>,
@@ -3839,12 +3867,14 @@ impl_runtime_apis! {
         }
 
         fn execute_block(block: <Block as BlockT>::LazyBlock) {
+            incident_recovery::assert_final_runtime_admission(&block.header);
             Executive::execute_block(block)
         }
 
         fn initialize_block(
             header: &<Block as BlockT>::Header,
         ) -> sp_runtime::ExtrinsicInclusionMode {
+            incident_recovery::assert_final_runtime_admission(header);
             Executive::initialize_block(header)
         }
     }
@@ -4242,6 +4272,24 @@ impl_runtime_apis! {
         >)>, DispatchError> {
             EthBridge::get_registered_assets(network_id)
         }
+
+        fn recovery_hashi_prepare(
+            parent_header: Vec<u8>, operation: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiPreparation, DispatchError> {
+            incident_recovery_incoming::witness::prepare(parent_header, operation)
+        }
+
+        fn recovery_hashi_admit(
+            parent_header: Vec<u8>, operation: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiAdmission, DispatchError> {
+            incident_recovery_incoming::witness::admit(parent_header, operation)
+        }
+
+        fn recovery_hashi_prepare_source(
+            parent_header: Vec<u8>, operation: Vec<u8>, source: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiSourcePreparation, DispatchError> {
+            incident_recovery_incoming::witness::source::prepare_source(parent_header, operation, source)
+        }
     }
 
     impl iroha_migration_runtime_api::IrohaMigrationAPI<Block> for Runtime {
@@ -4381,11 +4429,11 @@ impl_runtime_apis! {
             }
 
             fn generate_key_ownership_proof(
-                    _slot_number: sp_consensus_babe::Slot,
+                    slot_number: sp_consensus_babe::Slot,
                     authority_id: sp_consensus_babe::AuthorityId,
             ) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
                     use codec::Encode;
-                    Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
+                    incident_recovery_consensus::prove_babe(slot_number, authority_id)
                             .map(|p| p.encode())
                             .map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
             }
@@ -4600,11 +4648,11 @@ impl_runtime_apis! {
         }
 
         fn generate_key_ownership_proof(
-            _set_id: fg_primitives::SetId,
+            set_id: fg_primitives::SetId,
             authority_id: GrandpaId,
         ) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
             use codec::Encode;
-            Historical::prove((fg_primitives::KEY_TYPE, authority_id))
+            incident_recovery_consensus::prove_grandpa(set_id, authority_id)
                 .map(|p| p.encode())
                 .map(fg_primitives::OpaqueKeyOwnershipProof::new)
         }
@@ -4859,3 +4907,7 @@ impl_runtime_apis! {
         }
     }
 }
+
+// Native-only fixture exporter; appended to preserve existing production source positions.
+#[cfg(test)]
+mod incident_recovery_hashi_preview_tests;

@@ -1,0 +1,51 @@
+{
+  "crate": "frame-decode",
+  "version": "0.18.1",
+  "registryUrl": "https://crates.io/api/v1/crates/frame-decode/0.18.1",
+  "archiveSha256": "c9a9e93cab13c8e9a6accf029997d19943cf54fea5f5eb028a1133b7179d06aa",
+  "sourceGit": "b24d01516d62ec52a8ec9c54c285d9ca71822322",
+  "customizations": [
+    {
+      "path": "Cargo.toml",
+      "upstreamSha256": "5b90a1fd197b4acf48aa9c64e1703ba5e42acd98ffbb1dbc46686ed4832a8559",
+      "localSha256": "3308ee1b13e8c15a5b241912f9d3e9b0d4fc013096d9245e7238deb17fa0ab39"
+    },
+    {
+      "path": "Cargo.toml.orig",
+      "upstreamSha256": "8cc9aea99cacd13557768938fac5168b8c497ba1bb584b51b40ad41e7f4d2cb8",
+      "localSha256": "a7b48073c3c75cb8843e46abdd6300daee8cc5fd5393e1833ee6b3bf67d43888"
+    },
+    {
+      "path": "README.md",
+      "upstreamSha256": "898c1b64ad0f316b91024379437edd9e6fcf5517475f644bda4a10e229d52376",
+      "localSha256": "d8c4fcf65d5710bc1bec4c21f7ce8e44eceb842ed02fdb521f5f62d8d816a6ed"
+    },
+    {
+      "path": "src/lib.rs",
+      "upstreamSha256": "9cb66c5d3c98a51f868ae9921bbe1bcc63621285d0e12073975f7a4e1c87969e",
+      "localSha256": "b239715b63bdd38ef40a45b5ac1b451b89890ba5699b1d82b7998ffcb66998b5"
+    },
+    {
+      "path": "src/methods/storage_encoder.rs",
+      "upstreamSha256": "dcdf2e1b8be40c181b2d3850877bdc008ceb702af55643753f9947c677d25052",
+      "localSha256": "573c0e5c2eb920de4e7b6ae9608ceb443e9eabb4ee306e159b60ac016e131dbe"
+    },
+    {
+      "path": "types/kusama_assethub_types.yaml",
+      "upstreamSha256": "67bc8b1cfb799263cef35b6974e4039b07d59c8ec8914d1b25706593f20457cf",
+      "localSha256": "28518ff4e2cd55eb9589756b98818a4700babcd206ce49c835488289c1009e46"
+    },
+    {
+      "path": "types/kusama_relay_types.yaml",
+      "upstreamSha256": "dd93da882a6bf81d1dc9e9e475905d6ae188571c34d5e26f0e44a656962b1cd5",
+      "localSha256": "eaf89be2e52e46df620045892df714e4e7986ca9f06c90c94b76ed1dc6d78d17"
+    },
+    {
+      "path": "types/polkadot_relay_types.yaml",
+      "upstreamSha256": "431e1ce89dbcbd53b1c7001ec08342e3f2e96882a171716dce3f6074d8a267c4",
+      "localSha256": "aaf38e916a36fd65f976954279c20fbcac589fcbb2092cbb5c304fe5f0303080"
+    }
+  ],
+  "patchSha256": "266046bbcb6f7856be564d30d31c95999bf4b085282781480eb79f44d94872b5",
+  "patchReplayPassed": true
+}

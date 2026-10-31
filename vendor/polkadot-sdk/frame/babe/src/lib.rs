@@ -55,6 +55,7 @@ const LOG_TARGET: &str = "runtime::babe";
 mod default_weights;
 mod equivocation;
 mod randomness;
+pub mod recovery;
 
 #[cfg(any(feature = "runtime-benchmarks", test))]
 mod benchmarking;
@@ -473,6 +474,7 @@ pub mod pallet {
 		}
 	}
 
+	#[allow(deprecated)]
 	#[pallet::validate_unsigned]
 	impl<T: Config> ValidateUnsigned for Pallet<T> {
 		type Call = Call<T>;
@@ -645,7 +647,9 @@ impl<T: Config> Pallet<T> {
 		);
 
 		let current_epoch_index = EpochIndex::<T>::get();
-		if current_epoch_index.saturating_add(1) != epoch_index {
+		if current_epoch_index.saturating_add(1) != epoch_index ||
+			recovery::resume_anchor_needed(epoch_index, session_index)
+		{
 			// we are skipping epochs therefore we need to update the mapping
 			// of epochs to session
 			if let Some(session_index) = session_index {
@@ -894,6 +898,9 @@ impl<T: Config> Pallet<T> {
 	/// e.g. if we skipped from epoch 10 to 20 then a call for epoch 15 (which
 	/// didn't exist) will return an incorrect session index.
 	pub(crate) fn session_index_for_epoch(epoch_index: u64) -> SessionIndex {
+		if let Some(session) = recovery::session_for_epoch(epoch_index) {
+			return session;
+		}
 		let skipped_epochs = SkippedEpochs::<T>::get();
 		match skipped_epochs.binary_search_by_key(&epoch_index, |(epoch_index, _)| *epoch_index) {
 			// we have an exact match so we just return the given session index
