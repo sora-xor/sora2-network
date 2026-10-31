@@ -805,7 +805,7 @@ pub mod pallet {
                 let block_number = <frame_system::Pallet<T>>::block_number();
 
                 let mut borrowing_rewards: Balance = 0;
-                for (_, user_info) in user_infos.iter_mut() {
+                for user_info in user_infos.values_mut() {
                     Self::accrue_borrowing_interest_and_reward(
                         user_info,
                         &pool_info,
@@ -1572,6 +1572,8 @@ pub mod pallet {
     }
 
     /// Validate unsigned call to this pallet.
+    // Preserve explicit rejection of the legacy bare keeper calls.
+    #[allow(deprecated)]
     #[pallet::validate_unsigned]
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;

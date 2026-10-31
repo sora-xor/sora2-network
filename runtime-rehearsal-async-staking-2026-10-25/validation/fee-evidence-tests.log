@@ -1,0 +1,10 @@
+test_changed_candidate_metadata_snapshot_or_deployed_code_is_rejected (__main__.FeeEvidenceTests.test_changed_candidate_metadata_snapshot_or_deployed_code_is_rejected) ... ok
+test_failure_replaces_old_success (__main__.FeeEvidenceTests.test_failure_replaces_old_success) ... ok
+test_matching_hash_chain_is_accepted (__main__.FeeEvidenceTests.test_matching_hash_chain_is_accepted) ... ok
+test_optimized_python_cannot_disable_verification (__main__.FeeEvidenceTests.test_optimized_python_cannot_disable_verification) ... ok
+test_stale_rehearsal_hash_and_failed_compatibility_are_rejected (__main__.FeeEvidenceTests.test_stale_rehearsal_hash_and_failed_compatibility_are_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 1.714s
+
+OK

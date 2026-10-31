@@ -1010,6 +1010,10 @@ fn it_clears_pending_approval_and_stored_signatures() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_works_validate_unsigned() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1051,6 +1055,10 @@ fn it_works_validate_unsigned() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_no_network() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1085,6 +1093,10 @@ fn it_fails_validate_unsigned_no_network() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_when_hash_is_not_pending() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1115,6 +1127,10 @@ fn it_fails_validate_unsigned_when_hash_is_not_pending() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_bad_proof() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1148,6 +1164,10 @@ fn it_fails_validate_unsigned_bad_proof() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_bad_signer() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1181,6 +1201,10 @@ fn it_fails_validate_unsigned_bad_signer() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_transaction_stale() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -1223,6 +1247,10 @@ fn it_fails_validate_unsigned_transaction_stale() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn it_fails_validate_unsigned_invalid_call() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);

@@ -87,8 +87,8 @@ fn get_signature_params(
     signature: &(secp256k1::Signature, secp256k1::RecoveryId),
 ) -> SignatureParams {
     let mut params = SignatureParams {
-        r: signature.0.r.b32(),
-        s: signature.0.s.b32(),
+        r: signature.0.serialize()[..32].try_into().unwrap(),
+        s: signature.0.serialize()[32..].try_into().unwrap(),
         v: signature.1.into(),
     };
     params.v += 27;

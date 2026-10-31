@@ -20,14 +20,17 @@ fn deferred_repro_report(validators: &Validators) -> Perbill {
 }
 
 fn deferred_repro_advance_to(target_era: u32) {
-    while Staking::active_era().unwrap().index < target_era {
-        let era = Staking::active_era().unwrap().index + 1;
+    while pallet_staking::ActiveEra::<Runtime>::get().unwrap().index < target_era {
+        let era = pallet_staking::ActiveEra::<Runtime>::get().unwrap().index + 1;
         let session = FIRST_SESSION + (era - ERA) * crate::SessionsPerEra::get();
         pallet_staking::CurrentEra::<Runtime>::put(era);
-        pallet_staking::ErasStartSessionIndex::<Runtime>::insert(era, session);
+        pallet_staking::legacy::ErasStartSessionIndex::<Runtime>::insert(era, session);
         pallet_session::CurrentIndex::<Runtime>::put(session);
-        <Staking as pallet_session::SessionManager<AccountId>>::start_session(session);
-        assert_eq!(Staking::active_era().unwrap().index, era);
+        activate_fixture_era(era, session);
+        assert_eq!(
+            pallet_staking::ActiveEra::<Runtime>::get().unwrap().index,
+            era
+        );
     }
 }
 
@@ -55,7 +58,7 @@ fn late_first_report_must_not_remain_in_an_already_drained_era() {
             fraction * OWN_STAKE,
             "an admitted late report must still collect its financial penalty",
         );
-        assert!(pallet_staking::UnappliedSlashes::<Runtime>::get(due).is_empty());
+        assert!(queued_slashes(due).is_empty());
     });
 }
 
@@ -80,7 +83,7 @@ fn planned_era_must_not_unlock_funds_before_deferred_application() {
         // before it becomes active. The era-start hook has not applied its queue.
         pallet_staking::CurrentEra::<Runtime>::put(due);
         let next_session = FIRST_SESSION + (due - ERA) * crate::SessionsPerEra::get();
-        pallet_staking::ErasStartSessionIndex::<Runtime>::insert(due, next_session);
+        pallet_staking::legacy::ErasStartSessionIndex::<Runtime>::insert(due, next_session);
         // One reported offence closes the initial span and starts one new span.
         // The public dispatch accepts this exact span count; iter() is private.
         let spans = 2;

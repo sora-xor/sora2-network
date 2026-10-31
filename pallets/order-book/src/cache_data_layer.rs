@@ -224,7 +224,7 @@ impl<T: Config> CacheDataLayer<T> {
         } else if !price.is_zero() {
             // no aggregated bids for the order_book, thus we assume 0's for all prices
             // can't subtract non-zero from 0u128
-            return Err(());
+            Err(())
         } else {
             // 0 - 0 = 0
             Ok(())
@@ -279,7 +279,7 @@ impl<T: Config> CacheDataLayer<T> {
         } else if !price.is_zero() {
             // no aggregated asks for the order_book, thus we assume 0's for all prices
             // can't subtract non-zero from 0u128
-            return Err(());
+            Err(())
         } else {
             // 0 - 0 = 0
             Ok(())

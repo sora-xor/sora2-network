@@ -1,7 +1,7 @@
 use crate::MainnetAssetId;
 use crate::{H160, H256, U256};
 use codec::{Decode, Encode};
-use derivative::Derivative;
+use derive_where::derive_where;
 use ethabi::Token;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -147,14 +147,9 @@ pub struct EVMLegacyAssetInfo {
 }
 
 /// Wire-format for committed messages
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct Message<MaxPayload: Get<u32>> {
@@ -166,14 +161,9 @@ pub struct Message<MaxPayload: Get<u32>> {
     pub payload: BoundedVec<u8, MaxPayload>,
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub enum Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
@@ -208,14 +198,9 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPay
 }
 
 /// Wire-format for commitment
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct OutboundCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
@@ -254,14 +239,9 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> OutboundCommitment<MaxMessages
     }
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct InboundCommitment<MaxPayload: Get<u32>> {
@@ -285,14 +265,9 @@ impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
     }
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct StatusReport<MaxMessages: Get<u32>> {
@@ -321,14 +296,9 @@ impl<MaxMessages: Get<u32>> StatusReport<MaxMessages> {
     }
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct BaseFeeUpdate {

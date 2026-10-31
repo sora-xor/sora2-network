@@ -1,0 +1,15 @@
+✔ retired embedded Wasm and asm.js packages are absent (1.154ms)
+✔ CJS readiness, explicit disable, unsupported asm.js, and restoration (2.171083ms)
+✔ ESM crypto entrypoint uses the reviewed generated module (124.811792ms)
+✔ Polkadot keyring signs and verifies through the reviewed facade (124.322625ms)
+✔ HTTP provider retains local JSON-RPC request and result behavior (49.554125ms)
+✔ WebSocket provider retains local JSON-RPC request and result behavior (9.327416ms)
+✔ ScProvider continues to require an explicitly injected light client (0.38625ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 325.299875

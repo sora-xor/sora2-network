@@ -33,7 +33,7 @@ use frame_support::ensure;
 use frame_support::weights::Weight;
 use sp_runtime::traits::Zero;
 
-use crate::{to_balance, AccountPools, PoolProviders, TotalIssuances};
+use crate::{AccountPools, PoolProviders, TotalIssuances};
 use common::fixed_wrapper_u256::FixedWrapper256;
 use common::AssetIdOf;
 

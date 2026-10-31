@@ -1,0 +1,14 @@
+import threads from 'node:worker_threads';
+import { wrap } from 'comlink';
+import nodeEndpoint from 'comlink/dist/umd/node-adapter.js';
+export const startWorker = async ()=>{
+    const worker = new threads.Worker(new URL('node-wasm-executor.js', import.meta.url), {
+        name: 'chopsticks-wasm-executor'
+    });
+    return {
+        remote: wrap(nodeEndpoint(worker)),
+        terminate: async ()=>{
+            await worker.terminate();
+        }
+    };
+};

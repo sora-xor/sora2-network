@@ -244,6 +244,21 @@ fn bridge_multisig_filter_checks_opaque_calls_stored_hashes_and_nesting_bounds()
             &approval
         ));
 
+        let key = bridge_multisig::Calls::<Runtime>::hashed_key_for(hash);
+        let mut malformed = sp_io::storage::get(&key).unwrap().to_vec();
+        malformed.push(0); // A valid call must not hide malformed tuple suffix bytes.
+        sp_io::storage::set(&key, &malformed);
+        assert!(!<Runtime as bridge_multisig::Config>::CallFilter::contains(
+            &approval
+        ));
+        bridge_multisig::Calls::<Runtime>::insert(
+            hash,
+            (vec![0u8; 16_385], AccountId::from([88; 32]), 0u128),
+        );
+        assert!(!<Runtime as bridge_multisig::Config>::CallFilter::contains(
+            &approval
+        ));
+
         let mut nested = remark;
         for _ in 0..32 {
             nested = RuntimeCall::Utility(pallet_utility::Call::batch_all {

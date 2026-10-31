@@ -32,7 +32,7 @@
 use crate::ton::{TonAddressWithPrefix, TonBalance};
 use crate::{H160, H256};
 use codec::{Decode, Encode};
-use derivative::Derivative;
+use derive_where::derive_where;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{ecdsa, Get};
@@ -236,14 +236,9 @@ impl SubstrateBridgeMessageEncode for BridgeCall {
 }
 
 /// Substrate bridge message.
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct BridgeMessage<MaxPayload: Get<u32>> {
@@ -272,14 +267,9 @@ pub struct SubAssetInfo {
 }
 
 /// Wire-format for commitment
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {

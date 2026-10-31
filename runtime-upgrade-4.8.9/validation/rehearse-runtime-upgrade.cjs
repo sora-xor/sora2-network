@@ -32,7 +32,7 @@ const VAL = '0x020004' + '00'.repeat(29);
 const REMAP_MARKER = stringToHex('runtime:migrations:staking_reward_points_stash_remapped');
 const report = {
   startedAt: new Date().toISOString(), endpoint: opts.endpoint, pinnedBlockHash: opts.block,
-  executor: '@acala-network/chopsticks-core@1.5.1', status: 'running',
+  executor: '@acala-network/chopsticks-core@1.5.2', status: 'running',
   localOnly: true, submittedTransactions: 0, realSignatures: 0,
   mockSignatureHost: true, allowUnresolvedImports: true, offchainWorker: false,
   remoteRpcMethods: {}, phases: [], payoutChecks: [], constraints: [

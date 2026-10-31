@@ -1,0 +1,11 @@
+error: Invalid genesis builder: expected `BuildGenesisConfig`
+  --> tests/pallet_ui/genesis_inconsistent_build_config.rs:36:18
+   |
+36 |     impl<T: Config> GenesisBuild<T> for GenesisConfig {}
+   |                     ^^^^^^^^^^^^
+
+error: expected `BuildGenesisConfig`
+  --> tests/pallet_ui/genesis_inconsistent_build_config.rs:36:18
+   |
+36 |     impl<T: Config> GenesisBuild<T> for GenesisConfig {}
+   |                     ^^^^^^^^^^^^

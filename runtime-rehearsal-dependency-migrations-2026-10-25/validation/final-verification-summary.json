@@ -1,0 +1,51 @@
+{
+  "status": "passed",
+  "localDate": "2026-10-25",
+  "checkedAt": "2026-10-24T18:06:06.948410+00:00",
+  "candidateSha256": "2109096d15dd84e49c7d081ad20ab7b194424cc4e640f804133da0b836c28adf",
+  "candidateSpecVersion": 135,
+  "transactionVersion": 131,
+  "sourceSha256": "e7baceebe77829ca94a2a8c79f1a83704b759582570f74836c9d0607321dfb69",
+  "sourceFiles": 4542,
+  "clippy": {
+    "modes": [
+      "mainnet",
+      "try-runtime",
+      "extended"
+    ],
+    "allTargets": true,
+    "warningsAsErrors": true,
+    "compilerWarnings": 0,
+    "compilerErrors": 0
+  },
+  "rustTestsPassed": 508,
+  "existingRuntimeTestsIgnored": 3,
+  "cargoLocks": 11,
+  "npmGraphs": 6,
+  "knownVulnerabilities": 0,
+  "rustsecWarnings": 0,
+  "nativeSnapshotBytes": 243895814,
+  "nativeSnapshotSha256": "139c89000936e2497094703b3501f77687ab03d1831f551d3cbc188829478a09",
+  "wasmRehearsalRunId": "20261024T174836Z-fa72028d",
+  "operatorReadinessConfirmed": false,
+  "productionTransactionsSubmitted": 0,
+  "deploymentPerformed": false,
+  "evidence": {
+    "final-build-verification.json": "97525bc90648099480d079dc355deb0e06cd538b811016ee1acb185c06fbaec6",
+    "candidate-build-evidence.json": "a4742122364d307256f6bd92e8eece1b7e6ae521c890438a10043d4b2a016fd3",
+    "source-clippy-start.json": "03f97fccba459fff14b01877d7d61f98e97d2de5d4514a078f2b2d0e09cadaac",
+    "source-clippy-end-check.json": "7a4323c9d7f237717c7b09e70732f1322fdfb00b21370d9b0d53fec1186febfa",
+    "source-build-end-check.json": "7a4323c9d7f237717c7b09e70732f1322fdfb00b21370d9b0d53fec1186febfa",
+    "source-final-check.json": "e492a41eb93252fcfd8bd435461d0bc8d891b76729bd80cb8c77e2dff4927d32",
+    "native-remote-execution.json": "4e25fee1c21e51ca24800aa63b52461074a6bd4af87c391e3faa338d5e11ced0",
+    "native-regressions.json": "f61de4094ca4e96f19d6b5eca4b1177c64d0f48f4438051c0742a167b73a5de0",
+    "runtime-local-filter-completion.json": "590e82f8a4a4fbd6df09e1faa3c231ffe5afee23d1665e133d220431ebfe58fa",
+    "rehearsal-summary.json": "bec8fdd5e41dee6ec7b149b8ccedc036436764cc11bb0011f41b7079064c56e5",
+    "rehearsal-run.json": "0b8cc4fe207bd2510b8b6810be5286580aa34b2f99c748dfea80515335f8bcbd",
+    "rejected-admission-check.json": "860a301a0af818db5236acedbedff0eae89a1149085be0977cbfc1e666d080cf",
+    "bridge-readiness.json": "6c3808384f7f19dcfa2fb3de557b890537d68078ea1790c5b082bb3e7da3a5f0",
+    "cargo-audit-2026-10-25.json": "c9c3599f592f41dd2cdde92ebe22aab857ded71066c85ab915ea60165d2c5e0b",
+    "npm-security-refresh/summary.json": "c2e063d35b64b6c36721119e0997a67d96b9d14d73edd5d6abc1943de8c260dd",
+    "npm-security-refresh/installed-checks.json": "769458a28f69bd91272a559272c558638b717b51a173bec3383f30c48edb9a06"
+  }
+}

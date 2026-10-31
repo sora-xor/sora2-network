@@ -33,9 +33,7 @@ use alloc::{boxed::Box, format};
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::storage::storage_prefix;
-use frame_support::traits::{
-    Get, GetStorageVersion, Hooks, OnRuntimeUpgrade, StorageVersion, UncheckedOnRuntimeUpgrade,
-};
+use frame_support::traits::{Get, GetStorageVersion, Hooks, OnRuntimeUpgrade, StorageVersion};
 use frame_support::weights::Weight;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
@@ -47,6 +45,7 @@ pub type Migrations = (
     crate::babe_config::ScheduleMainnetPlainEpochConfig,
     RemapStakingRewardPointsToStash,
     PublishValStakingRewards,
+    crate::staking_async_migration::MigrateSyncStaking,
     EthBridgeStorageVersionV3,
     VestedRewardsStorageVersionV4,
     KensetsuStorageVersionV6,
@@ -536,22 +535,46 @@ fn prepare_legacy_staking_v0_state_for_v15(weight: &mut Weight) {
     weight.saturating_accrue(db_weight.writes(2));
 }
 
+// Retained historical bridge: these prefixes belong to the synchronous pallet.
+// Keep the original v15/v16 transformations independent of the async Config.
 fn run_staking_v16_migration(weight: &mut Weight) {
     let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
-    weight.saturating_accrue(
-        pallet_staking::migrations::v16::VersionUncheckedMigrateV15ToV16::<crate::Runtime>::on_runtime_upgrade(),
-    );
+    let key = storage_prefix(b"Staking", b"DisabledValidators");
+    let disabled = frame_support::storage::unhashed::take::<Vec<u32>>(&key).unwrap_or_default();
+    let migrated: Vec<_> = disabled
+        .into_iter()
+        .map(|index| {
+            (
+                index,
+                sp_staking::offence::OffenceSeverity(sp_runtime::Perbill::from_percent(100)),
+            )
+        })
+        .collect();
+    frame_support::storage::unhashed::put(&key, &migrated);
     StorageVersion::new(16).put::<pallet_staking::Pallet<crate::Runtime>>();
-    weight.saturating_accrue(db_weight.writes(1));
+    weight.saturating_accrue(db_weight.reads_writes(1, 2));
 }
 
 fn run_staking_v15_and_v16_migrations(weight: &mut Weight) {
     let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
-    weight.saturating_accrue(
-        pallet_staking::migrations::v15::VersionUncheckedMigrateV14ToV15::<crate::Runtime>::on_runtime_upgrade(),
+    let key = storage_prefix(b"Staking", b"OffendingValidators");
+    let offending =
+        frame_support::storage::unhashed::take::<Vec<(u32, bool)>>(&key).unwrap_or_default();
+    let mut disabled: Vec<_> = offending
+        .into_iter()
+        .filter_map(|(index, disabled)| disabled.then_some(index))
+        .collect();
+    disabled.truncate(
+        pallet_session::disabling::UpToLimitDisablingStrategy::<3>::disable_limit(
+            crate::Session::validators().len(),
+        ),
+    );
+    frame_support::storage::unhashed::put(
+        &storage_prefix(b"Staking", b"DisabledValidators"),
+        &disabled,
     );
     StorageVersion::new(15).put::<pallet_staking::Pallet<crate::Runtime>>();
-    weight.saturating_accrue(db_weight.writes(1));
+    weight.saturating_accrue(db_weight.reads_writes(2, 3));
     run_staking_v16_migration(weight);
 }
 
@@ -651,11 +674,16 @@ fn remap_staking_reward_points_to_stash() -> Weight {
             weight.saturating_accrue(db_weight.reads(2));
             let stash = staking_reward_points_stash_for(&account);
             changed |= stash != account;
+            let total = remapped
+                .individual
+                .get(&stash)
+                .copied()
+                .unwrap_or(0)
+                .saturating_add(points);
             remapped
                 .individual
-                .entry(stash)
-                .and_modify(|existing| *existing = existing.saturating_add(points))
-                .or_insert(points);
+                .try_insert(stash, total)
+                .expect("remapping accounts cannot increase the bounded reward-point count");
         }
 
         if changed {

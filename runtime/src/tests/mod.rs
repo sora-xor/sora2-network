@@ -34,6 +34,7 @@ mod liveness;
 mod referrals;
 #[cfg(feature = "try-runtime")]
 mod remote;
+mod staking_async;
 mod staking_reward_compatibility;
 mod xor_fee;
 
@@ -376,8 +377,8 @@ pub(crate) fn unknown_benchmark_genesis_preset_is_rejected() {
 }
 
 pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
-    assert_eq!(crate::VERSION.spec_version, 134);
-    assert_eq!(crate::VERSION.transaction_version, 131);
+    assert_eq!(crate::VERSION.spec_version, 137);
+    assert_eq!(crate::VERSION.transaction_version, 133);
     assert_eq!(
         band::Pallet::<crate::Runtime>::in_code_storage_version(),
         StorageVersion::new(2)
@@ -730,12 +731,12 @@ pub(crate) fn staking_storage_version_bridge_reaches_v16() {
     }
 
     ext().execute_with(|| {
-        let in_code = pallet_staking::Pallet::<crate::Runtime>::in_code_storage_version();
         StorageVersion::new(16).put::<pallet_staking::Pallet<crate::Runtime>>();
         crate::migrations::StakingStorageVersionV16::on_runtime_upgrade();
         assert_eq!(
             pallet_staking::Pallet::<crate::Runtime>::on_chain_storage_version(),
-            in_code
+            StorageVersion::new(16),
+            "the historical bridge must not claim to run the async migration"
         );
     });
 }
@@ -1997,4 +1998,179 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
 #[cfg(feature = "try-runtime")]
 pub(crate) async fn remote_eth_bridge_migration_rehearsal() {
     remote::remote_eth_bridge_migration_rehearsal().await;
+}
+
+#[test]
+fn denomination_preserves_async_claims_and_queue_keys_while_scaling_all_stake_amounts() {
+    use pallet_staking::legacy;
+    use sp_runtime::Perbill;
+
+    ext().execute_with(|| {
+        crate::System::set_block_number(1);
+        let stash = crate::AccountId::new([221; 32]);
+        let nominator = crate::AccountId::new([222; 32]);
+        let reporter = crate::AccountId::new([223; 32]);
+        pallet_staking::Ledger::<crate::Runtime>::insert(
+            &stash,
+            pallet_staking::StakingLedger::<crate::Runtime> {
+                stash: stash.clone(),
+                total: 1110,
+                active: 1005,
+                unlocking: vec![pallet_staking::UnlockChunk { value: 105, era: 9 }]
+                    .try_into()
+                    .unwrap(),
+                legacy_claimed_rewards: vec![1].try_into().unwrap(),
+                controller: None,
+            },
+        );
+        pallet_staking::ClaimedRewards::<crate::Runtime>::insert(
+            7,
+            &stash,
+            frame_support::WeakBoundedVec::force_from(vec![1], None),
+        );
+        pallet_staking::ErasStakersOverview::<crate::Runtime>::insert(
+            7,
+            &stash,
+            sp_staking::PagedExposureMetadata {
+                total: 107,
+                own: 59,
+                nominator_count: 2,
+                page_count: 2,
+            },
+        );
+        for (page, value) in [(0, 19), (1, 29)] {
+            pallet_staking::ErasStakersPaged::<crate::Runtime>::insert(
+                (7, &stash, page),
+                pallet_staking::BoundedExposurePage::<crate::Runtime>(sp_staking::ExposurePage {
+                    page_total: value,
+                    others: vec![sp_staking::IndividualExposure {
+                        who: nominator.clone(),
+                        value,
+                    }],
+                }),
+            );
+        }
+        pallet_staking::ErasTotalStake::<crate::Runtime>::insert(7, 107);
+        let legacy_exposure = sp_staking::Exposure {
+            total: 38,
+            own: 9,
+            others: vec![sp_staking::IndividualExposure {
+                who: nominator.clone(),
+                value: 29,
+            }],
+        };
+        legacy::ErasStakers::<crate::Runtime>::insert(6, &stash, legacy_exposure.clone());
+        legacy::ErasStakersClipped::<crate::Runtime>::insert(6, &stash, legacy_exposure);
+        pallet_staking::ErasTotalStake::<crate::Runtime>::insert(6, 38);
+        pallet_staking::ErasValidatorReward::<crate::Runtime>::insert(7, 777);
+        pallet_staking::MinNominatorBond::<crate::Runtime>::put(49);
+        pallet_staking::MinValidatorBond::<crate::Runtime>::put(59);
+
+        let legacy_record = legacy::LegacyUnappliedSlash {
+            validator: stash.clone(),
+            own: 59,
+            others: vec![(nominator.clone(), 19)],
+            reporters: vec![reporter.clone()],
+            payout: 29,
+        };
+        legacy::UnappliedSlashes::<crate::Runtime>::insert(8, vec![legacy_record.clone()]);
+        legacy::HistoricalSlashHead::<crate::Runtime>::insert(8, 65);
+        legacy::HistoricalSlashTail::<crate::Runtime>::insert(8, 66);
+        legacy::HistoricalSlashes::<crate::Runtime>::insert(
+            8,
+            65,
+            legacy::HistoricalSlash {
+                offence_era: 3,
+                fraction: Perbill::from_percent(10),
+                slash: legacy_record,
+            },
+        );
+        let slash_key = (stash.clone(), Perbill::from_percent(10), 1u32);
+        pallet_staking::AsyncUnappliedSlashes::<crate::Runtime>::insert(
+            8,
+            &slash_key,
+            pallet_staking::UnappliedSlash::<crate::Runtime> {
+                validator: stash.clone(),
+                own: 59,
+                payout: 29,
+                reporter: Some(reporter.clone()),
+                others: frame_support::WeakBoundedVec::force_from(
+                    vec![(nominator.clone(), 19)],
+                    None,
+                ),
+            },
+        );
+        pallet_staking::CancelledSlashes::<crate::Runtime>::insert(
+            8,
+            frame_support::BoundedVec::try_from(vec![(stash.clone(), Perbill::from_percent(5))])
+                .unwrap(),
+        );
+
+        assert_ok!(crate::Denomination::init(crate::RuntimeOrigin::root()));
+        assert_ok!(crate::Denomination::start_denomination(
+            crate::RuntimeOrigin::root(),
+            10
+        ));
+        let ledger = pallet_staking::Ledger::<crate::Runtime>::get(&stash).unwrap();
+        assert_eq!(
+            (ledger.active, ledger.total, ledger.unlocking[0].value),
+            (100, 110, 10)
+        );
+        assert_eq!(ledger.legacy_claimed_rewards.as_slice(), &[1]);
+        assert_eq!(
+            pallet_staking::ClaimedRewards::<crate::Runtime>::get(7, &stash).as_slice(),
+            &[1]
+        );
+        let overview =
+            pallet_staking::ErasStakersOverview::<crate::Runtime>::get(7, &stash).unwrap();
+        assert_eq!(
+            (overview.own, overview.total, overview.page_count),
+            (5, 8, 2)
+        );
+        assert_eq!(pallet_staking::ErasTotalStake::<crate::Runtime>::get(7), 8);
+        assert_eq!(pallet_staking::ErasTotalStake::<crate::Runtime>::get(6), 2);
+        assert_eq!(
+            pallet_staking::ErasValidatorReward::<crate::Runtime>::get(7),
+            Some(777)
+        );
+        assert_eq!(pallet_staking::MinNominatorBond::<crate::Runtime>::get(), 4);
+        assert_eq!(pallet_staking::MinValidatorBond::<crate::Runtime>::get(), 5);
+        let frozen = legacy::UnappliedSlashes::<crate::Runtime>::get(8).remove(0);
+        assert_eq!((frozen.own, frozen.others[0].1, frozen.payout), (5, 1, 2));
+        assert_eq!(frozen.reporters, vec![reporter.clone()]);
+        let historical = legacy::HistoricalSlashes::<crate::Runtime>::get(8, 65).unwrap();
+        assert_eq!(
+            (
+                historical.slash.own,
+                historical.slash.others[0].1,
+                historical.slash.payout
+            ),
+            (5, 1, 2)
+        );
+        assert_eq!(historical.slash.reporters, vec![reporter.clone()]);
+        assert_eq!(historical.offence_era, 3);
+        assert_eq!(historical.fraction, Perbill::from_percent(10));
+        assert_eq!(
+            (
+                legacy::HistoricalSlashHead::<crate::Runtime>::get(8),
+                legacy::HistoricalSlashTail::<crate::Runtime>::get(8)
+            ),
+            (65, 66)
+        );
+        let asynchronous =
+            pallet_staking::AsyncUnappliedSlashes::<crate::Runtime>::get(8, slash_key).unwrap();
+        assert_eq!(
+            (
+                asynchronous.own,
+                asynchronous.others[0].1,
+                asynchronous.payout
+            ),
+            (5, 1, 2)
+        );
+        assert_eq!(asynchronous.reporter, Some(reporter));
+        assert_eq!(
+            pallet_staking::CancelledSlashes::<crate::Runtime>::get(8).as_slice(),
+            &[(stash, Perbill::from_percent(5))]
+        );
+    });
 }

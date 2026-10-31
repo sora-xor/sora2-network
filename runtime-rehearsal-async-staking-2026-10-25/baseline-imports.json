@@ -1,0 +1,245 @@
+{
+  "status": "inputs-imported-not-verified",
+  "files": {
+    "run-local-rehearsals.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/run-local-rehearsals.py",
+      "sourceSha256": "bc15f26d706290a45705308359642b5ba1c8ec23b304c27e3e27ae453f05fc1b",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "run-local-rehearsals.sh": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/run-local-rehearsals.sh",
+      "sourceSha256": "ac0bf7690ff105b0a780f78364e35dbefe6016eee6b0d9216f27ee6d97fafde6",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/rehearse-equivocation-fees.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/rehearse-equivocation-fees.cjs",
+      "sourceSha256": "da303ae4c3b0921c8da9f8cb1f367c1722dd0fd54ec96b07d9093cccf52441b6",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/prepare-native-remote.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/prepare-native-remote.cjs",
+      "sourceSha256": "46880ff8ad8b2882fd8ecbf6568fc1e6d5085edb7bb8d56570c5fef35684d626",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-authorized-heartbeat.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-authorized-heartbeat.cjs",
+      "sourceSha256": "5602d11524a59ad9b8af6f55a92f38fdd01d07376e58421a7298ba14acdf9a7a",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/wasm-interfaces.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/wasm-interfaces.cjs",
+      "sourceSha256": "140c80dd84a0a4284428384dead430ca1aaae6923ffefbe5d636ef187b7c10c1",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/validate-dependencies.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/validate-dependencies.cjs",
+      "sourceSha256": "02c04729c25d2d43ce38ec529ef21ba12d6a59472128006c034962406322405a",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-rejected-admission.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-rejected-admission.cjs",
+      "sourceSha256": "05a5eb97b161c799071807547c19fb6a1ffbfd2919da48bcec9b5720db6c4ba8",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-wasm-interfaces.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-wasm-interfaces.cjs",
+      "sourceSha256": "c4098c72211f9ce902dd258c7b743fccc9ea57cadab973ab7b56170d7d8b65b3",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-runtime-execution.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-runtime-execution.cjs",
+      "sourceSha256": "a43f5b127129454a46138e185bede7e80f59e5d25747b6c1da3505fefabbf435",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/authorized-heartbeat-fixture.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/authorized-heartbeat-fixture.cjs",
+      "sourceSha256": "1ade87b3da8300a2dce91182f6dea39187f81e8a9b08480e0b310d0285dc4f4d",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/verify-rejected-admission.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/verify-rejected-admission.cjs",
+      "sourceSha256": "fd0fe8f6301d9b41c6a0cb5af67f0ba820867b171e8e13918cbd873a59cea879",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/payout-batch-fixture.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/payout-batch-fixture.cjs",
+      "sourceSha256": "38040a1c9d0e24611fe2916b2a68262f8a4631999216fc1c8dd62dcb41c64680",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/retired-lending-fixture.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/retired-lending-fixture.cjs",
+      "sourceSha256": "ad4e082ba5928497ca119c4f6037d9f0467803c90d13c8bfebd68b3fccbc762c",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/verify-wasm-compatibility.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/verify-wasm-compatibility.cjs",
+      "sourceSha256": "a53376a81c2196b40a80936ae9e8eb6ac1a297360c172c12140c5ab221d9d74c",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/readonly-rpc.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/readonly-rpc.cjs",
+      "sourceSha256": "69b9b881966a836b8b8e6a1216eb7765e962f13bdf03e05788150a79e03bda78",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/check-current-production.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/check-current-production.cjs",
+      "sourceSha256": "901d30856530b7acdf1ec6be6f9dbbee52e17a82d7418975f6ea240aa905450d",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/capture-public-state.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/capture-public-state.cjs",
+      "sourceSha256": "25f608c133b027ba7402d5e3db720daf4b123f09cc2b845758d1f061beb536ff",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/rehearse-fee-policy.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/rehearse-fee-policy.cjs",
+      "sourceSha256": "348971ad3dad95639da9aabb7ad92f16bf706893e634fb523fdc8666e06a988d",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/runtime-execution.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/runtime-execution.cjs",
+      "sourceSha256": "69a4d1867d437d4778dc8c9823f9d6c47b5777e385676d816a3ce2c765558731",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/check-bridge-readiness.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/check-bridge-readiness.cjs",
+      "sourceSha256": "5f2c7cdfdefc2600e3e6924c870ea4aaa9e64b53b50cb26cf577596d624906fc",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/benchmark-runtime-apis.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/benchmark-runtime-apis.cjs",
+      "sourceSha256": "9932249fed03ac05a7dc373ceb229cf081db48d0639f4a1ad374f1efa21b06a4",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-readonly-rpc.cjs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-readonly-rpc.cjs",
+      "sourceSha256": "86412339fadfb339bad0d6a5e528ee97ed1357f863874dfc46287951809af981",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-source-fingerprint.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-source-fingerprint.py",
+      "sourceSha256": "a52f2bf37ab9a721a685b57036ee91ce6dbb03847dc2215bd42400314820ca32",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/verify-fee-events.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/verify-fee-events.py",
+      "sourceSha256": "c3bf9963afd1841dbb2caf8e37a666e2674438f68a657f4e50eb2a1d01825e7d",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/verify-sdk-patches.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/verify-sdk-patches.py",
+      "sourceSha256": "f225a3c30286b0b893b9d4d3a7add8591a79ab5e201b17cd9909fe50a9b5c051",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/check-python-candidate-signing.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/check-python-candidate-signing.py",
+      "sourceSha256": "546e635f67850db37383451758c1fd8008e48a3b714381dc6deefd5fe446510a",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-native-feature-guard.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-native-feature-guard.py",
+      "sourceSha256": "03210a38d59c3746bd137f5017b62fb7ac1d62cce4eecd91a934c937393386af",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-sdk2609-compatibility.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-sdk2609-compatibility.py",
+      "sourceSha256": "ce7d1987d72f55038ed013b0adb05d9150c0248bd5d8e0815e9f2f9923f1b763",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/source-fingerprint.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/source-fingerprint.py",
+      "sourceSha256": "3ee8cfe21580b2e73eb622072a9737662ce38baf90d30f1d75482c4e1569eeb1",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-sdk-patches.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-sdk-patches.py",
+      "sourceSha256": "c00df74243b886dcd011444e30f143f095a703a8e14e00adecff841fb734ac98",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-rehearsal-run.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-rehearsal-run.py",
+      "sourceSha256": "e66e6a9be6ddaeea76b35c1cca964efc361f4daceb05f46c64b21c92ba609c77",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/compare-metadata.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/compare-metadata.py",
+      "sourceSha256": "e050d4beee600d6f81d25a10851852cb69b0e9c44f4bb1ac41703badda0731ae",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/test-fee-evidence.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/test-fee-evidence.py",
+      "sourceSha256": "ee27c32221e5e9aaf1798cb69f46cbf80f079ea3c40055a702e7ec6ae31ee6cc",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/run-native-remote.py": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/run-native-remote.py",
+      "sourceSha256": "b99e0159aea285d810a38fdb12cb527d5144f5aafd4b025d163da95effdd23f0",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "validation/migration-proof-fixture.rs": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/migration-proof-fixture.rs",
+      "sourceSha256": "3f2fb9bb5335b950895a7bf9f58110c50de0c6fb5d2f17e0c4ac1edd038e90b1",
+      "purpose": "verification tooling template; outputs are not reused"
+    },
+    "rpc-provider-rdap.json": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/rpc-provider-rdap.json",
+      "sourceSha256": "05fb3eb7afc6858cc6f0ddb74dc731f3e985f8fdd2e9adab25d04d4e7034556f",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/package.json": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/package.json",
+      "sourceSha256": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/package-lock.json": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/package-lock.json",
+      "sourceSha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/snapshot.json": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/snapshot.json",
+      "sourceSha256": "4b78410599bcb878de4e325f4273284aad1ead757b0c7ae0aafb79f79a7022e6",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/deployed-metadata.scale": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/deployed-metadata.scale",
+      "sourceSha256": "70fb15b7f598a58fc71a174af66df68b9136a2e87ec51dcd56aa279165cd6ba4",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/live-runtime.compact.compressed.wasm": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/live-runtime.compact.compressed.wasm",
+      "sourceSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/baseline-metadata.json": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/baseline-metadata.json",
+      "sourceSha256": "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/pre-batch-candidate-metadata.json": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/pre-batch-candidate-metadata.json",
+      "sourceSha256": "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/previous-candidate-metadata.json": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/previous-candidate-metadata.json",
+      "sourceSha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/bridge-baseline-metadata.json": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/bridge-baseline-metadata.json",
+      "sourceSha256": "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/.public-read-cache.json.gz": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/.public-read-cache.json.gz",
+      "sourceSha256": "aec983bf838d3a97e881e69433f8d2669d0846b58817ee547dc8d165a3bbec65",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    },
+    "validation/migration-proof-fixture.json": {
+      "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/migration-proof-fixture.json",
+      "sourceSha256": "94396ebc78d2d72de8d599bf4883bf710f2fe7dcbbe066fe420a832417d22a56",
+      "purpose": "immutable pinned public-state baseline or verification dependency input"
+    }
+  }
+}

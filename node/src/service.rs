@@ -761,7 +761,7 @@ where
         vec![],
     ));
 
-    let (network, system_rpc_tx, tx_handler_controller, sync_service) =
+    let (network, system_rpc_tx, tx_handler_controller, sync_service, _bitswap_handle) =
         sc_service::build_network(sc_service::BuildNetworkParams {
             config: &config,
             net_config,
@@ -774,6 +774,7 @@ where
             warp_sync_config: Some(WarpSyncConfig::WithProvider(warp_sync)),
             block_relay: None,
             metrics,
+            gap_sync_body_policy: None,
         })?;
 
     if config.offchain_worker.enabled {
@@ -1003,6 +1004,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::result_large_err,
+        reason = "test callbacks must retain the upstream SDK ServiceError required by the production bootstrap API"
+    )]
     fn local_bridge_bootstrap_requires_config_for_local_keypair() {
         let missing_path = unique_temp_path("missing-eth-json");
         let result = resolve_local_bridge_bootstrap(
@@ -1015,6 +1020,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::result_large_err,
+        reason = "test callbacks must retain the upstream SDK ServiceError required by the production bootstrap API"
+    )]
     fn local_bridge_bootstrap_rejects_invalid_config() {
         let invalid_path = unique_temp_path("invalid-eth-json");
         fs::write(&invalid_path, "{not-json").expect("invalid config fixture should be written");
@@ -1030,6 +1039,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::result_large_err,
+        reason = "test callbacks must retain the upstream SDK ServiceError required by the production bootstrap API"
+    )]
     fn local_bridge_bootstrap_skips_public_only_keys() {
         let loader_called = Cell::new(false);
         let result = resolve_local_bridge_bootstrap(

@@ -67,7 +67,9 @@ mod benchmarking;
 mod tests;
 pub mod weights;
 
-use codec::{Decode, DecodeLimit, DecodeWithMemTracking, Encode};
+use codec::{
+    Compact, Decode, DecodeLimit, DecodeWithMemTracking, Encode, MaxEncodedLen, MemTrackingInput,
+};
 use frame_support::{
     dispatch::{DispatchResultWithPostInfo, GetDispatchInfo, Pays, PostDispatchInfo},
     traits::{Contains, Currency, Get, ReservableCurrency},
@@ -682,19 +684,11 @@ pub mod pallet {
         }
     }
 
-    // Keep this as a compile-time guard: runtime genesis generation requires
-    // `GenesisConfig<T>: Default` in both `std` and `no_std` builds.
-    const _: fn() = || {
-        fn assert_default<T: Config>()
-        where
-            GenesisConfig<T>: Default,
-        {
-        }
-    };
-
     #[pallet::genesis_build]
     impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
+            // Type-check the Default contract without constructing a second genesis value.
+            let _: fn() -> GenesisConfig<T> = Default::default;
             self.accounts
                 .iter()
                 .for_each(|(account_id, multisig)| Accounts::<T>::insert(account_id, multisig));
@@ -837,7 +831,7 @@ enum CallOrHash {
 impl<T: Config> Pallet<T> {
     pub fn protocol_validation_weight() -> Weight {
         T::DbWeight::get()
-            .reads_writes(40, 5)
+            .reads_writes(41, 5)
             .saturating_add(Weight::from_parts(
                 5_000_000_000,
                 T::MaxCallBytes::get() as u64 + 262_144,
@@ -1385,6 +1379,55 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    /// Load the historical tuple without copying or decoding an unbounded value into the runtime.
+    /// The storage key and `(Vec<u8>, AccountId, Balance)` encoding remain unchanged.
+    ///
+    /// `storage::read` still fetches the backend value and records its trie proof. This bounds
+    /// runtime allocation/decoding, not the host read or proof of an oversized legacy value.
+    fn read_stored_call(hash: &[u8; 32]) -> Option<OpaqueCall> {
+        let key = Calls::<T>::hashed_key_for(hash);
+        let mut prefix = [0u8; 5]; // Maximum SCALE Compact<u32> length.
+        let total = sp_io::storage::read(&key, &mut prefix, 0)? as usize;
+        let max_total = Compact::<u32>::max_encoded_len()
+            .checked_add(T::MaxCallBytes::get() as usize)?
+            .checked_add(T::AccountId::max_encoded_len())?
+            .checked_add(BalanceOf::<T>::max_encoded_len())?;
+        if total > max_total {
+            return None;
+        }
+        let prefix_bytes = total.min(prefix.len());
+        let mut input = &prefix[..prefix_bytes];
+        let Compact(call_len) = Compact::<u32>::decode(&mut input).ok()?;
+        let prefix_len = prefix_bytes - input.len();
+        if call_len > T::MaxCallBytes::get() || prefix_len.checked_add(call_len as usize)? > total {
+            return None;
+        }
+
+        let mut encoded = vec![0u8; total];
+        if sp_io::storage::read(&key, &mut encoded, 0)? as usize != total {
+            return None;
+        }
+        // Both suffix types already require MaxEncodedLen and DecodeWithMemTracking. Reject
+        // malformed allocating suffixes as well as a forged Vec length or trailing bytes.
+        let memory_limit = max_total
+            .checked_add(core::mem::size_of::<T::AccountId>())?
+            .checked_add(core::mem::size_of::<BalanceOf<T>>())?
+            .checked_add(1)?;
+        let mut input = encoded.as_slice();
+        let (call, _, _) = {
+            let mut tracked = MemTrackingInput::new(&mut input, memory_limit);
+            <(OpaqueCall, T::AccountId, BalanceOf<T>)>::decode_with_depth_limit(
+                MAX_CALL_DECODE_DEPTH,
+                &mut tracked,
+            )
+            .ok()?
+        };
+        if !input.is_empty() || call.len() > T::MaxCallBytes::get() as usize {
+            return None;
+        }
+        Some(call)
+    }
+
     /// Attempt to decode and return the call, provided by the user or from storage.
     fn get_call(hash: &[u8; 32], maybe_known: Option<&[u8]>) -> Option<<T as Config>::RuntimeCall> {
         let decode = |data: &[u8]| {
@@ -1398,7 +1441,7 @@ impl<T: Config> Pallet<T> {
             .ok()
         };
         maybe_known.map_or_else(
-            || Calls::<T>::get(hash).and_then(|(data, ..)| decode(&data)),
+            || Self::read_stored_call(hash).and_then(|data| decode(&data)),
             decode,
         )
     }

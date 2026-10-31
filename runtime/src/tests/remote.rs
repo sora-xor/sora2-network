@@ -17,6 +17,60 @@ fn env_flag(name: &str, default: bool) -> bool {
         .unwrap_or(default)
 }
 
+fn remote_upgrade_checks(value: Option<&str>) -> Option<frame_try_runtime::UpgradeCheckSelect> {
+    match value {
+        None | Some("on-runtime-upgrade") => None,
+        Some("pre-and-post") => Some(frame_try_runtime::UpgradeCheckSelect::PreAndPost),
+        Some(value) => panic!(
+            "unknown REMOTE_UPGRADE_CHECKS={value:?}; expected on-runtime-upgrade or pre-and-post"
+        ),
+    }
+}
+
+#[test]
+fn remote_rehearsal_options_upgrade_checks_preserve_default_and_enable_pre_and_post() {
+    assert!(remote_upgrade_checks(None).is_none());
+    assert!(remote_upgrade_checks(Some("on-runtime-upgrade")).is_none());
+    assert!(matches!(
+        remote_upgrade_checks(Some("pre-and-post")),
+        Some(frame_try_runtime::UpgradeCheckSelect::PreAndPost)
+    ));
+}
+
+#[test]
+#[should_panic(expected = "unknown REMOTE_UPGRADE_CHECKS")]
+fn remote_rehearsal_options_reject_unknown_upgrade_mode() {
+    remote_upgrade_checks(Some("all"));
+}
+
+fn remote_state_version(value: Option<&str>) -> Option<sp_core::storage::StateVersion> {
+    match value {
+        None => None,
+        Some("0") => Some(sp_core::storage::StateVersion::V0),
+        Some("1") => Some(sp_core::storage::StateVersion::V1),
+        Some(value) => panic!("unknown REMOTE_STATE_VERSION={value:?}; expected 0 or 1"),
+    }
+}
+
+#[test]
+fn remote_rehearsal_options_state_version_preserves_default_and_accepts_known_versions() {
+    assert!(remote_state_version(None).is_none());
+    assert_eq!(
+        remote_state_version(Some("0")),
+        Some(sp_core::storage::StateVersion::V0)
+    );
+    assert_eq!(
+        remote_state_version(Some("1")),
+        Some(sp_core::storage::StateVersion::V1)
+    );
+}
+
+#[test]
+#[should_panic(expected = "unknown REMOTE_STATE_VERSION")]
+fn remote_rehearsal_options_reject_unknown_state_version() {
+    remote_state_version(Some("2"));
+}
+
 fn env_csv(name: &str) -> Vec<String> {
     var(name)
         .ok()
@@ -100,6 +154,7 @@ fn remote_mode(
                 hashed_prefixes,
                 hashed_keys,
                 child_trie,
+                disable_root_check: false,
             },
         )
     } else {
@@ -110,6 +165,7 @@ fn remote_mode(
             hashed_prefixes,
             hashed_keys,
             child_trie,
+            disable_root_check: false,
             ..Default::default()
         })
     }
@@ -325,6 +381,8 @@ fn assert_eth_bridge_collections_are_bounded(allow_legacy_account_histories: boo
 
 pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
     sp_tracing::try_init_simple();
+    let upgrade_checks = remote_upgrade_checks(var("REMOTE_UPGRADE_CHECKS").ok().as_deref());
+    let expected_state_version = remote_state_version(var("REMOTE_STATE_VERSION").ok().as_deref());
     let require_remote = env_flag("REQUIRE_REMOTE", false);
     let remote_requested = require_remote
         || var("REMOTE_RPC_URL").is_ok()
@@ -349,17 +407,21 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
     let hashed_keys = env_hex_csv("REMOTE_HASHED_KEYS");
     let child_trie = env_flag("REMOTE_CHILD_TRIE", true);
     let requested_at = remote_block_hash();
-    let builder = Builder::<Block>::default()
-        .mode(remote_mode(
-            transport_uri,
-            maybe_state_snapshot,
-            pallets,
-            hashed_prefixes,
-            hashed_keys,
-            child_trie,
-            requested_at,
-        ))
-        .build();
+    let mut builder = Builder::<Block>::default().mode(remote_mode(
+        transport_uri,
+        maybe_state_snapshot,
+        pallets,
+        hashed_prefixes,
+        hashed_keys,
+        child_trie,
+        requested_at,
+    ));
+    if let Some(state_version) = expected_state_version {
+        // Upstream otherwise queries the latest runtime for the trie version,
+        // even when the storage and header are pinned to an older block.
+        builder = builder.overwrite_state_version(state_version);
+    }
+    let builder = builder.build();
 
     let mut ext = match builder.await {
         Ok(ext) => ext,
@@ -376,13 +438,26 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
     let replay_hash = ext.header.hash();
     let replay_block = *ext.header.number();
     assert_requested_remote_block(requested_at, replay_hash);
+    if let Some(expected) = expected_state_version {
+        assert_eq!(
+            ext.state_version, expected,
+            "remote trie state version mismatch"
+        );
+    }
     eprintln!("Runtime upgrade rehearsal state: block={replay_block}, hash={replay_hash:?}");
     ext.execute_with(|| {
         // Filtered snapshots may omit System::Number; the captured header is authoritative.
         System::set_block_number(replay_block);
         assert_eth_bridge_replay_index_is_consistent();
         assert_eth_bridge_collections_are_bounded(true);
-        let upgrade_weight = Executive::execute_on_runtime_upgrade();
+        let upgrade_weight = if let Some(checks) = upgrade_checks {
+            // Scoped snapshots can exercise configured migration pre/post hooks and
+            // decoding without claiming global try_state invariants on omitted state.
+            Executive::try_runtime_upgrade(checks)
+                .expect("remote runtime upgrade pre/post checks failed")
+        } else {
+            Executive::execute_on_runtime_upgrade()
+        };
         let steps = replay_multi_block_migrations();
         eprintln!(
             "Runtime upgrade rehearsal replay: source_block={replay_block}, final_block={}, migration_steps={steps}, upgrade_weight={upgrade_weight:?}",
@@ -655,6 +730,7 @@ mod tests {
                 _ => panic!("rehearsal mode must have an online configuration"),
             };
             assert_eq!(online.at, Some(requested));
+            assert!(!online.disable_root_check);
         }
     }
 

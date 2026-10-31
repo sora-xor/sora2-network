@@ -101,7 +101,7 @@ mod tests {
                 XSTPool::sell_price(
                     &XST,
                     &XSTUSD,
-                    QuoteAmount::with_desired_input(Balance::max_value()),
+                    QuoteAmount::with_desired_input(Balance::MAX),
                 ),
                 Error::<Runtime>::PriceCalculationFailed,
             );
@@ -109,7 +109,7 @@ mod tests {
                 XSTPool::sell_price(
                     &XST,
                     &XSTUSD,
-                    QuoteAmount::with_desired_output(Balance::max_value()),
+                    QuoteAmount::with_desired_output(Balance::MAX),
                 ),
                 Error::<Runtime>::PriceCalculationFailed,
             );
@@ -134,7 +134,7 @@ mod tests {
                 XSTPool::buy_price(
                     &XST,
                     &XSTUSD,
-                    QuoteAmount::with_desired_input(Balance::max_value()),
+                    QuoteAmount::with_desired_input(Balance::MAX),
                 ),
                 Error::<Runtime>::PriceCalculationFailed,
             );
@@ -142,7 +142,7 @@ mod tests {
                 XSTPool::buy_price(
                     &XST,
                     &XSTUSD,
-                    QuoteAmount::with_desired_output(Balance::max_value()),
+                    QuoteAmount::with_desired_output(Balance::MAX),
                 ),
                 Error::<Runtime>::PriceCalculationFailed,
             );
@@ -268,7 +268,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
-                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::MAX),
             )
             .unwrap();
 
@@ -325,7 +325,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XST,
-                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::MAX),
             )
             .unwrap();
             let xstusd_balance_d = Assets::free_balance(&XSTUSD, &alice()).unwrap();
@@ -993,7 +993,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
-                    SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                    SwapAmount::with_desired_output(amount_b.clone(), Balance::MAX),
                 ),
                 Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
@@ -1051,7 +1051,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
-                    SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                    SwapAmount::with_desired_output(amount_d.clone(), Balance::MAX),
                 ),
                 Error::<Runtime>::SyntheticBaseBuySellLimitExceeded
             );
@@ -1122,7 +1122,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
-                    SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                    SwapAmount::with_desired_output(amount_b.clone(), Balance::MAX),
                 )
             );
 
@@ -1178,7 +1178,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XST,
                     &XSTUSD,
-                    SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                    SwapAmount::with_desired_output(amount_d.clone(), Balance::MAX),
                 )
             );
         });
@@ -1229,7 +1229,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
-                    SwapAmount::with_desired_output(0, Balance::max_value()),
+                    SwapAmount::with_desired_output(0, Balance::MAX),
                 ),
                 Error::<Runtime>::PriceCalculationFailed
             );
@@ -1275,7 +1275,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XSTUSD,
                     &XST,
-                    SwapAmount::with_desired_output(0, Balance::max_value()),
+                    SwapAmount::with_desired_output(0, Balance::MAX),
                 ),
                 Error::<Runtime>::PriceCalculationFailed
             );

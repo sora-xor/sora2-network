@@ -39,8 +39,7 @@ use frame_support::__private::log::{debug, error};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::{BlockNumberProvider, IdentifyAccount, Saturating};
 use frame_support::sp_runtime::RuntimeAppPublic;
-use frame_support::traits::GetCallMetadata;
-use frame_support::traits::GetCallName;
+use frame_support::traits::{GetCallMetadata, GetCallName, IsSubType};
 use frame_support::{ensure, fail};
 #[cfg(test)]
 use frame_system::offchain::SignMessage;
@@ -48,7 +47,7 @@ use frame_system::offchain::{
     Account, AppCrypto, CreateSignedTransaction, CreateTransactionBase, SendSignedTransaction,
     Signer,
 };
-use sp_core::H256;
+use sp_core::{ecdsa, ByteArray, H256};
 use sp_io::hashing::blake2_256;
 use sp_runtime::DispatchError;
 use sp_std::collections::btree_map::BTreeMap;
@@ -123,6 +122,17 @@ impl<T: Config> SignedTransactionData<T> {
             "Re-sending signed transaction: {:?}",
             self.call.get_call_metadata()
         );
+        let protocol_signer = match Pallet::<T>::signer_for_protocol_call(&self.call) {
+            Ok(signer) => signer,
+            Err(error) => {
+                error!(
+                    "No authorized local bridge key available for retry: {:?}",
+                    error
+                );
+                return false;
+            }
+        };
+        let signer = protocol_signer.as_ref().unwrap_or(signer);
         let result = Pallet::<T>::send_signed_transaction(signer, &self.call);
 
         if let Some((account, res)) = result {
@@ -150,6 +160,96 @@ impl<T: Config> SignedTransactionData<T> {
 }
 
 impl<T: Config> Pallet<T> {
+    /// Select a live peer for the call's network. Cached outgoing approvals must also keep
+    /// the key embedded in their signed payload; another peer cannot re-sign that payload.
+    /// Non-protocol calls retain the generic helper's caller-selected signer behavior.
+    fn signer_for_protocol_call(call: &Call<T>) -> Result<Option<Signer<T, T::PeerId>>, Error<T>> {
+        if let Some(protocol) = <Call<T> as IsSubType<crate::Call<T>>>::is_sub_type(call) {
+            let Some(network) = Self::peer_protocol_network(protocol) else {
+                return Ok(None);
+            };
+            let required_public = match protocol {
+                crate::Call::approve_request { ocw_public, .. } => Some(ocw_public),
+                _ => None,
+            };
+            let multisig = if matches!(protocol, crate::Call::cancel_pending_multisig { .. }) {
+                Some(Self::bridge_account(network).ok_or(Error::<T>::UnknownNetwork)?)
+            } else {
+                None
+            };
+            return Self::network_signer(network, multisig.as_ref(), required_public).map(Some);
+        }
+
+        let Some(multisig) = <Call<T> as IsSubType<bridge_multisig::Call<T>>>::is_sub_type(call)
+        else {
+            return Ok(None);
+        };
+        let (id, inner) = match multisig {
+            bridge_multisig::Call::as_multi_threshold_1 { id, call, .. } => {
+                (id, Some(call.as_ref().clone()))
+            }
+            bridge_multisig::Call::as_multi { id, call, .. } => (
+                id,
+                bridge_multisig::Pallet::<T>::decode_call(&blake2_256(call), Some(call)),
+            ),
+            bridge_multisig::Call::approve_as_multi { id, call_hash, .. } => (
+                id,
+                bridge_multisig::Pallet::<T>::decode_call(call_hash, None),
+            ),
+            _ => return Ok(None),
+        };
+        let Some(inner) = inner else {
+            return Ok(None);
+        };
+        let Some(protocol) = <Call<T> as IsSubType<crate::Call<T>>>::is_sub_type(&inner) else {
+            return Ok(None);
+        };
+        let Some(network) = Self::peer_protocol_network(protocol) else {
+            return Ok(None);
+        };
+        ensure!(
+            Self::bridge_account(network).as_ref() == Some(id),
+            Error::<T>::UnknownNetwork
+        );
+        Self::network_signer(network, Some(id), None).map(Some)
+    }
+
+    fn network_signer(
+        network: T::NetworkId,
+        multisig: Option<&T::AccountId>,
+        required_public: Option<&ecdsa::Public>,
+    ) -> Result<Signer<T, T::PeerId>, Error<T>> {
+        let peers = Self::peers(network);
+        let signatories = multisig
+            .map(|id| bridge_multisig::Accounts::<T>::get(id).ok_or(Error::<T>::UnknownNetwork))
+            .transpose()?;
+        let public_keys =
+            <T::PeerId as AppCrypto<T::Public, T::Signature>>::RuntimeAppPublic::all()
+                .into_iter()
+                .filter_map(|key| {
+                    if required_public
+                        .map(|required| key.to_raw_vec() != required.to_raw_vec())
+                        .unwrap_or(false)
+                    {
+                        return None;
+                    }
+                    let generic =
+                        <T::PeerId as AppCrypto<T::Public, T::Signature>>::GenericPublic::from(key);
+                    let public: T::Public = generic.into();
+                    let account = public.clone().into_account();
+                    (peers.contains(&account)
+                        && signatories
+                            .as_ref()
+                            .map(|members| members.is_signatory(&account))
+                            .unwrap_or(true))
+                    .then_some(public)
+                })
+                .collect();
+        let signer = Signer::<T, T::PeerId>::any_account().with_filter(public_keys);
+        ensure!(signer.can_sign(), Error::<T>::NoLocalAccountForSigning);
+        Ok(signer)
+    }
+
     pub(crate) fn get_signer() -> Result<Signer<T, T::PeerId>, Error<T>> {
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
@@ -182,7 +282,9 @@ impl<T: Config> Pallet<T> {
         T: CreateSignedTransaction<LocalCall>,
         LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::RuntimeCall>,
     {
-        let signer = Self::get_signer()?;
+        let signer = Self::signer_for_protocol_call(&call.clone().into())?
+            .map(Ok)
+            .unwrap_or_else(Self::get_signer)?;
         debug!("Sending signed transaction: {}", call.get_call_name());
         let result = Self::send_signed_transaction(&signer, &call);
 

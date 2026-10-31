@@ -1,0 +1,236 @@
+# Vendored from polkadot-stable2609; see SORA-PATCH.md.
+
+["package"]
+"name" = "substrate-wasm-builder"
+"version" = "35.0.0"
+"authors" = ["Parity Technologies <admin@parity.io>"]
+"description" = "Utility for building WASM binaries"
+"edition" = "2021"
+"repository" = "https://github.com/paritytech/polkadot-sdk.git"
+"license" = "Apache-2.0"
+"homepage" = "https://paritytech.github.io/polkadot-sdk/"
+
+["package"."metadata"]
+
+["package"."metadata"."docs"]
+
+["package"."metadata"."docs"."rs"]
+"targets" = ["x86_64-unknown-linux-gnu"]
+
+["lints"]
+
+["lints"."rust"]
+
+["lints"."rust"."suspicious_double_ref_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."rust"."unexpected_cfgs"]
+"level" = "warn"
+"check-cfg" = ["cfg(build_opt_level, values(\"3\"))", "cfg(build_profile, values(\"debug\", \"release\"))", "cfg(enable_alloc_error_handler)", "cfg(fuzzing)", "cfg(ignore_flaky_test)", "cfg(revive_debug)", "cfg(substrate_runtime)"]
+
+["lints"."clippy"]
+
+["lints"."clippy"."all"]
+"level" = "allow"
+"priority" = 0
+
+["lints"."clippy"."bind_instead_of_map"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."borrowed-box"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."complexity"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."correctness"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."default_constructed_unit_structs"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."derivable_impls"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."eq_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."erasing_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."extra-unused-type-parameters"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."identity-op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."if-same-then-else"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless-lifetimes"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless_option_as_deref"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."nonminimal-bool"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."option-map-unit-fn"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."stable_sort_primitive"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."too-many-arguments"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."type_complexity"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unit_arg"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unnecessary_cast"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."useless_conversion"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."while_immutable_condition"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."zero-prefixed-literal"]
+"level" = "allow"
+"priority" = 2
+
+["dependencies"]
+
+["dependencies"."build-helper"]
+"version" = "0.1.1"
+
+["dependencies"."cargo_metadata"]
+"version" = "0.15.4"
+
+["dependencies"."console"]
+"version" = "0.15.8"
+
+["dependencies"."filetime"]
+"version" = "0.2.16"
+
+["dependencies"."jobserver"]
+"version" = "0.1.26"
+
+["dependencies"."polkavm-linker"]
+"version" = "0.35.0"
+
+["dependencies"."sp-maybe-compressed-blob"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."strum"]
+"version" = "0.26.3"
+"default-features" = true
+"features" = ["derive"]
+
+["dependencies"."tempfile"]
+"version" = "3.8.1"
+
+["dependencies"."toml"]
+"version" = "0.8.12"
+
+["dependencies"."walkdir"]
+"version" = "2.5.0"
+
+["dependencies"."wasm-opt"]
+"version" = "0.116"
+
+["dependencies"."array-bytes"]
+"version" = "6.2.2"
+"default-features" = true
+"optional" = true
+
+["dependencies"."codec"]
+"version" = "3.7.5"
+"default-features" = true
+"package" = "parity-scale-codec"
+"optional" = true
+
+["dependencies"."frame-metadata"]
+"version" = "23.0.1"
+"default-features" = true
+"features" = ["current", "unstable"]
+"optional" = true
+
+["dependencies"."merkleized-metadata"]
+"version" = "0.5.0"
+"optional" = true
+
+["dependencies"."sc-executor"]
+"default-features" = true
+"optional" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."shlex"]
+"version" = "1.3.0"
+
+["dependencies"."sp-core"]
+"default-features" = true
+"optional" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-io"]
+"default-features" = true
+"optional" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-tracing"]
+"default-features" = true
+"optional" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-version"]
+"default-features" = true
+"optional" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."wasmparser"]
+"version" = "0.262.0"
+"default-features" = false
+"features" = ["std", "features"]
+
+["dependencies"."wasm-encoder"]
+"version" = "0.262.0"
+"features" = ["wasmparser"]
+
+["features"]
+"metadata-hash" = ["array-bytes", "codec", "frame-metadata", "merkleized-metadata", "sc-executor", "sp-core", "sp-io", "sp-tracing", "sp-version"]

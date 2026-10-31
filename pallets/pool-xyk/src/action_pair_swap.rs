@@ -33,7 +33,6 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 
-use crate::to_fixed_wrapper_256;
 use common::fixed_wrapper_u256::FixedWrapper256;
 use common::prelude::{AssetIdOf, Balance};
 use common::{balance, AssetInfoProvider, AssetManager, DexInfoProvider};

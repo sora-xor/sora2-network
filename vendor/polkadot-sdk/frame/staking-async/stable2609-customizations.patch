@@ -1,0 +1,4603 @@
+--- a/src/benchmarking.rs
++++ b/src/benchmarking.rs
+@@ -343,7 +343,7 @@
+ 		let (_, controller) = create_stash_controller::<T>(0, 100, RewardDestination::Staked)?;
+ 		let amount = asset::existential_deposit::<T>() * 5u32.into(); // Half of total
+ 		Staking::<T>::unbond(RawOrigin::Signed(controller.clone()).into(), amount)?;
+-		set_active_era::<T>(EraIndex::max_value());
++		set_active_era::<T>(EraIndex::MAX);
+ 		let ledger = Ledger::<T>::get(&controller).ok_or("ledger not created before")?;
+ 		let original_total: BalanceOf<T> = ledger.total;
+ 		whitelist_account!(controller);
+@@ -377,7 +377,7 @@
+ 		let mut ledger = Ledger::<T>::get(&controller).unwrap();
+ 		ledger.active = ed - One::one();
+ 		Ledger::<T>::insert(&controller, ledger);
+-		set_active_era::<T>(EraIndex::max_value());
++		set_active_era::<T>(EraIndex::MAX);
+ 
+ 		whitelist_account!(controller);
+ 
+@@ -701,7 +701,7 @@
+ 					reporter: Default::default(),
+ 					payout: Zero::zero(),
+ 				};
+-				UnappliedSlashes::<T>::insert(era, slash_key, unapplied_slash);
++				AsyncUnappliedSlashes::<T>::insert(era, slash_key, unapplied_slash);
+ 
+ 				validator
+ 			})
+@@ -712,7 +712,7 @@
+ 			validators.into_iter().map(|v| (v, Perbill::from_percent(10))).collect();
+ 
+ 		#[extrinsic_call]
+-		_(RawOrigin::Root, era, validator_slashes.clone());
++		cancel_async_deferred_slash(RawOrigin::Root, era, validator_slashes.clone());
+ 
+ 		// Ensure cancelled slashes are stored correctly
+ 		let cancelled_slashes = CancelledSlashes::<T>::get(era);
+@@ -859,7 +859,7 @@
+ 	#[benchmark]
+ 	fn set_staking_configs_all_set() {
+ 		#[extrinsic_call]
+-		set_staking_configs(
++		set_async_staking_configs(
+ 			RawOrigin::Root,
+ 			ConfigOp::Set(BalanceOf::<T>::max_value()),
+ 			ConfigOp::Set(BalanceOf::<T>::max_value()),
+@@ -886,7 +886,7 @@
+ 	#[benchmark]
+ 	fn set_staking_configs_all_remove() {
+ 		#[extrinsic_call]
+-		set_staking_configs(
++		set_async_staking_configs(
+ 			RawOrigin::Root,
+ 			ConfigOp::Remove,
+ 			ConfigOp::Remove,
+@@ -922,7 +922,7 @@
+ 		let stash = scenario.origin_stash1;
+ 		assert!(T::VoterList::contains(&stash));
+ 
+-		Staking::<T>::set_staking_configs(
++		Staking::<T>::set_async_staking_configs(
+ 			RawOrigin::Root.into(),
+ 			ConfigOp::Set(BalanceOf::<T>::max_value()),
+ 			ConfigOp::Set(BalanceOf::<T>::max_value()),
+@@ -1079,13 +1079,13 @@
+ 		};
+ 
+ 		// Insert an unapplied slash to be processed.
+-		UnappliedSlashes::<T>::insert(era, slash_key.clone(), unapplied_slash);
++		AsyncUnappliedSlashes::<T>::insert(era, slash_key.clone(), unapplied_slash);
+ 
+ 		#[extrinsic_call]
+ 		_(RawOrigin::Signed(validator.clone()), era, slash_key.clone());
+ 
+ 		// Ensure the slash has been applied and removed.
+-		assert!(UnappliedSlashes::<T>::get(era, &slash_key).is_none());
++		assert!(AsyncUnappliedSlashes::<T>::get(era, &slash_key).is_none());
+ 
+ 		Ok(())
+ 	}
+@@ -1588,7 +1588,7 @@
+ 			create_validator_with_nominators::<T>(0, 0, false, true, RewardDestination::Staked)?;
+ 		assert!(T::VoterList::contains(&stash));
+ 
+-		Staking::<T>::set_staking_configs(
++		Staking::<T>::set_async_staking_configs(
+ 			RawOrigin::Root.into(),
+ 			ConfigOp::Set(BalanceOf::<T>::max_value()),
+ 			ConfigOp::Set(BalanceOf::<T>::max_value()),
+--- a/src/ledger.rs
++++ b/src/ledger.rs
+@@ -99,6 +99,9 @@
+ 	/// in, first out queue where the new (higher value) eras get pushed on the back.
+ 	pub unlocking: BoundedVec<UnlockChunk<BalanceOf<T>>, T::MaxUnlockingChunks>,
+ 
++	/// Historical claims retained in-place to preserve existing ledger encoding.
++	pub legacy_claimed_rewards: BoundedVec<EraIndex, T::HistoryDepth>,
++
+ 	/// The controller associated with this ledger's stash.
+ 	///
+ 	/// This is not stored on-chain, and is only bundled when the ledger is read from storage.
+@@ -115,6 +118,7 @@
+ 			total: Zero::zero(),
+ 			active: Zero::zero(),
+ 			unlocking: Default::default(),
++			legacy_claimed_rewards: Default::default(),
+ 			controller: Some(stash),
+ 		}
+ 	}
+@@ -133,6 +137,7 @@
+ 			total: stake,
+ 			unlocking: Default::default(),
+ 			// controllers are deprecated and mapped 1-1 to stashes.
++			legacy_claimed_rewards: Default::default(),
+ 			controller: Some(stash),
+ 		}
+ 	}
+@@ -371,6 +376,7 @@
+ 			total,
+ 			active: self.active,
+ 			unlocking,
++			legacy_claimed_rewards: self.legacy_claimed_rewards,
+ 			controller: self.controller,
+ 		}
+ 	}
+@@ -577,6 +583,7 @@
+ 	pub active: BalanceOf<T>,
+ 	pub unlocking:
+ 		frame_support::BoundedVec<crate::UnlockChunk<BalanceOf<T>>, T::MaxUnlockingChunks>,
++	pub legacy_claimed_rewards: BoundedVec<EraIndex, T::HistoryDepth>,
+ }
+ 
+ #[cfg(test)]
+@@ -585,7 +592,8 @@
+ 		self.stash == other.stash &&
+ 			self.total == other.total &&
+ 			self.active == other.active &&
+-			self.unlocking == other.unlocking
++			self.unlocking == other.unlocking &&
++			self.legacy_claimed_rewards == other.legacy_claimed_rewards
+ 	}
+ }
+ 
+--- /dev/null
++++ b/src/legacy.rs
+@@ -0,0 +1,1017 @@
++// This file is part of Substrate.
++// Copyright (C) Parity Technologies (UK) Ltd.
++// SPDX-License-Identifier: Apache-2.0
++
++//! SORA Nexus compatibility for commitments made by synchronous staking v16.
++//!
++//! Legacy queues and slashing maxima retain their original storage prefixes and encoding.
++//! New async queues use a distinct prefix. This module never guesses missing fraction/page
++//! information, merges slash records, drops reporters, or executes historically stranded queues.
++
++use crate::{
++	asset, BalanceOf, Config, Exposure, NegativeImbalanceOf, Pallet, Perbill, ValidatorSlashInEra,
++	WeightInfo,
++};
++use alloc::vec::Vec;
++use codec::{Decode, Encode, HasCompact, MaxEncodedLen};
++use frame_support::{
++	ensure,
++	pallet_prelude::*,
++	traits::{Defensive, DefensiveSaturating, Get, Imbalance, OnUnbalanced},
++	weights::Weight,
++	StorageDoubleMap as _,
++};
++use scale_info::TypeInfo;
++use sp_runtime::{
++	traits::{Saturating, Zero},
++	Debug, DispatchResult,
++};
++use sp_staking::{EraIndex, SessionIndex};
++
++/// Exact v16 record encoding, including every reporter and its position.
++#[derive(Encode, Decode, Debug, TypeInfo, PartialEq, Eq, Clone, DecodeWithMemTracking)]
++pub struct LegacyUnappliedSlash<AccountId, Balance: HasCompact> {
++	pub validator: AccountId,
++	pub own: Balance,
++	pub others: Vec<(AccountId, Balance)>,
++	pub reporters: Vec<AccountId>,
++	pub payout: Balance,
++}
++
++#[frame_support::storage_alias]
++pub type UnappliedSlashes<T: Config> = StorageMap<
++	Pallet<T>,
++	Twox64Concat,
++	EraIndex,
++	Vec<LegacyUnappliedSlash<<T as frame_system::Config>::AccountId, BalanceOf<T>>>,
++	ValueQuery,
++>;
++#[frame_support::storage_alias]
++pub type CutoffEra<T: Config> = StorageValue<Pallet<T>, EraIndex>;
++/// First execution era admitted at activation, independent of an already planned era.
++#[frame_support::storage_alias]
++pub type FirstExecutionEra<T: Config> = StorageValue<Pallet<T>, EraIndex>;
++#[frame_support::storage_alias]
++pub type LegacySlashCursor<T: Config> =
++	StorageMap<Pallet<T>, Twox64Concat, EraIndex, u32, ValueQuery>;
++#[frame_support::storage_alias]
++pub type ErasStakers<T: Config> = StorageDoubleMap<
++	Pallet<T>,
++	Twox64Concat,
++	EraIndex,
++	Twox64Concat,
++	<T as frame_system::Config>::AccountId,
++	Exposure<<T as frame_system::Config>::AccountId, BalanceOf<T>>,
++	ValueQuery,
++>;
++#[frame_support::storage_alias]
++pub type ErasStakersClipped<T: Config> = StorageDoubleMap<
++	Pallet<T>,
++	Twox64Concat,
++	EraIndex,
++	Twox64Concat,
++	<T as frame_system::Config>::AccountId,
++	Exposure<<T as frame_system::Config>::AccountId, BalanceOf<T>>,
++	ValueQuery,
++>;
++#[frame_support::storage_alias]
++pub type ErasStartSessionIndex<T: Config> =
++	StorageMap<Pallet<T>, Twox64Concat, EraIndex, SessionIndex>;
++#[frame_support::storage_alias]
++pub type CurrentPlannedSession<T: Config> = StorageValue<Pallet<T>, SessionIndex, ValueQuery>;
++#[frame_support::storage_alias]
++pub type Invulnerables<T: Config> =
++	StorageValue<Pallet<T>, Vec<<T as frame_system::Config>::AccountId>, ValueQuery>;
++#[frame_support::storage_alias]
++pub type MinimumValidatorCount<T: Config> = StorageValue<Pallet<T>, u32, ValueQuery>;
++#[frame_support::storage_alias]
++pub type NominatorSlashInEra<T: Config> = StorageDoubleMap<
++	Pallet<T>,
++	Twox64Concat,
++	EraIndex,
++	Twox64Concat,
++	<T as frame_system::Config>::AccountId,
++	BalanceOf<T>,
++>;
++#[frame_support::storage_alias]
++pub type SlashingSpans<T: Config> =
++	StorageMap<Pallet<T>, Twox64Concat, <T as frame_system::Config>::AccountId, SlashingSpansData>;
++#[frame_support::storage_alias]
++pub type SpanSlash<T: Config> = StorageMap<
++	Pallet<T>,
++	Twox64Concat,
++	(<T as frame_system::Config>::AccountId, SpanIndex),
++	SpanRecord<BalanceOf<T>>,
++	ValueQuery,
++>;
++
++/// Frozen v16 queues are inspected once before activation. New historical reports use
++/// individually keyed records and never enlarge these bounded legacy values.
++pub const MAX_LEGACY_ERA_BYTES: u32 = 512 * 1024;
++
++#[derive(Encode, Decode, TypeInfo)]
++pub struct HistoricalSlash<AccountId, Balance: HasCompact> {
++	pub offence_era: EraIndex,
++	pub fraction: Perbill,
++	pub slash: LegacyUnappliedSlash<AccountId, Balance>,
++}
++#[frame_support::storage_alias]
++pub type HistoricalSlashes<T: Config> = StorageDoubleMap<
++	Pallet<T>,
++	Twox64Concat,
++	EraIndex,
++	Twox64Concat,
++	u64,
++	HistoricalSlash<<T as frame_system::Config>::AccountId, BalanceOf<T>>,
++>;
++#[frame_support::storage_alias]
++pub type HistoricalSlashHead<T: Config> =
++	StorageMap<Pallet<T>, Twox64Concat, EraIndex, u64, ValueQuery>;
++#[frame_support::storage_alias]
++pub type HistoricalSlashTail<T: Config> =
++	StorageMap<Pallet<T>, Twox64Concat, EraIndex, u64, ValueQuery>;
++
++pub fn validate_pending_era<T: Config>(era: EraIndex) -> Result<(), &'static str> {
++	let key = UnappliedSlashes::<T>::hashed_key_for(era);
++	let bytes = sp_io::storage::read(&key, &mut [], 0).unwrap_or(0);
++	ensure!(bytes <= MAX_LEGACY_ERA_BYTES, "legacy slash era exceeds byte bound");
++	if let Some(bytes) = sp_io::storage::get(&key) {
++		let records = <Vec<LegacyUnappliedSlash<T::AccountId, BalanceOf<T>>> as codec::DecodeAll>
++            ::decode_all(&mut &bytes[..]).map_err(|_| "legacy slash queue cannot decode")?;
++		for record in records {
++			ensure!(
++				record.others.len() <= T::MaxExposurePageSize::get() as usize,
++				"legacy slash record exceeds a bounded page; staged migration required"
++			);
++		}
++	}
++	Ok(())
++}
++
++/// Older stranded queues deliberately retain their v16 semantics and do not become executable.
++pub fn has_pending_slashes<T: Config>(era: EraIndex) -> bool {
++	FirstExecutionEra::<T>::get()
++		.or_else(CutoffEra::<T>::get)
++		.is_some_and(|first| era >= first) &&
++		(UnappliedSlashes::<T>::decode_len(era)
++			.is_some_and(|len| len > LegacySlashCursor::<T>::get(era) as usize) ||
++			HistoricalSlashHead::<T>::get(era) < HistoricalSlashTail::<T>::get(era))
++}
++
++/// Every eligible queue remains guarded even if processing spans multiple era transitions.
++/// The range is fixed by the migration cutoff, never by an unbounded chain age.
++pub fn has_pending_due_slashes<T: Config>(active: EraIndex) -> bool {
++	let Some(cutoff) = CutoffEra::<T>::get() else {
++		return false;
++	};
++	let last = cutoff
++		.saturating_add(T::SlashDeferDuration::get())
++		.saturating_add(1)
++		.min(active);
++	let first = FirstExecutionEra::<T>::get().unwrap_or(cutoff);
++	(first..=last).any(has_pending_slashes::<T>)
++}
++
++fn clear_cancelled_if_drained<T: Config>(era: EraIndex) {
++	if !crate::AsyncUnappliedSlashes::<T>::contains_prefix(era) && !has_pending_slashes::<T>(era) {
++		crate::CancelledSlashes::<T>::remove(era);
++	}
++}
++
++/// One original slash per block. Each full exposure is admitted at upgrade under the
++/// page bound; all reporters are retained and their actual read/write cost is charged.
++pub fn apply_pending_slashes<T: Config>(active: EraIndex) -> Weight {
++	let Some(cutoff) = CutoffEra::<T>::get() else {
++		return T::DbWeight::get().reads(1);
++	};
++	let last = cutoff
++		.saturating_add(T::SlashDeferDuration::get())
++		.saturating_add(1)
++		.min(active);
++	let first = FirstExecutionEra::<T>::get().unwrap_or(cutoff);
++	let mut weight = T::DbWeight::get().reads(2);
++	for execution in first..=last {
++		weight.saturating_accrue(T::DbWeight::get().reads(4));
++		let cursor = LegacySlashCursor::<T>::get(execution) as usize;
++		if UnappliedSlashes::<T>::decode_len(execution).is_some_and(|len| cursor < len) {
++			let queue = UnappliedSlashes::<T>::get(execution);
++			let Some(slash) = queue.get(cursor).cloned() else {
++				return weight;
++			};
++			let nominators = slash.others.len() as u32;
++			let reporters = slash.reporters.len() as u64;
++			let original = execution.saturating_sub(T::SlashDeferDuration::get()).saturating_sub(1);
++			apply_slash::<T>(slash, original);
++			if cursor + 1 == queue.len() {
++				UnappliedSlashes::<T>::remove(execution);
++				LegacySlashCursor::<T>::remove(execution);
++			} else {
++				LegacySlashCursor::<T>::insert(execution, (cursor + 1) as u32);
++			}
++			clear_cancelled_if_drained::<T>(execution);
++			return weight
++				.saturating_add(T::WeightInfo::apply_slash(nominators))
++				.saturating_add(
++					T::DbWeight::get().reads_writes(7 + 4 * reporters, 3 + 4 * reporters),
++				)
++				.saturating_add(Weight::from_parts(
++					MAX_LEGACY_ERA_BYTES as u64 * 1_000_000,
++					MAX_LEGACY_ERA_BYTES as u64,
++				));
++		}
++		let head = HistoricalSlashHead::<T>::get(execution);
++		if head < HistoricalSlashTail::<T>::get(execution) {
++			if let Some(record) = HistoricalSlashes::<T>::take(execution, head) {
++				let nominators = record.slash.others.len() as u32;
++				let reporters = record.slash.reporters.len() as u64;
++				let bytes = record.encoded_size() as u64;
++				// Post-upgrade historical reports use the new validator/fraction cancellation
++				// call. Call 17 retains only the original v16 vector-index ABI.
++				let cancelled = crate::CancelledSlashes::<T>::get(execution).iter().any(
++					|(validator, fraction)| {
++						validator == &record.slash.validator && *fraction >= record.fraction
++					},
++				);
++				if !cancelled {
++					apply_slash::<T>(record.slash, record.offence_era);
++				}
++				HistoricalSlashHead::<T>::insert(execution, head + 1);
++				clear_cancelled_if_drained::<T>(execution);
++				return weight
++					.saturating_add(T::WeightInfo::apply_slash(nominators))
++					.saturating_add(
++						T::DbWeight::get().reads_writes(8 + 4 * reporters, 3 + 4 * reporters),
++					)
++					.saturating_add(Weight::from_parts(0, bytes));
++			}
++			// A missing entry is an invariant violation, never a reason to skip or release
++			// stake. Retain the head so that try-runtime detects and reports it.
++			return weight;
++		}
++	}
++	weight
++}
++
++/// Structural checks accept a due backlog while ensuring no entry can be skipped or
++/// treated as withdrawn. They are deliberately exhaustive only in rehearsal/test builds.
++#[cfg(any(feature = "try-runtime", test))]
++pub fn try_state<T: Config>() -> Result<(), sp_runtime::TryRuntimeError> {
++	let Some(cutoff) = CutoffEra::<T>::get() else {
++		ensure!(!FirstExecutionEra::<T>::exists(), "legacy execution marker without cutoff");
++		ensure!(
++			HistoricalSlashTail::<T>::iter().next().is_none(),
++			"historical queue without cutoff"
++		);
++		return Ok(());
++	};
++	let first = FirstExecutionEra::<T>::get().unwrap_or(cutoff);
++	ensure!(
++		cutoff == first || cutoff == first.saturating_add(1),
++		"invalid legacy activation markers"
++	);
++	let last = cutoff.saturating_add(T::SlashDeferDuration::get()).saturating_add(1);
++	for (era, cursor) in LegacySlashCursor::<T>::iter() {
++		ensure!(era >= first && era <= last, "legacy cursor outside admitted range");
++		ensure!(
++			UnappliedSlashes::<T>::decode_len(era).is_some_and(|len| (cursor as usize) < len),
++			"legacy cursor does not identify a pending original record"
++		);
++	}
++	for (era, tail) in HistoricalSlashTail::<T>::iter() {
++		ensure!(era >= first && era <= last, "historical queue outside admitted range");
++		let head = HistoricalSlashHead::<T>::get(era);
++		ensure!(head <= tail, "historical queue head exceeds tail");
++		let mut count = 0u64;
++		for (index, record) in HistoricalSlashes::<T>::iter_prefix(era) {
++			ensure!(index >= head && index < tail, "historical record outside pending range");
++			ensure!(
++				record.offence_era <= cutoff &&
++					record
++						.offence_era
++						.saturating_add(T::SlashDeferDuration::get())
++						.saturating_add(1) ==
++						era,
++				"historical record changed its original offence era"
++			);
++			ensure!(
++				record.slash.others.len() <= T::MaxExposurePageSize::get() as usize,
++				"historical record exceeds admitted full exposure bound"
++			);
++			count = count.saturating_add(1);
++		}
++		ensure!(count == tail - head, "historical queue has a missing record");
++	}
++	Ok(())
++}
++
++/// Clear the legacy spans when a stash is completely removed, preserving v16's
++/// supplied span-count admission and allowing a later re-bond to start fresh.
++pub fn clear_stash_metadata<T: Config>(
++	stash: &T::AccountId,
++	num_slashing_spans: u32,
++) -> DispatchResult {
++	let Some(spans) = SlashingSpans::<T>::get(stash) else {
++		return Ok(());
++	};
++	ensure!(
++		num_slashing_spans as usize >= spans.iter().count(),
++		crate::Error::<T>::IncorrectSlashingSpans
++	);
++	SlashingSpans::<T>::remove(stash);
++	for span in spans.iter() {
++		SpanSlash::<T>::remove((stash.clone(), span.index));
++	}
++	Ok(())
++}
++
++pub fn clear_stash_weight<T: Config>(num_slashing_spans: u32) -> Weight {
++	T::DbWeight::get()
++		.reads_writes(1, 1 + num_slashing_spans as u64)
++		.saturating_add(Weight::from_parts(
++			1_000_000u64.saturating_mul(num_slashing_spans as u64),
++			4096u64.saturating_add(4u64.saturating_mul(num_slashing_spans as u64)),
++		))
++}
++
++/// Cancellation performs a linear decode/filter/encode of the frozen vector. Account
++/// for its actual proof bytes and conservative CPU overhead in addition to the SDK weight.
++/// This also covers governance cancelling historical stranded queues outside the cutoff.
++pub fn cancel_weight<T: Config>(era: EraIndex, targets: u32) -> Weight {
++	let bytes = sp_io::storage::read(&UnappliedSlashes::<T>::hashed_key_for(era), &mut [], 0)
++		.unwrap_or(0) as u64;
++	T::WeightInfo::cancel_deferred_slash(targets)
++		.saturating_add(T::DbWeight::get().reads_writes(3, 2))
++		.saturating_add(Weight::from_parts(bytes.saturating_mul(1_000_000), bytes))
++}
++
++/// Upper bound used before accepting a batch of historical reports. Every pre-cutoff
++/// full exposure fits MaxExposurePageSize by migration admission, including all pages.
++pub fn offence_weight<T: Config>(reporters_per_offence: impl IntoIterator<Item = u32>) -> Weight {
++	let nominators = T::MaxExposurePageSize::get();
++	reporters_per_offence.into_iter().fold(Weight::zero(), |weight, reporters| {
++		weight
++			.saturating_add(T::WeightInfo::rc_on_offence(1))
++			.saturating_add(T::WeightInfo::apply_slash(nominators))
++			.saturating_add(T::DbWeight::get().reads_writes(
++				5 + 4 * nominators as u64 + 4 * reporters as u64,
++				4 + 4 * nominators as u64 + 4 * reporters as u64,
++			))
++	})
++}
++
++/// Keeps the v16 call 17 argument encoding and sorted/unique index semantics.
++pub fn cancel_deferred_slash<T: Config>(era: EraIndex, indices: Vec<u32>) -> DispatchResult {
++	ensure!(!indices.is_empty(), crate::Error::<T>::EmptyTargets);
++	ensure!(indices.windows(2).all(|p| p[0] < p[1]), crate::Error::<T>::NotSortedAndUnique);
++	let mut queue = UnappliedSlashes::<T>::get(era);
++	let cursor = LegacySlashCursor::<T>::get(era);
++	ensure!(
++		indices[0] >= cursor && indices[indices.len() - 1] < queue.len() as u32,
++		crate::Error::<T>::InvalidSlashIndex
++	);
++	let mut removed = indices.into_iter().peekable();
++	queue = queue
++		.into_iter()
++		.enumerate()
++		.filter_map(|(index, slash)| {
++			if removed.peek().is_some_and(|target| *target as usize == index) {
++				removed.next();
++				None
++			} else {
++				Some(slash)
++			}
++		})
++		.collect();
++	if queue.len() == cursor as usize {
++		UnappliedSlashes::<T>::remove(era);
++		LegacySlashCursor::<T>::remove(era);
++	} else {
++		UnappliedSlashes::<T>::insert(era, queue);
++	}
++	Ok(())
++}
++
++pub fn get_paged_exposure<T: Config>(
++	era: EraIndex,
++	validator: &T::AccountId,
++	page: u32,
++) -> Option<crate::PagedExposure<T::AccountId, BalanceOf<T>>> {
++	(page == 0 && ErasStakersClipped::<T>::contains_key(era, validator))
++		.then(|| crate::PagedExposure::from_clipped(ErasStakersClipped::<T>::get(era, validator)))
++}
++
++pub fn get_full_exposure<T: Config>(
++	era: EraIndex,
++	validator: &T::AccountId,
++) -> Exposure<T::AccountId, BalanceOf<T>> {
++	if ErasStakers::<T>::contains_key(era, validator) {
++		ErasStakers::<T>::get(era, validator)
++	} else if crate::ErasStakersOverview::<T>::contains_key(era, validator) {
++		crate::session_rotation::Eras::<T>::get_full_exposure(era, validator)
++	} else {
++		Exposure::default()
++	}
++}
++
++/// `Some` means this report belongs to the historical max/span policy and was handled here.
++/// Historical exposure bounds are checked by the upgrade, never asserted against a valid report.
++/// New records have independent keys, so arbitrarily many reports cannot grow one queue value.
++pub fn on_new_offences<T: Config>(
++	era: EraIndex,
++	offences: &[pallet_staking_async_rc_client::Offence<T::AccountId>],
++) -> Option<Weight> {
++	let cutoff = CutoffEra::<T>::get()?;
++	if era > cutoff {
++		return None;
++	}
++	let active = crate::ActiveEra::<T>::get()?.index;
++	let mut weight = T::WeightInfo::rc_on_offence(offences.len() as u32);
++	if era < active.saturating_sub(T::BondingDuration::get()) {
++		return Some(weight);
++	}
++	let execution = era.saturating_add(T::SlashDeferDuration::get()).saturating_add(1);
++	for offence in offences {
++		if Invulnerables::<T>::get().contains(&offence.offender) {
++			continue;
++		}
++		let exposure = get_full_exposure::<T>(era, &offence.offender);
++		Pallet::<T>::deposit_event(crate::Event::<T>::SlashReported {
++			validator: offence.offender.clone(),
++			fraction: offence.slash_fraction,
++			slash_era: era,
++		});
++		let nominators = exposure.others.len() as u32;
++		let reporters = offence.reporters.len() as u64;
++		// The old calculator touches per-nominator maxima and span records in addition to
++		// the actual debit. Charge all those reads/writes even when no additional slash is due.
++		weight.saturating_accrue(T::DbWeight::get().reads_writes(
++			5 + 4 * nominators as u64 + 4 * reporters,
++			4 + 4 * nominators as u64 + 4 * reporters,
++		));
++		if let Some(mut slash) = compute_slash::<T>(SlashParams {
++			stash: &offence.offender,
++			slash: offence.slash_fraction,
++			exposure: &exposure,
++			slash_era: era,
++			window_start: active.saturating_sub(T::BondingDuration::get()),
++			now: active,
++			reward_proportion: crate::SlashRewardFraction::<T>::get(),
++		}) {
++			slash.reporters = offence.reporters.clone();
++			weight.saturating_accrue(T::WeightInfo::apply_slash(nominators));
++			if T::SlashDeferDuration::get() == 0 || execution <= active {
++				// Retain the custom immediate application for first/incremental late reports.
++				apply_slash::<T>(slash, era);
++			} else {
++				let tail = HistoricalSlashTail::<T>::get(execution);
++				// Reaching u64::MAX requires more reports than can exist in the lifetime of
++				// a 32-bit block-number chain; every report consumes at least one block byte.
++				HistoricalSlashes::<T>::insert(
++					execution,
++					tail,
++					HistoricalSlash { offence_era: era, fraction: offence.slash_fraction, slash },
++				);
++				HistoricalSlashTail::<T>::insert(execution, tail.saturating_add(1));
++			}
++		}
++	}
++	Some(weight)
++}
++
++/// The proportion of the slashing reward to be paid out on the first slashing detection.
++/// This is f_1 in the paper.
++const REWARD_F1: Perbill = Perbill::from_percent(50);
++
++/// The index of a slashing span - unique to each stash.
++pub type SpanIndex = u32;
++
++// A range of start..end eras for a slashing span.
++#[derive(Encode, Decode, Clone, TypeInfo, Debug, PartialEq, Eq)]
++pub struct SlashingSpan {
++	pub index: SpanIndex,
++	pub start: EraIndex,
++	pub length: Option<EraIndex>, // the ongoing slashing span has indeterminate length.
++}
++
++impl SlashingSpan {
++	fn contains_era(&self, era: EraIndex) -> bool {
++		self.start <= era && self.length.map_or(true, |l| self.start.saturating_add(l) > era)
++	}
++}
++
++/// An encoding of all of a nominator's slashing spans.
++#[derive(Encode, Decode, Clone, TypeInfo, Debug, PartialEq, Eq)]
++pub struct SlashingSpansData {
++	// the index of the current slashing span of the nominator. different for
++	// every stash, resets when the account hits free balance 0.
++	pub span_index: SpanIndex,
++	// the start era of the most recent (ongoing) slashing span.
++	pub last_start: EraIndex,
++	// the last era at which a non-zero slash occurred.
++	pub last_nonzero_slash: EraIndex,
++	// all prior slashing spans' start indices, in reverse order (most recent first)
++	// encoded as offsets relative to the slashing span after it.
++	pub prior: Vec<EraIndex>,
++}
++
++impl SlashingSpansData {
++	// creates a new record of slashing spans for a stash, starting at the beginning
++	// of the bonding period, relative to now.
++	pub(crate) fn new(window_start: EraIndex) -> Self {
++		SlashingSpansData {
++			span_index: 0,
++			last_start: window_start,
++			// initialize to zero, as this structure is lazily created until
++			// the first slash is applied. setting equal to `window_start` would
++			// put a time limit on nominations.
++			last_nonzero_slash: 0,
++			prior: Vec::new(),
++		}
++	}
++
++	// update the slashing spans to reflect the start of a new span at the era after `now`
++	// returns `true` if a new span was started, `false` otherwise. `false` indicates
++	// that internal state is unchanged.
++	pub(crate) fn end_span(&mut self, now: EraIndex) -> bool {
++		let next_start = now.defensive_saturating_add(1);
++		if next_start <= self.last_start {
++			return false;
++		}
++
++		let last_length = next_start.defensive_saturating_sub(self.last_start);
++		self.prior.insert(0, last_length);
++		self.last_start = next_start;
++		self.span_index.defensive_saturating_accrue(1);
++		true
++	}
++
++	// an iterator over all slashing spans in _reverse_ order - most recent first.
++	pub(crate) fn iter(&'_ self) -> impl Iterator<Item = SlashingSpan> + '_ {
++		let mut last_start = self.last_start;
++		let mut index = self.span_index;
++		let last = SlashingSpan { index, start: last_start, length: None };
++		let prior = self.prior.iter().cloned().map(move |length| {
++			let start = last_start.defensive_saturating_sub(length);
++			last_start = start;
++			index.defensive_saturating_reduce(1);
++
++			SlashingSpan { index, start, length: Some(length) }
++		});
++
++		core::iter::once(last).chain(prior)
++	}
++
++	/// Yields the era index where the most recent non-zero slash occurred.
++	pub fn last_nonzero_slash(&self) -> EraIndex {
++		self.last_nonzero_slash
++	}
++
++	// prune the slashing spans against a window, whose start era index is given.
++	//
++	// If this returns `Some`, then it includes a range start..end of all the span
++	// indices which were pruned.
++	fn prune(&mut self, window_start: EraIndex) -> Option<(SpanIndex, SpanIndex)> {
++		let old_idx = self
++			.iter()
++			.skip(1) // skip ongoing span.
++			.position(|span| {
++				span.length
++					.map_or(false, |len| span.start.defensive_saturating_add(len) <= window_start)
++			});
++
++		let earliest_span_index =
++			self.span_index.defensive_saturating_sub(self.prior.len() as SpanIndex);
++		let pruned = match old_idx {
++			Some(o) => {
++				self.prior.truncate(o);
++				let new_earliest =
++					self.span_index.defensive_saturating_sub(self.prior.len() as SpanIndex);
++				Some((earliest_span_index, new_earliest))
++			},
++			None => None,
++		};
++
++		// readjust the ongoing span, if it started before the beginning of the window.
++		self.last_start = core::cmp::max(self.last_start, window_start);
++		pruned
++	}
++}
++
++/// A slashing-span record for a particular stash.
++#[derive(
++	Encode,
++	Decode,
++	DecodeWithMemTracking,
++	Clone,
++	Default,
++	TypeInfo,
++	MaxEncodedLen,
++	PartialEq,
++	Eq,
++	Debug,
++)]
++pub struct SpanRecord<Balance> {
++	pub slashed: Balance,
++	pub paid_out: Balance,
++}
++
++/// Parameters for performing a slash.
++#[derive(Clone)]
++pub(crate) struct SlashParams<'a, T: 'a + Config> {
++	/// The stash account being slashed.
++	pub(crate) stash: &'a T::AccountId,
++	/// The proportion of the slash.
++	pub(crate) slash: Perbill,
++	/// The exposure of the stash and all nominators.
++	pub(crate) exposure: &'a Exposure<T::AccountId, BalanceOf<T>>,
++	/// The era where the offence occurred.
++	pub(crate) slash_era: EraIndex,
++	/// The first era in the current bonding period.
++	pub(crate) window_start: EraIndex,
++	/// The current era.
++	pub(crate) now: EraIndex,
++	/// The maximum percentage of a slash that ever gets paid out.
++	/// This is f_inf in the paper.
++	pub(crate) reward_proportion: Perbill,
++}
++
++/// Computes a slash of a validator and nominators. It returns an unapplied
++/// record to be applied at some later point. Slashing metadata is updated in storage,
++/// since unapplied records are only rarely intended to be dropped.
++///
++/// The pending slash record returned does not have initialized reporters. Those have
++/// to be set at a higher level, if any.
++pub(crate) fn compute_slash<T: Config>(
++	params: SlashParams<T>,
++) -> Option<LegacyUnappliedSlash<T::AccountId, BalanceOf<T>>> {
++	let mut reward_payout = Zero::zero();
++	let mut val_slashed = Zero::zero();
++
++	// is the slash amount here a maximum for the era?
++	let own_slash = params.slash * params.exposure.own;
++	if params.slash * params.exposure.total == Zero::zero() {
++		// kick out the validator even if they won't be slashed,
++		// as long as the misbehavior is from their most recent slashing span.
++		kick_out_if_recent::<T>(params);
++		return None;
++	}
++
++	let prior_slash_p = ValidatorSlashInEra::<T>::get(&params.slash_era, params.stash)
++		.map_or(Zero::zero(), |(prior_slash_proportion, _)| prior_slash_proportion);
++
++	// compare slash proportions rather than slash values to avoid issues due to rounding
++	// error.
++	if params.slash.deconstruct() > prior_slash_p.deconstruct() {
++		ValidatorSlashInEra::<T>::insert(
++			&params.slash_era,
++			params.stash,
++			&(params.slash, own_slash),
++		);
++	} else {
++		// we slash based on the max in era - this new event is not the max,
++		// so neither the validator or any nominators will need an update.
++		//
++		// this does lead to a divergence of our system from the paper, which
++		// pays out some reward even if the latest report is not max-in-era.
++		// we opt to avoid the nominator lookups and edits and leave more rewards
++		// for more drastic misbehavior.
++		return None;
++	}
++
++	// apply slash to validator.
++	{
++		let mut spans = fetch_spans::<T>(
++			params.stash,
++			params.window_start,
++			&mut reward_payout,
++			&mut val_slashed,
++			params.reward_proportion,
++		);
++
++		let target_span = spans.compare_and_update_span_slash(params.slash_era, own_slash);
++
++		if target_span == Some(spans.span_index()) {
++			// misbehavior occurred within the current slashing span - end current span.
++			// Check <https://github.com/paritytech/polkadot-sdk/issues/2650> for details.
++			spans.end_span(params.now);
++		}
++	}
++
++	let mut nominators_slashed = Vec::new();
++	reward_payout += slash_nominators::<T>(params.clone(), prior_slash_p, &mut nominators_slashed);
++
++	Some(LegacyUnappliedSlash {
++		validator: params.stash.clone(),
++		own: val_slashed,
++		others: nominators_slashed,
++		reporters: Vec::new(),
++		payout: reward_payout,
++	})
++}
++
++// doesn't apply any slash, but kicks out the validator if the misbehavior is from
++// the most recent slashing span.
++fn kick_out_if_recent<T: Config>(params: SlashParams<T>) {
++	// these are not updated by era-span or end-span.
++	let mut reward_payout = Zero::zero();
++	let mut val_slashed = Zero::zero();
++	let mut spans = fetch_spans::<T>(
++		params.stash,
++		params.window_start,
++		&mut reward_payout,
++		&mut val_slashed,
++		params.reward_proportion,
++	);
++
++	if spans.era_span(params.slash_era).map(|s| s.index) == Some(spans.span_index()) {
++		// Check https://github.com/paritytech/polkadot-sdk/issues/2650 for details
++		spans.end_span(params.now);
++	}
++}
++
++/// Slash nominators. Accepts general parameters and the prior slash percentage of the validator.
++///
++/// Returns the amount of reward to pay out.
++fn slash_nominators<T: Config>(
++	params: SlashParams<T>,
++	prior_slash_p: Perbill,
++	nominators_slashed: &mut Vec<(T::AccountId, BalanceOf<T>)>,
++) -> BalanceOf<T> {
++	let mut reward_payout = Zero::zero();
++
++	nominators_slashed.reserve(params.exposure.others.len());
++	for nominator in &params.exposure.others {
++		let stash = &nominator.who;
++		let mut nom_slashed = Zero::zero();
++
++		// the era slash of a nominator always grows, if the validator
++		// had a new max slash for the era.
++		let era_slash = {
++			let own_slash_prior = prior_slash_p * nominator.value;
++			let own_slash_by_validator = params.slash * nominator.value;
++			let own_slash_difference = own_slash_by_validator.saturating_sub(own_slash_prior);
++
++			let mut era_slash =
++				NominatorSlashInEra::<T>::get(&params.slash_era, stash).unwrap_or_else(Zero::zero);
++			era_slash += own_slash_difference;
++			NominatorSlashInEra::<T>::insert(&params.slash_era, stash, &era_slash);
++
++			era_slash
++		};
++
++		// compare the era slash against other eras in the same span.
++		{
++			let mut spans = fetch_spans::<T>(
++				stash,
++				params.window_start,
++				&mut reward_payout,
++				&mut nom_slashed,
++				params.reward_proportion,
++			);
++
++			let target_span = spans.compare_and_update_span_slash(params.slash_era, era_slash);
++
++			if target_span == Some(spans.span_index()) {
++				// end the span, but don't chill the nominator.
++				spans.end_span(params.now);
++			}
++		}
++		nominators_slashed.push((stash.clone(), nom_slashed));
++	}
++
++	reward_payout
++}
++
++// helper struct for managing a set of spans we are currently inspecting.
++// writes alterations to disk on drop, but only if a slash has been carried out.
++//
++// NOTE: alterations to slashing metadata should not be done after this is dropped.
++// dropping this struct applies any necessary slashes, which can lead to free balance
++// being 0, and the account being garbage-collected -- a dead account should get no new
++// metadata.
++struct InspectingSpans<'a, T: Config + 'a> {
++	dirty: bool,
++	window_start: EraIndex,
++	stash: &'a T::AccountId,
++	spans: SlashingSpansData,
++	paid_out: &'a mut BalanceOf<T>,
++	slash_of: &'a mut BalanceOf<T>,
++	reward_proportion: Perbill,
++	_marker: core::marker::PhantomData<T>,
++}
++
++// fetches the slashing spans record for a stash account, initializing it if necessary.
++fn fetch_spans<'a, T: Config + 'a>(
++	stash: &'a T::AccountId,
++	window_start: EraIndex,
++	paid_out: &'a mut BalanceOf<T>,
++	slash_of: &'a mut BalanceOf<T>,
++	reward_proportion: Perbill,
++) -> InspectingSpans<'a, T> {
++	let spans = SlashingSpans::<T>::get(stash).unwrap_or_else(|| {
++		let spans = SlashingSpansData::new(window_start);
++		SlashingSpans::<T>::insert(stash, &spans);
++		spans
++	});
++
++	InspectingSpans {
++		dirty: false,
++		window_start,
++		stash,
++		spans,
++		slash_of,
++		paid_out,
++		reward_proportion,
++		_marker: core::marker::PhantomData,
++	}
++}
++
++impl<'a, T: 'a + Config> InspectingSpans<'a, T> {
++	fn span_index(&self) -> SpanIndex {
++		self.spans.span_index
++	}
++
++	fn end_span(&mut self, now: EraIndex) {
++		self.dirty = self.spans.end_span(now) || self.dirty;
++	}
++
++	// add some value to the slash of the staker.
++	// invariant: the staker is being slashed for non-zero value here
++	// although `amount` may be zero, as it is only a difference.
++	fn add_slash(&mut self, amount: BalanceOf<T>, slash_era: EraIndex) {
++		*self.slash_of += amount;
++		self.spans.last_nonzero_slash = core::cmp::max(self.spans.last_nonzero_slash, slash_era);
++	}
++
++	// find the span index of the given era, if covered.
++	fn era_span(&self, era: EraIndex) -> Option<SlashingSpan> {
++		self.spans.iter().find(|span| span.contains_era(era))
++	}
++
++	// compares the slash in an era to the overall current span slash.
++	// if it's higher, applies the difference of the slashes and then updates the span on disk.
++	//
++	// returns the span index of the era where the slash occurred, if any.
++	fn compare_and_update_span_slash(
++		&mut self,
++		slash_era: EraIndex,
++		slash: BalanceOf<T>,
++	) -> Option<SpanIndex> {
++		let target_span = self.era_span(slash_era)?;
++		let span_slash_key = (self.stash.clone(), target_span.index);
++		let mut span_record = SpanSlash::<T>::get(&span_slash_key);
++		let mut changed = false;
++
++		let reward = if span_record.slashed < slash {
++			// new maximum span slash. apply the difference.
++			let difference = slash.defensive_saturating_sub(span_record.slashed);
++			span_record.slashed = slash;
++
++			// compute reward.
++			let reward =
++				REWARD_F1 * (self.reward_proportion * slash).saturating_sub(span_record.paid_out);
++
++			self.add_slash(difference, slash_era);
++			changed = true;
++
++			reward
++		} else if span_record.slashed == slash {
++			// compute reward. no slash difference to apply.
++			REWARD_F1 * (self.reward_proportion * slash).saturating_sub(span_record.paid_out)
++		} else {
++			Zero::zero()
++		};
++
++		if !reward.is_zero() {
++			changed = true;
++			span_record.paid_out += reward;
++			*self.paid_out += reward;
++		}
++
++		if changed {
++			self.dirty = true;
++			SpanSlash::<T>::insert(&span_slash_key, &span_record);
++		}
++
++		Some(target_span.index)
++	}
++}
++
++impl<'a, T: 'a + Config> Drop for InspectingSpans<'a, T> {
++	fn drop(&mut self) {
++		// only update on disk if we slashed this account.
++		if !self.dirty {
++			return;
++		}
++
++		if let Some((start, end)) = self.spans.prune(self.window_start) {
++			for span_index in start..end {
++				SpanSlash::<T>::remove(&(self.stash.clone(), span_index));
++			}
++		}
++
++		SlashingSpans::<T>::insert(self.stash, &self.spans);
++	}
++}
++
++// apply the slash to a stash account, deducting any missing funds from the reward
++// payout, saturating at 0. this is mildly unfair but also an edge-case that
++// can only occur when overlapping locked funds have been slashed.
++pub fn do_slash<T: Config>(
++	stash: &T::AccountId,
++	value: BalanceOf<T>,
++	reward_payout: &mut BalanceOf<T>,
++	slashed_imbalance: &mut NegativeImbalanceOf<T>,
++	slash_era: EraIndex,
++) {
++	let mut ledger =
++		match Pallet::<T>::ledger(sp_staking::StakingAccount::Stash(stash.clone())).defensive() {
++			Ok(ledger) => ledger,
++			Err(_) => return, // nothing to do.
++		};
++
++	let value = ledger.slash(value, asset::existential_deposit::<T>(), slash_era);
++	if value.is_zero() {
++		// nothing to do
++		return;
++	}
++
++	// Skip slashing for virtual stakers. The pallets managing them should handle the slashing.
++	if !crate::VirtualStakers::<T>::contains_key(stash) {
++		let (imbalance, missing) = asset::slash::<T>(stash, value);
++		slashed_imbalance.subsume(imbalance);
++
++		if !missing.is_zero() {
++			// deduct overslash from the reward payout
++			*reward_payout = reward_payout.saturating_sub(missing);
++		}
++	}
++
++	let _ = ledger
++		.update()
++		.defensive_proof("ledger fetched from storage so it exists in storage; qed.");
++
++	// trigger the event
++	<Pallet<T>>::deposit_event(crate::Event::<T>::Slashed { staker: stash.clone(), amount: value });
++}
++
++/// Apply a previously-unapplied slash.
++pub(crate) fn apply_slash<T: Config>(
++	unapplied_slash: LegacyUnappliedSlash<T::AccountId, BalanceOf<T>>,
++	slash_era: EraIndex,
++) {
++	let mut slashed_imbalance = NegativeImbalanceOf::<T>::zero();
++	let mut reward_payout = unapplied_slash.payout;
++
++	do_slash::<T>(
++		&unapplied_slash.validator,
++		unapplied_slash.own,
++		&mut reward_payout,
++		&mut slashed_imbalance,
++		slash_era,
++	);
++
++	for &(ref nominator, nominator_slash) in &unapplied_slash.others {
++		do_slash::<T>(
++			nominator,
++			nominator_slash,
++			&mut reward_payout,
++			&mut slashed_imbalance,
++			slash_era,
++		);
++	}
++
++	pay_reporters::<T>(reward_payout, slashed_imbalance, &unapplied_slash.reporters);
++}
++
++/// Apply a reward payout to some reporters, paying the rewards out of the slashed imbalance.
++fn pay_reporters<T: Config>(
++	reward_payout: BalanceOf<T>,
++	slashed_imbalance: NegativeImbalanceOf<T>,
++	reporters: &[T::AccountId],
++) {
++	if reward_payout.is_zero() || reporters.is_empty() {
++		// nobody to pay out to or nothing to pay;
++		// just treat the whole value as slashed.
++		T::Slash::on_unbalanced(slashed_imbalance);
++		return;
++	}
++
++	// take rewards out of the slashed imbalance.
++	let reward_payout = reward_payout.min(slashed_imbalance.peek());
++	let (mut reward_payout, mut value_slashed) = slashed_imbalance.split(reward_payout);
++
++	let per_reporter = reward_payout.peek() / (reporters.len() as u32).into();
++	for reporter in reporters {
++		let (reporter_reward, rest) = reward_payout.split(per_reporter);
++		reward_payout = rest;
++
++		// this cancels out the reporter reward imbalance internally, leading
++		// to no change in total issuance.
++		asset::deposit_slashed::<T>(reporter, reporter_reward);
++	}
++
++	// the rest goes to the on-slash imbalance handler (e.g. treasury)
++	value_slashed.subsume(reward_payout); // remainder of reward division remains.
++	T::Slash::on_unbalanced(value_slashed);
++}
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -136,7 +136,7 @@
+ //! - Funds deducted from staking ledger immediately
+ //!
+ //! **Deferred (SlashDeferDuration > 0)**:
+-//! - Stored in `UnappliedSlashes` for future application
++//! - Stored in `AsyncUnappliedSlashes` for future application
+ //! - Applied at era: `offence_era + SlashDeferDuration`
+ //! - Can be cancelled by governance before application
+ //!
+@@ -146,7 +146,7 @@
+ //! - `OffenceQueueEras`: Sorted list of eras with offences
+ //! - `ProcessingOffence`: Currently processing offence
+ //! - `ValidatorSlashInEra`: Tracks highest slash per validator per era
+-//! - `UnappliedSlashes`: Deferred slashes waiting for application
++//! - `AsyncUnappliedSlashes`: Deferred slashes waiting for application
+ //!
+ //! ### Withdrawal Restrictions
+ //!
+@@ -211,6 +211,7 @@
+ pub mod asset;
+ pub mod election_size_tracker;
+ pub mod ledger;
++pub mod legacy;
+ pub mod migrations;
+ mod pallet;
+ pub mod reward;
+@@ -227,16 +228,19 @@
+ 		tokens::fungible::{Credit, Debt},
+ 		ConstU32, Contains, Get, LockIdentifier,
+ 	},
++	weights::Weight,
+ 	BoundedVec, DebugNoBound, DefaultNoBound, EqNoBound, PartialEqNoBound, WeakBoundedVec,
+ };
+ use frame_system::pallet_prelude::BlockNumberFor;
+ use ledger::LedgerIntegrityState;
+ use scale_info::TypeInfo;
++/// Read facade retained for replacement-asset payout integrations.
++pub use session_rotation::Eras as EraInfo;
+ use sp_runtime::{
+ 	traits::{AtLeast32BitUnsigned, One, StaticLookup, UniqueSaturatedInto},
+ 	BoundedBTreeMap, Debug, Perbill, Saturating,
+ };
+-use sp_staking::{EraIndex, ExposurePage, PagedExposureMetadata, SessionIndex};
++use sp_staking::{EraIndex, ExposurePage, Page, PagedExposureMetadata, SessionIndex};
+ pub use sp_staking::{Exposure, IndividualExposure, StakerStatus};
+ pub use weights::WeightInfo;
+ 
+@@ -281,6 +285,39 @@
+ 
+ /// Counter for the number of "reward" points earned by a given validator.
+ pub type RewardPoint = u32;
++
++/// Additional rewards paid atomically with a staking exposure-page claim.
++///
++/// Implementations must not dispatch another staking payout or change staking exposure, reward
++/// points, preferences, or claim bookkeeping. An error rolls back the entire payout, including
++/// the claimed-page marker, so the page can be retried. `weight` must conservatively cover all
++/// work done by `payout` for a page with up to `nominators` nominators, including failure paths.
++pub trait AdditionalPayout<AccountId> {
++	/// Whether the published era payout is paid in the native staking currency.
++	///
++	/// Defaults to the upstream native reward behavior. An implementation returning `false`
++	/// must pay the advertised reward through `payout` in its replacement asset. Native rewards
++	/// then neither mint currency nor increase a `Staked` ledger, and `end_era` publishes the
++	/// configured `EraPayout` unchanged without applying the native inflation cap or issuing
++	/// its remainder. The replacement implementation owns any asset-specific remainder policy.
++	fn pays_native_reward() -> bool {
++		true
++	}
++
++	fn payout(validator_stash: &AccountId, era: EraIndex, page: Page)
++		-> sp_runtime::DispatchResult;
++	fn weight(nominators: u32) -> Weight;
++}
++
++impl<AccountId> AdditionalPayout<AccountId> for () {
++	fn payout(_: &AccountId, _: EraIndex, _: Page) -> sp_runtime::DispatchResult {
++		Ok(())
++	}
++
++	fn weight(_: u32) -> Weight {
++		Weight::zero()
++	}
++}
+ 
+ /// The balance type of this pallet.
+ pub type BalanceOf<T> = <T as Config>::CurrencyBalance;
+--- a/src/mock.rs
++++ b/src/mock.rs
+@@ -526,7 +526,49 @@
+ 		.expect("mint dap buffer");
+ }
+ 
++/// Disabled by default; enabled by the additional-payout regression tests only.
++pub(crate) const ADDITIONAL_PAYOUT_MODE: &[u8] = b":staking:test:additional-payout-mode";
++pub(crate) const ADDITIONAL_PAYOUT_RECORD: &[u8] = b":staking:test:additional-payout-record";
++pub(crate) const REPLACEMENT_REWARD_MODE: &[u8] = b":staking:test:replacement-reward-mode";
++
++pub struct MockAdditionalPayout;
++impl AdditionalPayout<AccountId> for MockAdditionalPayout {
++	fn pays_native_reward() -> bool {
++		!sp_io::storage::exists(REPLACEMENT_REWARD_MODE)
++	}
++
++	fn payout(validator: &AccountId, era: EraIndex, page: Page) -> sp_runtime::DispatchResult {
++		let Some(mode) = sp_io::storage::get(ADDITIONAL_PAYOUT_MODE) else {
++			return Ok(());
++		};
++		sp_io::storage::set(ADDITIONAL_PAYOUT_RECORD, &(*validator, era, page).encode());
++		if mode.as_ref() == [3] {
++			Staking::deposit_event(Event::<Test>::Rewarded {
++				stash: *validator,
++				dest: RewardDestination::Stash,
++				amount: 1,
++			});
++		}
++		if mode.as_ref() == [2] {
++			return Err(sp_runtime::DispatchError::Other("additional reward failed"));
++		}
++		Ok(())
++	}
++
++	fn weight(nominators: u32) -> Weight {
++		if !sp_io::storage::exists(ADDITIONAL_PAYOUT_MODE) {
++			return Weight::zero();
++		}
++		Weight::from_parts(10_000, 100)
++			.saturating_add(Weight::from_parts(1_000, 10).saturating_mul(nominators.into()))
++	}
++}
++
++parameter_types! { pub static SlashDeferOffset: EraIndex = 0; }
++
+ impl Config for Test {
++	type AdditionalPayout = MockAdditionalPayout;
++	type SlashDeferOffset = SlashDeferOffset;
+ 	type OldCurrency = Balances;
+ 	type Currency = Balances;
+ 	type RewardRemainder = RewardRemainderMock;
+@@ -604,6 +646,7 @@
+ 
+ impl Default for ExtBuilder {
+ 	fn default() -> Self {
++		SlashDeferOffset::set(0);
+ 		// Default both min bonds strictly above ED — and to different values — to
+ 		// 1. mimic the situation we live in (ED < MinNominatorBond < MinValidatorBond on Polkadot /
+ 		//    Kusama / Westend AH).
+@@ -814,7 +857,10 @@
+ 			.assimilate_storage(&mut storage);
+ 
+ 		let _ = pallet_staking_async::GenesisConfig::<Test> {
+-			stakers: maybe_stakers,
++			stakers: maybe_stakers
++				.into_iter()
++				.map(|(stash, balance, status)| (stash, stash, balance, status))
++				.collect(),
+ 			validator_count: self.validator_count,
+ 			active_era: (0, 0, INIT_TIMESTAMP),
+ 			slash_reward_fraction: Perbill::from_percent(10),
+@@ -1144,7 +1190,7 @@
+ }
+ 
+ pub(crate) fn era_unapplied_slash_count(era: EraIndex) -> u32 {
+-	UnappliedSlashes::<T>::iter_prefix_values(era).count() as u32
++	AsyncUnappliedSlashes::<T>::iter_prefix_values(era).count() as u32
+ }
+ 
+ /// A pending slash from the previous era blocks withdrawal. Use this to apply them.
+@@ -1153,7 +1199,7 @@
+ }
+ 
+ pub(crate) fn apply_pending_slashes_from_era(era: EraIndex) {
+-	for (key, _) in UnappliedSlashes::<T>::iter_prefix(era) {
++	for (key, _) in AsyncUnappliedSlashes::<T>::iter_prefix(era) {
+ 		assert_ok!(Staking::apply_slash(RuntimeOrigin::signed(1), era, key));
+ 	}
+ }
+--- a/src/pallet/impls.rs
++++ b/src/pallet/impls.rs
+@@ -24,9 +24,10 @@
+ 	session_rotation::{self, Eras, Rotator},
+ 	slashing::OffenceRecord,
+ 	weights::WeightInfo,
+-	BalanceOf, EraRewardPoints, Exposure, Forcing, LedgerIntegrityState, MaxNominationsOf,
+-	Nominations, NominationsQuota, PositiveImbalanceOf, PotAccountProvider, RewardDestination,
+-	RewardKind, RewardPoint, RewardPot, SnapshotStatus, StakingLedger, ValidatorPrefs, STAKING_ID,
++	AdditionalPayout, BalanceOf, EraRewardPoints, Exposure, Forcing, LedgerIntegrityState,
++	MaxNominationsOf, Nominations, NominationsQuota, PositiveImbalanceOf, PotAccountProvider,
++	RewardDestination, RewardKind, RewardPoint, RewardPot, SnapshotStatus, StakingLedger,
++	ValidatorPrefs, STAKING_ID,
+ };
+ use alloc::{boxed::Box, vec, vec::Vec};
+ use frame_election_provider_support::{
+@@ -73,6 +74,17 @@
+ const NPOS_MAX_ITERATIONS_COEFFICIENT: u32 = 2;
+ 
+ impl<T: Config> Pallet<T> {
++	/// Seed the initial validator exposure for a local session chain at genesis.
++	/// This does not plan another era or send a remote activation notification.
++	pub fn initialize_local_genesis(
++		supports: frame_election_provider_support::BoundedSupportsOf<T::ElectionProvider>,
++	) -> Vec<T::AccountId> {
++		assert!(frame_system::Pallet::<T>::block_number().is_zero(), "genesis only");
++		assert!(ErasTotalStake::<T>::get(0).is_zero(), "genesis exposure already initialized");
++		let _ = crate::session_rotation::EraElectionPlanner::<T>::do_elect_paged_inner(supports);
++		ElectableStashes::<T>::take().into_iter().collect()
++	}
++
+ 	/// Returns the minimum required bond for participation, considering nominators,
+ 	/// and the chain’s existential deposit.
+ 	///
+@@ -179,9 +191,19 @@
+ 		Self::slashable_balance_of_vote_weight(who, issuance)
+ 	}
+ 
++	/// Delay used by newly reported offences. Immediate slashing remains immediate.
++	pub fn deferred_slash_delay() -> EraIndex {
++		let duration = T::SlashDeferDuration::get();
++		if duration == 0 {
++			0
++		} else {
++			duration.saturating_add(T::SlashDeferOffset::get())
++		}
++	}
++
+ 	/// Calculates the offence era from the slash application era.
+ 	pub(crate) fn offence_era_of(application_era: EraIndex) -> EraIndex {
+-		application_era.saturating_sub(T::SlashDeferDuration::get())
++		application_era.saturating_sub(Self::deferred_slash_delay())
+ 	}
+ 
+ 	/// Checks if a slash has been cancelled for the given era and slash parameters.
+@@ -256,7 +278,17 @@
+ 		active_era.min(earliest_unlock_era_by_offence_queue)
+ 	}
+ 
+-	pub(super) fn do_withdraw_unbonded(controller: &T::AccountId) -> Result<Weight, DispatchError> {
++	/// Upper bound for the additional historical and overdue-queue withdrawal guards.
++	pub fn withdrawal_guard_weight() -> Weight {
++		// Two guards (previous/current era), each inspecting the fixed cutoff range.
++		let eras = u64::from(T::SlashDeferDuration::get()).saturating_add(2);
++		T::DbWeight::get().reads(eras.saturating_mul(8).saturating_add(5))
++	}
++
++	pub(super) fn do_withdraw_unbonded(
++		controller: &T::AccountId,
++		num_slashing_spans: u32,
++	) -> Result<Weight, DispatchError> {
+ 		let mut ledger = Self::ledger(Controller(controller.clone()))?;
+ 		let (stash, old_total) = (ledger.stash.clone(), ledger.total);
+ 		let active_era = Rotator::<T>::active_era();
+@@ -264,6 +296,16 @@
+ 		// Ensure last era slashes are applied. Else we block the withdrawals.
+ 		if active_era > 1 {
+ 			Self::ensure_era_slashes_applied(active_era.saturating_sub(1))?;
++		}
++
++		if T::SlashDeferOffset::get() > 0 {
++			// The historical extra era reaches the bonding deadline. Paged slashing must
++			// finish before any same-era unlocking chunk can leave its ledger.
++			Self::ensure_era_slashes_applied(active_era)?;
++			ensure!(
++				NextDeferredSlashEra::<T>::get().is_none_or(|era| era > active_era),
++				Error::<T>::UnappliedSlashesInPreviousEra
++			);
+ 		}
+ 
+ 		let earliest_era_to_withdraw = Self::calculate_earliest_withdrawal_era(active_era);
+@@ -291,7 +333,7 @@
+ 				// This account must have called `unbond()` with some value that caused the active
+ 				// portion to fall below the existential deposit + will have no more unlocking
+ 				// chunks left. We can now safely remove all staking-related information.
+-				Self::kill_stash(&ledger.stash)?;
++				Self::kill_stash(&ledger.stash, num_slashing_spans)?;
+ 
+ 				T::WeightInfo::withdraw_unbonded_kill()
+ 			} else {
+@@ -313,12 +355,15 @@
+ 			T::EventListeners::on_withdraw(controller, value);
+ 		}
+ 
+-		Ok(used_weight)
++		Ok(used_weight
++			.saturating_add(Self::withdrawal_guard_weight())
++			.saturating_add(crate::legacy::clear_stash_weight::<T>(num_slashing_spans)))
+ 	}
+ 
+ 	fn ensure_era_slashes_applied(era: EraIndex) -> Result<(), DispatchError> {
+ 		ensure!(
+-			!UnappliedSlashes::<T>::contains_prefix(era),
++			!AsyncUnappliedSlashes::<T>::contains_prefix(era) &&
++				!crate::legacy::has_pending_due_slashes::<T>(era),
+ 			Error::<T>::UnappliedSlashesInPreviousEra
+ 		);
+ 		Ok(())
+@@ -335,6 +380,7 @@
+ 		Self::do_payout_stakers_by_page(validator_stash, era, page)
+ 	}
+ 
++	#[frame_support::transactional]
+ 	pub(super) fn do_payout_stakers_by_page(
+ 		validator_stash: T::AccountId,
+ 		era: EraIndex,
+@@ -378,7 +424,9 @@
+ 
+ 		let stash = ledger.stash.clone();
+ 
+-		if Eras::<T>::is_rewards_claimed(era, &stash, page) {
++		if ledger.legacy_claimed_rewards.contains(&era) ||
++			Eras::<T>::is_rewards_claimed(era, &stash, page)
++		{
+ 			return Err(Error::<T>::AlreadyClaimed
+ 				.with_weight(T::WeightInfo::payout_stakers_alive_staked(0)));
+ 		}
+@@ -390,6 +438,34 @@
+ 				.with_weight(T::WeightInfo::payout_stakers_alive_staked(0))
+ 		})?;
+ 
++		let pays_native_reward = T::AdditionalPayout::pays_native_reward();
++		if !pays_native_reward {
++			// Replacement reward events follow their page marker; failure rolls both back.
++			Self::deposit_event(Event::<T>::PayoutStarted {
++				era_index: era,
++				validator_stash: stash.clone(),
++				page,
++				next: Eras::<T>::get_next_claimable_page(era, &stash),
++			});
++		}
++		let additional_payout_weight = T::AdditionalPayout::weight(exposure.others().len() as u32);
++		T::AdditionalPayout::payout(&stash, era, page).map_err(|error| {
++			// A failed hook may have traversed the entire page. Retain its declared bound.
++			error.with_weight(
++				T::WeightInfo::payout_stakers_alive_staked(T::MaxExposurePageSize::get())
++					.saturating_add(T::AdditionalPayout::weight(T::MaxExposurePageSize::get())),
++			)
++		})?;
++		if !pays_native_reward {
++			// The hook owns the published budget. Do not mint, transfer a native pot,
++			// pay a native incentive, or change any Staked ledger.
++			return Ok(Some(
++				T::WeightInfo::payout_stakers_alive_staked(0)
++					.saturating_add(additional_payout_weight),
++			)
++			.into());
++		}
++
+ 		// Input data seems good, no errors allowed after this point
+ 
+ 		let era_reward_points = Eras::<T>::get_reward_points(era);
+@@ -399,7 +475,11 @@
+ 
+ 		// Nothing to do if they have no reward points.
+ 		if validator_reward_points.is_zero() {
+-			return Ok(Some(T::WeightInfo::payout_stakers_alive_staked(0)).into());
++			return Ok(Some(
++				T::WeightInfo::payout_stakers_alive_staked(0)
++					.saturating_add(additional_payout_weight),
++			)
++			.into());
+ 		}
+ 
+ 		// This is the fraction of the total reward that the validator and the
+@@ -474,7 +554,11 @@
+ 
+ 		debug_assert!(nominator_payout_count <= T::MaxExposurePageSize::get());
+ 
+-		Ok(Some(T::WeightInfo::payout_stakers_alive_staked(nominator_payout_count)).into())
++		Ok(Some(
++			T::WeightInfo::payout_stakers_alive_staked(nominator_payout_count)
++				.saturating_add(additional_payout_weight),
++		)
++		.into())
+ 	}
+ 
+ 	/// Payout stakers from an era reward pot (transfer-based, no minting).
+@@ -819,7 +903,8 @@
+ 	/// - after a `withdraw_unbonded()` call that frees all of a stash's bonded balance.
+ 	/// - through `reap_stash()` if the balance has fallen below the existential deposit (through
+ 	///   slashing or full unbond).
+-	pub(crate) fn kill_stash(stash: &T::AccountId) -> DispatchResult {
++	pub(crate) fn kill_stash(stash: &T::AccountId, num_slashing_spans: u32) -> DispatchResult {
++		crate::legacy::clear_stash_metadata::<T>(stash, num_slashing_spans)?;
+ 		// removes controller from `Bonded` and staking ledger from `Ledger`, as well as reward
+ 		// setting of the stash in `Payee`.
+ 		StakingLedger::<T>::kill(&stash)?;
+@@ -833,8 +918,7 @@
+ 		Ok(())
+ 	}
+ 
+-	#[cfg(test)]
+-	pub(crate) fn reward_by_ids(validators_points: impl IntoIterator<Item = (T::AccountId, u32)>) {
++	pub fn reward_by_ids(validators_points: impl IntoIterator<Item = (T::AccountId, u32)>) {
+ 		Eras::<T>::reward_active_era(validators_points)
+ 	}
+ 
+@@ -1481,7 +1565,16 @@
+ 			}
+ 		};
+ 
+-		let oldest_reportable_offence_era = if T::SlashDeferDuration::get() == 0 {
++		if let Some(weight) = crate::legacy::on_new_offences::<T>(offence_era, &offences) {
++			return weight;
++		}
++
++		let oldest_reportable_offence_era = if T::SlashDeferOffset::get() > 0 {
++			// Preserve the local historical reporting window. A report that has already
++			// reached its execution era is applied while processing, never queued behind
++			// the active-era cursor.
++			active_era.index.saturating_sub(T::BondingDuration::get())
++		} else if T::SlashDeferDuration::get() == 0 {
+ 			// this implies that slashes are applied immediately, so we can accept any offence up to
+ 			// bonding duration old.
+ 			// Align with the SlashDeferDuration > 0 branch: accept offences from at most
+@@ -1495,6 +1588,9 @@
+ 		};
+ 
+ 		for o in offences {
++			if crate::legacy::Invulnerables::<T>::get().contains(&o.offender) {
++				continue;
++			}
+ 			let slash_fraction = o.slash_fraction;
+ 			let validator: <T as frame_system::Config>::AccountId = o.offender.into();
+ 
+@@ -1936,10 +2032,10 @@
+ 
+ 	fn withdraw_unbonded(
+ 		who: Self::AccountId,
+-		_num_slashing_spans: u32,
++		num_slashing_spans: u32,
+ 	) -> Result<bool, DispatchError> {
+ 		let ctrl = Self::bonded(&who).ok_or(Error::<T>::NotStash)?;
+-		Self::withdraw_unbonded(RawOrigin::Signed(ctrl.clone()).into(), 0)
++		Self::withdraw_unbonded(RawOrigin::Signed(ctrl.clone()).into(), num_slashing_spans)
+ 			.map(|_| !StakingLedger::<T>::is_bonded(StakingAccount::Controller(ctrl)))
+ 			.map_err(|with_post| with_post.error)
+ 	}
+@@ -2106,7 +2202,7 @@
+ 		session_rotation::Eras::<T>::do_try_state()?;
+ 
+ 		use frame_support::traits::fungible::Inspect;
+-		if T::CurrencyToVote::will_downscale(T::Currency::total_issuance()).map_or(false, |x| x) {
++		if T::CurrencyToVote::will_downscale(T::Currency::total_issuance()).unwrap_or(false) {
+ 			log!(warn, "total issuance will cause T::CurrencyToVote to downscale -- report to maintainers.")
+ 		}
+ 
+@@ -2389,7 +2485,9 @@
+ 	/// For each validator in `ErasStakersOverview`, `LastValidatorEra` should be set to the active
+ 	/// era.
+ 	fn check_paged_exposures() -> Result<(), TryRuntimeError> {
+-		let Some(era) = ActiveEra::<T>::get().map(|a| a.index) else { return Ok(()) };
++		let Some(era) = ActiveEra::<T>::get().map(|a| a.index) else {
++			return Ok(());
++		};
+ 		let overview_and_pages = ErasStakersOverview::<T>::iter_prefix(era)
+ 			.map(|(validator, metadata)| {
+ 				let last_validator_era = LastValidatorEra::<T>::get(&validator).unwrap_or_default();
+@@ -2498,19 +2596,34 @@
+ 			log!(info, "Offence queue for era {:?} has {:?} offences queued", e, count);
+ 		}
+ 
+-		// (4) Ensure all slashes older than (active era - 1) are applied.
+-		// We will look at all eras before the active era as it can take 1 era for slashes
+-		// to be applied.
+-		for era in (active_era.saturating_sub(T::BondingDuration::get()))..(active_era) {
+-			// all unapplied slashes are expected to be applied until the active era. If this is not
+-			// the case, then we need to use a permissionless call to apply all of them.
+-			// See `Call::apply_slash` for more details.
+-			Self::ensure_era_slashes_applied(era)?;
+-		}
+-
+-		// (5) Ensure no canceled slashes exist in the past eras.
++		// (4) The local extra-deferral policy may carry a bounded backlog across eras.
++		// Its earliest-era cursor must cover every native queue, so withdrawals cannot
++		// bypass any due page and on_initialize will eventually visit every entry.
++		if T::SlashDeferOffset::get() > 0 {
++			let cursor = NextDeferredSlashEra::<T>::get();
++			for (era, _) in AsyncUnappliedSlashes::<T>::iter_keys() {
++				ensure!(
++					cursor.is_some_and(|next| next <= era),
++					"native slash queue is behind or missing its execution cursor"
++				);
++			}
++			crate::legacy::try_state::<T>()?;
++		} else {
++			// Preserve upstream's stricter one-era expectation under its default policy.
++			for era in active_era.saturating_sub(T::BondingDuration::get())..active_era {
++				Self::ensure_era_slashes_applied(era)?;
++			}
++		}
++
++		// (5) A past cancellation is valid only while its guarded backlog remains.
+ 		for (era, _) in CancelledSlashes::<T>::iter() {
+-			ensure!(era >= active_era, "Found cancelled slashes for era before active era");
++			ensure!(
++				era >= active_era ||
++					(T::SlashDeferOffset::get() > 0 &&
++						(AsyncUnappliedSlashes::<T>::contains_prefix(era) ||
++							crate::legacy::has_pending_slashes::<T>(era))),
++				"Found cancelled slashes for a completed past era"
++			);
+ 		}
+ 
+ 		Ok(())
+--- a/src/pallet/mod.rs
++++ b/src/pallet/mod.rs
+@@ -19,10 +19,10 @@
+ 
+ use crate::{
+ 	asset, session_rotation::EraElectionPlanner, slashing, weights::WeightInfo, AccountIdLookupOf,
+-	ActiveEraInfo, BalanceOf, EraPayout, EraRewardPoints, ExposurePage, Forcing,
+-	LedgerIntegrityState, MaxNominationsOf, NegativeImbalanceOf, Nominations, NominationsQuota,
+-	PositiveImbalanceOf, RewardDestination, StakingLedger, UnappliedSlash, UnlockChunk,
+-	ValidatorPrefs,
++	ActiveEraInfo, AdditionalPayout, BalanceOf, EraPayout, EraRewardPoints, Exposure, ExposurePage,
++	Forcing, LedgerIntegrityState, MaxNominationsOf, NegativeImbalanceOf, Nominations,
++	NominationsQuota, PositiveImbalanceOf, RewardDestination, StakingLedger, UnappliedSlash,
++	UnlockChunk, ValidatorPrefs,
+ };
+ use alloc::{format, vec::Vec};
+ use codec::Codec;
+@@ -39,7 +39,7 @@
+ 		Nothing, OnUnbalanced,
+ 	},
+ 	weights::Weight,
+-	BoundedBTreeSet, BoundedVec,
++	BoundedBTreeSet, BoundedVec, StorageDoubleMap as _,
+ };
+ use frame_system::{ensure_root, ensure_signed, pallet_prelude::*};
+ pub use impls::*;
+@@ -262,6 +262,11 @@
+ 		#[pallet::constant]
+ 		type SlashDeferDuration: Get<EraIndex>;
+ 
++		/// Extra eras of slash deferral for networks preserving their historical policy.
++		/// Zero preserves upstream behavior. Ignored when slashes are immediate.
++		#[pallet::constant]
++		type SlashDeferOffset: Get<EraIndex>;
++
+ 		/// The origin which can manage less critical staking parameters that does not require root.
+ 		///
+ 		/// Supported actions: (1) cancel deferred slash, (2) set minimum commission.
+@@ -275,6 +280,9 @@
+ 		/// Should be set to () in non-minting mode.
+ 		#[pallet::no_default]
+ 		type EraPayout: EraPayout<BalanceOf<Self>>;
++
++		/// Additional or replacement-asset rewards paid atomically with each page claim.
++		type AdditionalPayout: AdditionalPayout<Self::AccountId>;
+ 
+ 		/// When `true`, staking does not mint. It expects an external source to fund
+ 		/// the general reward pot. At era boundary, rewards are snapshotted from
+@@ -470,6 +478,8 @@
+ 			type RewardRemainder = ();
+ 			type Slash = ();
+ 			type Reward = ();
++			type AdditionalPayout = ();
++			type SlashDeferOffset = ();
+ 			type UnclaimedRewardHandler = ();
+ 			type StakerRewardCalculator = ();
+ 			type DisableMinting = ConstBool<false>;
+@@ -753,10 +763,11 @@
+ 		fn get() -> u32 {
+ 			let bonding_duration = T::BondingDuration::get();
+ 			bonding_duration.saturating_add(OFFENCE_QUEUE_ERAS_BOUND) // adding OFFENCE_QUEUE_ERAS_BOUND eras
+-			                                                 // to add headroom to
+-			                                                 // the bound for runtime upgrades that
+-			                                                 // lower BondingDuration so we avoid
+-			                                                 // the try_into trap.
++			                                                          // to add headroom to
++			                                                          // the bound for runtime
++			                                                          // upgrades that
++			                                                          // lower BondingDuration so we
++			                                                          // avoid the try_into trap.
+ 		}
+ 	}
+ 
+@@ -801,9 +812,19 @@
+ 	///
+ 	/// It encoded and decodes exactly the same as [`sp_staking::ExposurePage`], and provides a
+ 	/// manual `MaxEncodedLen` implementation, to be used in benchmarking
+-	#[derive(PartialEqNoBound, Encode, Decode, DebugNoBound, TypeInfo, DefaultNoBound)]
+-	#[scale_info(skip_type_params(T))]
++	#[derive(PartialEqNoBound, Encode, Decode, DebugNoBound, DefaultNoBound)]
+ 	pub struct BoundedExposurePage<T: Config>(pub ExposurePage<T::AccountId, BalanceOf<T>>);
++
++	// This is an encoding-transparent bound, so expose the historical named fields directly
++	// in storage metadata instead of adding a tuple wrapper to the client-facing type.
++	impl<T: Config> TypeInfo for BoundedExposurePage<T> {
++		type Identity = <ExposurePage<T::AccountId, BalanceOf<T>> as TypeInfo>::Identity;
++
++		fn type_info() -> scale_info::Type {
++			<ExposurePage<T::AccountId, BalanceOf<T>> as TypeInfo>::type_info()
++		}
++	}
++
+ 	impl<T: Config> Deref for BoundedExposurePage<T> {
+ 		type Target = ExposurePage<T::AccountId, BalanceOf<T>>;
+ 
+@@ -959,7 +980,7 @@
+ 	/// Each offence is recorded under the corresponding era index and the offending validator's
+ 	/// account. If an offence spans multiple pages, only one page is processed at a time. Offences
+ 	/// are handled sequentially, with their associated slashes computed and stored in
+-	/// `UnappliedSlashes`. These slashes are then applied in a future era as determined by
++	/// `AsyncUnappliedSlashes`. These slashes are then applied in a future era as determined by
+ 	/// `SlashDeferDuration`.
+ 	///
+ 	/// Any offences tied to an era older than `BondingDuration` are automatically dropped.
+@@ -1008,7 +1029,8 @@
+ 
+ 	/// All unapplied slashes that are queued for later.
+ 	#[pallet::storage]
+-	pub type UnappliedSlashes<T: Config> = StorageDoubleMap<
++	#[pallet::storage_prefix = "AsyncUnappliedSlashes"]
++	pub type AsyncUnappliedSlashes<T: Config> = StorageDoubleMap<
+ 		_,
+ 		Twox64Concat,
+ 		EraIndex,
+@@ -1019,6 +1041,86 @@
+ 		OptionQuery,
+ 	>;
+ 
++	/// Historical synchronous slash vectors, retained without rewriting commitments.
++	#[pallet::storage]
++	#[pallet::unbounded]
++	pub type UnappliedSlashes<T: Config> = StorageMap<
++		_,
++		Twox64Concat,
++		EraIndex,
++		Vec<crate::legacy::LegacyUnappliedSlash<T::AccountId, BalanceOf<T>>>,
++		ValueQuery,
++	>;
++
++	/// Historical minimum validator set size, enforced by the local election adapter.
++	#[pallet::storage]
++	pub type MinimumValidatorCount<T> = StorageValue<_, u32, ValueQuery>;
++
++	/// Accounts exempt from financial slashing on configured test networks.
++	#[pallet::storage]
++	#[pallet::unbounded]
++	pub type Invulnerables<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
++
++	/// Retained full historical exposure for pre-cutover offence calculations.
++	#[pallet::storage]
++	#[pallet::unbounded]
++	pub type ErasStakers<T: Config> = StorageDoubleMap<
++		_,
++		Twox64Concat,
++		EraIndex,
++		Twox64Concat,
++		T::AccountId,
++		Exposure<T::AccountId, BalanceOf<T>>,
++		ValueQuery,
++	>;
++
++	/// Retained clipped historical exposure for unclaimed reward pages.
++	#[pallet::storage]
++	#[pallet::unbounded]
++	pub type ErasStakersClipped<T: Config> = StorageDoubleMap<
++		_,
++		Twox64Concat,
++		EraIndex,
++		Twox64Concat,
++		T::AccountId,
++		Exposure<T::AccountId, BalanceOf<T>>,
++		ValueQuery,
++	>;
++
++	/// Historical and activated era start sessions.
++	#[pallet::storage]
++	pub type ErasStartSessionIndex<T> = StorageMap<_, Twox64Concat, EraIndex, SessionIndex>;
++
++	/// Most recently planned local session.
++	#[pallet::storage]
++	pub type CurrentPlannedSession<T> = StorageValue<_, SessionIndex, ValueQuery>;
++
++	/// Historical maximum nominator slash within an era.
++	#[pallet::storage]
++	pub type NominatorSlashInEra<T: Config> =
++		StorageDoubleMap<_, Twox64Concat, EraIndex, Twox64Concat, T::AccountId, BalanceOf<T>>;
++
++	/// Retained historical slash spans.
++	#[pallet::storage]
++	#[pallet::unbounded]
++	pub type SlashingSpans<T: Config> =
++		StorageMap<_, Twox64Concat, T::AccountId, crate::legacy::SlashingSpansData>;
++
++	/// Retained historical maximum slash and paid reporter rewards per span.
++	#[pallet::storage]
++	pub type SpanSlash<T: Config> = StorageMap<
++		_,
++		Twox64Concat,
++		(T::AccountId, crate::legacy::SpanIndex),
++		crate::legacy::SpanRecord<BalanceOf<T>>,
++		ValueQuery,
++	>;
++
++	/// Oldest application era to inspect for the local extra-deferral policy.
++	/// Advances at most one era per block and never abandons an overdue queue.
++	#[pallet::storage]
++	pub type NextDeferredSlashEra<T: Config> = StorageValue<_, EraIndex>;
++
+ 	/// Cancelled slashes by era and validator with maximum slash fraction to be cancelled.
+ 	///
+ 	/// When slashes are cancelled by governance, this stores the era and the validators
+@@ -1088,10 +1190,13 @@
+ 	#[derive(frame_support::DefaultNoBound, frame_support::DebugNoBound)]
+ 	pub struct GenesisConfig<T: Config> {
+ 		pub validator_count: u32,
++		pub minimum_validator_count: u32,
++		pub invulnerables: Vec<T::AccountId>,
+ 		pub force_era: Forcing,
+ 		pub slash_reward_fraction: Perbill,
+ 		pub canceled_payout: BalanceOf<T>,
+-		pub stakers: Vec<(T::AccountId, BalanceOf<T>, crate::StakerStatus<T::AccountId>)>,
++		pub stakers:
++			Vec<(T::AccountId, T::AccountId, BalanceOf<T>, crate::StakerStatus<T::AccountId>)>,
+ 		pub min_nominator_bond: BalanceOf<T>,
+ 		pub min_validator_bond: BalanceOf<T>,
+ 		pub max_validator_count: Option<u32>,
+@@ -1139,6 +1244,8 @@
+ 				"validator count is too high, `ElectionProvider` can never fulfill this"
+ 			);
+ 			ValidatorCount::<T>::put(self.validator_count);
++			crate::legacy::MinimumValidatorCount::<T>::put(self.minimum_validator_count);
++			crate::legacy::Invulnerables::<T>::put(&self.invulnerables);
+ 
+ 			ForceEra::<T>::put(self.force_era);
+ 			CanceledSlashPayout::<T>::put(self.canceled_payout);
+@@ -1153,7 +1260,7 @@
+ 			}
+ 
+ 			// First pass: set up all validators and idle stakers
+-			for &(ref stash, balance, ref status) in &self.stakers {
++			for &(ref stash, _, balance, ref status) in &self.stakers {
+ 				match status {
+ 					crate::StakerStatus::Validator => {
+ 						crate::log!(
+@@ -1200,7 +1307,7 @@
+ 			}
+ 
+ 			// Second pass: set up all nominators (now that validators exist)
+-			for &(ref stash, balance, ref status) in &self.stakers {
++			for &(ref stash, _, balance, ref status) in &self.stakers {
+ 				match status {
+ 					crate::StakerStatus::Nominator(votes) => {
+ 						crate::log!(
+@@ -1307,63 +1414,47 @@
+ 		/// In non-minting mode, `validator_payout` is the staker reward budget
+ 		/// snapshotted from the general pot, and `remainder` is always zero.
+ 		/// In legacy minting mode, both fields reflect the `EraPayout` computation.
+-		EraPaid {
+-			era_index: EraIndex,
+-			validator_payout: BalanceOf<T>,
+-			remainder: BalanceOf<T>,
+-		},
++		#[codec(index = 0)]
++		EraPaid { era_index: EraIndex, validator_payout: BalanceOf<T>, remainder: BalanceOf<T> },
+ 		/// The nominator has been rewarded by this amount to this destination.
++		#[codec(index = 1)]
+ 		Rewarded {
+ 			stash: T::AccountId,
+ 			dest: RewardDestination<T::AccountId>,
+ 			amount: BalanceOf<T>,
+ 		},
+ 		/// A staker (validator or nominator) has been slashed by the given amount.
+-		Slashed {
+-			staker: T::AccountId,
+-			amount: BalanceOf<T>,
+-		},
++		#[codec(index = 2)]
++		Slashed { staker: T::AccountId, amount: BalanceOf<T> },
+ 		/// An old slashing report from a prior era was discarded because it could
+ 		/// not be processed.
+-		OldSlashingReportDiscarded {
+-			session_index: SessionIndex,
+-		},
++		#[codec(index = 4)]
++		OldSlashingReportDiscarded { session_index: SessionIndex },
+ 		/// An account has bonded this amount. \[stash, amount\]
+ 		///
+ 		/// NOTE: This event is only emitted when funds are bonded via a dispatchable. Notably,
+ 		/// it will not be emitted for staking rewards when they are added to stake.
+-		Bonded {
+-			stash: T::AccountId,
+-			amount: BalanceOf<T>,
+-		},
++		#[codec(index = 6)]
++		Bonded { stash: T::AccountId, amount: BalanceOf<T> },
+ 		/// An account has unbonded this amount.
+-		Unbonded {
+-			stash: T::AccountId,
+-			amount: BalanceOf<T>,
+-			/// The era at which `amount` becomes withdrawable.
+-			era: EraIndex,
+-		},
++		#[codec(index = 7)]
++		Unbonded { stash: T::AccountId, amount: BalanceOf<T> },
+ 		/// An account has called `withdraw_unbonded` and removed unbonding chunks worth `Balance`
+ 		/// from the unlocking queue.
+-		Withdrawn {
+-			stash: T::AccountId,
+-			amount: BalanceOf<T>,
+-		},
++		#[codec(index = 8)]
++		Withdrawn { stash: T::AccountId, amount: BalanceOf<T> },
+ 		/// A subsequent event of `Withdrawn`, indicating that `stash` was fully removed from the
+ 		/// system.
+-		StakerRemoved {
+-			stash: T::AccountId,
+-		},
++		#[codec(index = 19)]
++		StakerRemoved { stash: T::AccountId },
+ 		/// A nominator has been kicked from a validator.
+-		Kicked {
+-			nominator: T::AccountId,
+-			stash: T::AccountId,
+-		},
++		#[codec(index = 9)]
++		Kicked { nominator: T::AccountId, stash: T::AccountId },
+ 		/// An account has stopped participating as either a validator or nominator.
+-		Chilled {
+-			stash: T::AccountId,
+-		},
++		#[codec(index = 11)]
++		Chilled { stash: T::AccountId },
+ 		/// A Page of stakers rewards are getting paid. `next` is `None` if all pages are claimed.
++		#[codec(index = 12)]
+ 		PayoutStarted {
+ 			era_index: EraIndex,
+ 			validator_stash: T::AccountId,
+@@ -1371,31 +1462,23 @@
+ 			next: Option<Page>,
+ 		},
+ 		/// A validator has set their preferences.
+-		ValidatorPrefsSet {
+-			stash: T::AccountId,
+-			prefs: ValidatorPrefs,
+-		},
++		#[codec(index = 13)]
++		ValidatorPrefsSet { stash: T::AccountId, prefs: ValidatorPrefs },
+ 		/// Voters size limit reached.
+-		SnapshotVotersSizeExceeded {
+-			size: u32,
+-		},
++		#[codec(index = 14)]
++		SnapshotVotersSizeExceeded { size: u32 },
+ 		/// Targets size limit reached.
+-		SnapshotTargetsSizeExceeded {
+-			size: u32,
+-		},
+-		ForceEra {
+-			mode: Forcing,
+-		},
++		#[codec(index = 15)]
++		SnapshotTargetsSizeExceeded { size: u32 },
++		#[codec(index = 16)]
++		ForceEra { mode: Forcing },
+ 		/// Report of a controller batch deprecation.
+-		ControllerBatchDeprecated {
+-			failures: u32,
+-		},
++		#[codec(index = 17)]
++		ControllerBatchDeprecated { failures: u32 },
+ 		/// Staking balance migrated from locks to holds, with any balance that could not be held
+ 		/// is force withdrawn.
+-		CurrencyMigrated {
+-			stash: T::AccountId,
+-			force_withdraw: BalanceOf<T>,
+-		},
++		#[codec(index = 18)]
++		CurrencyMigrated { stash: T::AccountId, force_withdraw: BalanceOf<T> },
+ 		/// A page from a multi-page election was fetched. A number of these are followed by
+ 		/// `StakersElected`.
+ 		///
+@@ -1405,18 +1488,14 @@
+ 		///
+ 		/// The error indicates that a number of validators were dropped due to excess size, but
+ 		/// the overall election will continue.
+-		PagedElectionProceeded {
+-			page: PageIndex,
+-			result: Result<u32, u32>,
+-		},
++		#[codec(index = 20)]
++		PagedElectionProceeded { page: PageIndex, result: Result<u32, u32> },
+ 		/// An offence for the given validator, for the given percentage of their stake, at the
+ 		/// given era as been reported.
+-		OffenceReported {
+-			offence_era: EraIndex,
+-			validator: T::AccountId,
+-			fraction: Perbill,
+-		},
++		#[codec(index = 21)]
++		OffenceReported { offence_era: EraIndex, validator: T::AccountId, fraction: Perbill },
+ 		/// An offence has been processed and the corresponding slash has been computed.
++		#[codec(index = 22)]
+ 		SlashComputed {
+ 			offence_era: EraIndex,
+ 			slash_era: EraIndex,
+@@ -1424,14 +1503,13 @@
+ 			page: u32,
+ 		},
+ 		/// An unapplied slash has been cancelled.
+-		SlashCancelled {
+-			slash_era: EraIndex,
+-			validator: T::AccountId,
+-		},
++		#[codec(index = 23)]
++		SlashCancelled { slash_era: EraIndex, validator: T::AccountId },
+ 		/// Session change has been triggered.
+ 		///
+ 		/// If planned_era is one era ahead of active_era, it implies new era is being planned and
+ 		/// election is ongoing.
++		#[codec(index = 24)]
+ 		SessionRotated {
+ 			starting_session: SessionIndex,
+ 			active_era: EraIndex,
+@@ -1439,18 +1517,16 @@
+ 		},
+ 		/// Something occurred that should never happen under normal operation.
+ 		/// Logged as an event for fail-safe observability.
++		#[codec(index = 25)]
+ 		Unexpected(UnexpectedKind<T>),
+ 		/// An offence was reported that was too old to be processed, and thus was dropped.
+-		OffenceTooOld {
+-			offence_era: EraIndex,
+-			validator: T::AccountId,
+-			fraction: Perbill,
+-		},
++		#[codec(index = 26)]
++		OffenceTooOld { offence_era: EraIndex, validator: T::AccountId, fraction: Perbill },
+ 		/// An old era with the given index was pruned.
+-		EraPruned {
+-			index: EraIndex,
+-		},
++		#[codec(index = 27)]
++		EraPruned { index: EraIndex },
+ 		/// The validator has been paid their self-stake incentive bonus.
++		#[codec(index = 28)]
+ 		ValidatorIncentivePaid {
+ 			era: EraIndex,
+ 			validator_stash: T::AccountId,
+@@ -1458,11 +1534,24 @@
+ 			amount: BalanceOf<T>,
+ 		},
+ 		/// Validator self-stake incentive configuration has been updated.
++		#[codec(index = 29)]
+ 		ValidatorIncentiveConfigSet {
+ 			optimum_self_stake: BalanceOf<T>,
+ 			hard_cap_self_stake: BalanceOf<T>,
+ 			slope_factor: Perbill,
+ 		},
++
++		/// Retained historical wire variant.
++		#[codec(index = 3)]
++		SlashReported { validator: T::AccountId, fraction: Perbill, slash_era: EraIndex },
++
++		/// Retained historical wire variant.
++		#[codec(index = 5)]
++		StakersElected,
++
++		/// Retained historical wire variant.
++		#[codec(index = 10)]
++		StakingElectionFailed,
+ 	}
+ 
+ 	/// Represents unexpected or invariant-breaking conditions encountered during execution.
+@@ -1492,91 +1581,143 @@
+ 	#[derive(PartialEq)]
+ 	pub enum Error<T> {
+ 		/// Not a controller account.
++		#[codec(index = 0)]
+ 		NotController,
+ 		/// Not a stash account.
++		#[codec(index = 1)]
+ 		NotStash,
+ 		/// Stash is already bonded.
++		#[codec(index = 2)]
+ 		AlreadyBonded,
+ 		/// Controller is already paired.
++		#[codec(index = 3)]
+ 		AlreadyPaired,
+ 		/// Targets cannot be empty.
++		#[codec(index = 4)]
+ 		EmptyTargets,
+ 		/// Duplicate index.
++		#[codec(index = 5)]
+ 		DuplicateIndex,
+ 		/// Slash record not found.
++		#[codec(index = 34)]
+ 		InvalidSlashRecord,
+ 		/// Cannot bond, nominate or validate with value less than the minimum defined by
+ 		/// governance (see `MinValidatorBond` and `MinNominatorBond`). If unbonding is the
+ 		/// intention, `chill` first to remove one's role as validator/nominator.
++		#[codec(index = 7)]
+ 		InsufficientBond,
+ 		/// Can not schedule more unlock chunks.
++		#[codec(index = 8)]
+ 		NoMoreChunks,
+ 		/// Can not rebond without unlocking chunks.
++		#[codec(index = 9)]
+ 		NoUnlockChunk,
+ 		/// Attempting to target a stash that still has funds.
++		#[codec(index = 10)]
+ 		FundedTarget,
+ 		/// Invalid era to reward.
++		#[codec(index = 11)]
+ 		InvalidEraToReward,
+ 		/// Invalid number of nominations.
++		#[codec(index = 12)]
+ 		InvalidNumberOfNominations,
+ 		/// Rewards for this era have already been claimed for this validator.
++		#[codec(index = 14)]
+ 		AlreadyClaimed,
+ 		/// No nominators exist on this page.
++		#[codec(index = 15)]
+ 		InvalidPage,
+ 		/// Incorrect previous history depth input provided.
++		#[codec(index = 16)]
+ 		IncorrectHistoryDepth,
+ 		/// Internal state has become somehow corrupted and the operation cannot continue.
++		#[codec(index = 18)]
+ 		BadState,
+ 		/// Too many nomination targets supplied.
++		#[codec(index = 19)]
+ 		TooManyTargets,
+ 		/// A nomination target was supplied that was blocked or otherwise not a validator.
++		#[codec(index = 20)]
+ 		BadTarget,
+ 		/// The user has enough bond and thus cannot be chilled forcefully by an external person.
++		#[codec(index = 21)]
+ 		CannotChillOther,
+ 		/// There are too many nominators in the system. Governance needs to adjust the staking
+ 		/// settings to keep things safe for the runtime.
++		#[codec(index = 22)]
+ 		TooManyNominators,
+ 		/// There are too many validator candidates in the system. Governance needs to adjust the
+ 		/// staking settings to keep things safe for the runtime.
++		#[codec(index = 23)]
+ 		TooManyValidators,
+ 		/// Commission is too low. Must be at least `MinCommission`.
++		#[codec(index = 24)]
+ 		CommissionTooLow,
+ 		/// Some bound is not met.
++		#[codec(index = 25)]
+ 		BoundNotMet,
+ 		/// Used when attempting to use deprecated controller account logic.
++		#[codec(index = 26)]
+ 		ControllerDeprecated,
+ 		/// Cannot reset a ledger.
++		#[codec(index = 27)]
+ 		CannotRestoreLedger,
+ 		/// Provided reward destination is not allowed.
++		#[codec(index = 28)]
+ 		RewardDestinationRestricted,
+ 		/// Not enough funds available to withdraw.
++		#[codec(index = 29)]
+ 		NotEnoughFunds,
+ 		/// Operation not allowed for virtual stakers.
++		#[codec(index = 30)]
+ 		VirtualStakerNotAllowed,
+ 		/// Stash could not be reaped as other pallet might depend on it.
++		#[codec(index = 31)]
+ 		CannotReapStash,
+ 		/// The stake of this account is already migrated to `Fungible` holds.
++		#[codec(index = 32)]
+ 		AlreadyMigrated,
+ 		/// Era not yet started.
++		#[codec(index = 35)]
+ 		EraNotStarted,
+ 		/// Account is restricted from participation in staking. This may happen if the account is
+ 		/// staking in another way already, such as via pool.
++		#[codec(index = 33)]
+ 		Restricted,
+ 		/// Unapplied slashes in the recently concluded era is blocking this operation.
+ 		/// See `Call::apply_slash` to apply them.
++		#[codec(index = 36)]
+ 		UnappliedSlashesInPreviousEra,
+ 		/// The era is not eligible for pruning.
++		#[codec(index = 37)]
+ 		EraNotPrunable,
+ 		/// The slash has been cancelled and cannot be applied.
++		#[codec(index = 38)]
+ 		CancelledSlash,
+ 		/// Commission is higher than the allowed maximum `MaxCommission`.
++		#[codec(index = 39)]
+ 		CommissionTooHigh,
+ 		/// Optimum self-stake cannot be greater than hard cap.
++		#[codec(index = 40)]
+ 		OptimumGreaterThanCap,
+ 		/// Validator inactivity proof is invalid.
++		#[codec(index = 41)]
+ 		InvalidInactivityProof(InvalidInactivityProofError),
+ 		/// Cannot set [`ChillInactiveThreshold`] to the provided value.
++		#[codec(index = 42)]
+ 		InvalidChillInactiveThreshold,
++
++		/// Retained historical wire variant.
++		#[codec(index = 6)]
++		InvalidSlashIndex,
++
++		/// Retained historical wire variant.
++		#[codec(index = 13)]
++		NotSortedAndUnique,
++
++		/// Retained historical wire variant.
++		#[codec(index = 17)]
++		IncorrectSlashingSpans,
+ 	}
+ 
+ 	#[derive(Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo, PalletError)]
+@@ -1596,7 +1737,7 @@
+ 	impl<T: Config> Pallet<T> {
+ 		/// Apply previously-unapplied slashes on the beginning of a new era, after a delay.
+ 		pub fn apply_unapplied_slashes(active_era: EraIndex) -> Weight {
+-			let mut slashes = UnappliedSlashes::<T>::iter_prefix(&active_era).take(1);
++			let mut slashes = AsyncUnappliedSlashes::<T>::iter_prefix(&active_era).take(1);
+ 			if let Some((key, slash)) = slashes.next() {
+ 				crate::log!(
+ 					debug,
+@@ -1619,11 +1760,13 @@
+ 					slashing::apply_slash::<T>(slash, Self::offence_era_of(active_era));
+ 				}
+ 
+-				// Always remove the slash from UnappliedSlashes
+-				UnappliedSlashes::<T>::remove(&active_era, &key);
++				// Always remove the slash from AsyncUnappliedSlashes
++				AsyncUnappliedSlashes::<T>::remove(&active_era, &key);
+ 
+ 				// Check if there are more slashes for this era
+-				if UnappliedSlashes::<T>::iter_prefix(&active_era).next().is_none() {
++				if AsyncUnappliedSlashes::<T>::iter_prefix(&active_era).next().is_none() &&
++					!crate::legacy::has_pending_slashes::<T>(active_era)
++				{
+ 					// No more slashes for this era, clear CancelledSlashes
+ 					CancelledSlashes::<T>::remove(&active_era);
+ 				}
+@@ -1766,14 +1909,37 @@
+ 			// apply any pending slashes after `SlashDeferDuration`.
+ 			consumed_weight.saturating_accrue(T::DbWeight::get().reads(1));
+ 			if let Some(active_era) = ActiveEra::<T>::get() {
+-				let slash_weight = Self::apply_unapplied_slashes(active_era.index);
+-				consumed_weight.saturating_accrue(slash_weight);
++				if T::SlashDeferOffset::get() > 0 {
++					if let Some(application_era) =
++						NextDeferredSlashEra::<T>::get().filter(|era| *era <= active_era.index)
++					{
++						consumed_weight
++							.saturating_accrue(Self::apply_unapplied_slashes(application_era));
++						if !AsyncUnappliedSlashes::<T>::contains_prefix(application_era) {
++							NextDeferredSlashEra::<T>::put(application_era.saturating_add(1));
++						}
++					}
++					consumed_weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
++				} else {
++					consumed_weight
++						.saturating_accrue(Self::apply_unapplied_slashes(active_era.index));
++				}
++				consumed_weight
++					.saturating_accrue(crate::legacy::apply_pending_slashes::<T>(active_era.index));
+ 			}
+ 
+ 			consumed_weight
+ 		}
+ 
+ 		fn integrity_test() {
++			assert!(
++				T::AdditionalPayout::pays_native_reward() || !T::DisableMinting::get(),
++				"replacement rewards require the EraPayout mode"
++			);
++			assert!(
++				Self::deferred_slash_delay() <= T::BondingDuration::get(),
++				"slash delay including offset must not exceed bonding duration"
++			);
+ 			// ensure that we funnel the correct value to the `DataProvider::MaxVotesPerVoter`;
+ 			assert_eq!(
+ 				MaxNominationsOf::<T>::get(),
+@@ -1847,6 +2013,81 @@
+ 		/// NOTE: Two of the storage writes (`Self::bonded`, `Self::payee`) are _never_ cleaned
+ 		/// unless the `origin` falls below _existential deposit_ (or equal to 0) and gets removed
+ 		/// as dust.
++
++		/// Retain the historical root-only invulnerable configuration interface.
++		#[pallet::call_index(14)]
++		#[pallet::weight(T::DbWeight::get().writes(1))]
++		pub fn set_invulnerables(
++			origin: OriginFor<T>,
++			invulnerables: Vec<T::AccountId>,
++		) -> DispatchResult {
++			ensure_root(origin)?;
++			crate::legacy::Invulnerables::<T>::put(invulnerables);
++			Ok(())
++		}
++
++		/// Cancel entries by their historical index in the pre-migration slash queue.
++		#[pallet::call_index(17)]
++		#[pallet::weight(crate::legacy::cancel_weight::<T>(*era, slash_indices.len() as u32))]
++		pub fn cancel_deferred_slash(
++			origin: OriginFor<T>,
++			era: EraIndex,
++			slash_indices: Vec<u32>,
++		) -> DispatchResult {
++			T::AdminOrigin::ensure_origin(origin)?;
++			crate::legacy::cancel_deferred_slash::<T>(era, slash_indices)
++		}
++
++		/// Update the seven historical staking configuration fields.
++		#[pallet::call_index(22)]
++		#[pallet::weight(T::WeightInfo::set_staking_configs_all_set().max(T::WeightInfo::set_staking_configs_all_remove()))]
++		pub fn set_staking_configs(
++			origin: OriginFor<T>,
++			min_nominator_bond: ConfigOp<BalanceOf<T>>,
++			min_validator_bond: ConfigOp<BalanceOf<T>>,
++			max_nominator_count: ConfigOp<u32>,
++			max_validator_count: ConfigOp<u32>,
++			chill_threshold: ConfigOp<Percent>,
++			min_commission: ConfigOp<Perbill>,
++			max_staked_rewards: ConfigOp<Percent>,
++		) -> DispatchResult {
++			Self::set_async_staking_configs(
++				origin,
++				min_nominator_bond,
++				min_validator_bond,
++				max_nominator_count,
++				max_validator_count,
++				chill_threshold,
++				min_commission,
++				max_staked_rewards,
++				ConfigOp::Noop,
++				ConfigOp::Noop,
++			)
++		}
++
++		/// Report a governance slash through the asynchronous offence pipeline.
++		#[pallet::call_index(33)]
++		#[pallet::weight(crate::legacy::offence_weight::<T>(core::iter::once(0)))]
++		pub fn manual_slash(
++			origin: OriginFor<T>,
++			validator_stash: T::AccountId,
++			era: EraIndex,
++			slash_fraction: Perbill,
++		) -> DispatchResult {
++			T::AdminOrigin::ensure_origin(origin)?;
++			let session =
++				Rotator::<T>::era_start_session_index(era).ok_or(Error::<T>::InvalidEraToReward)?;
++			<Self as pallet_staking_async_rc_client::AHStakingInterface>::on_new_offences(
++				session,
++				alloc::vec![pallet_staking_async_rc_client::Offence {
++					offender: validator_stash,
++					reporters: Vec::new(),
++					slash_fraction,
++				}],
++			);
++			Ok(())
++		}
++
+ 		#[pallet::call_index(0)]
+ 		#[pallet::weight(T::WeightInfo::bond())]
+ 		pub fn bond(
+@@ -1926,7 +2167,7 @@
+ 		/// See also [`Call::withdraw_unbonded`].
+ 		#[pallet::call_index(2)]
+ 		#[pallet::weight(
+-            T::WeightInfo::withdraw_unbonded_kill().saturating_add(T::WeightInfo::unbond()))
++            T::WeightInfo::withdraw_unbonded_kill().saturating_add(T::WeightInfo::unbond()).saturating_add(Pallet::<T>::withdrawal_guard_weight()).saturating_add(crate::legacy::clear_stash_weight::<T>(0)))
+         ]
+ 		pub fn unbond(
+ 			origin: OriginFor<T>,
+@@ -1940,7 +2181,7 @@
+ 			// funds that have fully unbonded.
+ 			let maybe_withdraw_weight = {
+ 				if unlocking == T::MaxUnlockingChunks::get() as usize {
+-					Some(Self::do_withdraw_unbonded(&controller)?)
++					Some(Self::do_withdraw_unbonded(&controller, 0)?)
+ 				} else {
+ 					None
+ 				}
+@@ -2008,8 +2249,14 @@
+ 					<Self as sp_staking::StakingInterface>::nominator_bonding_duration()
+ 				};
+ 
+-				let era =
+-					session_rotation::Rotator::<T>::active_era().saturating_add(unbond_duration);
++				// Preserve the historical planned-era bonding deadline in the local policy.
++				// Withdrawals still consolidate against the active era, never the planned era.
++				let unbond_base = if T::SlashDeferOffset::get() > 0 {
++					CurrentEra::<T>::get().unwrap_or(active_era)
++				} else {
++					active_era
++				};
++				let era = unbond_base.saturating_add(unbond_duration);
+ 				if let Some(chunk) = ledger.unlocking.last_mut().filter(|chunk| chunk.era == era) {
+ 					// To keep the chunk count down, we only keep one chunk per era. Since
+ 					// `unlocking` is a FiFo queue, if a chunk exists for `era` we know that it will
+@@ -2029,7 +2276,7 @@
+ 					let _ = T::VoterList::on_update(&stash, Self::weight_of(&stash));
+ 				}
+ 
+-				Self::deposit_event(Event::<T>::Unbonded { stash, amount: value, era });
++				Self::deposit_event(Event::<T>::Unbonded { stash, amount: value });
+ 			}
+ 
+ 			let actual_weight = if let Some(withdraw_weight) = maybe_withdraw_weight {
+@@ -2062,17 +2309,17 @@
+ 		///
+ 		/// ## Parameters
+ 		///
+-		/// - `num_slashing_spans`: **Deprecated**. Retained only for backward compatibility; this
+-		///   parameter has no effect.
++		/// - `num_slashing_spans`: Maximum historical slashing spans to clear. An insufficient
++		///   value fails when retained span metadata exists.
+ 		#[pallet::call_index(3)]
+-		#[pallet::weight(T::WeightInfo::withdraw_unbonded_kill())]
++		#[pallet::weight(T::WeightInfo::withdraw_unbonded_kill().saturating_add(Pallet::<T>::withdrawal_guard_weight()).saturating_add(crate::legacy::clear_stash_weight::<T>(*num_slashing_spans)))]
+ 		pub fn withdraw_unbonded(
+ 			origin: OriginFor<T>,
+-			_num_slashing_spans: u32,
++			num_slashing_spans: u32,
+ 		) -> DispatchResultWithPostInfo {
+ 			let controller = ensure_signed(origin)?;
+ 
+-			let actual_weight = Self::do_withdraw_unbonded(&controller)?;
++			let actual_weight = Self::do_withdraw_unbonded(&controller, num_slashing_spans)?;
+ 			Ok(Some(actual_weight).into())
+ 		}
+ 
+@@ -2362,19 +2609,19 @@
+ 		/// ## Parameters
+ 		///
+ 		/// - `stash`: The stash account to be unstaked.
+-		/// - `num_slashing_spans`: **Deprecated**. This parameter is retained for backward
+-		/// compatibility. It no longer has any effect.
++		/// - `num_slashing_spans`: Maximum historical slashing spans to clear. An
++		/// insufficient value fails when retained historical span metadata exists.
+ 		#[pallet::call_index(15)]
+-		#[pallet::weight(T::WeightInfo::force_unstake())]
++		#[pallet::weight(T::WeightInfo::force_unstake().saturating_add(crate::legacy::clear_stash_weight::<T>(*num_slashing_spans)))]
+ 		pub fn force_unstake(
+ 			origin: OriginFor<T>,
+ 			stash: T::AccountId,
+-			_num_slashing_spans: u32,
++			num_slashing_spans: u32,
+ 		) -> DispatchResult {
+ 			ensure_root(origin)?;
+ 
+ 			// Remove all staking-related information and lock.
+-			Self::kill_stash(&stash)?;
++			Self::kill_stash(&stash, num_slashing_spans)?;
+ 
+ 			Ok(())
+ 		}
+@@ -2407,9 +2654,9 @@
+ 		///   the slash would be applied, not the era in which the offence was committed.
+ 		/// - `validator_slashes`: A list of validator stash accounts and their slash fractions to
+ 		///   be cancelled.
+-		#[pallet::call_index(17)]
++		#[pallet::call_index(36)]
+ 		#[pallet::weight(T::WeightInfo::cancel_deferred_slash(validator_slashes.len() as u32))]
+-		pub fn cancel_deferred_slash(
++		pub fn cancel_async_deferred_slash(
+ 			origin: OriginFor<T>,
+ 			era: EraIndex,
+ 			validator_slashes: Vec<(T::AccountId, Perbill)>,
+@@ -2457,7 +2704,8 @@
+ 		///
+ 		/// If all pages are claimed, it returns an error `InvalidPage`.
+ 		#[pallet::call_index(18)]
+-		#[pallet::weight(T::WeightInfo::payout_stakers_alive_staked(T::MaxExposurePageSize::get()))]
++		#[pallet::weight(T::WeightInfo::payout_stakers_alive_staked(T::MaxExposurePageSize::get())
++			.saturating_add(T::AdditionalPayout::weight(T::MaxExposurePageSize::get())))]
+ 		pub fn payout_stakers(
+ 			origin: OriginFor<T>,
+ 			validator_stash: T::AccountId,
+@@ -2530,14 +2778,14 @@
+ 		/// ## Parameters
+ 		///
+ 		/// - `stash`: The stash account to be reaped.
+-		/// - `num_slashing_spans`: **Deprecated**. This parameter is retained for backward
+-		/// compatibility. It no longer has any effect.
++		/// - `num_slashing_spans`: Maximum historical slashing spans to clear. An
++		/// insufficient value fails when retained historical span metadata exists.
+ 		#[pallet::call_index(20)]
+-		#[pallet::weight(T::WeightInfo::reap_stash())]
++		#[pallet::weight(T::WeightInfo::reap_stash().saturating_add(crate::legacy::clear_stash_weight::<T>(*num_slashing_spans)))]
+ 		pub fn reap_stash(
+ 			origin: OriginFor<T>,
+ 			stash: T::AccountId,
+-			_num_slashing_spans: u32,
++			num_slashing_spans: u32,
+ 		) -> DispatchResultWithPostInfo {
+ 			let _ = ensure_signed(origin)?;
+ 
+@@ -2555,7 +2803,7 @@
+ 			ensure!(reapable, Error::<T>::FundedTarget);
+ 
+ 			// Remove all staking-related information and lock.
+-			Self::kill_stash(&stash)?;
++			Self::kill_stash(&stash, num_slashing_spans)?;
+ 
+ 			Ok(Pays::No.into())
+ 		}
+@@ -2622,12 +2870,12 @@
+ 		/// to kick people under the new limits, `chill_other` should be called.
+ 		// We assume the worst case for this call is either: all items are set or all items are
+ 		// removed.
+-		#[pallet::call_index(22)]
++		#[pallet::call_index(38)]
+ 		#[pallet::weight(
+ 			T::WeightInfo::set_staking_configs_all_set()
+ 				.max(T::WeightInfo::set_staking_configs_all_remove())
+ 		)]
+-		pub fn set_staking_configs(
++		pub fn set_async_staking_configs(
+ 			origin: OriginFor<T>,
+ 			min_nominator_bond: ConfigOp<BalanceOf<T>>,
+ 			min_validator_bond: ConfigOp<BalanceOf<T>>,
+@@ -2825,7 +3073,8 @@
+ 		/// proportional to each page's stake. The full validator reward is the sum across all
+ 		/// pages.
+ 		#[pallet::call_index(26)]
+-		#[pallet::weight(T::WeightInfo::payout_stakers_alive_staked(T::MaxExposurePageSize::get()))]
++		#[pallet::weight(T::WeightInfo::payout_stakers_alive_staked(T::MaxExposurePageSize::get())
++			.saturating_add(T::AdditionalPayout::weight(T::MaxExposurePageSize::get())))]
+ 		pub fn payout_stakers_by_page(
+ 			origin: OriginFor<T>,
+ 			validator_stash: T::AccountId,
+@@ -3041,12 +3290,12 @@
+ 		/// This function exists as a **fallback mechanism** for this extreme situation, but we
+ 		/// never expect to encounter this in normal scenarios.
+ 		///
+-		/// The parameters for this call can be queried by looking at the `UnappliedSlashes` storage
+-		/// for eras older than the active era.
++		/// The parameters for this call can be queried by looking at the `AsyncUnappliedSlashes`
++		/// storage for eras older than the active era.
+ 		///
+ 		/// ## Parameters
+ 		/// - `slash_era`: The application era (`offence_era + SlashDeferDuration`), i.e. the key
+-		///   into [`UnappliedSlashes`].
++		///   into [`AsyncUnappliedSlashes`].
+ 		/// - `slash_key`: A unique identifier for the slash, represented as a tuple:
+ 		///   - `stash`: The stash account of the validator being slashed.
+ 		///   - `slash_fraction`: The fraction of the stake that was slashed.
+@@ -3079,7 +3328,7 @@
+ 				Error::<T>::CancelledSlash
+ 			);
+ 
+-			let unapplied_slash = UnappliedSlashes::<T>::take(&slash_era, &slash_key)
++			let unapplied_slash = AsyncUnappliedSlashes::<T>::take(&slash_era, &slash_key)
+ 				.ok_or(Error::<T>::InvalidSlashRecord)?;
+ 			slashing::apply_slash::<T>(unapplied_slash, Self::offence_era_of(slash_era));
+ 
+@@ -3131,7 +3380,7 @@
+ 		/// Sets the maximum commission that validators can set.
+ 		///
+ 		/// The dispatch origin must be `T::AdminOrigin`.
+-		#[pallet::call_index(33)]
++		#[pallet::call_index(37)]
+ 		#[pallet::weight(T::WeightInfo::set_max_commission())]
+ 		pub fn set_max_commission(origin: OriginFor<T>, new: Perbill) -> DispatchResult {
+ 			T::AdminOrigin::ensure_origin(origin)?;
+--- a/src/session_rotation.rs
++++ b/src/session_rotation.rs
+@@ -115,7 +115,7 @@
+ 	}
+ 
+ 	/// Returns validator commission for this era and page.
+-	pub(crate) fn get_validator_commission(era: EraIndex, stash: &T::AccountId) -> Perbill {
++	pub fn get_validator_commission(era: EraIndex, stash: &T::AccountId) -> Perbill {
+ 		Self::get_validator_prefs(era, stash).commission
+ 	}
+ 
+@@ -142,12 +142,14 @@
+ 	///
+ 	/// This builds a paged exposure from `PagedExposureMetadata` and `ExposurePage` of the
+ 	/// validator.
+-	pub(crate) fn get_paged_exposure(
++	pub fn get_paged_exposure(
+ 		era: EraIndex,
+ 		validator: &T::AccountId,
+ 		page: Page,
+ 	) -> Option<PagedExposure<T::AccountId, BalanceOf<T>>> {
+-		let overview = <ErasStakersOverview<T>>::get(&era, validator)?;
++		let Some(overview) = <ErasStakersOverview<T>>::get(&era, validator) else {
++			return crate::legacy::get_paged_exposure::<T>(era, validator, page);
++		};
+ 
+ 		// validator stake is added only in page zero.
+ 		let validator_stake = if page == 0 { overview.own } else { Zero::zero() };
+@@ -164,12 +166,12 @@
+ 	}
+ 
+ 	/// Get full exposure of the validator at a given era.
+-	pub(crate) fn get_full_exposure(
++	pub fn get_full_exposure(
+ 		era: EraIndex,
+ 		validator: &T::AccountId,
+ 	) -> Exposure<T::AccountId, BalanceOf<T>> {
+ 		let Some(overview) = <ErasStakersOverview<T>>::get(&era, validator) else {
+-			return Exposure::default();
++			return crate::legacy::get_full_exposure::<T>(era, validator);
+ 		};
+ 
+ 		let mut others = Vec::with_capacity(overview.nominator_count as usize);
+@@ -918,6 +920,8 @@
+ 	}
+ 
+ 	fn start_era_update_bonded_eras(starting_era: EraIndex, start_session: SessionIndex) {
++		crate::ErasStartSessionIndex::<T>::insert(starting_era, start_session);
++		Pallet::<T>::register_weight(T::DbWeight::get().writes(1));
+ 		let bonding_duration = T::BondingDuration::get();
+ 
+ 		BondedEras::<T>::mutate(|bonded| {
+@@ -968,11 +972,17 @@
+ 		let (validator_payout, remainder) =
+ 			T::EraPayout::era_payout(staked, issuance, era_duration);
+ 
+-		let total_payout = validator_payout.saturating_add(remainder);
+-		let max_staked_rewards = MaxStakedRewards::<T>::get().unwrap_or(Percent::from_percent(100));
+-
+-		let validator_payout = validator_payout.min(max_staked_rewards * total_payout);
+-		let remainder = total_payout.saturating_sub(validator_payout);
++		let pays_native_reward = T::AdditionalPayout::pays_native_reward();
++		let (validator_payout, remainder) = if pays_native_reward {
++			let total_payout = validator_payout.saturating_add(remainder);
++			let max_staked_rewards =
++				MaxStakedRewards::<T>::get().unwrap_or(Percent::from_percent(100));
++			let validator_payout = validator_payout.min(max_staked_rewards * total_payout);
++			(validator_payout, total_payout.saturating_sub(validator_payout))
++		} else {
++			// These amounts describe the replacement asset, not native inflation.
++			(validator_payout, remainder)
++		};
+ 
+ 		Pallet::<T>::deposit_event(Event::<T>::EraPaid {
+ 			era_index: ending_era.index,
+@@ -981,7 +991,9 @@
+ 		});
+ 
+ 		Eras::<T>::set_stakers_reward(ending_era.index, validator_payout);
+-		T::RewardRemainder::on_unbalanced(asset::issue::<T>(remainder));
++		if pays_native_reward {
++			T::RewardRemainder::on_unbalanced(asset::issue::<T>(remainder));
++		}
+ 	}
+ 
+ 	/// DAP end-era: snapshot from general reward pots into era-specific pots.
+--- a/src/slashing.rs
++++ b/src/slashing.rs
+@@ -41,9 +41,9 @@
+ //! Based on research at <https://research.web3.foundation/Polkadot/security/slashing/npos>
+ 
+ use crate::{
+-	asset, log, session_rotation::Eras, BalanceOf, Config, ErasStakersOverview,
+-	NegativeImbalanceOf, OffenceQueue, OffenceQueueEras, PagedExposure, Pallet, Perbill,
+-	ProcessingOffence, SlashRewardFraction, UnappliedSlash, UnappliedSlashes, WeightInfo,
++	asset, log, session_rotation::Eras, AsyncUnappliedSlashes, BalanceOf, Config,
++	ErasStakersOverview, NegativeImbalanceOf, OffenceQueue, OffenceQueueEras, PagedExposure,
++	Pallet, Perbill, ProcessingOffence, SlashRewardFraction, UnappliedSlash, WeightInfo,
+ };
+ use alloc::{vec, vec::Vec};
+ use codec::{Decode, Encode, MaxEncodedLen};
+@@ -136,8 +136,12 @@
+ 	}
+ 
+ 	// Nothing in processing offence. Try to enqueue the next offence.
+-	let Some(mut eras) = OffenceQueueEras::<T>::get() else { return None };
+-	let Some(&oldest_era) = eras.first() else { return None };
++	let Some(mut eras) = OffenceQueueEras::<T>::get() else {
++		return None;
++	};
++	let Some(&oldest_era) = eras.first() else {
++		return None;
++	};
+ 
+ 	let mut offence_iter = OffenceQueue::<T>::iter_prefix(oldest_era);
+ 	let next_offence = offence_iter.next();
+@@ -211,7 +215,7 @@
+ 
+ 	let slash_page = offence_record.exposure_page;
+ 	let slash_defer_duration = T::SlashDeferDuration::get();
+-	let slash_era = offence_era.saturating_add(slash_defer_duration);
++	let slash_era = offence_era.saturating_add(Pallet::<T>::deferred_slash_delay());
+ 
+ 	add_db_reads_writes(3, 3);
+ 	let Some(mut unapplied) = compute_slash::<T>(SlashParams {
+@@ -251,7 +255,15 @@
+ 	// add the reporter to the unapplied slash.
+ 	unapplied.reporter = offence_record.reporter;
+ 
+-	if slash_defer_duration == 0 {
++	if slash_defer_duration == 0 ||
++		(T::SlashDeferOffset::get() > 0 &&
++			slash_era <= crate::session_rotation::Rotator::<T>::active_era())
++	{
++		// Preserve late-report application with its original offence era. The queued
++		// path cannot be used once the application era has started.
++		if Pallet::<T>::check_slash_cancelled(slash_era, &offender, offence_record.slash_fraction) {
++			return T::WeightInfo::process_offence_queue();
++		}
+ 		// Apply right away.
+ 		log!(
+ 			debug,
+@@ -280,12 +292,21 @@
+ 			offence_record.reported_era,
+ 			slash_era,
+ 		);
+-		UnappliedSlashes::<T>::insert(
++		if T::SlashDeferOffset::get() > 0 {
++			crate::NextDeferredSlashEra::<T>::mutate(|cursor| {
++				*cursor = Some(cursor.map_or(slash_era, |previous| previous.min(slash_era)));
++			});
++		}
++		AsyncUnappliedSlashes::<T>::insert(
+ 			slash_era,
+ 			(offender, offence_record.slash_fraction, slash_page),
+ 			unapplied,
+ 		);
+-		T::WeightInfo::process_offence_queue()
++		T::WeightInfo::process_offence_queue().saturating_add(if T::SlashDeferOffset::get() > 0 {
++			T::DbWeight::get().reads_writes(1, 1)
++		} else {
++			Weight::zero()
++		})
+ 	}
+ }
+ 
+@@ -301,8 +322,12 @@
+ fn next_offence_validator_only<T: Config>(
+ ) -> Option<(EraIndex, T::AccountId, OffenceRecord<T::AccountId>)> {
+ 	// Try enqueue the next offence
+-	let Some(mut eras) = OffenceQueueEras::<T>::get() else { return None };
+-	let Some(&oldest_era) = eras.first() else { return None };
++	let Some(mut eras) = OffenceQueueEras::<T>::get() else {
++		return None;
++	};
++	let Some(&oldest_era) = eras.first() else {
++		return None;
++	};
+ 
+ 	let mut offence_iter = OffenceQueue::<T>::iter_prefix(oldest_era);
+ 	let next_offence = offence_iter.next();
+@@ -359,7 +384,7 @@
+ 	};
+ 
+ 	let slash_defer_duration = T::SlashDeferDuration::get();
+-	let slash_era = offence_era.saturating_add(slash_defer_duration);
++	let slash_era = offence_era.saturating_add(Pallet::<T>::deferred_slash_delay());
+ 
+ 	add_db_reads_writes(3, 3);
+ 	// For validator-only slashing, call slash_validator directly instead of compute_slash
+@@ -414,7 +439,15 @@
+ 	// add the reporter to the unapplied slash.
+ 	unapplied.reporter = offence_record.reporter;
+ 
+-	if slash_defer_duration == 0 {
++	if slash_defer_duration == 0 ||
++		(T::SlashDeferOffset::get() > 0 &&
++			slash_era <= crate::session_rotation::Rotator::<T>::active_era())
++	{
++		// Preserve late-report application with its original offence era. The queued
++		// path cannot be used once the application era has started.
++		if Pallet::<T>::check_slash_cancelled(slash_era, &offender, offence_record.slash_fraction) {
++			return T::WeightInfo::process_offence_queue();
++		}
+ 		// Apply right away.
+ 		log!(
+ 			debug,
+@@ -442,12 +475,21 @@
+ 			offence_record.reported_era,
+ 			slash_era,
+ 		);
+-		UnappliedSlashes::<T>::insert(
++		if T::SlashDeferOffset::get() > 0 {
++			crate::NextDeferredSlashEra::<T>::mutate(|cursor| {
++				*cursor = Some(cursor.map_or(slash_era, |previous| previous.min(slash_era)));
++			});
++		}
++		AsyncUnappliedSlashes::<T>::insert(
+ 			slash_era,
+ 			(offender, offence_record.slash_fraction, 0),
+ 			unapplied,
+ 		);
+-		T::WeightInfo::process_offence_queue()
++		T::WeightInfo::process_offence_queue().saturating_add(if T::SlashDeferOffset::get() > 0 {
++			T::DbWeight::get().reads_writes(1, 1)
++		} else {
++			Weight::zero()
++		})
+ 	}
+ }
+ 
+@@ -469,7 +511,9 @@
+ 	let Some(eras) = OffenceQueueEras::<T>::get() else {
+ 		return T::DbWeight::get().reads(2); // ProcessingOffence + OffenceQueueEras
+ 	};
+-	let Some(&oldest_era) = eras.first() else { return T::DbWeight::get().reads(2) };
++	let Some(&oldest_era) = eras.first() else {
++		return T::DbWeight::get().reads(2);
++	};
+ 
+ 	// Check the era-specific nominators slashable setting
+ 	// Additional read for ErasNominatorsSlashable
+--- a/src/tests/bonding.rs
++++ b/src/tests/bonding.rs
+@@ -139,6 +139,7 @@
+ 					total: 1000 * ed,
+ 					active: 1000 * ed,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 			// 21 must chill first: as a validator, unbonding below `min_validator_bond` is
+@@ -159,6 +160,7 @@
+ 					total: ed,
+ 					active: ed,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 		})
+@@ -186,6 +188,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -203,11 +206,12 @@
+ 				total: 1000 + 100,
+ 				active: 1000 + 100,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+ 		// when
+-		assert_ok!(Staking::bond_extra(RuntimeOrigin::signed(11), Balance::max_value()));
++		assert_ok!(Staking::bond_extra(RuntimeOrigin::signed(11), Balance::MAX));
+ 
+ 		// then
+ 		assert_eq!(
+@@ -217,6 +221,7 @@
+ 				total: 1000000,
+ 				active: 1000000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 	});
+@@ -252,6 +257,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 		assert_eq!(
+@@ -270,6 +276,7 @@
+ 				total: 1000 + 100,
+ 				active: 1000 + 100,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 		// Exposure is a snapshot! only updated after the next era update.
+@@ -289,6 +296,7 @@
+ 				total: 1000 + 100,
+ 				active: 1000 + 100,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 		// Exposure is now updated
+@@ -313,6 +321,7 @@
+ 					total: 11 * 1000,
+ 					active: 11 * 1000,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -330,6 +339,7 @@
+ 						value: 11 * 1000,
+ 						era: active_era() + 3
+ 					}],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -352,6 +362,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -359,7 +370,7 @@
+ 		Staking::unbond(RuntimeOrigin::signed(11), 500).unwrap();
+ 		assert_eq!(
+ 			staking_events_since_last_call(),
+-			vec![Event::Unbonded { stash: 11, amount: 500, era: active_era() + 3 }]
++			vec![Event::Unbonded { stash: 11, amount: 500 }]
+ 		);
+ 
+ 		// then
+@@ -370,6 +381,7 @@
+ 				total: 1000,
+ 				active: 500,
+ 				unlocking: bounded_vec![UnlockChunk { value: 500, era: active_era() + 3 }],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 
+@@ -385,6 +397,7 @@
+ 				total: 1000,
+ 				active: 500,
+ 				unlocking: bounded_vec![UnlockChunk { value: 500, era: active_era() + 3 }],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 
+@@ -400,6 +413,7 @@
+ 				total: 1000,
+ 				active: 500,
+ 				unlocking: bounded_vec![UnlockChunk { value: 500, era: 1 + 3 }],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 
+@@ -417,6 +431,7 @@
+ 				total: 1000,
+ 				active: 500,
+ 				unlocking: bounded_vec![UnlockChunk { value: 500, era: 1 + 3 }],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 
+@@ -432,7 +447,13 @@
+ 		// then
+ 		assert_eq!(
+ 			Staking::ledger(11.into()).unwrap(),
+-			StakingLedgerInspect { stash: 11, total: 500, active: 500, unlocking: bounded_vec![] },
++			StakingLedgerInspect {
++				stash: 11,
++				total: 500,
++				active: 500,
++				unlocking: bounded_vec![],
++				legacy_claimed_rewards: Default::default(),
++			},
+ 		);
+ 	});
+ }
+@@ -448,6 +469,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -455,7 +477,7 @@
+ 		Staking::unbond(RuntimeOrigin::signed(11), 500).unwrap();
+ 		assert_eq!(
+ 			staking_events_since_last_call(),
+-			vec![Event::Unbonded { stash: 11, amount: 500, era: active_era() + 3 }]
++			vec![Event::Unbonded { stash: 11, amount: 500 }]
+ 		);
+ 
+ 		// then
+@@ -466,6 +488,7 @@
+ 				total: 1000,
+ 				active: 500,
+ 				unlocking: bounded_vec![UnlockChunk { value: 500, era: active_era() + 3 }],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 
+@@ -475,7 +498,7 @@
+ 		Staking::unbond(RuntimeOrigin::signed(11), 250).unwrap();
+ 		assert_eq!(
+ 			staking_events_since_last_call(),
+-			vec![Event::Unbonded { stash: 11, amount: 250, era: active_era() + 3 }]
++			vec![Event::Unbonded { stash: 11, amount: 250 }]
+ 		);
+ 
+ 		// then
+@@ -489,6 +512,7 @@
+ 					UnlockChunk { value: 500, era: 1 + 3 },
+ 					UnlockChunk { value: 250, era: 2 + 3 }
+ 				],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 
+@@ -509,6 +533,7 @@
+ 				total: 500,
+ 				active: 250,
+ 				unlocking: bounded_vec![UnlockChunk { value: 250, era: 2 + 3 }],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 
+@@ -524,7 +549,13 @@
+ 		// then
+ 		assert_eq!(
+ 			Staking::ledger(11.into()).unwrap(),
+-			StakingLedgerInspect { stash: 11, total: 250, active: 250, unlocking: bounded_vec![] },
++			StakingLedgerInspect {
++				stash: 11,
++				total: 250,
++				active: 250,
++				unlocking: bounded_vec![],
++				legacy_claimed_rewards: Default::default(),
++			},
+ 		);
+ 	});
+ }
+@@ -539,8 +570,8 @@
+ 		assert_eq!(
+ 			staking_events_since_last_call(),
+ 			vec![
+-				Event::Unbonded { stash: 11, amount: 300, era: active_era() + 3 },
+-				Event::Unbonded { stash: 11, amount: 200, era: active_era() + 3 },
++				Event::Unbonded { stash: 11, amount: 300 },
++				Event::Unbonded { stash: 11, amount: 200 },
+ 			]
+ 		);
+ 
+@@ -552,6 +583,7 @@
+ 				total: 1000,
+ 				active: 500,
+ 				unlocking: bounded_vec![UnlockChunk { value: 500, era: active_era() + 3 }],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 	});
+@@ -565,10 +597,7 @@
+ 		assert_ok!(Staking::unbond(RuntimeOrigin::signed(11), 1000));
+ 		assert_eq!(
+ 			staking_events_since_last_call(),
+-			vec![
+-				Event::Chilled { stash: 11 },
+-				Event::Unbonded { stash: 11, amount: 1000, era: active_era() + 3 }
+-			]
++			vec![Event::Chilled { stash: 11 }, Event::Unbonded { stash: 11, amount: 1000 }]
+ 		);
+ 
+ 		// wait 3 eras
+@@ -611,7 +640,8 @@
+ 				stash: 11,
+ 				total: 1000,
+ 				active: 1000,
+-				unlocking: Default::default()
++				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -625,10 +655,7 @@
+ 
+ 		assert_eq!(
+ 			staking_events_since_last_call(),
+-			vec![
+-				Event::Chilled { stash: 11 },
+-				Event::Unbonded { stash: 11, amount: 1000, era: active_era() + 3 }
+-			]
++			vec![Event::Chilled { stash: 11 }, Event::Unbonded { stash: 11, amount: 1000 }]
+ 		);
+ 
+ 		// Validator is removed from the set
+@@ -649,6 +676,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -663,6 +691,7 @@
+ 				total: 1000,
+ 				active: 500,
+ 				unlocking: bounded_vec![UnlockChunk { value: 500, era: 1 + 3 }],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 
+@@ -677,6 +706,7 @@
+ 				total: 1000,
+ 				active: 250,
+ 				unlocking: bounded_vec![UnlockChunk { value: 500 + 250, era: 1 + 3 }],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 	});
+@@ -696,6 +726,7 @@
+ 					total: 1000,
+ 					active: 1000,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -718,6 +749,7 @@
+ 						UnlockChunk { value: 250, era: 2 + 7 },
+ 						UnlockChunk { value: 250, era: 3 + 7 },
+ 					],
++					legacy_claimed_rewards: Default::default(),
+ 				},
+ 			);
+ 
+@@ -738,6 +770,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -760,6 +793,7 @@
+ 					UnlockChunk { value: 250, era: 2 + 3 },
+ 					UnlockChunk { value: 250, era: 3 + 3 },
+ 				],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 
+@@ -778,6 +812,7 @@
+ 					UnlockChunk { value: 250, era: 3 + 3 },
+ 					UnlockChunk { value: 100, era: 4 + 3 },
+ 				],
++				legacy_claimed_rewards: Default::default(),
+ 			},
+ 		);
+ 	});
+@@ -797,6 +832,7 @@
+ 					total: 1000,
+ 					active: 1000,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -811,6 +847,7 @@
+ 					total: 1000,
+ 					active: 0,
+ 					unlocking: bounded_vec![UnlockChunk { value: 1000, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 		});
+@@ -831,6 +868,7 @@
+ 					total: 1000,
+ 					active: 1000,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -845,6 +883,7 @@
+ 					total: 1000,
+ 					active: 0,
+ 					unlocking: bounded_vec![UnlockChunk { value: 1000, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 		});
+@@ -861,6 +900,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -1014,6 +1054,7 @@
+ 					active: 0,
+ 					total: 5,
+ 					unlocking: bounded_vec![UnlockChunk { value: 5, era: 4 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1177,6 +1218,7 @@
+ 					total: 1000,
+ 					active: 1000,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1195,6 +1237,7 @@
+ 					total: 1000,
+ 					active: 100,
+ 					unlocking: bounded_vec![UnlockChunk { value: 900, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1207,6 +1250,7 @@
+ 					total: 1000,
+ 					active: 1000,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1219,6 +1263,7 @@
+ 					total: 1000,
+ 					active: 100,
+ 					unlocking: bounded_vec![UnlockChunk { value: 900, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1231,6 +1276,7 @@
+ 					total: 1000,
+ 					active: 600,
+ 					unlocking: bounded_vec![UnlockChunk { value: 400, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1243,6 +1289,7 @@
+ 					total: 1000,
+ 					active: 1000,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1257,6 +1304,7 @@
+ 					total: 1000,
+ 					active: 100,
+ 					unlocking: bounded_vec![UnlockChunk { value: 900, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1269,6 +1317,7 @@
+ 					total: 1000,
+ 					active: 600,
+ 					unlocking: bounded_vec![UnlockChunk { value: 400, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 		})
+@@ -1285,6 +1334,7 @@
+ 					total: 1000,
+ 					active: 1000,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1297,6 +1347,7 @@
+ 					total: 1000,
+ 					active: 600,
+ 					unlocking: bounded_vec![UnlockChunk { value: 400, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1314,6 +1365,7 @@
+ 						UnlockChunk { value: 400, era: 1 + 3 },
+ 						UnlockChunk { value: 300, era: 2 + 3 },
+ 					],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1332,6 +1384,7 @@
+ 						UnlockChunk { value: 300, era: 2 + 3 },
+ 						UnlockChunk { value: 200, era: 3 + 3 },
+ 					],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1347,6 +1400,7 @@
+ 						UnlockChunk { value: 400, era: 1 + 3 },
+ 						UnlockChunk { value: 100, era: 2 + 3 },
+ 					],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 		})
+@@ -1369,11 +1423,12 @@
+ 					total: 1000,
+ 					active: 100,
+ 					unlocking: bounded_vec![UnlockChunk { value: 900, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 			assert_eq!(
+ 				staking_events_since_last_call(),
+-				vec![Event::Unbonded { stash: 11, amount: 900, era: active_era() + 3 }]
++				vec![Event::Unbonded { stash: 11, amount: 900 }]
+ 			);
+ 
+ 			// Re-bond less than the total
+@@ -1385,6 +1440,7 @@
+ 					total: 1000,
+ 					active: 200,
+ 					unlocking: bounded_vec![UnlockChunk { value: 800, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 			assert_eq!(
+@@ -1401,6 +1457,7 @@
+ 					total: 1000,
+ 					active: 1000,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 			assert_eq!(
+@@ -1424,6 +1481,7 @@
+ 						total: 11 * 1000,
+ 						active: 11 * 1000,
+ 						unlocking: Default::default(),
++						legacy_claimed_rewards: Default::default(),
+ 					}
+ 				);
+ 
+@@ -1438,6 +1496,7 @@
+ 						total: 11 * 1000,
+ 						active: 0,
+ 						unlocking: bounded_vec![UnlockChunk { value: 11 * 1000, era: 4 }],
++						legacy_claimed_rewards: Default::default(),
+ 					}
+ 				);
+ 
+@@ -1585,7 +1644,7 @@
+ 				for (min_nominator, min_validator) in scenarios {
+ 					hypothetically!({
+ 						// WHEN governance applies this min-bond configuration.
+-						assert_ok!(Staking::set_staking_configs(
++						assert_ok!(Staking::set_async_staking_configs(
+ 							RuntimeOrigin::root(),
+ 							min_nominator.clone(),
+ 							min_validator.clone(),
+@@ -1623,7 +1682,7 @@
+ 				Ledger::<Test>::insert(11, StakingLedger::<Test>::new(11, 100));
+ 
+ 				// WHEN MinValidatorBond is raised far above the validator's bond.
+-				assert_ok!(Staking::set_staking_configs(
++				assert_ok!(Staking::set_async_staking_configs(
+ 					RuntimeOrigin::root(),
+ 					ConfigOp::Noop,
+ 					ConfigOp::Set(10_000),
+@@ -1845,7 +1904,7 @@
+ 				// when all 3 conditions are met.
+ 
+ 				// 1. No limits whatsoever
+-				assert_ok!(Staking::set_staking_configs(
++				assert_ok!(Staking::set_async_staking_configs(
+ 					RuntimeOrigin::root(),
+ 					ConfigOp::Remove,
+ 					ConfigOp::Remove,
+@@ -1869,7 +1928,7 @@
+ 				);
+ 
+ 				// 2. Change only the minimum bonds.
+-				assert_ok!(Staking::set_staking_configs(
++				assert_ok!(Staking::set_async_staking_configs(
+ 					RuntimeOrigin::root(),
+ 					ConfigOp::Set(1_500),
+ 					ConfigOp::Set(2_000),
+@@ -1893,7 +1952,7 @@
+ 				);
+ 
+ 				// 3. Add nominator/validator count limits, but no other threshold.
+-				assert_ok!(Staking::set_staking_configs(
++				assert_ok!(Staking::set_async_staking_configs(
+ 					RuntimeOrigin::root(),
+ 					ConfigOp::Remove,
+ 					ConfigOp::Remove,
+@@ -1917,7 +1976,7 @@
+ 				);
+ 
+ 				// 4. Add chill threshold, but no other limits
+-				assert_ok!(Staking::set_staking_configs(
++				assert_ok!(Staking::set_async_staking_configs(
+ 					RuntimeOrigin::root(),
+ 					ConfigOp::Noop,
+ 					ConfigOp::Noop,
+@@ -1941,7 +2000,7 @@
+ 				);
+ 
+ 				// 5. Add bond and count limits, but no threshold
+-				assert_ok!(Staking::set_staking_configs(
++				assert_ok!(Staking::set_async_staking_configs(
+ 					RuntimeOrigin::root(),
+ 					ConfigOp::Set(1_500),
+ 					ConfigOp::Set(2_000),
+@@ -1965,7 +2024,7 @@
+ 				);
+ 
+ 				// 6. Add bond and threshold limits, but no count limits
+-				assert_ok!(Staking::set_staking_configs(
++				assert_ok!(Staking::set_async_staking_configs(
+ 					RuntimeOrigin::root(),
+ 					ConfigOp::Noop,
+ 					ConfigOp::Noop,
+@@ -1989,7 +2048,7 @@
+ 				);
+ 
+ 				// 7. Add count limits and a chill threshold, but no bond limits
+-				assert_ok!(Staking::set_staking_configs(
++				assert_ok!(Staking::set_async_staking_configs(
+ 					RuntimeOrigin::root(),
+ 					ConfigOp::Remove,
+ 					ConfigOp::Remove,
+@@ -2013,7 +2072,7 @@
+ 				);
+ 
+ 				// 8. Add all limits
+-				assert_ok!(Staking::set_staking_configs(
++				assert_ok!(Staking::set_async_staking_configs(
+ 					RuntimeOrigin::root(),
+ 					ConfigOp::Set(1_500),
+ 					ConfigOp::Set(2_000),
+@@ -2062,7 +2121,7 @@
+ 			let history_depth = HistoryDepth::get();
+ 			let inactive_threshold = history_depth / 2;
+ 
+-			assert_ok!(Staking::set_staking_configs(
++			assert_ok!(Staking::set_async_staking_configs(
+ 				RuntimeOrigin::root(),
+ 				ConfigOp::Noop,
+ 				ConfigOp::Noop,
+@@ -2178,7 +2237,7 @@
+ 
+ 			// Change the maximums
+ 			let max = 10;
+-			assert_ok!(Staking::set_staking_configs(
++			assert_ok!(Staking::set_async_staking_configs(
+ 				RuntimeOrigin::root(),
+ 				ConfigOp::Set(10),
+ 				ConfigOp::Set(10),
+@@ -2251,7 +2310,7 @@
+ 			));
+ 
+ 			// No problem when we set to `None` again
+-			assert_ok!(Staking::set_staking_configs(
++			assert_ok!(Staking::set_async_staking_configs(
+ 				RuntimeOrigin::root(),
+ 				ConfigOp::Noop,
+ 				ConfigOp::Noop,
+--- a/src/tests/configs.rs
++++ b/src/tests/configs.rs
+@@ -21,7 +21,7 @@
+ fn set_staking_configs_works() {
+ 	ExtBuilder::default().build_and_execute(|| {
+ 		// setting works
+-		assert_ok!(Staking::set_staking_configs(
++		assert_ok!(Staking::set_async_staking_configs(
+ 			RuntimeOrigin::root(),
+ 			ConfigOp::Set(1_500),
+ 			ConfigOp::Set(2_000),
+@@ -44,7 +44,7 @@
+ 		assert_eq!(ChillInactiveThreshold::<Test>::get(), 10);
+ 
+ 		// noop does nothing
+-		assert_storage_noop!(assert_ok!(Staking::set_staking_configs(
++		assert_storage_noop!(assert_ok!(Staking::set_async_staking_configs(
+ 			RuntimeOrigin::root(),
+ 			ConfigOp::Noop,
+ 			ConfigOp::Noop,
+@@ -58,7 +58,7 @@
+ 		)));
+ 
+ 		// removing works
+-		assert_ok!(Staking::set_staking_configs(
++		assert_ok!(Staking::set_async_staking_configs(
+ 			RuntimeOrigin::root(),
+ 			ConfigOp::Remove,
+ 			ConfigOp::Remove,
+--- a/src/tests/force_unstake_kill_stash.rs
++++ b/src/tests/force_unstake_kill_stash.rs
+@@ -44,9 +44,9 @@
+ 	ExtBuilder::default().build_and_execute(|| {
+ 		assert_eq!(Staking::bonded(&11), Some(11));
+ 
+-		assert_noop!(Staking::kill_stash(&12), Error::<Test>::NotStash);
++		assert_noop!(Staking::kill_stash(&12, 0), Error::<Test>::NotStash);
+ 
+-		assert_ok!(Staking::kill_stash(&11));
++		assert_ok!(Staking::kill_stash(&11, 0));
+ 		assert_eq!(Staking::bonded(&11), None);
+ 	});
+ }
+--- a/src/tests/ledger.rs
++++ b/src/tests/ledger.rs
+@@ -270,6 +270,7 @@
+ 				Ledger::<Test>::insert(
+ 					ctlr,
+ 					StakingLedger {
++						legacy_claimed_rewards: Default::default(),
+ 						controller: None,
+ 						total: (10 + ctlr).into(),
+ 						active: (10 + ctlr).into(),
+@@ -345,7 +346,11 @@
+ 
+ 				Ledger::<Test>::insert(
+ 					ctlr,
+-					StakingLedger { controller: None, ..StakingLedger::default_from(stash) },
++					StakingLedger {
++						legacy_claimed_rewards: Default::default(),
++						controller: None,
++						..StakingLedger::default_from(stash)
++					},
+ 				);
+ 				Bonded::<Test>::insert(stash, ctlr);
+ 				Payee::<Test>::insert(stash, RewardDestination::Staked);
+@@ -398,7 +403,11 @@
+ 
+ 			Ledger::<Test>::insert(
+ 				ctlr,
+-				StakingLedger { controller: None, ..StakingLedger::default_from(stash) },
++				StakingLedger {
++					legacy_claimed_rewards: Default::default(),
++					controller: None,
++					..StakingLedger::default_from(stash)
++				},
+ 			);
+ 			Bonded::<Test>::insert(stash, ctlr);
+ 			#[allow(deprecated)]
+--- a/src/tests/mod.rs
++++ b/src/tests/mod.rs
+@@ -47,6 +47,7 @@
+ mod nominators_no_slashing;
+ mod payout_stakers;
+ mod slashing;
++mod sora_customizations;
+ mod try_state;
+ mod validator_incentive;
+ 
+@@ -101,6 +102,7 @@
+ 				total: 1500,
+ 				active: 1500,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -129,6 +131,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 		// Account 21 controls its own stash, which is 200 * balance_factor units
+@@ -139,6 +142,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 		// Account 1 does not control any stash
+@@ -162,6 +166,7 @@
+ 				total: 500,
+ 				active: 500,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 		assert_eq!(Nominators::<Test>::get(101).unwrap().targets, vec![11, 21]);
+@@ -412,6 +417,7 @@
+ 						total: 1000,
+ 						active: 1000,
+ 						unlocking: Default::default(),
++						legacy_claimed_rewards: Default::default(),
+ 					}
+ 				);
+ 				assert_eq!(
+@@ -429,6 +435,7 @@
+ 						total: 1000,
+ 						active: 0,
+ 						unlocking: bounded_vec![UnlockChunk { value: 1000, era: 4 }],
++						legacy_claimed_rewards: Default::default(),
+ 					},
+ 				);
+ 
+@@ -508,6 +515,7 @@
+ 					total: 1100,
+ 					active: 1100 - 200,
+ 					unlocking: bounded_vec![UnlockChunk { value: 200, era: 1 + 3 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1078,6 +1086,7 @@
+ // total: stake,
+ // active: stake,
+ // unlocking: Default::default(),
++// legacy_claimed_rewards: Default::default(),
+ // },
+ // );
+ // Set staker (unsafe, can reduce balance below actual stake)
+--- a/src/tests/nominators_no_slashing.rs
++++ b/src/tests/nominators_no_slashing.rs
+@@ -100,6 +100,7 @@
+ 				total: 500,
+ 				active: 500,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -110,11 +111,7 @@
+ 		assert_ok!(Staking::unbond(RuntimeOrigin::signed(101), 200));
+ 		assert_eq!(
+ 			staking_events_since_last_call(),
+-			vec![Event::Unbonded {
+-				stash: 101,
+-				amount: 200,
+-				era: active_era() + NominatorFastUnbondDuration::get()
+-			}]
++			vec![Event::Unbonded { stash: 101, amount: 200 }]
+ 		);
+ 
+ 		// Unlocking should be set to active_era + NominatorFastUnbondDuration (not active_era +
+@@ -129,6 +126,7 @@
+ 				// Unlocking era is active_era + NominatorFastUnbondDuration (not active_era +
+ 				// BondingDuration)
+ 				unlocking: bounded_vec![UnlockChunk { value: 200, era: fast_unbond_era }],
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -155,6 +153,7 @@
+ 				total: 300,
+ 				active: 300,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 	});
+@@ -172,6 +171,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -184,11 +184,7 @@
+ 		assert_ok!(Staking::unbond(RuntimeOrigin::signed(11), 200));
+ 		assert_eq!(
+ 			staking_events_since_last_call(),
+-			vec![Event::Unbonded {
+-				stash: 11,
+-				amount: 200,
+-				era: active_era() + BondingDuration::get()
+-			}]
++			vec![Event::Unbonded { stash: 11, amount: 200 }]
+ 		);
+ 
+ 		// Unlocking should be set to active_era + BondingDuration (not active_era +
+@@ -201,6 +197,7 @@
+ 				active: 800,
+ 				// Unlocking era is active_era + BondingDuration = 1 + 3 = 4
+ 				unlocking: bounded_vec![UnlockChunk { value: 200, era: era + bonding_duration }],
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -228,6 +225,7 @@
+ 				total: 800,
+ 				active: 800,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 	});
+@@ -370,6 +368,7 @@
+ 				// Unlocking era is active_era + NominatorFastUnbondDuration (not active_era +
+ 				// BondingDuration)
+ 				unlocking: bounded_vec![UnlockChunk { value: 200, era: fast_unbond_era }],
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -391,6 +390,7 @@
+ 				total: pool_stake - 200,
+ 				active: pool_stake - 200,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 	});
+@@ -656,11 +656,7 @@
+ 			assert_ok!(Staking::unbond(RuntimeOrigin::signed(alice), 998));
+ 			assert_eq!(
+ 				staking_events_since_last_call(),
+-				[Event::Unbonded {
+-					stash: alice,
+-					amount: 998,
+-					era: active_era() + BondingDuration::get()
+-				}]
++				[Event::Unbonded { stash: alice, amount: 998 }]
+ 			);
+ 
+ 			// Alice should still be a nominator
+@@ -687,6 +683,7 @@
+ 					total: 1000,
+ 					active: 2,
+ 					unlocking: bounded_vec![UnlockChunk { value: 998, era: validator_unbond_era }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+--- a/src/tests/payout_stakers.rs
++++ b/src/tests/payout_stakers.rs
+@@ -303,6 +303,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -330,6 +331,7 @@
+ 				total: 8500,
+ 				active: 8500,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 		// balance also updated
+@@ -366,6 +368,7 @@
+ 					total: 69,
+ 					active: 69,
+ 					unlocking: Default::default(),
++					legacy_claimed_rewards: Default::default(),
+ 				},
+ 			);
+ 
+@@ -413,6 +416,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -441,6 +445,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 	});
+@@ -461,6 +466,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 
+@@ -489,6 +495,7 @@
+ 				total: 1000,
+ 				active: 1000,
+ 				unlocking: Default::default(),
++				legacy_claimed_rewards: Default::default(),
+ 			}
+ 		);
+ 		assert_eq!(asset::total_balance::<T>(&7), 7500);
+@@ -579,7 +586,7 @@
+ 			}
+ 		);
+ 
+-		assert_ok!(Staking::set_staking_configs(
++		assert_ok!(Staking::set_async_staking_configs(
+ 			RuntimeOrigin::root(),
+ 			ConfigOp::Remove,
+ 			ConfigOp::Remove,
+--- a/src/tests/slashing.rs
++++ b/src/tests/slashing.rs
+@@ -925,6 +925,7 @@
+ 					total: 500,
+ 					stash: 101,
+ 					unlocking: bounded_vec![UnlockChunk { era: 4u32, value: 500 }],
++					legacy_claimed_rewards: Default::default(),
+ 				}
+ 			);
+ 
+@@ -1011,7 +1012,7 @@
+ 		);
+ 
+ 		assert_eq!(
+-			UnappliedSlashes::<T>::iter_prefix(&3).collect::<Vec<_>>(),
++			AsyncUnappliedSlashes::<T>::iter_prefix(&3).collect::<Vec<_>>(),
+ 			vec![
+ 				(
+ 					(11, Perbill::from_percent(10), 0),
+@@ -1040,12 +1041,12 @@
+ 
+ 		// fails if empty
+ 		assert_noop!(
+-			Staking::cancel_deferred_slash(RuntimeOrigin::root(), 3, vec![]),
++			Staking::cancel_async_deferred_slash(RuntimeOrigin::root(), 3, vec![]),
+ 			Error::<T>::EmptyTargets
+ 		);
+ 
+ 		// cancel the slash with 12% (which covers the 10% slash but not the 15% slash)
+-		assert_ok!(Staking::cancel_deferred_slash(
++		assert_ok!(Staking::cancel_async_deferred_slash(
+ 			RuntimeOrigin::root(),
+ 			3,
+ 			vec![(11, Perbill::from_percent(12))],
+@@ -1062,7 +1063,7 @@
+ 		// roll to the slashing era.
+ 		Session::roll_until_active_era(3);
+ 		// slash still exists in unapplied.
+-		assert_eq!(UnappliedSlashes::<T>::iter_prefix(&3).count(), 2);
++		assert_eq!(AsyncUnappliedSlashes::<T>::iter_prefix(&3).count(), 2);
+ 
+ 		// clear events from session rotation
+ 		let _ = staking_events_since_last_call();
+@@ -1071,7 +1072,7 @@
+ 		// first slash (10%) is cancelled, no events
+ 		assert_eq!(staking_events_since_last_call(), vec![]);
+ 		// one slash processed, one more to go
+-		assert_eq!(UnappliedSlashes::<T>::iter_prefix(&3).count(), 1);
++		assert_eq!(AsyncUnappliedSlashes::<T>::iter_prefix(&3).count(), 1);
+ 
+ 		Session::roll_next();
+ 		// second slash (15%) is NOT cancelled, so it gets applied
+@@ -1087,7 +1088,7 @@
+ 		assert_eq!(asset::stakeable_balance::<T>(&101), 488);
+ 
+ 		// all unapplied slashes should have been removed
+-		assert_eq!(UnappliedSlashes::<T>::iter_prefix(&3).count(), 0);
++		assert_eq!(AsyncUnappliedSlashes::<T>::iter_prefix(&3).count(), 0);
+ 		// cancelled slashes should have been cleared after all era slashes are applied.
+ 		assert_eq!(CancelledSlashes::<T>::get(&3), vec![]);
+ 	})
+@@ -1135,10 +1136,10 @@
+ 			);
+ 
+ 			// there are 3 slashes to be applied in era 3.
+-			assert_eq!(UnappliedSlashes::<T>::iter_prefix(&3).count(), 3);
++			assert_eq!(AsyncUnappliedSlashes::<T>::iter_prefix(&3).count(), 3);
+ 
+ 			// lets cancel 2 of them with their respective slash percentages.
+-			assert_ok!(Staking::cancel_deferred_slash(
++			assert_ok!(Staking::cancel_async_deferred_slash(
+ 				RuntimeOrigin::root(),
+ 				3,
+ 				vec![(11, Perbill::from_percent(10)), (21, Perbill::from_percent(10))]
+@@ -1150,7 +1151,7 @@
+ 			assert!(cancelled.contains(&(11, Perbill::from_percent(10))));
+ 			assert!(cancelled.contains(&(21, Perbill::from_percent(10))));
+ 
+-			let slashes = UnappliedSlashes::<T>::iter_prefix(&3).collect::<Vec<_>>();
++			let slashes = AsyncUnappliedSlashes::<T>::iter_prefix(&3).collect::<Vec<_>>();
+ 			assert_eq!(slashes.len(), 3);
+ 
+ 			// go to slash era.
+@@ -1175,7 +1176,7 @@
+ 			assert_eq!(slash_events[0], Event::Slashed { staker: 41, amount: 1000 });
+ 
+ 			// all unapplied slashes are cleared
+-			assert_eq!(UnappliedSlashes::<T>::iter_prefix(&3).count(), 0);
++			assert_eq!(AsyncUnappliedSlashes::<T>::iter_prefix(&3).count(), 0);
+ 
+ 			// also the cancelled slashes are removed since after this era they are no longer
+ 			// needed.
+@@ -1221,10 +1222,10 @@
+ 
+ 			// With defer duration 2, slashes from era 1 will be applied in era 3
+ 			// All 10 slash entries should exist
+-			assert_eq!(UnappliedSlashes::<T>::iter_prefix(&3).count(), 10);
++			assert_eq!(AsyncUnappliedSlashes::<T>::iter_prefix(&3).count(), 10);
+ 
+ 			// Governance cancels all slashes for validator 11 by setting 100% cancellation
+-			assert_ok!(Staking::cancel_deferred_slash(
++			assert_ok!(Staking::cancel_async_deferred_slash(
+ 				RuntimeOrigin::root(),
+ 				3,
+ 				vec![(11, Perbill::from_percent(100))],
+@@ -1262,7 +1263,7 @@
+ 			assert_eq!(asset::stakeable_balance::<T>(&101), 500);
+ 
+ 			// Verify all storages are cleaned up
+-			assert_eq!(UnappliedSlashes::<T>::iter_prefix(&3).count(), 0);
++			assert_eq!(AsyncUnappliedSlashes::<T>::iter_prefix(&3).count(), 0);
+ 			assert_eq!(CancelledSlashes::<T>::get(&3), vec![]);
+ 		})
+ }
+@@ -1284,10 +1285,10 @@
+ 		// Verify the slash is scheduled for era 3
+ 		let slash_era = 3;
+ 		let slash_key = (11, Perbill::from_percent(10), 0);
+-		assert!(UnappliedSlashes::<T>::contains_key(&slash_era, &slash_key));
++		assert!(AsyncUnappliedSlashes::<T>::contains_key(&slash_era, &slash_key));
+ 
+ 		// Governance cancels this slash
+-		assert_ok!(Staking::cancel_deferred_slash(
++		assert_ok!(Staking::cancel_async_deferred_slash(
+ 			RuntimeOrigin::root(),
+ 			slash_era,
+ 			vec![(11, Perbill::from_percent(10))],
+@@ -1312,8 +1313,8 @@
+ 			Error::<T>::CancelledSlash
+ 		);
+ 
+-		// Verify the slash is still in UnappliedSlashes
+-		assert!(UnappliedSlashes::<T>::contains_key(&slash_era, &slash_key));
++		// Verify the slash is still in AsyncUnappliedSlashes
++		assert!(AsyncUnappliedSlashes::<T>::contains_key(&slash_era, &slash_key));
+ 
+ 		// Verify no actual slash was applied (balance remains unchanged)
+ 		assert_eq!(asset::stakeable_balance::<T>(&11), 1000);
+@@ -1705,7 +1706,7 @@
+ #[test]
+ fn apply_slash_paths_agree_on_unbonding_chunk_at_offence_era() {
+ 	// Both the public `apply_slash` extrinsic and the automatic `on_initialize` path drain
+-	// the same UnappliedSlashes record and must produce identical on-ledger outcomes. The
++	// the same AsyncUnappliedSlashes record and must produce identical on-ledger outcomes. The
+ 	// 30% fraction is chosen so the proportional branch in `Ledger::slash` actually hits the
+ 	// chunk; at 100% the active-first fallback would consume the chunk regardless and hide
+ 	// any path divergence.
+@@ -1730,7 +1731,7 @@
+ 			);
+ 			add_slash_in_era(alice, offence_era, Perbill::from_percent(30));
+ 			Session::roll_next();
+-			assert_eq!(UnappliedSlashes::<T>::iter_prefix(&slash_era).count(), 1);
++			assert_eq!(AsyncUnappliedSlashes::<T>::iter_prefix(&slash_era).count(), 1);
+ 
+ 			Session::roll_until_active_era(slash_era);
+ 
+@@ -1749,7 +1750,7 @@
+ 			// WHEN: the permissionless extrinsic applies the slash before the auto path.
+ 			hypothetically!({
+ 				let (slash_key, _) =
+-					UnappliedSlashes::<T>::iter_prefix(&slash_era).next().expect("queued");
++					AsyncUnappliedSlashes::<T>::iter_prefix(&slash_era).next().expect("queued");
+ 				assert_ok!(Staking::apply_slash(RuntimeOrigin::signed(1), slash_era, slash_key,));
+ 				// THEN: chunk is slashed proportionally.
+ 				assert_post_slash();
+@@ -1758,7 +1759,7 @@
+ 			// WHEN: the auto path drains the record at the application era.
+ 			hypothetically!({
+ 				Session::roll_next();
+-				assert_eq!(UnappliedSlashes::<T>::iter_prefix(&slash_era).count(), 0);
++				assert_eq!(AsyncUnappliedSlashes::<T>::iter_prefix(&slash_era).count(), 0);
+ 				// THEN: same proportional outcome.
+ 				assert_post_slash();
+ 			});
+@@ -1840,7 +1841,10 @@
+ 				assert_eq!(ProcessingOffence::<T>::get(), None);
+ 
+ 				// ensure no unapplied slashes for era 5 (offence_era + slash_defer_duration).
+-				assert_eq!(UnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(), 0);
++				assert_eq!(
++					AsyncUnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(),
++					0
++				);
+ 
+ 				// Checkpoint 1: advancing to next block will compute the first page of slash.
+ 				Session::roll_next();
+@@ -1881,7 +1885,7 @@
+ 				);
+ 
+ 				// unapplied slashes for era 5.
+-				let slashes = UnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>();
++				let slashes = AsyncUnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>();
+ 
+ 				// only one unapplied slash exists.
+ 				assert_eq!(slashes.len(), 1);
+@@ -1922,7 +1926,10 @@
+ 				);
+ 
+ 				// there are two unapplied slashes for era 4.
+-				assert_eq!(UnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(), 2);
++				assert_eq!(
++					AsyncUnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(),
++					2
++				);
+ 
+ 				// ensure the last page of offence is processed.
+ 				// (offence is processed in reverse order of pages)
+@@ -1944,29 +1951,44 @@
+ 				// no processing offence.
+ 				assert!(ProcessingOffence::<T>::get().is_none());
+ 				// total of 4 unapplied slash.
+-				assert_eq!(UnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(), 4);
++				assert_eq!(
++					AsyncUnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(),
++					4
++				);
+ 
+ 				// Checkpoint 4: lets verify the application of slashes in multiple blocks.
+ 				// advance to era 4.
+ 				Session::roll_until_active_era(5);
+ 				// slashes are not applied just yet. From next blocks, they will be applied.
+-				assert_eq!(UnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(), 4);
++				assert_eq!(
++					AsyncUnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(),
++					4
++				);
+ 
+ 				// advance to next block.
+ 				Session::roll_next();
+ 				// 1 slash is applied.
+-				assert_eq!(UnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(), 3);
++				assert_eq!(
++					AsyncUnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(),
++					3
++				);
+ 
+ 				// advance two blocks.
+ 				Session::roll_next();
+ 				Session::roll_next();
+ 				// 2 more slashes are applied.
+-				assert_eq!(UnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(), 1);
++				assert_eq!(
++					AsyncUnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(),
++					1
++				);
+ 
+ 				// advance one more block.
+ 				Session::roll_next();
+ 				// all slashes are applied.
+-				assert_eq!(UnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(), 0);
++				assert_eq!(
++					AsyncUnappliedSlashes::<T>::iter_prefix(&5).collect::<Vec<_>>().len(),
++					0
++				);
+ 
+ 				// ensure all stakers are slashed correctly.
+ 				assert_eq!(asset::staked::<T>(&11), 1000 - 100);
+@@ -2043,7 +2065,10 @@
+ 			assert!(OffenceQueue::<T>::get(2, 11).is_none());
+ 			assert!(OffenceQueueEras::<T>::get().is_none());
+ 			// unapplied slash is created for the offence.
+-			assert!(UnappliedSlashes::<T>::contains_key(2 + 3, (11, Perbill::from_percent(15), 0)));
++			assert!(AsyncUnappliedSlashes::<T>::contains_key(
++				2 + 3,
++				(11, Perbill::from_percent(15), 0)
++			));
+ 
+ 			// Scenario 2A: offence has **lower** slash fraction than the previous offence.
+ 			add_slash_with_percent(11, 14);
+@@ -2081,9 +2106,9 @@
+ 			// there are now two slash records for 11, for era 5, with the newer one only slashing
+ 			// the diff between slash fractions of 16 and 15.
+ 			let slash_one =
+-				UnappliedSlashes::<T>::get(2 + 3, (11, Perbill::from_percent(15), 0)).unwrap();
++				AsyncUnappliedSlashes::<T>::get(2 + 3, (11, Perbill::from_percent(15), 0)).unwrap();
+ 			let slash_two =
+-				UnappliedSlashes::<T>::get(2 + 3, (11, Perbill::from_percent(16), 0)).unwrap();
++				AsyncUnappliedSlashes::<T>::get(2 + 3, (11, Perbill::from_percent(16), 0)).unwrap();
+ 			assert!(slash_one.own > slash_two.own);
+ 		});
+ 	}
+--- /dev/null
++++ b/src/tests/sora_customizations.rs
+@@ -0,0 +1,380 @@
++// SPDX-License-Identifier: Apache-2.0
++//! SORA Nexus compatibility policies exercised against the upstream asynchronous state machine.
++use super::*;
++use crate::session_rotation::Eras;
++use frame_support::{
++	dispatch::{GetDispatchInfo, WithPostDispatchInfo},
++	StorageDoubleMap,
++};
++
++fn prepare_reward() {
++	Staking::reward_by_ids(vec![(11, 10)]);
++	Session::roll_until_active_era(2);
++	assert!(ErasValidatorReward::<Test>::get(1).unwrap() > 0);
++}
++
++#[test]
++fn replacement_reward_preserves_native_balances_and_staked_ledgers() {
++	for by_page in [false, true] {
++		ExtBuilder::default().legacy_reward_mode().build_and_execute(|| {
++			prepare_reward();
++			let exposure = Eras::<Test>::get_paged_exposure(1, &11, 0).unwrap();
++			let recipients: Vec<_> = core::iter::once(11)
++				.chain(exposure.others().iter().map(|other| other.who))
++				.collect();
++			for who in &recipients {
++				Payee::<Test>::insert(who, RewardDestination::Staked);
++			}
++			let before: Vec<_> = recipients
++				.iter()
++				.map(|who| {
++					(
++						*who,
++						asset::total_balance::<Test>(who),
++						Staking::ledger(StakingAccount::Stash(*who)).unwrap(),
++					)
++				})
++				.collect();
++			let issuance = asset::total_issuance::<Test>();
++			sp_io::storage::set(REPLACEMENT_REWARD_MODE, &[1]);
++			sp_io::storage::set(ADDITIONAL_PAYOUT_MODE, &[1]);
++			let result = if by_page {
++				Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 1, 0)
++			} else {
++				Staking::payout_stakers(RuntimeOrigin::signed(1337), 11, 1)
++			};
++			assert_ok!(result);
++			assert_eq!(
++				result.unwrap().actual_weight,
++				Some(
++					<Test as Config>::WeightInfo::payout_stakers_alive_staked(0).saturating_add(
++						MockAdditionalPayout::weight(exposure.others().len() as u32)
++					)
++				)
++			);
++			assert_eq!(asset::total_issuance::<Test>(), issuance);
++			for (who, balance, ledger) in before {
++				assert_eq!(asset::total_balance::<Test>(&who), balance);
++				assert_eq!(Staking::ledger(StakingAccount::Stash(who)).unwrap(), ledger);
++			}
++			assert_eq!(ClaimedRewards::<Test>::get(1, 11), vec![0]);
++			assert_eq!(
++				sp_io::storage::get(ADDITIONAL_PAYOUT_RECORD).unwrap().as_ref(),
++				&(11u64, 1u32, 0u32).encode()[..]
++			);
++		});
++	}
++}
++
++#[test]
++fn additional_payout_failure_rolls_back_claim_hook_writes_and_events() {
++	for replacement in [false, true] {
++		for by_page in [false, true] {
++			ExtBuilder::default().legacy_reward_mode().build_and_execute(|| {
++				prepare_reward();
++				if replacement {
++					sp_io::storage::set(REPLACEMENT_REWARD_MODE, &[1]);
++				}
++				sp_io::storage::set(ADDITIONAL_PAYOUT_MODE, &[2]);
++				let weight = <Test as Config>::WeightInfo::payout_stakers_alive_staked(
++					MaxExposurePageSize::get(),
++				)
++				.saturating_add(MockAdditionalPayout::weight(MaxExposurePageSize::get()));
++				assert_noop!(
++					if by_page {
++						Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 1, 0)
++					} else {
++						Staking::payout_stakers(RuntimeOrigin::signed(1337), 11, 1)
++					},
++					sp_runtime::DispatchError::Other("additional reward failed")
++						.with_weight(weight)
++				);
++				assert!(ClaimedRewards::<Test>::get(1, 11).is_empty());
++				assert!(!sp_io::storage::exists(ADDITIONAL_PAYOUT_RECORD));
++				sp_io::storage::set(ADDITIONAL_PAYOUT_MODE, &[3]);
++				System::reset_events();
++				assert_ok!(Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 1, 0));
++				if replacement {
++					assert_eq!(
++						staking_events(),
++						vec![
++							Event::PayoutStarted {
++								era_index: 1,
++								validator_stash: 11,
++								page: 0,
++								next: None
++							},
++							Event::Rewarded {
++								stash: 11,
++								dest: RewardDestination::Stash,
++								amount: 1
++							},
++						]
++					);
++				}
++			});
++		}
++	}
++}
++
++#[test]
++fn replacement_reward_budget_bypasses_native_cap_and_remainder() {
++	ExtBuilder::default().legacy_reward_mode().build_and_execute(|| {
++		sp_io::storage::set(REPLACEMENT_REWARD_MODE, &[1]);
++		MaxStakedRewards::<Test>::set(Some(Percent::from_percent(1)));
++		RewardRemainderUnbalanced::set(0);
++		let total = time_per_era() as Balance;
++		let remainder = RemainderRatio::get() * total;
++		let issuance = asset::total_issuance::<Test>();
++		Session::roll_until_active_era(2);
++		assert_eq!(ErasValidatorReward::<Test>::get(1), Some(total - remainder));
++		assert_eq!(asset::total_issuance::<Test>(), issuance);
++		assert_eq!(RewardRemainderUnbalanced::get(), 0);
++	});
++}
++
++#[test]
++fn additional_payout_weight_is_retained_for_zero_reward() {
++	ExtBuilder::default().legacy_reward_mode().build_and_execute(|| {
++		prepare_reward();
++		ErasValidatorReward::<Test>::insert(1, 0);
++		sp_io::storage::set(ADDITIONAL_PAYOUT_MODE, &[1]);
++		let exposure = Eras::<Test>::get_paged_exposure(1, &11, 0).unwrap();
++		let declared =
++			<Test as Config>::WeightInfo::payout_stakers_alive_staked(MaxExposurePageSize::get())
++				.saturating_add(MockAdditionalPayout::weight(MaxExposurePageSize::get()));
++		assert_eq!(
++			Call::<Test>::payout_stakers { validator_stash: 11, era: 1 }
++				.get_dispatch_info()
++				.call_weight,
++			declared
++		);
++		assert_eq!(
++			Call::<Test>::payout_stakers_by_page { validator_stash: 11, era: 1, page: 0 }
++				.get_dispatch_info()
++				.call_weight,
++			declared
++		);
++		let result =
++			Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 1, 0).unwrap();
++		assert_eq!(
++			result.actual_weight,
++			Some(
++				<Test as Config>::WeightInfo::payout_stakers_alive_staked(0)
++					.saturating_add(MockAdditionalPayout::weight(exposure.others().len() as u32))
++			)
++		);
++		assert!(sp_io::storage::exists(ADDITIONAL_PAYOUT_RECORD));
++	});
++}
++
++#[test]
++fn legacy_ledger_claim_prevents_duplicate_reward() {
++	ExtBuilder::default().legacy_reward_mode().build_and_execute(|| {
++		prepare_reward();
++		Ledger::<Test>::mutate(11, |ledger| {
++			ledger.as_mut().unwrap().legacy_claimed_rewards.try_push(1).unwrap()
++		});
++		assert_noop!(
++			Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 1, 0),
++			Error::<Test>::AlreadyClaimed
++				.with_weight(<Test as Config>::WeightInfo::payout_stakers_alive_staked(0))
++		);
++	});
++}
++
++#[test]
++fn deferred_slash_offset_preserves_original_era_and_immediate_mode() {
++	ExtBuilder::default().build_and_execute(|| {
++		SlashDeferOffset::set(1);
++		SlashDeferDuration::set(2);
++		assert_eq!(Staking::deferred_slash_delay(), 3);
++		assert_eq!(Staking::offence_era_of(4), 1);
++		SlashDeferDuration::set(0);
++		assert_eq!(Staking::deferred_slash_delay(), 0);
++		assert_eq!(Staking::offence_era_of(4), 4);
++	});
++}
++
++#[test]
++fn deferred_slash_offset_holds_same_era_unlocks_until_queue_applies() {
++	ExtBuilder::default().slash_defer_duration(2).build_and_execute(|| {
++		SlashDeferOffset::set(1);
++		add_slash(11);
++		Session::roll_next();
++		assert!(AsyncUnappliedSlashes::<Test>::contains_prefix(4));
++		assert!(!AsyncUnappliedSlashes::<Test>::contains_prefix(3));
++		assert_ok!(Staking::chill(RuntimeOrigin::signed(11)));
++		assert_ok!(Staking::unbond(RuntimeOrigin::signed(11), 1000));
++		Session::roll_until_active_era(3);
++		assert_eq!(asset::stakeable_balance::<Test>(&11), 1000);
++		Session::roll_until_active_era(4);
++		assert_noop!(
++			Staking::withdraw_unbonded(RuntimeOrigin::signed(11), 0),
++			Error::<Test>::UnappliedSlashesInPreviousEra
++		);
++		Session::roll_next();
++		assert_eq!(asset::stakeable_balance::<Test>(&11), 900);
++		assert_ok!(Staking::withdraw_unbonded(RuntimeOrigin::signed(11), 0));
++		assert!(!Bonded::<Test>::contains_key(11));
++	});
++}
++
++#[test]
++fn deferred_slash_offset_late_report_and_increment_are_applied_without_stranding() {
++	ExtBuilder::default().slash_defer_duration(2).build_and_execute(|| {
++		SlashDeferOffset::set(1);
++		Session::roll_until_active_era(4);
++		add_slash_in_era(11, 1, Perbill::from_percent(10));
++		Session::roll_next();
++		assert_eq!(asset::stakeable_balance::<Test>(&11), 900);
++		assert!(!AsyncUnappliedSlashes::<Test>::contains_prefix(4));
++		add_slash_in_era(11, 1, Perbill::from_percent(20));
++		Session::roll_next();
++		assert_eq!(asset::stakeable_balance::<Test>(&11), 800);
++		assert!(!AsyncUnappliedSlashes::<Test>::contains_prefix(4));
++	});
++}
++
++#[test]
++fn historical_exposure_page_metadata_and_encoding_are_preserved() {
++	type HistoricalPage = sp_staking::ExposurePage<u64, u128>;
++	assert_eq!(
++		scale_info::meta_type::<BoundedExposurePage<Test>>(),
++		scale_info::meta_type::<HistoricalPage>()
++	);
++	assert_eq!(
++		<BoundedExposurePage<Test> as scale_info::TypeInfo>::type_info(),
++		<HistoricalPage as scale_info::TypeInfo>::type_info()
++	);
++	let exposure = HistoricalPage {
++		page_total: 123,
++		others: vec![IndividualExposure { who: 42, value: 123 }],
++	};
++	let encoded = exposure.encode();
++	let bounded = BoundedExposurePage::<Test>::decode(&mut encoded.as_slice()).unwrap();
++	assert_eq!(bounded.encode(), encoded);
++	assert_eq!(bounded.0, exposure);
++}
++
++#[test]
++fn historical_event_error_and_call_encodings_are_preserved() {
++	// These numeric tags and field tuples are part of the production runtime interface.
++	assert_eq!(
++		Event::<Test>::Rewarded { stash: 11, dest: RewardDestination::Stash, amount: 9 }.encode(),
++		(1u8, 11u64, RewardDestination::<u64>::Stash, 9u128).encode()
++	);
++	assert_eq!(
++		Event::<Test>::Unbonded { stash: 11, amount: 9 }.encode(),
++		(7u8, 11u64, 9u128).encode()
++	);
++	assert_eq!(
++		Event::<Test>::PayoutStarted { era_index: 2, validator_stash: 11, page: 3, next: Some(4) }
++			.encode(),
++		(12u8, 2u32, 11u64, 3u32, Some(4u32)).encode()
++	);
++	assert_eq!(Error::<Test>::InvalidSlashIndex.encode(), vec![6]);
++	assert_eq!(Error::<Test>::NotSortedAndUnique.encode(), vec![13]);
++	assert_eq!(Error::<Test>::AlreadyClaimed.encode(), vec![14]);
++	assert_eq!(Error::<Test>::Restricted.encode(), vec![33]);
++	assert_eq!(
++		Call::<Test>::cancel_deferred_slash { era: 2, slash_indices: vec![1, 3] }.encode(),
++		(17u8, 2u32, vec![1u32, 3u32]).encode()
++	);
++	assert_eq!(
++		Call::<Test>::set_invulnerables { invulnerables: vec![11] }.encode(),
++		(14u8, vec![11u64]).encode()
++	);
++	assert_eq!(
++		Call::<Test>::manual_slash {
++			validator_stash: 11,
++			era: 2,
++			slash_fraction: Perbill::from_percent(10),
++		}
++		.encode(),
++		(33u8, 11u64, 2u32, Perbill::from_percent(10)).encode()
++	);
++}
++
++#[test]
++fn deferred_slash_cursor_drains_backlog_after_era_advances() {
++	ExtBuilder::default().slash_defer_duration(2).build_and_execute(|| {
++		SlashDeferOffset::set(1);
++		// A backlog larger than an era must remain executable at its original deadline.
++		for page in 0..100 {
++			AsyncUnappliedSlashes::<Test>::insert(
++				4,
++				(11, Perbill::from_percent(10), page),
++				UnappliedSlash::<Test> {
++					validator: 11,
++					own: 0,
++					others: Default::default(),
++					reporter: None,
++					payout: 0,
++				},
++			);
++		}
++		NextDeferredSlashEra::<Test>::put(4);
++		assert_ok!(Staking::chill(RuntimeOrigin::signed(11)));
++		assert_ok!(Staking::unbond(RuntimeOrigin::signed(11), 1000));
++		Session::roll_until_active_era(5);
++		assert!(AsyncUnappliedSlashes::<Test>::contains_prefix(4));
++		assert_ok!(Staking::do_try_state(System::block_number()));
++		let saved_cursor = NextDeferredSlashEra::<Test>::get().unwrap();
++		NextDeferredSlashEra::<Test>::put(5);
++		assert!(
++			Staking::do_try_state(System::block_number()).is_err(),
++			"try-state must reject a cursor that could skip an overdue queue"
++		);
++		NextDeferredSlashEra::<Test>::put(saved_cursor);
++		assert_noop!(
++			Staking::withdraw_unbonded(RuntimeOrigin::signed(11), 0),
++			Error::<Test>::UnappliedSlashesInPreviousEra
++		);
++		while AsyncUnappliedSlashes::<Test>::contains_prefix(4) {
++			Session::roll_next();
++		}
++		// Empty-era cursor advancement is bounded to one step per block as well.
++		while NextDeferredSlashEra::<Test>::get().unwrap() <= active_era() {
++			Session::roll_next();
++		}
++		assert_ok!(Staking::withdraw_unbonded(RuntimeOrigin::signed(11), 0));
++	});
++}
++
++#[test]
++fn historical_invulnerables_remain_exempt_in_new_async_eras() {
++	ExtBuilder::default().build_and_execute(|| {
++		assert_ok!(Staking::set_invulnerables(RuntimeOrigin::root(), vec![11]));
++		add_slash(11);
++		Session::roll_next();
++		assert_eq!(asset::stakeable_balance::<Test>(&11), 1000);
++		assert!(!ValidatorSlashInEra::<Test>::contains_key(1, 11));
++		assert!(!OffenceQueue::<Test>::contains_key(1, 11));
++		assert_ok!(Staking::set_invulnerables(RuntimeOrigin::root(), vec![]));
++		add_slash(11);
++		Session::roll_next();
++		assert_eq!(asset::stakeable_balance::<Test>(&11), 900);
++	});
++}
++
++#[test]
++fn historical_span_count_is_validated_before_force_unstake() {
++	ExtBuilder::default().build_and_execute(|| {
++		crate::legacy::CutoffEra::<Test>::put(1);
++		add_slash(11);
++		assert!(crate::legacy::SlashingSpans::<Test>::contains_key(11));
++		let count = crate::legacy::SlashingSpans::<Test>::get(11).unwrap().iter().count() as u32;
++		assert!(count > 0);
++		assert_noop!(
++			Staking::force_unstake(RuntimeOrigin::root(), 11, count - 1),
++			Error::<Test>::IncorrectSlashingSpans
++		);
++		assert_ok!(Staking::force_unstake(RuntimeOrigin::root(), 11, count));
++		assert!(!crate::legacy::SlashingSpans::<Test>::contains_key(11));
++		assert!(!Bonded::<Test>::contains_key(11));
++		for index in 0..count {
++			assert!(!crate::legacy::SpanSlash::<Test>::contains_key((11, index)));
++		}
++	});
++}
+--- a/src/weights.rs
++++ b/src/weights.rs
+@@ -196,8 +196,8 @@
+ 	/// Proof: `Staking::Bonded` (`max_values`: None, `max_size`: Some(72), added: 2547, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::ActiveEra` (r:1 w:0)
+ 	/// Proof: `Staking::ActiveEra` (`max_values`: Some(1), `max_size`: Some(13), added: 508, mode: `MaxEncodedLen`)
+-	/// Storage: `Staking::UnappliedSlashes` (r:1 w:0)
+-	/// Proof: `Staking::UnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
++	/// Storage: `Staking::AsyncUnappliedSlashes` (r:1 w:0)
++	/// Proof: `Staking::AsyncUnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::OffenceQueueEras` (r:1 w:0)
+ 	/// Proof: `Staking::OffenceQueueEras` (`max_values`: Some(1), `max_size`: Some(49), added: 544, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::MinValidatorBond` (r:1 w:0)
+@@ -227,8 +227,8 @@
+ 	/// Proof: `Staking::Bonded` (`max_values`: None, `max_size`: Some(72), added: 2547, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::ActiveEra` (r:1 w:0)
+ 	/// Proof: `Staking::ActiveEra` (`max_values`: Some(1), `max_size`: Some(13), added: 508, mode: `MaxEncodedLen`)
+-	/// Storage: `Staking::UnappliedSlashes` (r:1 w:0)
+-	/// Proof: `Staking::UnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
++	/// Storage: `Staking::AsyncUnappliedSlashes` (r:1 w:0)
++	/// Proof: `Staking::AsyncUnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::OffenceQueueEras` (r:1 w:0)
+ 	/// Proof: `Staking::OffenceQueueEras` (`max_values`: Some(1), `max_size`: Some(49), added: 544, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::MinValidatorBond` (r:1 w:0)
+@@ -843,8 +843,8 @@
+ 	/// Proof: `Staking::ActiveEra` (`max_values`: Some(1), `max_size`: Some(13), added: 508, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::CancelledSlashes` (r:1 w:0)
+ 	/// Proof: `Staking::CancelledSlashes` (`max_values`: None, `max_size`: Some(36014), added: 38489, mode: `MaxEncodedLen`)
+-	/// Storage: `Staking::UnappliedSlashes` (r:1 w:1)
+-	/// Proof: `Staking::UnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
++	/// Storage: `Staking::AsyncUnappliedSlashes` (r:1 w:1)
++	/// Proof: `Staking::AsyncUnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::Bonded` (r:513 w:0)
+ 	/// Proof: `Staking::Bonded` (`max_values`: None, `max_size`: Some(72), added: 2547, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::Ledger` (r:513 w:513)
+@@ -886,8 +886,8 @@
+ 	/// Proof: `Staking::ErasStakersOverview` (`max_values`: None, `max_size`: Some(92), added: 2567, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::ErasStakersPaged` (r:1 w:0)
+ 	/// Proof: `Staking::ErasStakersPaged` (`max_values`: None, `max_size`: Some(24656), added: 27131, mode: `MaxEncodedLen`)
+-	/// Storage: `Staking::UnappliedSlashes` (r:0 w:1)
+-	/// Proof: `Staking::UnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
++	/// Storage: `Staking::AsyncUnappliedSlashes` (r:0 w:1)
++	/// Proof: `Staking::AsyncUnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
+ 	fn process_offence_queue() -> Weight {
+ 		// Proof Size summary in bytes:
+ 		//  Measured:  `19541`
+@@ -1275,8 +1275,8 @@
+ 	/// Proof: `Staking::Bonded` (`max_values`: None, `max_size`: Some(72), added: 2547, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::ActiveEra` (r:1 w:0)
+ 	/// Proof: `Staking::ActiveEra` (`max_values`: Some(1), `max_size`: Some(13), added: 508, mode: `MaxEncodedLen`)
+-	/// Storage: `Staking::UnappliedSlashes` (r:1 w:0)
+-	/// Proof: `Staking::UnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
++	/// Storage: `Staking::AsyncUnappliedSlashes` (r:1 w:0)
++	/// Proof: `Staking::AsyncUnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::OffenceQueueEras` (r:1 w:0)
+ 	/// Proof: `Staking::OffenceQueueEras` (`max_values`: Some(1), `max_size`: Some(49), added: 544, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::MinValidatorBond` (r:1 w:0)
+@@ -1306,8 +1306,8 @@
+ 	/// Proof: `Staking::Bonded` (`max_values`: None, `max_size`: Some(72), added: 2547, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::ActiveEra` (r:1 w:0)
+ 	/// Proof: `Staking::ActiveEra` (`max_values`: Some(1), `max_size`: Some(13), added: 508, mode: `MaxEncodedLen`)
+-	/// Storage: `Staking::UnappliedSlashes` (r:1 w:0)
+-	/// Proof: `Staking::UnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
++	/// Storage: `Staking::AsyncUnappliedSlashes` (r:1 w:0)
++	/// Proof: `Staking::AsyncUnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::OffenceQueueEras` (r:1 w:0)
+ 	/// Proof: `Staking::OffenceQueueEras` (`max_values`: Some(1), `max_size`: Some(49), added: 544, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::MinValidatorBond` (r:1 w:0)
+@@ -1922,8 +1922,8 @@
+ 	/// Proof: `Staking::ActiveEra` (`max_values`: Some(1), `max_size`: Some(13), added: 508, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::CancelledSlashes` (r:1 w:0)
+ 	/// Proof: `Staking::CancelledSlashes` (`max_values`: None, `max_size`: Some(36014), added: 38489, mode: `MaxEncodedLen`)
+-	/// Storage: `Staking::UnappliedSlashes` (r:1 w:1)
+-	/// Proof: `Staking::UnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
++	/// Storage: `Staking::AsyncUnappliedSlashes` (r:1 w:1)
++	/// Proof: `Staking::AsyncUnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::Bonded` (r:513 w:0)
+ 	/// Proof: `Staking::Bonded` (`max_values`: None, `max_size`: Some(72), added: 2547, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::Ledger` (r:513 w:513)
+@@ -1965,8 +1965,8 @@
+ 	/// Proof: `Staking::ErasStakersOverview` (`max_values`: None, `max_size`: Some(92), added: 2567, mode: `MaxEncodedLen`)
+ 	/// Storage: `Staking::ErasStakersPaged` (r:1 w:0)
+ 	/// Proof: `Staking::ErasStakersPaged` (`max_values`: None, `max_size`: Some(24656), added: 27131, mode: `MaxEncodedLen`)
+-	/// Storage: `Staking::UnappliedSlashes` (r:0 w:1)
+-	/// Proof: `Staking::UnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
++	/// Storage: `Staking::AsyncUnappliedSlashes` (r:0 w:1)
++	/// Proof: `Staking::AsyncUnappliedSlashes` (`max_values`: None, `max_size`: Some(24735), added: 27210, mode: `MaxEncodedLen`)
+ 	fn process_offence_queue() -> Weight {
+ 		// Proof Size summary in bytes:
+ 		//  Measured:  `19541`

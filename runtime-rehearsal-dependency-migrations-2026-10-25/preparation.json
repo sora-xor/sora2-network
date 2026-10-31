@@ -1,0 +1,124 @@
+{
+  "prepared_at": "2026-10-24T16:36:35.781430+00:00",
+  "endpoint": "wss://mof2.sora.org",
+  "resolved_ipv4": [
+    "51.161.218.175"
+  ],
+  "rdap_url": "https://rdap.arin.net/registry/ip/51.161.218.175",
+  "provider": "OVH Australia PTY LTD",
+  "rdap_entity": "OAPL-2",
+  "scope": "Read-only public state capture and local mocked-signature Wasm simulations. No keys, signing, public transaction submission or deployment.",
+  "copied_inputs": [
+    {
+      "source": "runtime-upgrade-4.8.12/validation/capture-public-state.cjs",
+      "copy": "capture-public-state.cjs",
+      "original_sha256": "537e1dcde666bc21ba54551d4a394bb7f38f3827fcc96821d32b959408e8196f",
+      "current_sha256": "25f608c133b027ba7402d5e3db720daf4b123f09cc2b845758d1f061beb536ff"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/verify-wasm-compatibility.cjs",
+      "copy": "verify-wasm-compatibility.cjs",
+      "original_sha256": "98840de9110ff928ae053b7a35be5f9877fe1d3e15929363101fa35e4db7aa26",
+      "current_sha256": "60c49c80649c40c233db1eb75380a39ad51e20133dee579a20bb5fac18452a54"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/compare-metadata.py",
+      "copy": "compare-metadata.py",
+      "original_sha256": "1847d01b9483dc6b8ab486386dfc7923b25bc4936a77bcc9ec3b2cc112144751",
+      "current_sha256": "cf60d006964bb2ffd67746cbe47ba9214e1861e4529ed68c4ea3cdcb0185494f"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/rehearse-equivocation-fees.cjs",
+      "copy": "rehearse-equivocation-fees.cjs",
+      "original_sha256": "9d55478217cd3ccee9cb4891a4b19fdce9e82946ce41e808a7e21a215ee74c0b",
+      "current_sha256": "999f59783dd1cdc45da030dbf9a741cbd1ccdc27dcfa0ab0a016edda98aa725e"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/rehearse-fee-policy.cjs",
+      "copy": "rehearse-fee-policy.cjs",
+      "original_sha256": "15885f20feeaee1b60978b931cb85de6a934304b5fe53636df81abbd4fab74e7",
+      "current_sha256": "ef97287d4492c491f047707a81f1fbafc2879256f7afd3a5889551aab30a4941"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/verify-fee-events.py",
+      "copy": "verify-fee-events.py",
+      "original_sha256": "fcfa12a99dfd34fff942d7a189f274853451a2293bb7a2d181d37fcf9ed955fe",
+      "current_sha256": "c3bf9963afd1841dbb2caf8e37a666e2674438f68a657f4e50eb2a1d01825e7d"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/check-bridge-readiness.cjs",
+      "copy": "check-bridge-readiness.cjs",
+      "original_sha256": "727c389d24d650c2c5b4e090ff4a8f62debaf8a3ed5fca7ff81a204050b48aeb",
+      "current_sha256": "5f2c7cdfdefc2600e3e6924c870ea4aaa9e64b53b50cb26cf577596d624906fc"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/payout-batch-fixture.cjs",
+      "copy": "payout-batch-fixture.cjs",
+      "original_sha256": "3fbf601e3de8f8a16278ef433581d2fdc6e4175bd46ddf2befe2aad0e0268944",
+      "current_sha256": "38040a1c9d0e24611fe2916b2a68262f8a4631999216fc1c8dd62dcb41c64680"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/retired-lending-fixture.cjs",
+      "copy": "retired-lending-fixture.cjs",
+      "original_sha256": "ad4e082ba5928497ca119c4f6037d9f0467803c90d13c8bfebd68b3fccbc762c",
+      "current_sha256": "ad4e082ba5928497ca119c4f6037d9f0467803c90d13c8bfebd68b3fccbc762c"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/migration-proof-fixture.json",
+      "copy": "migration-proof-fixture.json",
+      "original_sha256": "94396ebc78d2d72de8d599bf4883bf710f2fe7dcbbe066fe420a832417d22a56",
+      "current_sha256": "94396ebc78d2d72de8d599bf4883bf710f2fe7dcbbe066fe420a832417d22a56"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/migration-proof-fixture.rs",
+      "copy": "migration-proof-fixture.rs",
+      "original_sha256": "3f2fb9bb5335b950895a7bf9f58110c50de0c6fb5d2f17e0c4ac1edd038e90b1",
+      "current_sha256": "3f2fb9bb5335b950895a7bf9f58110c50de0c6fb5d2f17e0c4ac1edd038e90b1"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/pre-batch-candidate-metadata.json",
+      "copy": "pre-batch-candidate-metadata.json",
+      "original_sha256": "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f",
+      "current_sha256": "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/previous-candidate-metadata.json",
+      "copy": "previous-candidate-metadata.json",
+      "original_sha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0",
+      "current_sha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/package.json",
+      "copy": "package.json",
+      "original_sha256": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0",
+      "current_sha256": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/package-lock.json",
+      "copy": "package-lock.json",
+      "original_sha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "current_sha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760"
+    },
+    {
+      "source": "runtime-upgrade-4.8.12/validation/.npmrc",
+      "copy": ".npmrc",
+      "original_sha256": "accde30d9a88a67d9f705ae98d94d74fa10c70cadf4f0ccd94746e1069538105",
+      "current_sha256": "accde30d9a88a67d9f705ae98d94d74fa10c70cadf4f0ccd94746e1069538105"
+    }
+  ],
+  "new_helpers": {
+    "run-local-rehearsals.sh": "29af60d4d882397411d360f35163442041cff4a38f4d75fde335566340a1b7c6",
+    "validation/readonly-rpc.cjs": "69b9b881966a836b8b8e6a1216eb7765e962f13bdf03e05788150a79e03bda78",
+    "validation/validate-dependencies.cjs": "02c04729c25d2d43ce38ec529ef21ba12d6a59472128006c034962406322405a",
+    "validation/wasm-interfaces.cjs": "140c80dd84a0a4284428384dead430ca1aaae6923ffefbe5d636ef187b7c10c1",
+    "validation/test-wasm-interfaces.cjs": "c4098c72211f9ce902dd258c7b743fccc9ea57cadab973ab7b56170d7d8b65b3",
+    "validation/test-readonly-rpc.cjs": "86412339fadfb339bad0d6a5e528ee97ed1357f863874dfc46287951809af981",
+    "run-local-rehearsals.py": "160a197bb4df3691d7a7cc13f3508808de92ce469939af63490cedad7cd4a1a2",
+    "validation/test-fee-evidence.py": "ee27c32221e5e9aaf1798cb69f46cbf80f079ea3c40055a702e7ec6ae31ee6cc",
+    "validation/test-rehearsal-run.py": "e66e6a9be6ddaeea76b35c1cca964efc361f4daceb05f46c64b21c92ba609c77",
+    "validation/runtime-execution.cjs": "69a4d1867d437d4778dc8c9823f9d6c47b5777e385676d816a3ce2c765558731",
+    "validation/test-runtime-execution.cjs": "a43f5b127129454a46138e185bede7e80f59e5d25747b6c1da3505fefabbf435",
+    "validation/verify-rejected-admission.cjs": "86d638bfe7805a989e8a7bb4fe18c28ad8275d236914b1f89b146b5fce4457a6",
+    "validation/test-rejected-admission.cjs": "71a744004d0a131a71d92c0992f80b66054a4f8e9f75b20336a5e368704790d1"
+  }
+}

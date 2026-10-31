@@ -547,6 +547,9 @@ pub mod pallet {
         }
     }
 
+    // Keep the deployed bridge worker wire format and fee policy during this SDK migration.
+    // The FRAME macro recognizes this exact attribute when retaining legacy admission.
+    #[allow(deprecated)]
     #[pallet::validate_unsigned]
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;

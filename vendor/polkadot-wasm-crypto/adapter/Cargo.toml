@@ -1,0 +1,21 @@
+# This manifest keeps Cargo symbol metadata independent of the checkout path.
+# The implementation is the shared, reviewed adapter; do not copy its source.
+[package]
+name = "sora-secp256k1-compat"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.87"
+license = "BSD-4-Clause"
+description = "SORA Nexus legacy signature encoding compatibility using maintained RustCrypto"
+
+[dependencies]
+k256 = { version = "0.14.0", default-features = false, features = ["arithmetic", "ecdsa"] }
+# Security floor for the arithmetic used by k256.
+crypto-bigint = { version = "0.7.6", default-features = false }
+
+[features]
+default = ["std"]
+std = ["k256/std"]
+
+[lib]
+path = "../../sora-secp256k1-compat/src/lib.rs"

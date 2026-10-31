@@ -979,8 +979,14 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
     fn ensure_limit_order_valid(&self, limit_order: &LimitOrder<T>) -> Result<(), DispatchError> {
         limit_order.ensure_valid()?;
+        // Preserve the existing zero-divisor panic for malformed order-book parameters.
         ensure!(
-            limit_order.price.balance() % self.tick_size.balance() == 0,
+            limit_order
+                .price
+                .balance()
+                .checked_rem(*self.tick_size.balance())
+                .expect("attempt to calculate the remainder with a divisor of zero")
+                == 0,
             Error::<T>::InvalidLimitOrderPrice
         );
         ensure!(
@@ -988,7 +994,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::InvalidOrderAmount
         );
         ensure!(
-            limit_order.amount.balance() % self.step_lot_size.balance() == 0,
+            limit_order
+                .amount
+                .balance()
+                .checked_rem(*self.step_lot_size.balance())
+                .expect("attempt to calculate the remainder with a divisor of zero")
+                == 0,
             Error::<T>::InvalidOrderAmount
         );
         Ok(())
@@ -1008,7 +1019,12 @@ impl<T: crate::Config + Sized> OrderBook<T> {
             Error::<T>::InvalidOrderAmount
         );
         ensure!(
-            market_order.amount.balance() % self.step_lot_size.balance() == 0,
+            market_order
+                .amount
+                .balance()
+                .checked_rem(*self.step_lot_size.balance())
+                .expect("attempt to calculate the remainder with a divisor of zero")
+                == 0,
             Error::<T>::InvalidOrderAmount
         );
         Ok(())

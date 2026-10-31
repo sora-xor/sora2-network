@@ -57,8 +57,10 @@ use sp_std::convert::TryFrom;
     MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+#[derive(Default)]
 #[repr(u8)]
 pub enum ComicAssetId {
+    #[default]
     GoldenTicket,
     AppleTree,
     Apple,
@@ -120,12 +122,6 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KARMA => Table,
             PredefinedAssetId::PRUSD => Pan,
         }
-    }
-}
-
-impl Default for ComicAssetId {
-    fn default() -> Self {
-        Self::GoldenTicket
     }
 }
 

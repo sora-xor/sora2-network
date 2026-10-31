@@ -3569,11 +3569,11 @@ mod tests {
     #[cfg(not(feature = "private-net"))]
     use serde_json::Value;
     #[cfg(not(feature = "private-net"))]
-    use sp_core::blake2_256;
-    #[cfg(not(feature = "private-net"))]
     use sp_core::traits::RuntimeCode;
     #[cfg(not(feature = "private-net"))]
     use sp_core::traits::WrappedRuntimeCode;
+    #[cfg(not(feature = "private-net"))]
+    use sp_io::hashing::blake2_256;
     #[cfg(not(feature = "private-net"))]
     use sp_version::RuntimeVersion;
 

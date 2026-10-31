@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use derivative::Derivative;
+use derive_where::derive_where;
 use serde::{Deserialize, Serialize};
 use sp_core::{Get, H256};
 use sp_runtime::{traits::Hash, BoundedVec};
@@ -238,14 +238,9 @@ pub struct TonAppInfo {
     pub address: TonAddress,
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub enum Commitment<MaxPayload: Get<u32>> {
@@ -267,14 +262,9 @@ impl<MaxPayload: Get<u32>> Commitment<MaxPayload> {
     }
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct InboundCommitment<MaxPayload: Get<u32>> {

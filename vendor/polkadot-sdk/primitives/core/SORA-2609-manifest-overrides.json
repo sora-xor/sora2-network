@@ -1,0 +1,82 @@
+{
+  "upstream_commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "source_path": "substrate/primitives/core",
+  "differences": [
+    {
+      "path": [
+        "dependencies",
+        "crypto-bigint"
+      ],
+      "upstream": null,
+      "local": {
+        "version": "0.7.6",
+        "default-features": false
+      }
+    },
+    {
+      "path": [
+        "dependencies",
+        "k256",
+        "version"
+      ],
+      "upstream": "0.13.4",
+      "local": "0.14.0"
+    },
+    {
+      "path": [
+        "dependencies",
+        "libsecp256k1",
+        "features"
+      ],
+      "upstream": [
+        "static-context"
+      ],
+      "local": null
+    },
+    {
+      "path": [
+        "dependencies",
+        "libsecp256k1",
+        "package"
+      ],
+      "upstream": null,
+      "local": "sora-secp256k1-compat"
+    },
+    {
+      "path": [
+        "dependencies",
+        "libsecp256k1",
+        "path"
+      ],
+      "upstream": null,
+      "local": "../../../sora-secp256k1-compat"
+    },
+    {
+      "path": [
+        "dependencies",
+        "libsecp256k1",
+        "version"
+      ],
+      "upstream": "0.7.0",
+      "local": null
+    },
+    {
+      "path": [
+        "dependencies",
+        "paste",
+        "package"
+      ],
+      "upstream": null,
+      "local": "pastey"
+    },
+    {
+      "path": [
+        "dependencies",
+        "paste",
+        "version"
+      ],
+      "upstream": "1.0.15",
+      "local": "0.2.3"
+    }
+  ]
+}

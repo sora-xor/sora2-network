@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "intended_spec": 134,
+      "actual_candidate_spec": 134,
+      "deployed_spec": 134,
+      "rejected": true,
+      "reason": "Candidate must strictly advance deployed specVersion",
+      "exit": 1
+    },
+    {
+      "intended_spec": 135,
+      "actual_candidate_spec": 134,
+      "deployed_spec": 134,
+      "rejected": true,
+      "reason": "Candidate version must match explicit intended version",
+      "exit": 1
+    }
+  ],
+  "script_sha256": "879624623315ea86b7bd953886b22b268376352683e6cee8ede418393199eb43",
+  "interface_parser_sha256": "58753c707243b670482c6e8ef64dec66230c2a76c0a500831c5ece6cfeb292c9"
+}
