@@ -2,6 +2,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import unittest
@@ -30,6 +31,7 @@ class LegacyOverlayTests(unittest.TestCase):
     def test_shared_historical_bridge_resolver_is_wired_without_opening_ingress(self):
         result = prepare.patch_runtime(self.legacy, 134)
         self.assertIn("type IncomingAccountResolver = incident_recovery_incoming::PersistentAccountResolver;", result)
+        self.assertIn("type RefundAccountResolver = incident_recovery_incoming::PersistentAccountResolver;", result)
         self.assertIn("pub mod incident_recovery_evm_source;", result)
         overlay = (prepare.HERE / "overlay/incident_recovery.rs").read_text()
         self.assertIn("pub fn replacement(", overlay)
@@ -119,14 +121,46 @@ class LegacyOverlayTests(unittest.TestCase):
                              "runtime/src/incident_recovery_evm_source.rs",
                              "runtime/src/incident_recovery_evm_source_tests.rs",
                              "runtime/src/incident_recovery_incoming_hashi_source_tests.rs",
-                             "runtime/src/incident_recovery_incoming_channel_tests.rs",
-                             "runtime/src/incident_recovery_incoming_post_complete_channel_tests.rs",
                              "runtime/src/incident_recovery_incoming_hashi_delayed_tests.rs",
-                             "pallets/eth-bridge/src/lib.rs"]:
+                             "pallets/eth-bridge/src/recovery.rs"]:
                 self.assertEqual((destination / relative).read_bytes(), (prepare.ROOT / relative).read_bytes())
                 self.assertEqual(result["overlay"][relative], prepare.digest((prepare.ROOT / relative).read_bytes()))
+            # Legacy calls retain their reviewed historical inventory. Importing
+            # the current pallet wholesale would introduce runtime-138 retry calls.
+            for relative in ("pallets/eth-bridge/src/lib.rs", "pallets/bridge-proxy/src/lib.rs"):
+                exported = (destination / relative).read_text()
+                self.assertNotIn("pub fn retry_refund(", exported)
+                self.assertNotIn("pub fn finalize_approved_request(", exported)
+            incoming = (destination / "pallets/eth-bridge/src/requests/incoming.rs").read_text()
+            self.assertIn("crate::recovery::ensure_ordinary_transfer_source::<T>(&self.from)?;", incoming)
+            self.assertIn("crate::recovery::ordinary_transfer_beneficiary::<T, R>(&self.from, &self.to)?", incoming)
+            proxy = (destination / "pallets/bridge-proxy/src/lib.rs").read_text()
+            self.assertIn("common::with_transaction(|| Self::refund_inner(", proxy)
+            self.assertLess(proxy.index("T::RefundAccountResolver::resolve(beneficiary)?"),
+                            proxy.index("T::HashiBridge::refund(network_id"))
+            shared_tests = (destination / "runtime/src/incident_recovery_incoming.rs").read_text()
+            self.assertIn("mod legacy_bridge_security_tests;", shared_tests)
+            self.assertEqual(shared_tests.count("#[cfg(any())]"), 1)
             with self.assertRaisesRegex(ValueError, "existing"):
                 prepare.prepare(destination, 134, None)
+
+    def test_security_adapter_preserves_dispatch_inventory(self):
+        # Check the exact retained files before/after applying the adapter rather
+        # than assuming that the current runtime has the historical call layout.
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp)
+            paths = ["pallets/eth-bridge/src/recovery.rs", "pallets/eth-bridge/src/requests/incoming.rs",
+                     "pallets/bridge-proxy/src/lib.rs", "pallets/bridge-proxy/src/mock.rs", "common/src/mock.rs"]
+            # Export the reviewed base plus patch, without invoking prepare's adapter.
+            archive = subprocess.check_output(["git", "archive", "--format=tar", prepare.LEGACY_TREE, *prepare.SOURCE_PATHS], cwd=prepare.ROOT)
+            with prepare.tarfile.open(fileobj=prepare.io.BytesIO(archive)) as tar:
+                tar.extractall(destination, filter="data")
+            subprocess.run(["git", "apply", str(prepare.HERE / "bridge-recovery.patch")], cwd=destination, check=True)
+            before = {path: (destination / path).read_text() for path in paths}
+            prepare.patch_legacy_bridge_security(destination)
+            for relative in ("pallets/eth-bridge/src/requests/incoming.rs", "pallets/bridge-proxy/src/lib.rs"):
+                self.assertEqual(re.findall(r"#\[pallet::call_index\(\d+\)\]", before[relative]),
+                                 re.findall(r"#\[pallet::call_index\(\d+\)\]", (destination / relative).read_text()))
 
 if __name__ == "__main__":
     unittest.main()

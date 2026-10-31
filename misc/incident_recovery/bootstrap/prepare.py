@@ -61,6 +61,7 @@ def patch_runtime(source: str, spec: int) -> str:
     source = replace_once(source, "type MessageDispatch = Dispatch;", "type MessageDispatch = incident_recovery_incoming::RecoveryGenericMessageDispatch;")
     source = replace_once(source, "type MessageDispatch = SubstrateDispatch;", "type MessageDispatch = incident_recovery_incoming::RecoverySubstrateMessageDispatch;")
     source = replace_once(source, "    type BridgeAssetLockChecker = BridgeProxy;", "    type BridgeAssetLockChecker = BridgeProxy;\n    type IncomingAccountResolver = incident_recovery_incoming::PersistentAccountResolver;")
+    source = replace_once(source, "impl bridge_proxy::Config for Runtime {\n", "impl bridge_proxy::Config for Runtime {\n    type RefundAccountResolver = incident_recovery_incoming::PersistentAccountResolver;\n")
     source = replace_once(source, "            EthBridge::get_registered_assets(network_id)\n        }", """            EthBridge::get_registered_assets(network_id)
         }
 
@@ -86,6 +87,120 @@ def patch_runtime(source: str, spec: int) -> str:
     if spec != 134:
         source = re.sub(r"spec_version:\s*134,", f"spec_version: {spec},", source, count=1)
         source = re.sub(r"transaction_version:\s*131,", "transaction_version: 132,", source, count=1)
+    return source
+
+def patch_legacy_bridge_security(destination: Path) -> list[str]:
+    """Keep legacy calls/encoding while sharing current ownership enforcement.
+
+    Maintenance runtimes never reopen ordinary ingress. Their resolver still
+    rejects production policy-present delivery even if the halt key is cleared.
+    Do not import runtime-138 retry dispatchables merely to satisfy shared tests.
+    """
+    recovery = "pallets/eth-bridge/src/recovery.rs"
+    (destination / recovery).write_bytes((ROOT / recovery).read_bytes())
+    incoming = "pallets/eth-bridge/src/requests/incoming.rs"
+    path = destination / incoming
+    source = path.read_text()
+    source = replace_once(source,
+        "    pub fn validate(&self) -> Result<(), DispatchError> {\n        crate::recovery::ensure_incoming_transaction_active::<T>(self.network_id, self.tx_hash)?;",
+        "    pub fn validate(&self) -> Result<(), DispatchError> {\n        crate::recovery::ensure_ordinary_transfer_source::<T>(&self.from)?;\n        crate::recovery::ensure_incoming_transaction_active::<T>(self.network_id, self.tx_hash)?;")
+    source = replace_once(source,
+        "    pub fn finalize(&self) -> Result<H256, DispatchError> {\n        self.validate()?;\n        let resolution = crate::recovery::transfer_resolution(self)?;",
+        "    pub fn finalize(&self) -> Result<H256, DispatchError> {\n        self.finalize_with::<T::IncomingAccountResolver>()\n    }\n\n"
+        "    pub(crate) fn finalize_with<R>(&self) -> Result<H256, DispatchError>\n"
+        "    where\n        R: crate::recovery::IncomingAccountResolver<T::AccountId>,\n    {\n"
+        "        self.validate()?;\n        let resolution = crate::recovery::transfer_resolution(self)?;")
+    source = replace_once(source,
+        "            None => crate::recovery::ordinary_account::<T>(&self.to)?,",
+        "            None => crate::recovery::ordinary_transfer_beneficiary::<T, R>(&self.from, &self.to)?,")
+    path.write_text(source)
+
+    proxy = "pallets/bridge-proxy/src/lib.rs"
+    path = destination / proxy
+    source = path.read_text()
+    current = (ROOT / proxy).read_text()
+    start = current.index("/// Resolves the current owner of a refund")
+    end = current.index("#[derive(Clone, Debug, Encode", start)
+    source = replace_once(source, "pub const BRIDGE_FEE_TECH_ACC_PREFIX: &[u8] = b\"bridge-fee\";\n",
+        "pub const BRIDGE_FEE_TECH_ACC_PREFIX: &[u8] = b\"bridge-fee\";\n\n" + current[start:end])
+    source = replace_once(source,
+        "        type AccountIdConverter: Convert<MainnetAccountId, Self::AccountId>;",
+        "        type AccountIdConverter: Convert<MainnetAccountId, Self::AccountId>;\n\n"
+        "        type RefundAccountResolver: RefundAccountResolver<Self::AccountId>;")
+    refund_signature = ("        pub fn refund(\n            network_id: GenericNetworkId,\n"
+        "            message_id: H256,\n            beneficiary: GenericAccount,\n"
+        "            asset_id: AssetIdOf<T>,\n            amount: Balance,\n        ) -> DispatchResult {\n")
+    source = replace_once(source, refund_signature, refund_signature +
+        "            // Recovery refunds are atomic; pre-policy replay retains deployed behavior.\n"
+        "            if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) {\n"
+        "                common::with_transaction(|| Self::refund_inner(network_id, message_id, beneficiary, asset_id, amount))\n"
+        "            } else {\n"
+        "                Self::refund_inner(network_id, message_id, beneficiary, asset_id, amount)\n"
+        "            }\n        }\n\n" + refund_signature.replace("pub fn refund(", "fn refund_inner("))
+    source = replace_once(source,
+        "            let beneficiary = T::AccountIdConverter::convert(beneficiary);",
+        "            let beneficiary = T::AccountIdConverter::convert(beneficiary);\n"
+        "            let beneficiary = T::RefundAccountResolver::resolve(beneficiary)?;")
+    source = replace_once(source,
+        "                T::FAApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;\n            }",
+        "                T::FAApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;\n"
+        "            } else if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) {\n"
+        "                return Err(Error::<T>::PathIsNotAvailable.into());\n            }")
+    source = replace_once(source,
+        "                if new_status == MessageStatus::Failed\n                    && req.direction == MessageDirection::Outbound",
+        "                // Preserve pre-policy replay while preventing a settled recovery\n"
+        "                // liability from paying twice through distinct authenticated reports.\n"
+        "                if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)\n"
+        "                    && req.direction == MessageDirection::Outbound\n"
+        "                    && matches!(req.status, MessageStatus::Done | MessageStatus::Refunded)\n"
+        "                {\n                    return;\n                }\n"
+        "                if new_status == MessageStatus::Failed\n                    && req.direction == MessageDirection::Outbound")
+    path.write_text(source)
+    mock = "pallets/bridge-proxy/src/mock.rs"
+    path = destination / mock
+    path.write_text(replace_once(path.read_text(), "impl proxy::Config for Test {\n",
+        "impl proxy::Config for Test {\n    type RefundAccountResolver = ();\n"))
+    common_mock = "common/src/mock.rs"
+    path = destination / common_mock
+    path.write_text(replace_once(path.read_text(), "        impl proxy::Config for $runtime {\n",
+        "        impl proxy::Config for $runtime {\n            type RefundAccountResolver = ();\n"))
+    return [recovery, incoming, proxy, mock, common_mock]
+
+def patch_legacy_incoming_tests(source: str) -> str:
+    # The final runtime's new retry call is deliberately absent from the legacy
+    # call inventory. The dedicated legacy module exercises its real status
+    # notification/refund path instead; every other shared test stays enabled.
+    source = replace_once(source,
+        "    #[test]\n    fn recovery_bridge_refund_pays_the_current_owner_and_preserves_the_original_source() {",
+        "    // Covered through the legacy status/refund route below, without adding a dispatchable.\n"
+        "    #[cfg(any())]\n    #[test]\n"
+        "    fn recovery_bridge_refund_pays_the_current_owner_and_preserves_the_original_source() {")
+    source = replace_once(source,
+        "        substrate_bridge_app::PendingAssetRegistrations::<Runtime>::insert(\n"
+        "            network,\n            common::XOR,\n            (\n"
+        "                GenericAssetId::Sora(common::XOR.into()),\n"
+        "                AssetKind::Sidechain,\n            ),\n        );\n",
+        "        // The retained finalize_asset_registration has no pending-authorization storage.\n")
+    source = replace_once(source, "                jetton_app::Error::<Runtime>::BridgeDisabled\n",
+        "                jetton_app::Error::<Runtime>::RecoveryHalted\n")
+    return source + '\n#[cfg(test)]\n#[path = "legacy_bridge_security_tests.rs"]\nmod legacy_bridge_security_tests;\n'
+
+def patch_legacy_channel_tests(source: str) -> str:
+    for indent, network, kind in [("                ", "network", "asset_kind"),
+                                  ("            ", "SubNetworkId::Liberland", "AssetKind::Sidechain")]:
+        old = (indent + "assert_ok!(crate::SubstrateBridgeApp::authorize_asset_registration(\n" +
+            indent + "    RuntimeOrigin::root(),\n" + indent + f"    {network},\n" +
+            indent + "    common::DAI,\n" + indent + "    GenericAssetId::Sora(common::DAI.into()),\n" +
+            indent + f"    {kind},\n" + indent + "));\n")
+        source = replace_once(source, old,
+            indent + "// The retained finalize call has no pending-authorization storage.\n")
+    source = replace_once(source,
+        "            // Reconstruct the locally authorized pending state from before the\n"
+        "            // fixture's initial finalization, alongside its retained precision.\n"
+        "            parachain_bridge_app::PendingAssetKinds::<Runtime>::insert(\n"
+        "                SubNetworkId::Polkadot,\n                common::DAI,\n"
+        "                AssetKind::Sidechain,\n            );\n",
+        "            // The retained parachain finalize call uses its retained precision directly.\n")
     return source
 
 def patch_bridge_api_manifest(source: str) -> str:
@@ -208,6 +323,7 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
     patch = HERE / "bridge-recovery.patch"
     subprocess.run(["git", "apply", "--check", str(patch)], cwd=destination, check=True)
     subprocess.run(["git", "apply", str(patch)], cwd=destination, check=True)
+    bridge_security_overlays = patch_legacy_bridge_security(destination)
     common_lib = destination / "common/src/lib.rs"
     common_lib.write_text(common_lib.read_text() + "\npub mod recovery;\n")
     (destination / "common/src/recovery.rs").write_bytes((ROOT / "common/src/recovery.rs").read_bytes())
@@ -251,6 +367,18 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
         (ROOT / "runtime/src/incident_recovery_incoming_hashi_delayed_tests.rs", "runtime/src/incident_recovery_incoming_hashi_delayed_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_outgoing.rs", "runtime/src/incident_recovery_outgoing.rs")]:
         (destination / relative).write_bytes(source.read_bytes())
+    incoming = destination / "runtime/src/incident_recovery_incoming.rs"
+    incoming.write_text(patch_legacy_incoming_tests(incoming.read_text()))
+    channel_tests = destination / "runtime/src/incident_recovery_incoming_channel_tests.rs"
+    channel_tests.write_text(patch_legacy_channel_tests(channel_tests.read_text()))
+    post_complete = destination / "runtime/src/incident_recovery_incoming_post_complete_channel_tests.rs"
+    post_complete.write_text(replace_once(post_complete.read_text(),
+        "#[test]\nfn recovery_channels_post_complete_ton_remains_disabled_with_historical_bindings() {",
+        "// Runtime-138 permanent TON shutdown; maintenance has no ordinary post-complete phase.\n"
+        "#[cfg(any())]\n#[test]\n"
+        "fn recovery_channels_post_complete_ton_remains_disabled_with_historical_bindings() {"))
+    security_tests = "runtime/src/legacy_bridge_security_tests.rs"
+    (destination / security_tests).write_bytes((HERE / "overlay/legacy_bridge_security_tests.rs").read_bytes())
     generated = destination / "runtime/src/incident_recovery/generated.rs"
     generated.parent.mkdir(exist_ok=True)
     if binding:
@@ -286,6 +414,7 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
     overlays.append("runtime/src/incident_recovery_incoming_hashi_delayed_tests.rs")
     overlays.append("runtime/src/incident_recovery_outgoing.rs")
     overlays += re.findall(r"^diff --git a/\S+ b/(\S+)$", patch.read_text(), flags=re.MULTILINE)
+    overlays += bridge_security_overlays + [security_tests]
     provenance = {"formatVersion": 1, "deployedSourceTree": LEGACY_TREE, "sdk": "polkadot-stable2603-3",
         "specVersion": spec, "transactionVersion": 131 if spec == 134 else 132, "bound": binding is not None, "fixtureOnly": False,
         "sourceFiles": source_inventory(destination), "baseCargoLock": base_lock, "preparer": digest(Path(__file__).read_bytes()), "bridgeOverlay": digest(patch.read_bytes()), "bindingEvidence": evidence,
