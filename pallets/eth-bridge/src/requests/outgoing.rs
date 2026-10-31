@@ -1305,34 +1305,12 @@ impl<T: Config> OutgoingMigrate<T> {
         let network_id = encode_network_id::<T>(self.network_id)?;
         let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(&self.network_id);
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
-        let raw = match signature_version {
-            BridgeSignatureVersion::V1 | BridgeSignatureVersion::V2 => encode_packed(&[
-                Token::Address(types::EthAddress::from(contract_address.0)).into(),
-                Token::Address(types::EthAddress::from(self.new_contract_address.0)).into(),
-                Token::FixedBytes(tx_hash.0.to_vec()).into(),
-                Token::Array(
-                    self.erc20_native_tokens
-                        .iter()
-                        .map(|addr| Token::Address(types::EthAddress::from(addr.0)))
-                        .collect(),
-                )
-                .into(),
-                Token::FixedBytes(network_id.0.to_vec()).into(),
-            ]),
-            BridgeSignatureVersion::V3 => ethabi::encode(&[
-                Token::String("migrate".into()),
-                Token::Address(types::EthAddress::from(contract_address.0)),
-                Token::Address(types::EthAddress::from(self.new_contract_address.0)),
-                Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::Array(
-                    self.erc20_native_tokens
-                        .iter()
-                        .map(|addr| Token::Address(types::EthAddress::from(addr.0)))
-                        .collect(),
-                ),
-                Token::FixedBytes(network_id.0.to_vec()),
-            ]),
-        };
+        let raw = self.encode_migration_message(
+            signature_version,
+            contract_address,
+            tx_hash,
+            network_id,
+        )?;
         Ok(OutgoingMigrateEncoded {
             this_contract_address: contract_address,
             tx_hash,
@@ -1341,6 +1319,75 @@ impl<T: Config> OutgoingMigrate<T> {
             network_id,
             raw,
         })
+    }
+
+    fn encode_migration_message(
+        &self,
+        signature_version: BridgeSignatureVersion,
+        contract_address: EthAddress,
+        tx_hash: H256,
+        network_id: H256,
+    ) -> Result<Vec<u8>, Error<T>> {
+        // Preserve each signature version without ethabi's intermediate Vec<Word>
+        // reserving byte lengths as counts of 32-byte words. Both the V3 ABI and
+        // the legacy packed-array encoder otherwise exceed the Wasm allocation
+        // limit for valid migration requests.
+        let fixed_len = match signature_version {
+            BridgeSignatureVersion::V1 | BridgeSignatureVersion::V2 => 104,
+            BridgeSignatureVersion::V3 => 288,
+        };
+        let encoded_len = self
+            .erc20_native_tokens
+            .len()
+            .checked_mul(32)
+            .and_then(|bytes| bytes.checked_add(fixed_len))
+            .ok_or(Error::<T>::InvalidArray)?;
+        let token_count: u64 = self
+            .erc20_native_tokens
+            .len()
+            .try_into()
+            .map_err(|_| Error::<T>::InvalidArray)?;
+        let mut raw = Vec::new();
+        raw.try_reserve_exact(encoded_len)
+            .map_err(|_| Error::<T>::InvalidArray)?;
+
+        match signature_version {
+            BridgeSignatureVersion::V1 | BridgeSignatureVersion::V2 => {
+                // Packed contract addresses precede the hash and padded array.
+                raw.extend_from_slice(&contract_address.0);
+                raw.extend_from_slice(&self.new_contract_address.0);
+                raw.extend_from_slice(&tx_hash.0);
+            }
+            BridgeSignatureVersion::V3 => {
+                // Six heads: string offset, old/new contract, hash, array offset,
+                // network. The string tail occupies two words at byte 192.
+                raw.extend_from_slice(&U256::from(192u32).to_big_endian());
+                for address in [contract_address, self.new_contract_address] {
+                    raw.extend_from_slice(&[0; 12]);
+                    raw.extend_from_slice(&address.0);
+                }
+                raw.extend_from_slice(&tx_hash.0);
+                raw.extend_from_slice(&U256::from(256u32).to_big_endian());
+                raw.extend_from_slice(&network_id.0);
+                raw.extend_from_slice(&U256::from(7u32).to_big_endian());
+                raw.extend_from_slice(b"migrate");
+                raw.extend_from_slice(&[0; 25]);
+                raw.extend_from_slice(&U256::from(token_count).to_big_endian());
+            }
+        }
+        for address in &self.erc20_native_tokens {
+            raw.extend_from_slice(&[0; 12]);
+            raw.extend_from_slice(&address.0);
+        }
+        if matches!(
+            signature_version,
+            BridgeSignatureVersion::V1 | BridgeSignatureVersion::V2
+        ) {
+            // Legacy arrays have no length/offset word; the network follows them.
+            raw.extend_from_slice(&network_id.0);
+        }
+        debug_assert_eq!(raw.len(), encoded_len);
+        Ok(raw)
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {

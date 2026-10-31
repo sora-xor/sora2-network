@@ -66,7 +66,6 @@ pub use http::*;
 use rustc_hex::ToHex;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::crypto::ByteArray;
 use sp_core::{H160, H256};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt;
@@ -285,44 +284,30 @@ impl<T: Config> Pallet<T> {
         ecdsa_public_key: &ecdsa::Public,
         author: &<T as frame_system::pallet::Config>::AccountId,
     ) -> bool {
-        // Peers submit both raw and Ethereum-style recovery IDs. Bind that ID
-        // to the signer too, so an approval cannot export a different EVM signer.
-        let recovery_id = match signature.v {
-            0 | 1 => signature.v,
-            27 | 28 => signature.v - 27,
-            _ => return false,
-        };
-        let Ok(recovery_id) = secp256k1::RecoveryId::parse(recovery_id) else {
+        let message = eth::prepare_message(msg);
+        let Some(recovered) = Self::recover_prepared_message_signer(&message, signature) else {
             return false;
         };
-        let message = eth::prepare_message(msg);
-        let sig_bytes = signature.to_bytes();
-        let res = secp256k1::Signature::parse_standard_slice(&sig_bytes[..64]).and_then(|sig| {
-            secp256k1::PublicKey::parse_slice(ecdsa_public_key.as_slice(), None).map(|pk| (sig, pk))
-        });
-        if let Ok((signature, public_key)) = res {
-            let signer_account = MultiSigner::Ecdsa(ecdsa_public_key.clone()).into_account();
-            let verified = secp256k1::recover(&message, &signature, &recovery_id)
-                .is_ok_and(|recovered| recovered == public_key);
-            signer_account.encode() == author.encode() && verified
-        } else {
-            false
-        }
+        let signer_account = MultiSigner::Ecdsa(recovered.clone()).into_account();
+        recovered == *ecdsa_public_key && signer_account.encode() == author.encode()
     }
 
     /// Recover retained approval ownership when reconciling a changed peer set.
     /// The caller bounds the number of signatures before invoking this helper.
-    pub(crate) fn recover_message_signer(
-        msg: &[u8],
+    pub(crate) fn recover_prepared_message_signer(
+        message: &secp256k1::Message,
         signature: &SignatureParams,
     ) -> Option<ecdsa::Public> {
+        // Preserve the bridge's 0/1/27/28 domain and strict scalar parsing.
+        // The v2 host also accepts recovery IDs 2/3, so its checks alone are
+        // insufficient. Pass the prepared (reduced) digest used by the original
+        // software implementation to keep historical signature semantics.
         let canonical = signature.clone().canonical_recovery_id()?;
-        let recovery_id = secp256k1::RecoveryId::parse(canonical.v).ok()?;
         let bytes = canonical.to_bytes();
-        let signature = secp256k1::Signature::parse_standard_slice(&bytes[..64]).ok()?;
+        secp256k1::Signature::parse_standard_slice(&bytes[..64]).ok()?;
         let public =
-            secp256k1::recover(&eth::prepare_message(msg), &signature, &recovery_id).ok()?;
-        Some(ecdsa::Public::from_raw(public.serialize_compressed()))
+            sp_io::crypto::secp256k1_ecdsa_recover_compressed(&bytes, &message.serialize()).ok()?;
+        Some(ecdsa::Public::from_raw(public))
     }
 
     /// Signs a message with a peer's secret key.

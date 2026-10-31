@@ -37,7 +37,6 @@ use super::*;
 use crate::Pallet;
 use bridge_types::traits::BridgeAssetLockChecker;
 use codec::Decode;
-use common::eth::public_key_to_eth_address;
 use common::{balance, KUSD, XOR};
 use frame_benchmarking::{account, benchmarks, BenchmarkError};
 use frame_support::migrations::SteppedMigration;
@@ -64,6 +63,65 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
     assert_eq!(event, &system_event);
 }
 
+fn benchmark_key<T: Config>(
+    bytes: &[u8; 32],
+) -> (
+    sp_core::ecdsa::Public,
+    <T as frame_system::Config>::AccountId,
+) {
+    // Both the FRAME benchmark runner and ExtBuilder install a test keystore.
+    // A hex SURI uses these exact secret bytes, preserving the software fixture's
+    // keys while moving expensive key generation/signing out of Wasm setup.
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut seed = Vec::with_capacity(66);
+    seed.extend_from_slice(b"0x");
+    for byte in bytes {
+        seed.push(HEX[(byte >> 4) as usize]);
+        seed.push(HEX[(byte & 15) as usize]);
+    }
+    let public = sp_io::crypto::ecdsa_generate(crate::KEY_TYPE, Some(seed));
+    let account = <T as frame_system::Config>::AccountId::decode(
+        &mut &MultiSigner::Ecdsa(public.clone()).into_account().encode()[..],
+    )
+    .unwrap();
+    (public, account)
+}
+
+fn benchmark_peer<T: Config>(
+    index: u32,
+) -> (
+    sp_core::ecdsa::Public,
+    <T as frame_system::Config>::AccountId,
+) {
+    // Distinct, deterministic fixture keys, separate from the dispatch signer's [1; 32].
+    let mut bytes = [0u8; 32];
+    bytes[28..].copy_from_slice(&(index + 1).to_be_bytes());
+    benchmark_key::<T>(&bytes)
+}
+
+fn benchmark_signature(message: &[u8], public: &sp_core::ecdsa::Public) -> SignatureParams {
+    let prepared = common::eth::prepare_message(message).serialize();
+    let signature = sp_io::crypto::ecdsa_sign_prehashed(crate::KEY_TYPE, public, &prepared)
+        .expect("benchmark key was inserted into the test keystore");
+    SignatureParams {
+        r: signature.0[..32].try_into().unwrap(),
+        s: signature.0[32..64].try_into().unwrap(),
+        v: signature.0[64],
+    }
+}
+
+fn benchmark_peer_address(message: &[u8], signature: &SignatureParams) -> EthAddress {
+    let prepared = common::eth::prepare_message(message).serialize();
+    let mut bytes = [0; 65];
+    bytes[..32].copy_from_slice(&signature.r);
+    bytes[32..64].copy_from_slice(&signature.s);
+    bytes[64] = signature.v;
+    let public = sp_io::crypto::secp256k1_ecdsa_recover(&bytes, &prepared)
+        .ok()
+        .expect("benchmark signature has a valid public key");
+    EthAddress::from_slice(&sp_io::hashing::keccak_256(&public)[12..])
+}
+
 fn benchmark_max_peer_set<T: Config>(
     network_id: T::NetworkId,
     signer: <T as frame_system::Config>::AccountId,
@@ -72,7 +130,7 @@ fn benchmark_max_peer_set<T: Config>(
     peers.insert(signer);
     let mut index = 0u32;
     while peers.len() < MAX_PEERS {
-        peers.insert(account("eth_bridge_peer", index, 0));
+        peers.insert(benchmark_peer::<T>(index).1);
         index = index.saturating_add(1);
     }
     Peers::<T>::insert(network_id, &peers);
@@ -85,22 +143,97 @@ fn benchmark_seed_approvals<T: Config>(
     peers: &BTreeSet<<T as frame_system::Config>::AccountId>,
     signer: &<T as frame_system::Config>::AccountId,
     count: usize,
+    message: &[u8],
 ) {
-    let approvers = peers
-        .iter()
-        .filter(|peer| *peer != signer)
-        .take(count)
-        .cloned()
-        .collect::<BTreeSet<_>>();
+    let mut approvers = BTreeSet::new();
+    let mut approvals = BTreeSet::new();
+    for index in 0..MAX_PEERS as u32 {
+        let (public, account) = benchmark_peer::<T>(index);
+        if approvers.len() < count && &account != signer && peers.contains(&account) {
+            let signature = benchmark_signature(message, &public);
+            approvers.insert(account);
+            approvals.insert(signature);
+        }
+    }
     assert_eq!(approvers.len(), count);
-    let approvals = (0..count)
-        .map(|index| SignatureParams {
-            v: index as u8,
-            ..Default::default()
-        })
-        .collect::<BTreeSet<_>>();
+    assert_eq!(approvals.len(), count);
     RequestApprovals::<T>::insert(network_id, request_hash, approvals);
     RequestApprovers::<T>::insert(network_id, request_hash, approvers);
+}
+
+fn benchmark_approval_message<T: Config>(network_id: T::NetworkId, hash: H256) -> Vec<u8> {
+    // V3 add-token/add-asset encoding with the maximum valid symbol/name is the
+    // largest ordinary fixed-bounds payload (480 bytes). Migration token arrays
+    // are variable length; prepare_approval_message measures that hashing cost
+    // separately, while reconciliation hashes only once before recovering peers.
+    BridgeSignatureVersions::<T>::insert(network_id, BridgeSignatureVersion::V3);
+    let request = OutgoingAddToken::<T> {
+        author: alice::<T>(),
+        token_address: EthAddress::repeat_byte(42),
+        symbol: "A".repeat(7),
+        name: "A".repeat(33),
+        decimals: common::DEFAULT_BALANCE_PRECISION,
+        nonce: Default::default(),
+        network_id,
+        timepoint: Default::default(),
+    };
+    request.validate().unwrap();
+    let encoded = request.to_eth_abi(hash).unwrap();
+    assert_eq!(encoded.raw.len(), 480);
+    encoded.raw
+}
+
+#[derive(Clone, Copy)]
+enum BenchmarkApprovalKind {
+    Current,
+    Stale,
+    Invalid,
+    InvalidRecoveryId,
+}
+
+fn benchmark_reconciliation_approvals<T: Config>(
+    network_id: T::NetworkId,
+    hash: H256,
+    message: &[u8],
+    count: u32,
+    kind: BenchmarkApprovalKind,
+) {
+    let peers = (0..MAX_PEERS as u32)
+        .map(|index| benchmark_peer::<T>(index).1)
+        .collect::<BTreeSet<_>>();
+    assert_eq!(peers.len(), MAX_PEERS);
+    // Keep both account sets maximal even at n=0, so the intercept includes the
+    // full intersection/account encoding/map construction and storage proofs.
+    Peers::<T>::insert(network_id, &peers);
+    RequestApprovers::<T>::insert(network_id, hash, &peers);
+    let approvals = (0..count)
+        .map(|index| match kind {
+            BenchmarkApprovalKind::Current | BenchmarkApprovalKind::Stale => {
+                let key_index = match kind {
+                    BenchmarkApprovalKind::Stale => index + MAX_PEERS as u32,
+                    _ => index,
+                };
+                let (public, _) = benchmark_peer::<T>(key_index);
+                benchmark_signature(message, &public)
+            }
+            BenchmarkApprovalKind::Invalid | BenchmarkApprovalKind::InvalidRecoveryId => {
+                // Zero r with canonical v exercises a failed recovery attempt;
+                // invalid v instead exercises the bounded no-recovery scan.
+                let mut s = [0u8; 32];
+                s[28..].copy_from_slice(&(index + 1).to_be_bytes());
+                SignatureParams {
+                    r: [0; 32],
+                    s,
+                    v: match kind {
+                        BenchmarkApprovalKind::InvalidRecoveryId => 255,
+                        _ => 0,
+                    },
+                }
+            }
+        })
+        .collect::<BTreeSet<_>>();
+    assert_eq!(approvals.len(), count as usize);
+    RequestApprovals::<T>::insert(network_id, hash, approvals);
 }
 
 fn benchmark_fill_queue<T: Config>(
@@ -245,7 +378,8 @@ benchmarks! {
         Requests::<T>::insert(net_id, req_hash, outgoing);
         RequestStatuses::<T>::insert(net_id, req_hash, RequestStatus::ApprovalsReady);
         benchmark_enable_legacy_xor_decommission::<T>(net_id, req_hash);
-        let max_queue = T::MaxRequestsPerQueue::get() as usize;
+        // Public hints can occupy only one quarter of the authenticated queue.
+        let max_queue = (T::MaxRequestsPerQueue::get() / 4) as usize;
         let max_account_requests = T::MaxRequestsPerAccount::get() as usize;
         benchmark_fill_queue::<T>(net_id, max_queue - 1, None);
         benchmark_fill_account_requests::<T>(&caller, net_id, max_account_requests);
@@ -342,6 +476,135 @@ benchmarks! {
         assert_last_event::<T>(Event::<T>::IncomingRequestFinalized(req_hash).into());
     }
 
+    // Calibration-only components: generated measurements are combined into
+    // the admission/dispatch reconciliation allowance rather than a call weight.
+    #[extra]
+    reconcile_approvals {
+        let n in 0 .. MAX_PEERS as u32;
+        let net_id = 0u32.into();
+        let hash = H256::repeat_byte(42);
+        let message = benchmark_approval_message::<T>(net_id, hash);
+        benchmark_reconciliation_approvals::<T>(net_id, hash, &message, n, BenchmarkApprovalKind::Current);
+        let mut result = None;
+    }: {
+        result = Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?);
+    } verify {
+        let (signatures, approvers, recoveries) = result.unwrap();
+        assert_eq!(signatures.len(), n as usize);
+        assert_eq!(approvers.len(), n as usize);
+        assert_eq!(recoveries, n);
+    }
+
+    #[extra]
+    reconcile_approvals_stale {
+        let n in 0 .. MAX_PEERS as u32;
+        let net_id = 0u32.into();
+        let hash = H256::repeat_byte(42);
+        let message = benchmark_approval_message::<T>(net_id, hash);
+        benchmark_reconciliation_approvals::<T>(net_id, hash, &message, n, BenchmarkApprovalKind::Stale);
+        let mut result = None;
+    }: {
+        result = Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?);
+    } verify {
+        let (signatures, approvers, recoveries) = result.unwrap();
+        assert!(signatures.is_empty());
+        assert!(approvers.is_empty());
+        assert_eq!(recoveries, n);
+    }
+
+    #[extra]
+    reconcile_approvals_invalid {
+        let n in 0 .. MAX_PEERS as u32;
+        let net_id = 0u32.into();
+        let hash = H256::repeat_byte(42);
+        let message = benchmark_approval_message::<T>(net_id, hash);
+        benchmark_reconciliation_approvals::<T>(net_id, hash, &message, n, BenchmarkApprovalKind::Invalid);
+        let mut result = None;
+    }: {
+        result = Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?);
+    } verify {
+        let (signatures, approvers, recoveries) = result.unwrap();
+        assert!(signatures.is_empty());
+        assert!(approvers.is_empty());
+        assert_eq!(recoveries, n);
+    }
+
+    #[extra]
+    reconcile_approvals_invalid_recovery_id {
+        let net_id = 0u32.into();
+        let hash = H256::repeat_byte(42);
+        let message = benchmark_approval_message::<T>(net_id, hash);
+        benchmark_reconciliation_approvals::<T>(net_id, hash, &message, MAX_PEERS as u32, BenchmarkApprovalKind::InvalidRecoveryId);
+        let mut result = None;
+    }: {
+        result = Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?);
+    } verify {
+        let (signatures, approvers, recoveries) = result.unwrap();
+        assert!(signatures.is_empty());
+        assert!(approvers.is_empty());
+        assert_eq!(recoveries, 0);
+    }
+
+    #[extra]
+    prepare_approval_message {
+        // A V3 migration ABI expands each SCALE address from 20 to 32 bytes.
+        // 16 MiB conservatively covers that expansion from a 7 MiB block call;
+        // this benchmark envelope does not impose a new request-size policy.
+        let b in 0 .. 16 * 1024 * 1024;
+        let message = vec![42u8; b as usize];
+        let expected = common::eth::prepare_message(&message).serialize();
+        let mut result = None;
+    }: {
+        result = Some(common::eth::prepare_message(&message));
+    } verify {
+        assert_eq!(result.unwrap().serialize(), expected);
+    }
+
+    #[extra]
+    encode_approval_migration {
+        // The full 7 MiB block envelope is conservative for the stored address
+        // vector: each SCALE address costs 20 bytes and each V3 ABI word 32.
+        // Include decoding, ABI allocation/encoding, hashing, and storage proof.
+        let n in 0 .. (7 * 1024 * 1024) / 20;
+        let net_id = 0u32.into();
+        BridgeSignatureVersions::<T>::insert(net_id, BridgeSignatureVersion::V3);
+        BridgeStatuses::<T>::insert(net_id, BridgeStatus::Migrating);
+        let migration = OutgoingMigrate::<T> {
+            author: alice::<T>(),
+            new_contract_address: EthAddress::repeat_byte(42),
+            erc20_native_tokens: (0..n)
+                .map(|index| EthAddress::from_low_u64_be(index as u64 + 1))
+                .collect(),
+            nonce: Default::default(),
+            network_id: net_id,
+            timepoint: Default::default(),
+            new_signature_version: BridgeSignatureVersion::V3,
+        };
+        migration.validate().unwrap();
+        let request = OffchainRequest::outgoing(OutgoingRequest::Migrate(migration));
+        let hash = request.hash();
+        let encoded = request.as_outgoing().unwrap().0.to_eth_abi(hash).unwrap();
+        let expected_len = 32 * n as usize + 288;
+        assert_eq!(encoded.as_raw().len(), expected_len);
+        let expected = common::eth::prepare_message(encoded.as_raw()).serialize();
+        drop(encoded);
+        Requests::<T>::insert(net_id, hash, request);
+        let mut result = None;
+    }: {
+        let request = Requests::<T>::get(net_id, hash)
+            .ok_or(BenchmarkError::Stop("missing migration request"))?;
+        let (outgoing, stored_hash) = request.into_outgoing()
+            .ok_or(BenchmarkError::Stop("expected outgoing migration request"))?;
+        let encoded = outgoing.to_eth_abi(stored_hash)
+            .map_err(|_| BenchmarkError::Stop("migration ABI encoding failed"))?;
+        result = Some((
+            encoded.as_raw().len(),
+            common::eth::prepare_message(encoded.as_raw()).serialize(),
+        ));
+    } verify {
+        assert_eq!(result.unwrap(), (expected_len, expected));
+    }
+
     approve_request {
         let net_id = 0u32.into();
         let caller = crate::BridgeAccount::<T>::get(&net_id).unwrap();
@@ -360,11 +623,9 @@ benchmarks! {
         let (out_req, req_hash) = request.as_outgoing().unwrap();
         benchmark_enable_legacy_xor_decommission::<T>(net_id, req_hash);
         let encoded_request = out_req.to_eth_abi(req_hash).map_err(|_| BenchmarkError::Stop("EthAbi encoding error"))?;
-        let sk = secp256k1::SecretKey::parse(&[1; 32]).unwrap();
-        let public = secp256k1::PublicKey::from_secret_key(&sk);
-        let address = public_key_to_eth_address(&public);
-        let public = sp_core::ecdsa::Public::from_raw(public.serialize_compressed());
-        let account_id = <T as frame_system::pallet::Config>::AccountId::decode(&mut &MultiSigner::Ecdsa(public.clone()).into_account().encode()[..]).unwrap();
+        let (public, account_id) = benchmark_key::<T>(&[1; 32]);
+        let signature = benchmark_signature(encoded_request.as_raw(), &public);
+        let address = benchmark_peer_address(encoded_request.as_raw(), &signature);
         Pallet::<T>::force_add_peer(RawOrigin::Root.into(), account_id.clone(), address, net_id).unwrap();
         let peers = benchmark_max_peer_set::<T>(net_id, account_id.clone());
         benchmark_seed_approvals::<T>(
@@ -372,10 +633,9 @@ benchmarks! {
             req_hash,
             &peers,
             &account_id,
-            MAX_PEERS - 1,
+            majority(MAX_PEERS) - 2,
+            encoded_request.as_raw(),
         );
-        RequestStatuses::<T>::insert(net_id, req_hash, RequestStatus::ApprovalsReady);
-        let (signature, _) = Pallet::<T>::sign_message(encoded_request.as_raw(), &sk);
     }: approve_request(
         RawOrigin::Signed(account_id.clone()),
         public,
@@ -384,8 +644,9 @@ benchmarks! {
         net_id
     )
     verify {
-        assert_eq!(RequestApprovals::<T>::get(net_id, &req_hash).len(), MAX_PEERS);
-        assert_eq!(RequestApprovers::<T>::get(net_id, &req_hash).len(), MAX_PEERS);
+        assert_eq!(RequestApprovals::<T>::get(net_id, &req_hash).len(), majority(MAX_PEERS) - 1);
+        assert_eq!(RequestApprovers::<T>::get(net_id, &req_hash).len(), majority(MAX_PEERS) - 1);
+        assert_eq!(RequestStatuses::<T>::get(net_id, req_hash), Some(RequestStatus::Pending));
     }
 
     approve_request_finalize {
@@ -406,20 +667,18 @@ benchmarks! {
         let (out_req, req_hash) = request.as_outgoing().unwrap();
         benchmark_enable_legacy_xor_decommission::<T>(net_id, req_hash);
         let encoded_request = out_req.to_eth_abi(req_hash).map_err(|_| BenchmarkError::Stop("EthAbi encoding error"))?;
-        let sk = secp256k1::SecretKey::parse(&[1; 32]).unwrap();
-        let public = secp256k1::PublicKey::from_secret_key(&sk);
-        let address = public_key_to_eth_address(&public);
-        let public = sp_core::ecdsa::Public::from_raw(public.serialize_compressed());
-        let account_id = <T as frame_system::pallet::Config>::AccountId::decode(&mut &MultiSigner::Ecdsa(public.clone()).into_account().encode()[..]).unwrap();
+        let (public, account_id) = benchmark_key::<T>(&[1; 32]);
+        let signature = benchmark_signature(encoded_request.as_raw(), &public);
+        let address = benchmark_peer_address(encoded_request.as_raw(), &signature);
         Pallet::<T>::force_add_peer(RawOrigin::Root.into(), account_id.clone(), address, net_id).unwrap();
         let peers = benchmark_max_peer_set::<T>(net_id, account_id.clone());
-        let (signature, _) = Pallet::<T>::sign_message(encoded_request.as_raw(), &sk);
         benchmark_seed_approvals::<T>(
             net_id,
             req_hash,
             &peers,
             &account_id,
-            majority(MAX_PEERS),
+            MAX_PEERS - 1,
+            encoded_request.as_raw(),
         );
         let pending_peer: <T as frame_system::Config>::AccountId =
             account("pending_peer", 0, 0);
@@ -473,6 +732,44 @@ mod bench_tests {
     use frame_support::assert_ok;
 
     #[test]
+    fn host_benchmark_keys_preserve_software_fixture_bytes() {
+        let (mut ext, _state) = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let message = b"ETH benchmark fixture key compatibility";
+            let mut seeds = vec![[1; 32]];
+            for index in [0u32, 1, 99, 100, 199] {
+                let mut seed = [0u8; 32];
+                seed[28..].copy_from_slice(&(index + 1).to_be_bytes());
+                seeds.push(seed);
+            }
+            for seed in seeds {
+                let (public, account) = benchmark_key::<Runtime>(&seed);
+                let secret = secp256k1::SecretKey::parse(&seed).unwrap();
+                let software_public = secp256k1::PublicKey::from_secret_key(&secret);
+                assert_eq!(public.0, software_public.serialize_compressed());
+                assert_eq!(account, MultiSigner::Ecdsa(public.clone()).into_account());
+                let signature = benchmark_signature(message, &public);
+                assert_eq!(
+                    signature,
+                    Pallet::<Runtime>::sign_message(message, &secret).0
+                );
+                assert_eq!(
+                    benchmark_peer_address(message, &signature),
+                    common::eth::public_key_to_eth_address(&software_public),
+                );
+            }
+        });
+    }
+
+    #[test]
+    fn test_encode_approval_migration_benchmark() {
+        let (mut ext, _state) = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Pallet::<Runtime>::test_benchmark_encode_approval_migration());
+        });
+    }
+
+    #[test]
     fn test_benchmarks() {
         macro_rules! run_benchmark {
             ($benchmark:expr) => {{
@@ -498,6 +795,11 @@ mod bench_tests {
         run_benchmark!(Pallet::<Runtime>::test_benchmark_finalize_incoming_request());
         run_benchmark!(Pallet::<Runtime>::test_benchmark_approve_request());
         run_benchmark!(Pallet::<Runtime>::test_benchmark_approve_request_finalize());
+        run_benchmark!(Pallet::<Runtime>::test_benchmark_reconcile_approvals());
+        run_benchmark!(Pallet::<Runtime>::test_benchmark_reconcile_approvals_stale());
+        run_benchmark!(Pallet::<Runtime>::test_benchmark_reconcile_approvals_invalid());
+        run_benchmark!(Pallet::<Runtime>::test_benchmark_reconcile_approvals_invalid_recovery_id());
+        run_benchmark!(Pallet::<Runtime>::test_benchmark_prepare_approval_message());
         run_benchmark!(Pallet::<Runtime>::test_benchmark_abort_request());
     }
 }

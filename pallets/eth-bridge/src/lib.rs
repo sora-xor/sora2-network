@@ -1082,7 +1082,7 @@ pub mod pallet {
                 .max(<T as Config>::WeightInfo::approve_request_finalize())
                 .saturating_mul(3)
                 .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
-                .saturating_add(Pallet::<T>::approval_reconciliation_weight().saturating_mul(3))
+                .saturating_add(Pallet::<T>::approval_reconciliation_weight(*network_id, *hash).saturating_mul(3))
         )]
         pub fn approve_request(
             origin: OriginFor<T>,
@@ -1096,10 +1096,20 @@ pub mod pallet {
             let net_id = network_id;
             Self::ensure_peer(&author, net_id)?;
             Self::inner_approve_request(ocw_public, hash, signature_params, author, net_id)
-                // The declared weight also covers fee-exemption validation in both
-                // transaction-extension phases. The inner weight accounts only for
-                // dispatch, so refunding to it would discard that validation work.
-                .map(|_| Pays::Yes.into())
+                // Validation and preparation reconcile the same pre-dispatch
+                // signatures too. Refund only unused recovery work, keeping the
+                // allowance for both admission passes and dispatch.
+                .map(|(dispatch_weight, recoveries, message_bytes)| {
+                    (
+                        Some(Self::approval_actual_weight(
+                            dispatch_weight,
+                            recoveries,
+                            message_bytes,
+                        )),
+                        Pays::Yes,
+                    )
+                        .into()
+                })
                 .map_err(Into::into)
         }
 
@@ -1275,7 +1285,7 @@ pub mod pallet {
         /// submitter only pays to retry its bounded local accounting.
         #[pallet::call_index(19)]
         #[pallet::weight(<T as Config>::WeightInfo::approve_request_finalize()
-            .saturating_add(Pallet::<T>::approval_reconciliation_weight())
+            .saturating_add(Pallet::<T>::approval_reconciliation_weight(*network_id, *hash))
             .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
         pub fn finalize_approved_request(
             origin: OriginFor<T>,
@@ -1302,7 +1312,7 @@ pub mod pallet {
             );
             ensure!(!request.should_be_skipped(), Error::<T>::RequestIsNotReady);
             let encoded = request.to_eth_abi(hash)?;
-            let (approvals, approvers) =
+            let (approvals, approvers, recoveries) =
                 Self::current_request_approvals(network_id, hash, encoded.as_raw())?;
             ensure!(
                 Self::has_current_approval_quorum(network_id, &request, &approvers)?,
@@ -1311,7 +1321,19 @@ pub mod pallet {
             RequestApprovals::<T>::insert(network_id, hash, approvals);
             RequestApprovers::<T>::insert(network_id, hash, approvers);
             Self::finalize_outgoing_with_public_approvals(&request, hash, network_id);
-            Ok(Pays::Yes.into())
+            Ok((
+                Some(
+                    <T as Config>::WeightInfo::approve_request_finalize()
+                        .saturating_add(Self::approval_reconciliation_weight_for(recoveries))
+                        .saturating_add(Self::approval_metadata_read_weight())
+                        .saturating_add(
+                            Self::approval_message_weight(encoded.as_raw().len() as u64),
+                        )
+                        .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()),
+                ),
+                Pays::Yes,
+            )
+                .into())
         }
 
         /// Attach a bridge-owned local representation to a remote token.
@@ -2164,8 +2186,7 @@ impl<T: Config> Pallet<T> {
             .ok_or(Error::<T>::UnknownRequest)?;
         let status = RequestStatuses::<T>::get(network, hash).ok_or(Error::<T>::UnknownRequest)?;
         ensure!(
-            Self::outgoing_finalization_retryable(&status)
-                || status == RequestStatus::ApprovalsReady,
+            Self::outgoing_finalization_retryable(&status),
             Error::<T>::RequestIsNotReady
         );
         ensure!(
@@ -2181,7 +2202,7 @@ impl<T: Config> Pallet<T> {
             Self::verify_message(encoded.as_raw(), signature, public, author),
             Error::<T>::InvalidSignature
         );
-        let (approvals, approvers) =
+        let (approvals, approvers, _) =
             Self::current_request_approvals(network, *hash, encoded.as_raw())?;
         if approvers.contains(author) {
             ensure!(
@@ -2785,7 +2806,7 @@ impl<T: Config> Pallet<T> {
         signature_params: SignatureParams,
         author: <T as frame_system::pallet::Config>::AccountId,
         net_id: T::NetworkId,
-    ) -> Result<Option<Weight>, DispatchError> {
+    ) -> Result<(Weight, u32, u64), DispatchError> {
         ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
         crate::recovery::ensure_outgoing_active::<T>(net_id, hash)?;
         let request = Requests::<T>::get(net_id, hash)
@@ -2793,9 +2814,10 @@ impl<T: Config> Pallet<T> {
             .ok_or(Error::<T>::UnknownRequest)?;
         let current_status =
             RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+        // Ready signatures are the retained Ethereum settlement evidence. Do not
+        // reconcile them against today's peers or a missing legacy author map.
         ensure!(
-            Self::outgoing_finalization_retryable(&current_status)
-                || current_status == RequestStatus::ApprovalsReady,
+            Self::outgoing_finalization_retryable(&current_status),
             Error::<T>::RequestIsNotReady
         );
         ensure!(
@@ -2818,7 +2840,7 @@ impl<T: Config> Pallet<T> {
         let signature_params = signature_params
             .canonical_recovery_id()
             .ok_or(Error::<T>::InvalidSignature)?;
-        let (mut approvals, mut approvers) =
+        let (mut approvals, mut approvers, recoveries) =
             Self::current_request_approvals(net_id, hash, request_encoded.as_raw())?;
         let may_finalize = Self::outgoing_finalization_retryable(&current_status);
         if may_finalize && request.should_be_skipped() {
@@ -2844,19 +2866,99 @@ impl<T: Config> Pallet<T> {
         RequestApprovers::<T>::insert(net_id, &hash, &approvers);
         if may_finalize && Self::has_current_approval_quorum(net_id, &request, &approvers)? {
             Self::finalize_outgoing_with_public_approvals(&request, hash, net_id);
-            return Ok(Some(<T as Config>::WeightInfo::approve_request_finalize()));
+            return Ok((
+                <T as Config>::WeightInfo::approve_request_finalize(),
+                recoveries,
+                request_encoded.as_raw().len() as u64,
+            ));
         }
-        Ok(Some(<T as Config>::WeightInfo::approve_request()))
+        Ok((
+            <T as Config>::WeightInfo::approve_request(),
+            recoveries,
+            request_encoded.as_raw().len() as u64,
+        ))
     }
 
     /// Covers at most MAX_PEERS secp256k1 recoveries and the bounded signer sets.
     /// Keep this allowance in both fee validation and dispatch weight accounting.
-    pub fn approval_reconciliation_weight() -> Weight {
+    pub fn approval_reconciliation_weight(network: BridgeNetworkId<T>, hash: H256) -> Weight {
+        Self::approval_reconciliation_weight_for(MAX_PEERS as u32)
+            .saturating_add(
+                Self::approval_message_weight(Self::approval_message_byte_bound(network, hash))
+                    .saturating_mul(2),
+            )
+            .saturating_add(Self::approval_metadata_read_weight())
+    }
+
+    /// Outgoing payloads are content-hashed and retained unchanged. Read only
+    /// their enum tag into Wasm; storage::read also returns the full value length.
+    /// A public load hint can occupy a future outgoing hash, so every other tag
+    /// (or absent value) must retain the full admitted operational-call envelope.
+    pub fn approval_message_byte_bound(network: BridgeNetworkId<T>, hash: H256) -> u64 {
+        let mut tag = [u8::MAX; 1];
+        let length =
+            sp_io::storage::read(&Requests::<T>::hashed_key_for(network, hash), &mut tag, 0);
+        match length {
+            Some(length) if length > 0 && tag[0] == 0 => {
+                // V3 arrays expand 20-byte addresses to 32-byte ABI words.
+                // The fixed margin covers ABI heads and bounded asset metadata.
+                u64::from(length).saturating_mul(2).saturating_add(1024)
+            }
+            _ => u64::from(
+                *T::BlockLength::get()
+                    .max
+                    .get(frame_support::dispatch::DispatchClass::Operational),
+            )
+            .saturating_mul(2),
+        }
+    }
+
+    fn approval_metadata_read_weight() -> Weight {
+        // The host still reads the storage value even though Wasm receives one
+        // byte. Message-byte allowances cover its length; retain trie overhead
+        // and a database read in actual weight as well as the declaration.
+        T::DbWeight::get()
+            .reads(1)
+            .saturating_add(Weight::from_parts(0, 4096))
+    }
+
+    // Two compiled-Wasm runs, each with five component levels and 20 repeats.
+    // Twice the larger FRAME robust model, rounded up and covering every bucket
+    // median; shared-host wall-clock outliers remain in the evidence. See
+    // misc/bridge-security-review-2026-10-30/followup/
+    // claude-review-findings-2026-10-31/weight-model.json.
+    pub fn approval_reconciliation_weight_for(recoveries: u32) -> Weight {
         Weight::from_parts(
-            1_000_000_000u64.saturating_mul(MAX_PEERS as u64),
+            300_000_000u64.saturating_add(
+                100_000_000u64.saturating_mul(recoveries.min(MAX_PEERS as u32) as u64),
+            ),
             4096 + 128 * MAX_PEERS as u64,
         )
         .saturating_add(T::DbWeight::get().reads(3))
+    }
+
+    pub fn approval_message_weight(bytes: u64) -> Weight {
+        // Covers both hashing and complete migration storage decoding/ABI
+        // construction, including the full operational block address envelope.
+        Weight::from_parts(2_100_000_000, 0)
+            .saturating_add(Weight::from_parts(7_100, 1).saturating_mul(bytes))
+    }
+
+    fn approval_actual_weight(
+        dispatch_weight: Weight,
+        recoveries: u32,
+        message_bytes: u64,
+    ) -> Weight {
+        <T as Config>::WeightInfo::approve_request()
+            .max(<T as Config>::WeightInfo::approve_request_finalize())
+            .saturating_mul(2)
+            .saturating_add(dispatch_weight)
+            .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
+            .saturating_add(Self::approval_reconciliation_weight_for(recoveries).saturating_mul(3))
+            .saturating_add(Self::approval_metadata_read_weight().saturating_mul(3))
+            // Each pass hashes the new caller's signature and the retained
+            // approval batch. Use the real byte count without truncation.
+            .saturating_add(Self::approval_message_weight(message_bytes).saturating_mul(6))
     }
 
     fn outgoing_finalization_retryable(status: &RequestStatus) -> bool {
@@ -2886,7 +2988,7 @@ impl<T: Config> Pallet<T> {
         network: T::NetworkId,
         hash: H256,
         message: &[u8],
-    ) -> Result<(BTreeSet<SignatureParams>, BTreeSet<T::AccountId>), DispatchError> {
+    ) -> Result<(BTreeSet<SignatureParams>, BTreeSet<T::AccountId>, u32), DispatchError> {
         let stored_signatures = RequestApprovals::<T>::get(network, hash);
         let recorded = RequestApprovers::<T>::get(network, hash);
         ensure!(
@@ -2904,11 +3006,16 @@ impl<T: Config> Pallet<T> {
             .collect();
         let mut signatures = BTreeSet::new();
         let mut approvers = BTreeSet::new();
+        let mut recoveries = 0u32;
+        // The signed payload is identical for every peer. Hash it once, so a
+        // migration's token-list length does not multiply each curve recovery.
+        let prepared = common::eth::prepare_message(message);
         for signature in stored_signatures {
             let Some(signature) = signature.canonical_recovery_id() else {
                 continue;
             };
-            let Some(public) = Self::recover_message_signer(message, &signature) else {
+            recoveries += 1;
+            let Some(public) = Self::recover_prepared_message_signer(&prepared, &signature) else {
                 continue;
             };
             let signer = sp_runtime::MultiSigner::Ecdsa(public)
@@ -2920,7 +3027,7 @@ impl<T: Config> Pallet<T> {
                 }
             }
         }
-        Ok((signatures, approvers))
+        Ok((signatures, approvers, recoveries))
     }
 
     fn has_current_approval_quorum(

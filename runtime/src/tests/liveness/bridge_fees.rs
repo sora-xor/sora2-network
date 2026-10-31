@@ -635,9 +635,24 @@ fn outgoing_approval_retains_validation_weight_before_and_at_quorum() {
             frame_system::BlockSize::<Runtime>::kill();
             System::reset_events();
             assert_ok!(Executive::apply_extrinsic(transaction).unwrap());
+            let dispatch = if index == 0 {
+                <<Runtime as eth_bridge::Config>::WeightInfo as eth_bridge::weights::WeightInfo>::approve_request()
+            } else {
+                <<Runtime as eth_bridge::Config>::WeightInfo as eth_bridge::weights::WeightInfo>::approve_request_finalize()
+            };
+            let admission = <<Runtime as eth_bridge::Config>::WeightInfo as eth_bridge::weights::WeightInfo>::approve_request()
+                .max(<<Runtime as eth_bridge::Config>::WeightInfo as eth_bridge::weights::WeightInfo>::approve_request_finalize())
+                .saturating_mul(2)
+                .saturating_add(BridgeMultisig::protocol_validation_weight())
+                .saturating_add(EthBridge::approval_reconciliation_weight_for(index as u32).saturating_mul(3));
+            let charged = *System::block_weight().get(class);
             assert!(
-                System::block_weight().get(class).all_gte(declared_weight),
-                "successful approval must retain its admission-validation allowance"
+                charged.all_gte(admission.saturating_add(dispatch)),
+                "actual weight must retain validation, preparation and dispatch work"
+            );
+            assert!(
+                charged.ref_time() < declared_weight.ref_time(),
+                "CheckWeight must reclaim unused worst-case signature recovery work"
             );
             assert_eq!(Balances::total_balance(who), 0);
             assert_eq!(System::account_nonce(who), 1);
@@ -1268,6 +1283,169 @@ fn cancelling_prepared_incoming_restores_accounting_when_outbound_price_is_unava
         assert_eq!(
             BridgeProxy::transfer_limit_unlock_schedule(unlock_at),
             scheduled
+        );
+    });
+}
+
+#[test]
+fn actual_approval_weight_reclaims_enough_for_valid_peer_submissions_beyond_declared_block_capacity() {
+    use common::AssetInfoProvider;
+    use eth_bridge::requests::{OutgoingRequest, RequestStatus};
+    use sp_runtime::{traits::IdentifyAccount, MultiSigner};
+
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        seed_existing_pswap_bridge_mapping();
+        let peers = [
+            sp_core::ecdsa::Pair::from_seed(&[85; 32]),
+            sp_core::ecdsa::Pair::from_seed(&[86; 32]),
+        ];
+        let accounts: Vec<AccountId> = peers
+            .iter()
+            .map(|peer| MultiSigner::Ecdsa(peer.public()).into_account())
+            .collect();
+        for who in &accounts {
+            System::inc_providers(who);
+            assert_eq!(Balances::total_balance(who), 0);
+        }
+        eth_bridge::Peers::<Runtime>::insert(
+            0,
+            accounts.iter().cloned().collect::<std::collections::BTreeSet<_>>(),
+        );
+        assert!(EthBridge::pending_peer(0).is_none());
+        let sender = AccountId::from([87; 32]);
+        System::inc_providers(&sender);
+        assert_ok!(Assets::update_balance(
+            RuntimeOrigin::root(), sender.clone(), PSWAP,
+            balance!(1) as i128,
+        ));
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(sender.clone()), PSWAP,
+            H160::repeat_byte(30), balance!(1), 0,
+        ));
+        let first_hash = eth_bridge::RequestsQueue::<Runtime>::get(0)[0];
+        let first_info = RuntimeCall::EthBridge(eth_bridge::Call::approve_request {
+            ocw_public: peers[0].public(), hash: first_hash,
+            signature_params: eth_bridge::offchain::SignatureParams { r: [0; 32], s: [0; 32], v: 0 },
+            network_id: 0,
+        }).get_dispatch_info();
+        let normal_limit = crate::BlockWeights::get().get(first_info.class).max_total.unwrap();
+        // Derive the workload from a real stored transfer's declaration. A
+        // calibrated faster recovery implementation must not make this test
+        // accidentally fit without post-dispatch weight reclamation.
+        let required_submissions = normal_limit.ref_time() / first_info.call_weight.ref_time() + 2;
+        let request_count = required_submissions.div_ceil(2).max(6) as usize;
+        assert!(request_count <= 100, "calibrated workload exceeds the fixture bound");
+        assert_ok!(Assets::update_balance(
+            RuntimeOrigin::root(), sender.clone(), PSWAP,
+            (balance!(1) * (request_count - 1) as u128) as i128,
+        ));
+        // Use actual preparation: custody and reservation must support every
+        // quorum finalization instead of substituting synthetic request rows.
+        for index in 1..request_count {
+            assert_ok!(EthBridge::transfer_to_sidechain(
+                RuntimeOrigin::signed(sender.clone()), PSWAP,
+                H160::repeat_byte(index as u8 + 30), balance!(1), 0,
+            ));
+        }
+        let requests = eth_bridge::RequestsQueue::<Runtime>::get(0);
+        assert_eq!(requests.len(), request_count);
+        assert_eq!(Assets::free_balance(&PSWAP, &sender).unwrap(), 0);
+        frame_system::BlockWeight::<Runtime>::kill();
+        frame_system::BlockSize::<Runtime>::kill();
+        System::reset_events();
+        let mut declared_sum = frame_support::weights::Weight::zero();
+        for (peer_index, (peer, who)) in peers.iter().zip(&accounts).enumerate() {
+            for hash in &requests {
+                let request = eth_bridge::Requests::<Runtime>::get(0, hash)
+                    .unwrap().into_outgoing().unwrap().0;
+                let OutgoingRequest::Transfer(_) = &request else {
+                    panic!("prepared withdrawal fixture")
+                };
+                let eth_bridge::requests::OutgoingRequestEncoded::Transfer(encoded) =
+                    request.to_eth_abi(*hash).unwrap()
+                else {
+                    panic!("prepared withdrawal encoding")
+                };
+                let proof = peer.sign_prehashed(
+                    &common::eth::prepare_message(&encoded.raw).serialize(),
+                );
+                let mut r = [0; 32];
+                r.copy_from_slice(&proof.0[..32]);
+                let mut s = [0; 32];
+                s.copy_from_slice(&proof.0[32..64]);
+                let call = RuntimeCall::EthBridge(eth_bridge::Call::approve_request {
+                    ocw_public: peer.public(), hash: *hash,
+                    signature_params: eth_bridge::offchain::SignatureParams { r, s, v: proof.0[64] },
+                    network_id: 0,
+                });
+                let info = call.get_dispatch_info();
+                assert_eq!(info.pays_fee, Pays::Yes);
+                assert_eq!(info.class, first_info.class);
+                assert_eq!(info.call_weight, first_info.call_weight);
+                declared_sum = declared_sum.saturating_add(info.call_weight);
+                let extra: SignedExtra = (
+                    frame_system::AuthorizeCall::new(),
+                    frame_system::CheckSpecVersion::<Runtime>::new(),
+                    frame_system::CheckTxVersion::<Runtime>::new(),
+                    frame_system::CheckGenesis::<Runtime>::new(),
+                    frame_system::CheckEra::<Runtime>::from(Era::Immortal),
+                    frame_system::CheckNonce::<Runtime>::from(System::account_nonce(who)),
+                    frame_system::CheckWeight::<Runtime>::new(),
+                    crate::charge_tx_payment_extension(),
+                );
+                let payload = crate::SignedPayload::new(call.clone(), extra.clone()).unwrap();
+                let signature = payload.using_encoded(|payload| peer.sign(payload));
+                let transaction = UncheckedExtrinsic::new_signed(
+                    call, who.clone(), Signature::Ecdsa(signature), extra,
+                );
+                let before = *System::block_weight().get(info.class);
+                // Do not clear the weight or length counters between submissions.
+                // Without real CheckWeight reclamation, declared_sum exhausts
+                // the block before this sequence can complete.
+                assert_ok!(Executive::apply_extrinsic(transaction).unwrap());
+                let after = *System::block_weight().get(info.class);
+                let charged = after.saturating_sub(before);
+                let dispatch_floor = <<Runtime as eth_bridge::Config>::WeightInfo as eth_bridge::weights::WeightInfo>::approve_request()
+                    .min(<<Runtime as eth_bridge::Config>::WeightInfo as eth_bridge::weights::WeightInfo>::approve_request_finalize());
+                let admission_floor = <<Runtime as eth_bridge::Config>::WeightInfo as eth_bridge::weights::WeightInfo>::approve_request()
+                    .max(<<Runtime as eth_bridge::Config>::WeightInfo as eth_bridge::weights::WeightInfo>::approve_request_finalize())
+                    .saturating_mul(2)
+                    .saturating_add(BridgeMultisig::protocol_validation_weight())
+                    .saturating_add(EthBridge::approval_reconciliation_weight_for(peer_index as u32).saturating_mul(3));
+                assert!(charged.all_gte(admission_floor.saturating_add(dispatch_floor)));
+                assert!(charged.ref_time() < info.call_weight.ref_time());
+                assert!(after.all_lte(normal_limit));
+                assert_eq!(eth_bridge::RequestApprovers::<Runtime>::get(0, hash).len(), peer_index + 1);
+                assert_eq!(
+                    eth_bridge::RequestStatuses::<Runtime>::get(0, hash),
+                    Some(if peer_index == 0 { RequestStatus::Pending } else { RequestStatus::ApprovalsReady }),
+                );
+            }
+        }
+        assert!(
+            declared_sum.ref_time() > normal_limit.ref_time(),
+            "this sequence must exceed one block if worst-case declarations are retained"
+        );
+        assert!(eth_bridge::RequestsQueue::<Runtime>::get(0).is_empty());
+        for who in &accounts {
+            assert_eq!(System::account_nonce(who), request_count as u32);
+            assert_eq!(Balances::total_balance(who), 0);
+            let paid = System::events().iter().filter(|record| matches!(
+                &record.event,
+                RuntimeEvent::TransactionPayment(pallet_transaction_payment::Event::TransactionFeePaid {
+                    who: account, actual_fee: 0, tip: 0,
+                }) if account == who
+            )).count();
+            assert_eq!(paid, request_count);
+        }
+        println!(
+            "approval block: requests={}, approvals={}, declared_ref_time={}, actual_ref_time={}, normal_limit_ref_time={}",
+            request_count,
+            2 * request_count,
+            declared_sum.ref_time(),
+            System::block_weight().get(first_info.class).ref_time(),
+            normal_limit.ref_time(),
         );
     });
 }

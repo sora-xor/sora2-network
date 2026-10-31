@@ -209,6 +209,55 @@ fn recovery_invalid_public_hints_stop_retrying_but_pending_deposits_stay_held() 
 }
 
 #[test]
+fn recovery_null_receipt_rejects_public_hint_but_holds_pending_transfer() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        enable_policy();
+        let hash = H256::repeat_byte(9);
+        let valid_receipt = receipt(hash);
+        let pending = EthBridge::parse_incoming_request(valid_receipt.clone(), load(hash)).unwrap();
+        let original = pending.encode();
+        crate::tests::request_incoming(
+            alice(),
+            hash,
+            IncomingTransactionRequestKind::Transfer.into(),
+            0,
+        )
+        .unwrap();
+        let hint = crate::Requests::<Runtime>::get(0, hash).unwrap();
+        push_global_json_rpc_response(Option::<TransactionReceipt>::None);
+        let hint_error = EthBridge::handle_offchain_request(hint).unwrap_err();
+        assert_eq!(hint_error, Error::FailedToLoadTransaction);
+        assert!(!hint_error.should_retry());
+
+        push_global_json_rpc_response(Option::<TransactionReceipt>::None);
+        assert_eq!(
+            pending.check_existence(),
+            Err(Error::JsonDeserializationError)
+        );
+        push_global_json_rpc_response(Option::<TransactionReceipt>::None);
+        let error = EthBridge::handle_offchain_request(OffchainRequest::incoming(pending.clone()))
+            .unwrap_err();
+        assert_eq!(error, Error::JsonDeserializationError);
+        assert!(error.should_retry(), "the worker must not submit an abort");
+        assert_eq!(pending.encode(), original);
+
+        push_global_http_failure();
+        assert_eq!(pending.check_existence(), Err(Error::HttpFetchingError));
+        push_global_json_rpc_response(vec![valid_receipt.logs[0].clone()]);
+        push_global_json_rpc_response(Option::<TransactionReceipt>::None);
+        let mut cursor = 5;
+        assert_eq!(
+            EthBridge::handle_logs(5, 7, &mut cursor, 0),
+            Err(Error::FailedToLoadTransaction)
+        );
+        assert_eq!(cursor, 5);
+        assert!(state.pending_txs().is_empty());
+        assert!(state.pool_state.read().transactions.is_empty());
+    });
+}
+
+#[test]
 fn recovery_scanner_import_contains_receipt_sender() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {

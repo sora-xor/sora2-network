@@ -558,7 +558,18 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::Transfer(request)
                 if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) =>
             {
-                let receipt = Pallet::<T>::load_transfer_receipt(request.tx_hash, network_id)?;
+                let receipt = Pallet::<T>::load_transfer_receipt(request.tx_hash, network_id)
+                    .map_err(|error| {
+                        // A missing receipt can reject an unauthenticated public
+                        // hint, but cannot authorize aborting a prepared monetary
+                        // request. Preserve transport retries and hold all other
+                        // unavailable receipt evidence for reconciliation.
+                        if error.should_retry() {
+                            error
+                        } else {
+                            Error::<T>::JsonDeserializationError
+                        }
+                    })?;
                 let load = LoadIncomingTransactionRequest::new(
                     request.author.clone(),
                     request.tx_hash,
