@@ -1428,8 +1428,14 @@ pub mod pallet {
                     })
                     .map(|_| Some(whole_weight).into())
             }
+            // The wrapped call never runs here. Report only this call's weight so
+            // CheckWeight reclaims the wrapped declaration: retaining it would let
+            // flat-fee failures fill blocks.
             #[cfg(not(feature = "wip"))] // Xorless fee
-            Err(DispatchError::Unavailable.into())
+            Err(sp_runtime::DispatchErrorWithPostInfo {
+                post_info: Some(<T as Config>::WeightInfo::xorless_call()).into(),
+                error: DispatchError::Unavailable,
+            })
         }
 
         #[allow(unused_variables)] // Used in extension

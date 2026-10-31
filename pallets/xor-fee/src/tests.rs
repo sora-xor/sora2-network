@@ -1634,6 +1634,38 @@ fn test_xorless_call_failed_inner_call() {
     });
 }
 
+#[cfg(not(feature = "wip"))] // Xorless fee
+#[test]
+fn unavailable_xorless_call_keeps_only_its_own_weight() {
+    use frame_support::dispatch::{extract_actual_weight, GetDispatchInfo, Pays};
+    use sp_runtime::traits::Dispatchable;
+    ExtBuilder::build().execute_with(|| {
+        let inner = RuntimeCall::Assets(assets::Call::transfer {
+            asset_id: common::XOR.into(),
+            to: alice(),
+            amount: balance!(1),
+        });
+        let call = RuntimeCall::XorFee(crate::Call::xorless_call {
+            call: Box::new(inner.clone()),
+            asset_id: None,
+        });
+        let own = <<Runtime as crate::Config>::WeightInfo as crate::WeightInfo>::xorless_call();
+        let info = call.get_dispatch_info();
+        assert_eq!(
+            info.call_weight,
+            own.saturating_add(inner.get_dispatch_info().total_weight())
+        );
+        assert!(info.call_weight.ref_time() > own.ref_time());
+        let result = call.dispatch(RuntimeOrigin::signed(bob()));
+        // CheckWeight retains only this call's weight, not the wrapped declaration.
+        assert_eq!(extract_actual_weight(&result, &info), own);
+        let err = result.unwrap_err();
+        assert_eq!(err.error, DispatchError::Unavailable);
+        assert_eq!(err.post_info.actual_weight, Some(own));
+        assert_eq!(err.post_info.pays_fee, Pays::Yes);
+    });
+}
+
 #[test]
 fn non_root_scale_fails() {
     let mut ext = ExtBuilder::build();
