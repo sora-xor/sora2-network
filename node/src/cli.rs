@@ -59,6 +59,47 @@ pub struct Cli {
     pub recovery_hashi_release_sha256: Option<sp_core::H256>,
 }
 
+impl Cli {
+    /// Retained validator keys alone must not opt a recovery node into bridge bootstrap.
+    pub fn recovery_bridge_bootstrap_requested(&self) -> bool {
+        matches!(
+            self.run.offchain_worker_params.enabled,
+            sc_cli::OffchainWorkerEnabled::Always
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::Parser;
+
+    #[test]
+    fn recovery_bridge_bootstrap_requires_explicit_always() {
+        for arguments in [
+            vec!["framenode"],
+            vec!["framenode", "--validator"],
+            vec![
+                "framenode",
+                "--validator",
+                "--offchain-worker",
+                "when-authority",
+            ],
+            vec!["framenode", "--validator", "--offchain-worker", "never"],
+        ] {
+            let cli = Cli::try_parse_from(arguments).expect("valid node arguments");
+            assert!(!cli.recovery_bridge_bootstrap_requested());
+        }
+        for arguments in [
+            vec!["framenode", "--offchain-worker", "always"],
+            vec!["framenode", "--validator", "--offchain-worker=always"],
+        ] {
+            let cli = Cli::try_parse_from(arguments).expect("valid bridge peer arguments");
+            assert!(cli.recovery_bridge_bootstrap_requested());
+        }
+    }
+}
+
 #[derive(Debug, clap::Subcommand)]
 pub enum Subcommand {
     /// Key management cli utilities
