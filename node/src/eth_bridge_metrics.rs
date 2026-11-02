@@ -100,7 +100,7 @@ where
         if let Some(storage) = backend.offchain_storage() {
             get_offchain_value(&storage, STORAGE_NETWORK_IDS_KEY, "network ids").map_or_else(
                 || {
-                    log::warn!("No network ids found in offchain storage. If you don't run bridge peer, this is fine");
+                    log::warn!("No network ids found in offchain storage. Recovery bridge peers must explicitly start with --offchain-worker always and a valid chain-local bridge/eth.json; the offchain worker does not initialize network IDs when the bridge halt clears. Nodes without a local bridge peer do not need network IDs");
                     Ok::<(), PrometheusError>(())
                 },
                 |networks: BTreeSet<framenode_runtime::NetworkId>| {

@@ -485,11 +485,11 @@ benchmarks! {
         let hash = H256::repeat_byte(42);
         let message = benchmark_approval_message::<T>(net_id, hash);
         benchmark_reconciliation_approvals::<T>(net_id, hash, &message, n, BenchmarkApprovalKind::Current);
-        let mut result = None;
+        let result = core::cell::Cell::new(None);
     }: {
-        result = Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?);
+        result.set(Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?));
     } verify {
-        let (signatures, approvers, recoveries) = result.unwrap();
+        let (signatures, approvers, recoveries) = result.into_inner().unwrap();
         assert_eq!(signatures.len(), n as usize);
         assert_eq!(approvers.len(), n as usize);
         assert_eq!(recoveries, n);
@@ -502,11 +502,11 @@ benchmarks! {
         let hash = H256::repeat_byte(42);
         let message = benchmark_approval_message::<T>(net_id, hash);
         benchmark_reconciliation_approvals::<T>(net_id, hash, &message, n, BenchmarkApprovalKind::Stale);
-        let mut result = None;
+        let result = core::cell::Cell::new(None);
     }: {
-        result = Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?);
+        result.set(Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?));
     } verify {
-        let (signatures, approvers, recoveries) = result.unwrap();
+        let (signatures, approvers, recoveries) = result.into_inner().unwrap();
         assert!(signatures.is_empty());
         assert!(approvers.is_empty());
         assert_eq!(recoveries, n);
@@ -519,11 +519,11 @@ benchmarks! {
         let hash = H256::repeat_byte(42);
         let message = benchmark_approval_message::<T>(net_id, hash);
         benchmark_reconciliation_approvals::<T>(net_id, hash, &message, n, BenchmarkApprovalKind::Invalid);
-        let mut result = None;
+        let result = core::cell::Cell::new(None);
     }: {
-        result = Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?);
+        result.set(Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?));
     } verify {
-        let (signatures, approvers, recoveries) = result.unwrap();
+        let (signatures, approvers, recoveries) = result.into_inner().unwrap();
         assert!(signatures.is_empty());
         assert!(approvers.is_empty());
         assert_eq!(recoveries, n);
@@ -535,11 +535,11 @@ benchmarks! {
         let hash = H256::repeat_byte(42);
         let message = benchmark_approval_message::<T>(net_id, hash);
         benchmark_reconciliation_approvals::<T>(net_id, hash, &message, MAX_PEERS as u32, BenchmarkApprovalKind::InvalidRecoveryId);
-        let mut result = None;
+        let result = core::cell::Cell::new(None);
     }: {
-        result = Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?);
+        result.set(Some(Pallet::<T>::current_request_approvals(net_id, hash, &message)?));
     } verify {
-        let (signatures, approvers, recoveries) = result.unwrap();
+        let (signatures, approvers, recoveries) = result.into_inner().unwrap();
         assert!(signatures.is_empty());
         assert!(approvers.is_empty());
         assert_eq!(recoveries, 0);
@@ -553,11 +553,11 @@ benchmarks! {
         let b in 0 .. 16 * 1024 * 1024;
         let message = vec![42u8; b as usize];
         let expected = common::eth::prepare_message(&message).serialize();
-        let mut result = None;
+        let result = core::cell::Cell::new(None);
     }: {
-        result = Some(common::eth::prepare_message(&message));
+        result.set(Some(common::eth::prepare_message(&message)));
     } verify {
-        assert_eq!(result.unwrap().serialize(), expected);
+        assert_eq!(result.into_inner().unwrap().serialize(), expected);
     }
 
     #[extra]
@@ -589,7 +589,7 @@ benchmarks! {
         let expected = common::eth::prepare_message(encoded.as_raw()).serialize();
         drop(encoded);
         Requests::<T>::insert(net_id, hash, request);
-        let mut result = None;
+        let result = core::cell::Cell::new(None);
     }: {
         let request = Requests::<T>::get(net_id, hash)
             .ok_or(BenchmarkError::Stop("missing migration request"))?;
@@ -597,12 +597,12 @@ benchmarks! {
             .ok_or(BenchmarkError::Stop("expected outgoing migration request"))?;
         let encoded = outgoing.to_eth_abi(stored_hash)
             .map_err(|_| BenchmarkError::Stop("migration ABI encoding failed"))?;
-        result = Some((
+        result.set(Some((
             encoded.as_raw().len(),
             common::eth::prepare_message(encoded.as_raw()).serialize(),
-        ));
+        )));
     } verify {
-        assert_eq!(result.unwrap(), (expected_len, expected));
+        assert_eq!(result.into_inner().unwrap(), (expected_len, expected));
     }
 
     approve_request {

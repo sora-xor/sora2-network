@@ -63,6 +63,7 @@ pub mod mock;
 mod ocw;
 mod outgoing_tranfser;
 mod peer;
+mod recovery_bootstrap;
 mod rpc;
 
 pub(crate) type Error = crate::Error<Runtime>;
