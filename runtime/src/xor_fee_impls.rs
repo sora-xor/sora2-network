@@ -2945,6 +2945,8 @@ mod tests {
 /// The bridge exception is tied to authenticated protocol progress, never to
 /// peer identity alone. Invalid or replayed candidates are rejected before
 /// fee withdrawal and before dispatch in both pool validation and pre-dispatch.
+/// The one identity-based exception is a guardian's `BridgeHalt::halt`, and it
+/// is admitted only while the bridges run, so it succeeds once per open period.
 pub fn validate_bridge_fee_exemption(
     who: &AccountId,
     call: &RuntimeCall,
@@ -2960,6 +2962,15 @@ pub fn validate_bridge_fee_exemption(
         return Err(InvalidTransaction::BadSigner.into());
     }
     match call {
+        // Guardians halt every bridge without paying. Any other signer, and a
+        // repeat while the latch is present, is rejected here: that transaction
+        // never reaches a block, so it changes nothing and costs nothing.
+        // Wrapped halts fall through to ordinary fees; dispatch still requires
+        // a guardian origin.
+        RuntimeCall::BridgeHalt(bridge_halt::Call::halt { .. }) => {
+            BridgeHalt::validate_halt(who)?;
+            return Ok(true);
+        }
         RuntimeCall::BridgeInboundChannel(bridge_channel::inbound::Call::submit {
             network_id,
             commitment,

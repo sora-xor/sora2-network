@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 mod babe_config;
+mod bridge_halt;
 mod liquidity_proxy;
 mod liveness;
 mod referrals;
@@ -379,7 +380,7 @@ pub(crate) fn unknown_benchmark_genesis_preset_is_rejected() {
 }
 
 pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
-    assert_eq!(crate::VERSION.spec_version, 138);
+    assert_eq!(crate::VERSION.spec_version, 139);
     assert_eq!(crate::VERSION.transaction_version, 134);
     assert_eq!(
         band::Pallet::<crate::Runtime>::in_code_storage_version(),

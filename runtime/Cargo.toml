@@ -108,6 +108,7 @@ extended-assets = { path = "../pallets/extended-assets", default-features = fals
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 soratopia = { path = "../pallets/soratopia", default-features = false }
+bridge-halt = { path = "../pallets/bridge-halt", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
 trading-pair = { path = "../pallets/trading-pair", default-features = false }
 trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false }
@@ -331,6 +332,7 @@ std = [
     "staging-xcm-executor/std",
     "substrate-bridge-app/std",
     "soratopia/std",
+    "bridge-halt/std",
     "technical/std",
     "tokens/std",
     "trading-pair-runtime-api/std",
@@ -412,6 +414,7 @@ runtime-benchmarks = [
     "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "soratopia/runtime-benchmarks",
+    "bridge-halt/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "tokens/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
@@ -509,6 +512,7 @@ try-runtime = [
     "referrals/try-runtime",
     "rewards/try-runtime",
     "soratopia/try-runtime",
+    "bridge-halt/try-runtime",
     "technical/try-runtime",
     "trading-pair/try-runtime",
     "vested-rewards/try-runtime",

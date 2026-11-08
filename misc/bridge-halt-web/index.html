@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src wss://ws.mof.sora.org wss://mof2.sora.org ws://127.0.0.1:* ws://localhost:*; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <title>SORA Bridge Halt</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>SORA bridge emergency halt</h1>
+        <p class="lede">
+          Guardians use this page to stop every SORA bridge during an attack. The request is
+          written on chain and costs guardians no fee. The chain rejects it from any other
+          account, so for them the button does nothing. Only devops can reopen the bridges.
+        </p>
+      </header>
+
+      <section class="card" aria-labelledby="status-title">
+        <div class="row">
+          <h2 id="status-title">Bridge status</h2>
+          <label class="endpoint">
+            <span>Node</span>
+            <select id="endpoint"></select>
+          </label>
+        </div>
+        <p id="status" class="status status-unknown" role="status" aria-live="polite">Connecting…</p>
+        <dl class="facts">
+          <div><dt>Chain</dt><dd id="chain">–</dd></div>
+          <div><dt>Block</dt><dd id="block">–</dd></div>
+          <div><dt>Runtime</dt><dd id="runtime">–</dd></div>
+        </dl>
+        <div id="last-halt" class="last-halt" hidden>
+          <h3>Last halt</h3>
+          <dl class="facts">
+            <div><dt>Guardian</dt><dd id="last-guardian" class="mono"></dd></div>
+            <div><dt>Block</dt><dd id="last-block"></dd></div>
+            <div><dt>Message</dt><dd id="last-reason"></dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="halt-title">
+        <h2 id="halt-title">Halt the bridges</h2>
+        <p id="unsupported" class="notice warn" hidden></p>
+
+        <div class="wallet">
+          <button id="connect" type="button" class="secondary">Connect wallet</button>
+          <p id="wallet-note" class="hint">
+            Use the polkadot{.js}, SubWallet or Talisman extension. The Fearless Wallet
+            extension is not offered: it leaked keys in October 2026.
+          </p>
+        </div>
+
+        <label class="field">
+          <span>Account</span>
+          <select id="account" disabled>
+            <option>Connect a wallet first</option>
+          </select>
+        </label>
+        <p id="account-role" class="hint" aria-live="polite"></p>
+
+        <label class="field">
+          <span>Message <small>(optional, stored on chain)</small></span>
+          <textarea id="reason" rows="3" maxlength="256" placeholder="What is happening? For example: HASHI peer keys leaked, unexpected mints on Ethereum."></textarea>
+          <small id="reason-count" class="hint">0 / 256 bytes</small>
+        </label>
+
+        <button id="halt" type="button" class="halt" disabled>HALT ALL BRIDGES</button>
+
+        <div id="confirm" class="confirm" hidden>
+          <p><strong>Halt every SORA bridge now?</strong> Deposits, withdrawals and relaying stop until devops reopen the bridges.</p>
+          <div class="row">
+            <button id="confirm-yes" type="button" class="halt small">Yes, halt</button>
+            <button id="confirm-no" type="button" class="secondary">Cancel</button>
+          </div>
+        </div>
+
+        <ol id="log" class="log" aria-live="polite"></ol>
+      </section>
+
+      <section class="card" aria-labelledby="guardians-title">
+        <h2 id="guardians-title">Guardians</h2>
+        <p class="hint">Accounts the chain accepts a halt from. Governance changes this list.</p>
+        <ul id="guardians" class="guardians mono"><li>–</li></ul>
+      </section>
+
+      <section class="card" aria-labelledby="about-title">
+        <h2 id="about-title">What a halt does</h2>
+        <ul class="about">
+          <li>Sets the chain's bridge latch. HASHI, BridgeProxy, the bridge channels and apps, the data signer and the multisig verifier then refuse new bridge work, and the HASHI offchain workers stop.</li>
+          <li>Does not pause contracts on Ethereum, TON or Liberland. Withdrawals already signed by the bridge can still be redeemed there; pause those contracts separately.</li>
+          <li>Has no effect from accounts that are not guardians: the chain rejects the transaction before it reaches a block, so nothing is written and no fee is charged.</li>
+          <li>Cannot be undone from this page. Devops reopen the bridges with a Root call (<code>bridgeHalt.resume</code>).</li>
+        </ul>
+      </section>
+    </main>
+
+    <script src="vendor/bundle-polkadot-util.js"></script>
+    <script src="vendor/bundle-polkadot-util-crypto.js"></script>
+    <script src="vendor/bundle-polkadot-keyring.js"></script>
+    <script src="vendor/bundle-polkadot-types.js"></script>
+    <script src="shim.js"></script>
+    <script src="vendor/bundle-polkadot-api.js"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

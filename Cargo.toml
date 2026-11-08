@@ -207,6 +207,7 @@ members = [
     "pallets/liquidity-proxy",
     "pallets/mock-liquidity-source",
     "pallets/soratopia",
+    "pallets/bridge-halt",
     "pallets/technical",
     "pallets/pool-xyk",
     "pallets/presto",

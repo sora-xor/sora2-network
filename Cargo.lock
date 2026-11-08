@@ -1894,6 +1894,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "bridge-halt"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "bridge-proxy"
 version = "0.1.0"
 dependencies = [
@@ -5532,6 +5547,7 @@ dependencies = [
  "beefy-light-client-runtime-api",
  "bridge-channel",
  "bridge-data-signer",
+ "bridge-halt",
  "bridge-proxy",
  "bridge-proxy-runtime-api",
  "bridge-types",

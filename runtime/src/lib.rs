@@ -467,7 +467,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 138,
+    spec_version: 139,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 134,
@@ -3021,6 +3021,27 @@ impl bridge_proxy::Config for Runtime {
     type AccountIdConverter = sp_runtime::traits::Identity;
 }
 
+parameter_types! {
+    pub const BridgeHaltMaxGuardians: u32 = 32;
+    pub const BridgeHaltMaxReasonLength: u32 = 256;
+}
+
+/// Emergency brake for every bridge. Guardians halt fee-free; see
+/// `xor_fee_impls::validate_bridge_fee_exemption` for transaction admission.
+impl bridge_halt::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    /// The same authority that manages BridgeProxy.
+    type GuardianOrigin = EitherOfDiverse<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 2, 3>,
+        EnsureRoot<AccountId>,
+    >;
+    /// Reopening needs Root, as removing the latch with `System::kill_storage` does.
+    type ResumeOrigin = EnsureRoot<AccountId>;
+    type MaxGuardians = BridgeHaltMaxGuardians;
+    type MaxReasonLength = BridgeHaltMaxReasonLength;
+    type WeightInfo = bridge_halt::weights::SubstrateWeight<Runtime>;
+}
+
 #[cfg(feature = "wip")] // Trustless substrate bridge
 impl beefy_light_client::Config for Runtime {
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
@@ -3600,6 +3621,8 @@ construct_runtime! {
 
         // Generic bridges pallets
         BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = 103,
+        // Guardian-operated emergency halt for every bridge.
+        BridgeHalt: bridge_halt::{Pallet, Call, Storage, Event<T>} = 122,
 
         // Trustless EVM bridge
         BridgeInboundChannel: bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 96,
@@ -4970,6 +4993,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, extended_assets, ExtendedAssets);
 
             list_benchmark!(list, extra, soratopia, Soratopia);
+            list_benchmark!(list, extra, bridge_halt, BridgeHalt);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -5064,6 +5088,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, extended_assets, ExtendedAssets);
 
             add_benchmark!(params, batches, soratopia, Soratopia);
+            add_benchmark!(params, batches, bridge_halt, BridgeHalt);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
