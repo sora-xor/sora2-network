@@ -5,7 +5,8 @@
 //!
 //! An emergency brake for every SORA bridge.
 //!
-//! Governance keeps a short list of guardian accounts. A guardian calls
+//! Governance keeps a short list of guardian accounts; the runtime may install
+//! the first ones in the upgrade that adds this pallet. A guardian calls
 //! [`Pallet::halt`] with a short message. The call sets the persistent bridge
 //! latch [`common::recovery::BRIDGE_HALT_STORAGE_KEY`]. HASHI (`eth-bridge`),
 //! `bridge-proxy`, the inbound and outbound channels, the bridge applications,
@@ -175,13 +176,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::add_guardian())]
         pub fn add_guardian(origin: OriginFor<T>, account: T::AccountId) -> DispatchResult {
             T::GuardianOrigin::ensure_origin(origin)?;
-            Guardians::<T>::try_mutate(|guardians| match guardians.try_insert(account.clone()) {
-                Ok(true) => Ok(()),
-                Ok(false) => Err(Error::<T>::AlreadyGuardian),
-                Err(_) => Err(Error::<T>::TooManyGuardians),
-            })?;
-            Self::deposit_event(Event::GuardianAdded { account });
-            Ok(())
+            Self::insert_guardian(account)
         }
 
         /// Stop `account` from halting the bridges.
@@ -202,6 +197,21 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Add `account` to the guardian list, with no origin check.
+        ///
+        /// [`Pallet::add_guardian`] calls this after checking `GuardianOrigin`. The
+        /// runtime calls it to install the first guardians in the upgrade that adds
+        /// this pallet. It is not a dispatchable.
+        pub fn insert_guardian(account: T::AccountId) -> DispatchResult {
+            Guardians::<T>::try_mutate(|guardians| match guardians.try_insert(account.clone()) {
+                Ok(true) => Ok(()),
+                Ok(false) => Err(Error::<T>::AlreadyGuardian),
+                Err(_) => Err(Error::<T>::TooManyGuardians),
+            })?;
+            Self::deposit_event(Event::GuardianAdded { account });
+            Ok(())
+        }
+
         pub fn is_guardian(account: &T::AccountId) -> bool {
             Guardians::<T>::get().contains(account)
         }

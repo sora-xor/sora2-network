@@ -15,9 +15,43 @@
   // signs only these bytes, so a node serving forged metadata cannot swap the call.
   const HALT_CALL_PREFIX = new Uint8Array([122, 0]);
   const APP_NAME = 'SORA bridge halt';
-  // Fearless Wallet's extension shipped a key collector (October 2026).
-  const BLOCKED_EXTENSIONS = new Set(['fearless-wallet']);
   const DEV_ACCOUNTS = ['Alice', 'Bob', 'Charlie', 'Dave'];
+  // Browser extension wallets, in Polkaswap's order and with its store links.
+  // Fearless Wallet is SORA's own wallet. Other injected extensions follow.
+  const WALLETS = [
+    {
+      id: 'fearless-wallet',
+      title: 'Fearless Wallet',
+      logo: 'img/fearless-wallet.svg',
+      recommended: true,
+      chrome: 'https://chrome.google.com/webstore/detail/fearless-wallet/nhlnehondigmgckngjomcpcefcdplmgc',
+    },
+    {
+      id: 'polkadot-js',
+      title: 'Polkadot{.js}',
+      logo: 'img/polkadot-js.svg',
+      chrome:
+        'https://chrome.google.com/webstore/detail/polkadot%7Bjs%7D-extension/mopnmbcafieddcagagdcbnhejhlodfdd',
+      firefox: 'https://addons.mozilla.org/firefox/addon/polkadot-js-extension',
+    },
+    {
+      id: 'subwallet-js',
+      title: 'SubWallet',
+      logo: 'img/subwallet.svg',
+      chrome: 'https://chrome.google.com/webstore/detail/subwallet/onhogfjeacnfoofkfgppdlbmlmnplgbn',
+      firefox: 'https://addons.mozilla.org/firefox/addon/subwallet',
+    },
+    {
+      id: 'talisman',
+      title: 'Talisman',
+      logo: 'img/talisman.svg',
+      chrome: 'https://chrome.google.com/webstore/detail/talisman-wallet/fijngjgcjhjmmpcmkeiomlglpeiijkld',
+      firefox: 'https://addons.mozilla.org/firefox/addon/talisman-wallet-extension',
+    },
+  ];
+  const DEV_WALLET = { id: 'development', title: 'Development keys' };
+  // The chosen wallet and account, so the next visit reconnects without asking.
+  const STORAGE = { wallet: 'sora-bridge-halt:wallet', account: 'sora-bridge-halt:account' };
 
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(window.location.search);
@@ -32,7 +66,11 @@
     supported: false,
     halted: null,
     guardians: new Set(), // hex public keys
-    accounts: [], // { address, name, source, key, signer?, pair? }
+    wallet: null, // { id, title, logo? } of the connected wallet
+    unsubAccounts: null, // stops the wallet's account subscription
+    accounts: [], // the connected wallet's { address, name, source, key, signer?, pair? }
+    selectedKey: null, // hex public key of the chosen account
+    picker: null, // 'wallets' | 'accounts' while the chooser is open
     busy: false,
     maxReason: 256,
     lastBlock: 0,
@@ -89,8 +127,24 @@
   }
 
   function selectedAccount() {
-    const index = Number($('account').value);
-    return Number.isInteger(index) ? state.accounts[index] : undefined;
+    return state.accounts.find((account) => account.key === state.selectedKey);
+  }
+
+  function remember(key, value) {
+    try {
+      if (value) window.localStorage.setItem(key, value);
+      else window.localStorage.removeItem(key);
+    } catch {
+      // Site storage is off (private window, blocked site data); the page still works.
+    }
+  }
+
+  function recall(key) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
   }
 
   function reasonBytes() {
@@ -173,31 +227,157 @@
     }
   }
 
-  function renderAccounts() {
-    const select = $('account');
-    const previous = selectedAccount();
-    select.replaceChildren();
+  function badge(text, kind) {
+    const element = document.createElement('span');
+    element.className = kind ? `badge ${kind}` : 'badge';
+    element.textContent = text;
+    return element;
+  }
+
+  function walletIcon(wallet, small) {
+    const size = small ? 'wallet-logo small' : 'wallet-logo';
+    if (wallet.logo) {
+      const image = document.createElement('img');
+      image.src = wallet.logo;
+      image.alt = '';
+      image.className = size;
+      return image;
+    }
+    const element = document.createElement('span');
+    element.className = `${size} wallet-generic`;
+    element.setAttribute('aria-hidden', 'true');
+    element.textContent = (wallet.title || '?').charAt(0).toUpperCase();
+    return element;
+  }
+
+  function avatar(address, size) {
+    try {
+      return window.bridgeHaltIdenticon(address, size);
+    } catch {
+      return document.createElement('span');
+    }
+  }
+
+  function accountLabel(account) {
+    const text = document.createElement('span');
+    text.className = 'account-text';
+    const name = document.createElement('span');
+    name.className = 'account-name';
+    name.textContent = account.name || 'Unnamed account';
+    const address = document.createElement('span');
+    address.className = 'mono account-address';
+    address.textContent = account.address;
+    text.append(name, address);
+    return text;
+  }
+
+  const isGuardian = (account) => state.supported && state.guardians.has(account.key);
+
+  /// Guardians first, otherwise in the wallet's order.
+  function sortedAccounts() {
+    return state.accounts
+      .map((account, index) => ({ account, index }))
+      .sort((a, b) => Number(isGuardian(b.account)) - Number(isGuardian(a.account)) || a.index - b.index)
+      .map(({ account }) => account);
+  }
+
+  function renderAccount() {
+    const account = selectedAccount();
+    $('account-current').hidden = !account;
+    if (account) {
+      const wallet = state.wallet || {};
+      const title = document.createElement('span');
+      title.textContent = wallet.title || '';
+      $('account-avatar').replaceChildren(avatar(account.address, 36));
+      $('account-name').textContent = account.name || 'Unnamed account';
+      $('account-address').textContent = account.address;
+      $('account-wallet').replaceChildren(walletIcon(wallet, true), title);
+    }
+    $('connect').textContent = !state.wallet
+      ? 'Connect account'
+      : account
+        ? 'Change account'
+        : 'Choose account';
+    $('disconnect').hidden = !state.wallet;
+    render();
+  }
+
+  function renderWalletList() {
+    const present = injected();
+    const list = $('wallet-list');
+    list.replaceChildren();
+    for (const wallet of walletChoices()) {
+      const installed = wallet.id === DEV_WALLET.id || Boolean(present[wallet.id]);
+      const item = document.createElement('li');
+      const choice = document.createElement(installed ? 'button' : 'div');
+      choice.className = installed ? 'choice' : 'choice choice-missing';
+      const title = document.createElement('span');
+      title.className = 'choice-title';
+      title.textContent = wallet.title;
+      choice.append(walletIcon(wallet), title);
+      if (wallet.recommended) choice.append(badge('Recommended', 'badge-accent'));
+      if (state.wallet && state.wallet.id === wallet.id) choice.append(badge('Connected', 'badge-ok'));
+      if (installed) {
+        choice.type = 'button';
+        choice.addEventListener('click', () => pickWallet(wallet));
+      } else if (installUrl(wallet)) {
+        const link = document.createElement('a');
+        link.className = 'install';
+        link.href = installUrl(wallet);
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Install';
+        choice.append(link);
+      } else {
+        choice.append(badge('Not installed'));
+      }
+      item.appendChild(choice);
+      list.appendChild(item);
+    }
+  }
+
+  function renderAccountList() {
+    const list = $('account-list');
+    list.replaceChildren();
     if (state.accounts.length === 0) {
-      const option = document.createElement('option');
-      option.textContent = 'No accounts found';
-      select.appendChild(option);
-      select.disabled = true;
-      render();
+      const item = document.createElement('li');
+      item.className = 'hint';
+      item.textContent =
+        'The wallet shares no accounts with this site. Add an account in the wallet, or let this site see one.';
+      list.appendChild(item);
       return;
     }
-    state.accounts.forEach((account, index) => {
-      const option = document.createElement('option');
-      option.value = String(index);
-      const mark = state.guardians.has(account.key) ? '✓ ' : '';
-      const name = account.name ? `${account.name} — ` : '';
-      option.textContent = `${mark}${name}${account.address}`;
-      select.appendChild(option);
-    });
-    select.disabled = false;
-    const keep = previous && state.accounts.findIndex((account) => account.key === previous.key);
-    const guardian = state.accounts.findIndex((account) => state.guardians.has(account.key));
-    select.value = String(keep >= 0 ? keep : Math.max(guardian, 0));
-    render();
+    for (const account of sortedAccounts()) {
+      const item = document.createElement('li');
+      const choice = document.createElement('button');
+      choice.type = 'button';
+      choice.className = account.key === state.selectedKey ? 'choice choice-selected' : 'choice';
+      choice.append(avatar(account.address, 32), accountLabel(account));
+      if (isGuardian(account)) choice.append(badge('Guardian', 'badge-ok'));
+      choice.addEventListener('click', () => chooseAccount(account.key));
+      item.appendChild(choice);
+      list.appendChild(item);
+    }
+  }
+
+  function renderPicker() {
+    const step = state.picker;
+    $('picker').hidden = !step;
+    if (!step) return;
+    const wallets = step === 'wallets';
+    $('picker-title').textContent = wallets
+      ? 'Choose a wallet'
+      : `Choose an account${state.wallet ? ` in ${state.wallet.title}` : ''}`;
+    $('wallet-step').hidden = !wallets;
+    $('account-step').hidden = wallets;
+    if (wallets) renderWalletList();
+    else renderAccountList();
+  }
+
+  /// Redraw after the guardian list, the wallet or its accounts change.
+  function renderAccountViews() {
+    renderPicker();
+    renderAccount();
   }
 
   function resetChainView() {
@@ -235,6 +415,8 @@
     const generation = ++state.generation;
     await disconnect();
     state.endpoint = endpoint;
+    // Development keys exist only for a local node opened with ?dev.
+    if (state.wallet && state.wallet.id === DEV_WALLET.id && !devMode()) forgetWallet();
     resetChainView();
     setStatus('unknown', `Connecting to ${endpoint}…`);
 
@@ -269,7 +451,12 @@
         if (current()) setStatus('unknown', `Could not read the chain: ${error.message || error}`);
       });
     });
-    if (devMode() && state.accounts.length === 0) connectWallet();
+    if (devMode() && !state.wallet) {
+      useWallet(DEV_WALLET).then(() => {
+        state.picker = 'accounts';
+        renderAccountViews();
+      });
+    }
   }
 
   async function refresh(api, provider, header, generation) {
@@ -335,7 +522,7 @@
     }
     if (listChanged) {
       renderGuardians();
-      renderAccounts();
+      renderAccountViews();
     } else {
       render();
     }
@@ -343,9 +530,28 @@
 
   // ---------- wallet ----------
 
-  async function waitForInjection() {
-    for (let attempt = 0; attempt < 15; attempt += 1) {
-      if (window.injectedWeb3 && Object.keys(window.injectedWeb3).length > 0) return;
+  const injected = () => window.injectedWeb3 || {};
+
+  /// Known wallets first, installed or not, then any other injected extension.
+  function walletChoices() {
+    const choices = [...WALLETS];
+    for (const id of Object.keys(injected())) {
+      if (!WALLETS.some((wallet) => wallet.id === id)) choices.push({ id, title: id });
+    }
+    if (devMode()) choices.push(DEV_WALLET);
+    return choices;
+  }
+
+  function installUrl(wallet) {
+    const firefox = /Firefox\//.test(navigator.userAgent);
+    return (firefox && wallet.firefox) || wallet.chrome || wallet.firefox || '';
+  }
+
+  /// Extensions inject themselves shortly after the page loads.
+  async function waitForInjection(id) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const present = injected();
+      if (id ? present[id] : Object.keys(present).length > 0) return;
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
@@ -365,50 +571,150 @@
     });
   }
 
-  async function connectWallet() {
-    $('connect').disabled = true;
+  /// Substrate accounts from a wallet, in SORA format, without duplicates.
+  function toAccounts(list, source, signer) {
     const accounts = [];
-    try {
-      await waitForInjection();
-      const injected = window.injectedWeb3 || {};
-      const names = Object.keys(injected);
-      if (names.some((name) => BLOCKED_EXTENSIONS.has(name))) {
-        log('Ignoring the Fearless Wallet extension. Use another wallet for guardian keys.', 'error');
+    for (const account of list) {
+      if (account.type === 'ethereum') continue;
+      let key;
+      try {
+        key = publicKey(account.address);
+      } catch {
+        continue;
       }
-      for (const name of names.filter((item) => !BLOCKED_EXTENSIONS.has(item))) {
-        try {
-          const extension = await injected[name].enable(APP_NAME);
-          for (const account of await extension.accounts.get()) {
-            if (account.type === 'ethereum') continue;
-            const key = publicKey(account.address);
-            if (accounts.some((known) => known.key === key)) continue;
-            accounts.push({
-              address: sora(key),
-              name: account.name || '',
-              source: name,
-              key,
-              signer: extension.signer,
-            });
-          }
-        } catch (error) {
-          log(`${name}: ${error.message || error}`, 'error');
-        }
-      }
-      if (devMode()) accounts.push(...(await devAccounts()));
-      if (accounts.length === 0) {
-        log(
-          names.length === 0
-            ? 'No wallet extension found. Install polkadot{.js}, SubWallet or Talisman and allow this site.'
-            : 'The wallet shared no accounts with this site.',
-          'error',
-        );
-      }
-    } finally {
-      state.accounts = accounts;
-      $('connect').disabled = false;
-      $('connect').textContent = accounts.length ? 'Reload accounts' : 'Connect wallet';
-      renderAccounts();
+      if (accounts.some((known) => known.key === key)) continue;
+      accounts.push({ address: sora(key), name: account.name || '', source, key, signer });
     }
+    return accounts;
+  }
+
+  function stopAccounts() {
+    const stop = state.unsubAccounts;
+    state.unsubAccounts = null;
+    if (stop) {
+      try {
+        stop();
+      } catch {
+        // Already stopped.
+      }
+    }
+  }
+
+  /// Connect `wallet` and load its accounts, following later changes in the
+  /// wallet. Throws when the wallet is missing or the user declines.
+  async function useWallet(wallet) {
+    let accounts;
+    let unsubscribe = null;
+    if (wallet.id === DEV_WALLET.id) {
+      accounts = await devAccounts();
+    } else {
+      const source = injected()[wallet.id];
+      if (!source) throw new Error('not installed in this browser.');
+      const extension = await source.enable(APP_NAME);
+      accounts = toAccounts(await extension.accounts.get(), wallet.id, extension.signer);
+      if (typeof extension.accounts.subscribe === 'function') {
+        unsubscribe = extension.accounts.subscribe((list) => {
+          if (!state.wallet || state.wallet.id !== wallet.id) return;
+          state.accounts = toAccounts(list, wallet.id, extension.signer);
+          if (!selectedAccount()) state.selectedKey = null;
+          renderAccountViews();
+        });
+      }
+    }
+    stopAccounts();
+    state.unsubAccounts = unsubscribe;
+    state.wallet = { id: wallet.id, title: wallet.title, logo: wallet.logo };
+    state.accounts = accounts;
+    if (!selectedAccount()) state.selectedKey = null;
+    remember(STORAGE.wallet, wallet.id);
+  }
+
+  async function pickWallet(wallet) {
+    const note = $('picker-note');
+    note.textContent =
+      wallet.id === DEV_WALLET.id ? '' : `Waiting for ${wallet.title}. Allow this site if it asks.`;
+    try {
+      await useWallet(wallet);
+    } catch (error) {
+      note.textContent = `${wallet.title}: ${(error && error.message) || error}`;
+      return;
+    }
+    note.textContent = '';
+    if (state.accounts.length === 1) {
+      chooseAccount(state.accounts[0].key);
+      return;
+    }
+    state.picker = 'accounts';
+    renderAccountViews();
+  }
+
+  function chooseAccount(key) {
+    const account = state.accounts.find((item) => item.key === key);
+    if (!account) return;
+    state.selectedKey = key;
+    remember(STORAGE.account, account.address);
+    closePicker();
+  }
+
+  async function showWallets() {
+    $('picker-note').textContent = '';
+    state.picker = 'wallets';
+    renderAccountViews();
+    await waitForInjection();
+    if (state.picker === 'wallets') renderPicker();
+  }
+
+  function openPicker() {
+    if (!state.wallet) {
+      showWallets();
+      return;
+    }
+    $('picker-note').textContent = '';
+    state.picker = 'accounts';
+    renderAccountViews();
+  }
+
+  function closePicker() {
+    const wasOpen = Boolean(state.picker);
+    state.picker = null;
+    $('picker-note').textContent = '';
+    renderAccountViews();
+    if (wasOpen) $('connect').focus();
+  }
+
+  /// Forget the wallet on this page. The site stays allowed in the wallet itself.
+  function forgetWallet() {
+    stopAccounts();
+    state.wallet = null;
+    state.accounts = [];
+    state.selectedKey = null;
+    state.picker = null;
+    remember(STORAGE.wallet, null);
+    remember(STORAGE.account, null);
+    renderAccountViews();
+  }
+
+  /// Reconnect the wallet and account chosen on an earlier visit.
+  async function restoreWallet() {
+    const id = recall(STORAGE.wallet);
+    if (!id || id === DEV_WALLET.id) return;
+    const wallet = WALLETS.find((item) => item.id === id) || { id, title: id };
+    await waitForInjection(id);
+    if (!injected()[id] || state.wallet) return;
+    try {
+      await useWallet(wallet);
+    } catch {
+      return; // Declined or gone; the button still offers every wallet.
+    }
+    let key = null;
+    try {
+      key = publicKey(recall(STORAGE.account) || '');
+    } catch {
+      key = null;
+    }
+    if (key && state.accounts.some((account) => account.key === key)) state.selectedKey = key;
+    else if (state.accounts.length === 1) state.selectedKey = state.accounts[0].key;
+    renderAccountViews();
   }
 
   // ---------- halt ----------
@@ -527,8 +833,16 @@
       select.appendChild(option);
     }
     select.addEventListener('change', () => connect(select.value));
-    $('connect').addEventListener('click', connectWallet);
-    $('account').addEventListener('change', render);
+    $('connect').addEventListener('click', openPicker);
+    $('disconnect').addEventListener('click', () => {
+      forgetWallet();
+      $('connect').focus();
+    });
+    $('picker-close').addEventListener('click', closePicker);
+    $('picker-back').addEventListener('click', showWallets);
+    $('picker').addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closePicker();
+    });
     $('reason').addEventListener('input', render);
     $('halt').addEventListener('click', askToConfirm);
     $('confirm-yes').addEventListener('click', sendHalt);
@@ -536,9 +850,10 @@
       $('confirm').hidden = true;
       $('halt').focus();
     });
-    render();
+    renderAccount();
     if (select.value) connect(select.value);
     else setStatus('unknown', 'No RPC endpoint configured. Edit config.js.');
+    restoreWallet();
   }
 
   start();

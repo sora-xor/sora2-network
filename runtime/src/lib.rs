@@ -3031,6 +3031,13 @@ impl bridge_proxy::Config for Runtime {
 parameter_types! {
     pub const BridgeHaltMaxGuardians: u32 = 32;
     pub const BridgeHaltMaxReasonLength: u32 = 256;
+    /// Guardians that `migrations::SeedBridgeHaltGuardians` installs once, in the
+    /// upgrade that adds BridgeHalt, so a halt works as soon as it is enacted.
+    /// Governance manages the list after that.
+    pub BridgeHaltInitialGuardians: Vec<AccountId> = vec![
+        // cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY
+        AccountId::new(hex!("20bc37a28e010164d91ab08cd4b985db5ea4c83f93dca42f8c87c247d8c8a137")),
+    ];
 }
 
 /// Emergency brake for every bridge. Guardians halt fee-free and ahead of every

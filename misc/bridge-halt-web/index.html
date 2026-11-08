@@ -50,21 +50,41 @@
         <h2 id="halt-title">Halt the bridges</h2>
         <p id="unsupported" class="notice warn" hidden></p>
 
-        <div class="wallet">
-          <button id="connect" type="button" class="secondary">Connect wallet</button>
-          <p id="wallet-note" class="hint">
-            Use the polkadot{.js}, SubWallet or Talisman extension. The Fearless Wallet
-            extension is not offered: it leaked keys in October 2026.
-          </p>
+        <div class="field">
+          <span>Account</span>
+          <div id="account-current" class="account-current" hidden>
+            <span id="account-avatar" class="avatar"></span>
+            <span class="account-text">
+              <span id="account-name" class="account-name"></span>
+              <span id="account-address" class="mono account-address"></span>
+            </span>
+            <span id="account-wallet" class="account-wallet"></span>
+          </div>
+          <div class="row wallet-actions">
+            <button id="connect" type="button" class="secondary">Connect account</button>
+            <button id="disconnect" type="button" class="link" hidden>Disconnect</button>
+          </div>
+          <p id="account-role" class="hint" aria-live="polite"></p>
         </div>
 
-        <label class="field">
-          <span>Account</span>
-          <select id="account" disabled>
-            <option>Connect a wallet first</option>
-          </select>
-        </label>
-        <p id="account-role" class="hint" aria-live="polite"></p>
+        <div id="picker" class="picker" role="region" aria-labelledby="picker-title" hidden>
+          <div class="row picker-head">
+            <h3 id="picker-title">Choose a wallet</h3>
+            <button id="picker-close" type="button" class="link">Close</button>
+          </div>
+          <div id="wallet-step">
+            <ul id="wallet-list" class="choices"></ul>
+            <p class="hint">
+              Fearless Wallet is SORA's own wallet. Polkadot{.js}, SubWallet and Talisman work
+              too. Allow this site when the wallet asks.
+            </p>
+          </div>
+          <div id="account-step" hidden>
+            <ul id="account-list" class="choices"></ul>
+            <button id="picker-back" type="button" class="link">Use another wallet</button>
+          </div>
+          <p id="picker-note" class="hint" aria-live="polite"></p>
+        </div>
 
         <label class="field">
           <span>Message <small>(optional, stored on chain)</small></span>
@@ -104,6 +124,7 @@
 
     <script src="vendor/bundle-polkadot-util.js"></script>
     <script src="vendor/bundle-polkadot-util-crypto.js"></script>
+    <script src="identicon.js"></script>
     <script src="vendor/bundle-polkadot-keyring.js"></script>
     <script src="vendor/bundle-polkadot-types.js"></script>
     <script src="shim.js"></script>

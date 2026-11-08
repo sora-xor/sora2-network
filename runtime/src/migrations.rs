@@ -52,6 +52,7 @@ pub type Migrations = (
     KensetsuStorageVersionV6,
     pallet_polkamarkt::migrations::v6::Migrate<crate::Runtime>,
     pallet_polkamarkt::migrations::v7::Migrate<crate::Runtime>,
+    SeedBridgeHaltGuardians,
 );
 
 pub type MultiBlockMigrations = (eth_bridge::migration::AccountRequestsV3ToV4<crate::Runtime>,);
@@ -812,6 +813,76 @@ impl OnRuntimeUpgrade for PublishValStakingRewards {
                     "published staking reward does not match VAL budget",
                 ));
             }
+        }
+        Ok(())
+    }
+}
+
+const BRIDGE_HALT_GUARDIANS_SEEDED_KEY: &[u8] = b"runtime:migrations:bridge_halt_initial_guardians";
+
+pub fn bridge_halt_guardians_seeded() -> bool {
+    frame_support::storage::unhashed::get(BRIDGE_HALT_GUARDIANS_SEEDED_KEY).unwrap_or(false)
+}
+
+/// Install [`crate::BridgeHaltInitialGuardians`] once, in the upgrade that adds
+/// BridgeHalt, so the listed accounts can halt as soon as it is enacted.
+///
+/// The marker makes this a one-time seed: governance manages the list
+/// afterwards, and a later upgrade does not re-add a guardian it removed.
+pub struct SeedBridgeHaltGuardians;
+
+impl OnRuntimeUpgrade for SeedBridgeHaltGuardians {
+    fn on_runtime_upgrade() -> Weight {
+        let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+        let mut weight = db_weight.reads(1);
+        if bridge_halt_guardians_seeded() {
+            return weight;
+        }
+        for account in crate::BridgeHaltInitialGuardians::get() {
+            // The guardian set, plus the event the insert deposits.
+            weight.saturating_accrue(db_weight.reads_writes(1, 2));
+            match bridge_halt::Pallet::<crate::Runtime>::insert_guardian(account.clone()) {
+                Ok(()) => {
+                    frame_support::__private::log::info!(
+                        "BridgeHalt: installed initial guardian {account:?}"
+                    );
+                }
+                Err(error) => {
+                    frame_support::__private::log::warn!(
+                        "BridgeHalt: initial guardian {account:?} not installed: {error:?}"
+                    );
+                }
+            }
+        }
+        frame_support::storage::unhashed::put(BRIDGE_HALT_GUARDIANS_SEEDED_KEY, &true);
+        weight.saturating_accrue(db_weight.writes(1));
+        weight
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+        Ok(bridge_halt_guardians_seeded().encode())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        let was_seeded = bool::decode(&mut &state[..]).map_err(|_| {
+            TryRuntimeError::Other("failed to decode BridgeHalt guardian seed marker")
+        })?;
+        if !bridge_halt_guardians_seeded() {
+            return Err(TryRuntimeError::Other(
+                "BridgeHalt guardian seed marker was not written",
+            ));
+        }
+        // Only the seeding upgrade itself must leave every listed guardian in place.
+        if !was_seeded
+            && !crate::BridgeHaltInitialGuardians::get()
+                .iter()
+                .all(bridge_halt::Pallet::<crate::Runtime>::is_guardian)
+        {
+            return Err(TryRuntimeError::Other(
+                "BridgeHalt initial guardians were not installed",
+            ));
         }
         Ok(())
     }

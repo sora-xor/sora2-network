@@ -17,7 +17,7 @@ still shows whether the bridges are halted, and says the button is unavailable.
 | Call | `bridgeHalt.halt(reason: Bytes ≤ 256)`, operational class |
 | Latch | raw key `:sora-nexus:recovery:bridge-halt:v1` = `0x3a736f72612d6e657875733a7265636f766572793a6272696467652d68616c743a7631` |
 | Record | `bridgeHalt.lastHalt` (guardian, block, message) and the `bridgeHalt.BridgeHalted` event |
-| Guardian list | `bridgeHalt.guardians`, changed by the technical committee (more than 2/3) or Root |
+| Guardian list | `bridgeHalt.guardians`, changed by the technical committee (more than 2/3) or Root; the upgrade that adds the pallet installs `cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY` |
 | Reopen | `bridgeHalt.resume()`, Root only |
 
 While the latch is present, HASHI (`ethBridge`), `bridgeProxy`, the bridge channels and
@@ -46,19 +46,23 @@ wrapper pays its usual fee and dispatch still requires a guardian.
 
 ## For guardians
 
-1. Use the polkadot{.js}, SubWallet or Talisman browser extension. Do not use the
-   Fearless Wallet extension; the page ignores it.
+1. Use a browser extension wallet: Fearless Wallet (SORA's own, recommended),
+   polkadot{.js}, SubWallet or Talisman. The page lists them the way Polkaswap does, with
+   an install link for any that is missing; another injected Substrate wallet is listed
+   too.
 2. Keep about 1 XOR on the guardian account. Halting is free and spends none of it, but
    the account must exist on chain (an empty account is rejected as unable to pay), and
    some wallets show the ordinary fee estimate and refuse to sign if the balance looks
-   too low.
-3. Before an incident, open the page once and connect the wallet, so the site is already
-   authorised. Importing the chain's metadata into the extension (for example through
-   polkadot.js apps) lets it show `bridgeHalt.halt` instead of raw bytes when signing.
-4. Open the page, check the node and the status, press **Connect wallet**, pick your
-   account (guardians are marked ✓), type a short message, press the button, confirm,
-   and sign in the wallet. The log shows the block that included the halt, then when it
-   became final.
+   too low. Being a guardian needs no earlier transaction; only the balance matters.
+3. Before an incident, open the page once and connect the account. The site is then
+   authorised in the wallet, and the page remembers the wallet and account in this
+   browser and reconnects them on the next visit. Importing the chain's metadata into the
+   extension (for example through polkadot.js apps) lets it show `bridgeHalt.halt`
+   instead of raw bytes when signing.
+4. Open the page, check the node and the status, press **Connect account**, choose the
+   wallet and then the account (guardians are listed first and marked **Guardian**),
+   type a short message, press the button, confirm, and sign in the wallet. The log
+   shows the block that included the halt, then when it became final.
 
 If two guardians press at once, the first halt wins; the second is rejected as already
 halted.
@@ -87,9 +91,12 @@ If the halt was not warranted (for example a guardian key was stolen), remove th
 guardian in the same Root call that reopens, or it can halt again at once:
 `utility.batchAll([bridgeHalt.removeGuardian(account), bridgeHalt.resume()])`.
 
-Add and fund the guardians before the bridges reopen; the list starts empty. Root on
-mainnet goes through a referendum, so check how quickly devops can get a reopening
-enacted.
+The upgrade that adds BridgeHalt installs one guardian,
+`cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY`: the runtime lists it in
+`BridgeHaltInitialGuardians`, and `migrations::SeedBridgeHaltGuardians` adds it once, so a
+later upgrade does not re-add it if governance removes it. Add any other guardians with
+the motion above, and fund every guardian before the bridges reopen. Root on mainnet goes
+through a referendum, so check how quickly devops can get a reopening enacted.
 
 ## Hosting
 
@@ -134,3 +141,8 @@ npm registry, checks each tarball against the registry's SHA-512 integrity and e
 bundle against `vendor/SHA256SUMS`. `shim.js` supplies the two members the API bundle
 expects from `@polkadot/types` modules that have no browser bundle (a constant and the
 `unwrapStorageSi` helper, copied from 16.5.4); re-check it when upgrading.
+
+`identicon.js` is the Polkadot identicon from `@polkadot/ui-shared` 3.16.7
+(`icons/polkadot.js`, Apache-2.0), ported unchanged so an account shows the same circles
+as in the wallet. `img/` holds the wallet logos Polkaswap uses
+(`src/lib/soraneo-wallet/src/assets/img`).

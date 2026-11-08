@@ -338,3 +338,76 @@ fn guardians_are_managed_by_the_bridge_manager_origin() {
         );
     });
 }
+
+const INITIAL_GUARDIAN: &str = "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY";
+
+fn initial_guardian() -> AccountId {
+    crate::BridgeHaltInitialGuardians::get()[0].clone()
+}
+
+#[test]
+fn the_initial_guardian_list_is_the_requested_sora_address() {
+    use sp_core::crypto::{Ss58AddressFormat, Ss58Codec};
+    let listed: Vec<String> = crate::BridgeHaltInitialGuardians::get()
+        .iter()
+        .map(|account| account.to_ss58check_with_version(Ss58AddressFormat::custom(69)))
+        .collect();
+    assert_eq!(listed, vec![INITIAL_GUARDIAN.to_string()]);
+}
+
+#[test]
+fn the_upgrade_installs_the_initial_guardian_once() {
+    use frame_support::traits::OnRuntimeUpgrade;
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        assert!(!BridgeHalt::is_guardian(&initial_guardian()));
+        assert!(!crate::migrations::bridge_halt_guardians_seeded());
+
+        crate::migrations::SeedBridgeHaltGuardians::on_runtime_upgrade();
+        assert!(BridgeHalt::is_guardian(&initial_guardian()));
+        assert!(crate::migrations::bridge_halt_guardians_seeded());
+        System::assert_has_event(RuntimeEvent::BridgeHalt(
+            bridge_halt::Event::GuardianAdded {
+                account: initial_guardian(),
+            },
+        ));
+
+        // Governance owns the list from then on: a later upgrade keeps a removal.
+        assert_ok!(BridgeHalt::remove_guardian(
+            RuntimeOrigin::root(),
+            initial_guardian()
+        ));
+        crate::migrations::SeedBridgeHaltGuardians::on_runtime_upgrade();
+        assert!(!BridgeHalt::is_guardian(&initial_guardian()));
+    });
+}
+
+#[test]
+fn the_initial_guardian_halts_without_a_fee() {
+    use frame_support::traits::OnRuntimeUpgrade;
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
+        crate::migrations::SeedBridgeHaltGuardians::on_runtime_upgrade();
+
+        // The admission check the signed pipeline runs before charging a direct
+        // halt: fee-exempt for this account, refused for others and once halted.
+        assert_eq!(
+            crate::xor_fee_impls::validate_bridge_fee_exemption(&initial_guardian(), &halt(b"x")),
+            Ok(true)
+        );
+        assert_eq!(
+            crate::xor_fee_impls::validate_bridge_fee_exemption(&account(&stranger()), &halt(b"x")),
+            Err(InvalidTransaction::BadSigner.into())
+        );
+        assert_ok!(BridgeHalt::halt(
+            RuntimeOrigin::signed(initial_guardian()),
+            b"x".to_vec().try_into().unwrap()
+        ));
+        assert_eq!(latch(), Some(vec![1]));
+        assert_eq!(
+            crate::xor_fee_impls::validate_bridge_fee_exemption(&initial_guardian(), &halt(b"x")),
+            Err(InvalidTransaction::Stale.into())
+        );
+    });
+}

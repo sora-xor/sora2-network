@@ -44,6 +44,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -209,8 +213,164 @@ textarea {
   color: var(--warn-text);
 }
 
-.wallet {
+.account-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.avatar svg {
+  display: block;
+}
+
+.account-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.account-name {
+  font-weight: 600;
+}
+
+.account-address {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.account-wallet {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.wallet-actions {
+  justify-content: flex-start;
+}
+
+.link {
+  background: none;
+  border: none;
+  padding: 6px 0;
+  color: var(--accent);
+}
+
+.link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.picker {
   margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+}
+
+.picker-head h3 {
+  margin: 0;
+}
+
+.choices {
+  list-style: none;
+  margin: 12px 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  text-align: left;
+}
+
+button.choice:hover {
+  border-color: var(--accent);
+}
+
+.choice-selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.choice-missing {
+  color: var(--muted);
+}
+
+.choice-title {
+  flex: 1;
+  font-weight: 600;
+}
+
+.wallet-logo {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.wallet-logo.small {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+
+.wallet-generic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--unknown-bg);
+  color: var(--unknown-text);
+  font-weight: 700;
+}
+
+.wallet-logo.small.wallet-generic {
+  font-size: 0.7rem;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--unknown-bg);
+  color: var(--unknown-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-ok {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+.badge-accent {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.install {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.install:hover {
+  text-decoration: underline;
 }
 
 button {
