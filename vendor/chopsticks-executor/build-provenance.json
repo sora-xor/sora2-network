@@ -168,7 +168,7 @@
     "smoldot/src/verify.rs": "02a5bf60b1fc5cf54af236f43c20ee98a8d0319419e05f7e930874a268efc0e6",
     "../sora-secp256k1-compat/src/lib.rs": "8847b5593a34626ce9f260365c7e794c1230721e2669b24b1fc5a617ec72d5ca",
     "Cargo.toml": "ae30469e01d268bd26cd7b0fd1885abe77b951521c60f59d4b4ba6c8713ef9ad",
-    "Cargo.lock": "b0d761036a627be9b3c84efa611d88b321bc0183723f0c5d5b8f89e37a92d859",
+    "Cargo.lock": "9b7458e64af5fb7c3f5680d0f3386d84d6504556dccbb86103414902ffb91e90",
     "adapter/Cargo.toml": "47ad211adbbbf423702d6fa81fc9f6c17f1dcdb33430c5c84d2b68f1eb7c32f2",
     "package.json": "6c03e8bfa6ebace6ba4f45a857bdbb954be617af8ff471c59fe0c7f106333c2a",
     "smoldot/Cargo.toml": "cde9abf4db07ec7d421af22356d6035820a1f100c333991c69126d4aa9d585e0",
