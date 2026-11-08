@@ -40,7 +40,12 @@ pub fn validate_startup_network(
     offline: bool,
 ) -> Result<(), String> {
     if genesis == H256::from(GENESIS_HASH) && !has_recovery && !offline {
-        return Err("node 4.8.13 requires the approved recovery chain specification for SORA Nexus mainnet; ordinary mainnet is available only to explicit offline historical commands".into());
+        return Err(concat!(
+            "node ",
+            env!("CARGO_PKG_VERSION"),
+            " requires the approved recovery chain specification for SORA Nexus mainnet; ordinary mainnet is available only to explicit offline historical commands"
+        )
+        .into());
     }
     Ok(())
 }
