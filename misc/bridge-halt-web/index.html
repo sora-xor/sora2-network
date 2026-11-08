@@ -11,9 +11,12 @@
     <title>SORA Bridge Halt</title>
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body>
+  <body data-state="unknown">
+    <div class="alarm-glow" aria-hidden="true"></div>
     <main>
-      <header>
+      <header class="masthead">
+        <div class="hazard-band" aria-hidden="true"></div>
+        <p class="eyebrow">Guardian console · SORA network</p>
         <h1>SORA bridge emergency halt</h1>
         <p class="lede">
           Guardians use this page to stop every SORA bridge during an attack. The request is
@@ -22,7 +25,7 @@
         </p>
       </header>
 
-      <section class="card" aria-labelledby="status-title">
+      <section class="card panel-status" aria-labelledby="status-title">
         <div class="row">
           <h2 id="status-title">Bridge status</h2>
           <label class="endpoint">
@@ -30,7 +33,48 @@
             <select id="endpoint"></select>
           </label>
         </div>
-        <p id="status" class="status status-unknown" role="status" aria-live="polite">Connecting…</p>
+
+        <div class="console">
+          <div class="beacon" aria-hidden="true">
+            <div class="beacon-halo"></div>
+            <div class="beacon-bezel">
+              <div class="beacon-glass"><div class="beacon-reflector"></div></div>
+            </div>
+            <span class="beacon-plate">Status</span>
+          </div>
+          <div class="readout">
+            <p id="status" class="status status-unknown" role="status" aria-live="polite">Connecting…</p>
+            <svg class="links" viewBox="0 0 360 132" aria-hidden="true" focusable="false">
+              <path class="conduit" d="M64 66 C 150 66, 190 22, 280 22" />
+              <path class="conduit" d="M64 66 L 280 66" />
+              <path class="conduit" d="M64 66 C 150 66, 190 110, 280 110" />
+              <path class="flow" d="M64 66 C 150 66, 190 22, 280 22" />
+              <path class="flow" d="M64 66 L 280 66" />
+              <path class="flow" d="M64 66 C 150 66, 190 110, 280 110" />
+              <g class="lock" transform="translate(210 31)">
+                <path class="lock-shackle" d="M-4.5 0 v-4.5 a4.5 4.5 0 0 1 9 0 v4.5" />
+                <rect class="lock-body" x="-7" y="-0.5" width="14" height="11" rx="2" />
+              </g>
+              <g class="lock" transform="translate(210 65.5)">
+                <path class="lock-shackle" d="M-4.5 0 v-4.5 a4.5 4.5 0 0 1 9 0 v4.5" />
+                <rect class="lock-body" x="-7" y="-0.5" width="14" height="11" rx="2" />
+              </g>
+              <g class="lock" transform="translate(210 100)">
+                <path class="lock-shackle" d="M-4.5 0 v-4.5 a4.5 4.5 0 0 1 9 0 v4.5" />
+                <rect class="lock-body" x="-7" y="-0.5" width="14" height="11" rx="2" />
+              </g>
+              <circle class="node core" cx="40" cy="66" r="26" />
+              <text class="node-label core-label" x="40" y="70">SORA</text>
+              <rect class="node" x="280" y="10" width="76" height="24" rx="6" />
+              <text class="node-label" x="318" y="25.5">ETHEREUM</text>
+              <rect class="node" x="280" y="54" width="76" height="24" rx="6" />
+              <text class="node-label" x="318" y="69.5">TON</text>
+              <rect class="node" x="280" y="98" width="76" height="24" rx="6" />
+              <text class="node-label" x="318" y="113.5">LIBERLAND</text>
+            </svg>
+          </div>
+        </div>
+
         <dl class="facts">
           <div><dt>Chain</dt><dd id="chain">–</dd></div>
           <div><dt>Block</dt><dd id="block">–</dd></div>
@@ -46,7 +90,7 @@
         </div>
       </section>
 
-      <section class="card" aria-labelledby="halt-title">
+      <section class="card panel-halt" aria-labelledby="halt-title">
         <h2 id="halt-title">Halt the bridges</h2>
         <p id="unsupported" class="notice warn" hidden></p>
 
@@ -92,7 +136,12 @@
           <small id="reason-count" class="hint">0 / 256 bytes</small>
         </label>
 
-        <button id="halt" type="button" class="halt" disabled>HALT ALL BRIDGES</button>
+        <div class="estop">
+          <div class="estop-housing">
+            <button id="halt" type="button" class="halt" disabled>HALT ALL BRIDGES</button>
+            <span class="estop-cover" aria-hidden="true"></span>
+          </div>
+        </div>
 
         <div id="confirm" class="confirm" hidden>
           <p><strong>Halt every SORA bridge now?</strong> Deposits, withdrawals and relaying stop until devops reopen the bridges.</p>
@@ -108,7 +157,7 @@
       <section class="card" aria-labelledby="guardians-title">
         <h2 id="guardians-title">Guardians</h2>
         <p class="hint">Accounts the chain accepts a halt from. Governance changes this list.</p>
-        <ul id="guardians" class="guardians mono"><li>–</li></ul>
+        <ul id="guardians" class="guardians mono"><li class="empty">–</li></ul>
       </section>
 
       <section class="card" aria-labelledby="about-title">

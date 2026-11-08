@@ -116,6 +116,8 @@
     const element = $('status');
     element.className = `status status-${kind}`;
     element.textContent = text;
+    // The console styling (beacon, link diagram, alarm glow) follows this state.
+    document.body.dataset.state = kind;
   }
 
   function log(text, kind) {
@@ -210,12 +212,14 @@
     list.replaceChildren();
     if (!state.supported) {
       const item = document.createElement('li');
+      item.className = 'empty';
       item.textContent = '–';
       list.appendChild(item);
       return;
     }
     if (state.guardians.size === 0) {
       const item = document.createElement('li');
+      item.className = 'empty';
       item.textContent = 'No guardians yet. Governance adds them with bridgeHalt.addGuardian.';
       list.appendChild(item);
       return;
@@ -435,7 +439,9 @@
       api = new ApiPromise({ provider, noInitWarn: true });
       await api.isReadyOrError;
     } catch (error) {
-      if (current()) setStatus('unknown', `Could not load the chain: ${error.message || error}`);
+      // A WebSocket failure arrives as a bare Event, which has no message.
+      const reason = error && error.message ? ` (${error.message})` : '';
+      if (current()) setStatus('unknown', `Cannot reach ${endpoint}${reason}. Pick another node.`);
       return;
     }
     if (!current()) {
@@ -494,7 +500,14 @@
     state.halted = latch !== null && latch !== undefined;
     state.supported = supported;
     state.guardians = guardians;
-    $('block').textContent = `#${number.toLocaleString('en-US')}`;
+    const block = $('block');
+    const blockLabel = `#${number.toLocaleString('en-US')}`;
+    if (block.textContent !== blockLabel) {
+      block.textContent = blockLabel;
+      block.classList.remove('tick');
+      void block.offsetWidth; // restart the tick animation
+      block.classList.add('tick');
+    }
     $('runtime').textContent = `${version.specName.toString()} ${version.specVersion.toNumber()}`;
     setStatus(
       state.halted ? 'halted' : 'running',
@@ -719,13 +732,20 @@
 
   // ---------- halt ----------
 
+  /// The first press lifts the safety cover; the emergency stop sends the halt.
   function askToConfirm() {
+    document.body.classList.add('arming');
     $('confirm').hidden = false;
     $('confirm-yes').focus();
   }
 
-  async function sendHalt() {
+  function disarm() {
+    document.body.classList.remove('arming');
     $('confirm').hidden = true;
+  }
+
+  async function sendHalt() {
+    disarm();
     const api = state.api;
     const account = selectedAccount();
     if (!api || !account || state.busy || !api.tx.bridgeHalt || !trustedChain(api)) return;
@@ -847,7 +867,7 @@
     $('halt').addEventListener('click', askToConfirm);
     $('confirm-yes').addEventListener('click', sendHalt);
     $('confirm-no').addEventListener('click', () => {
-      $('confirm').hidden = true;
+      disarm();
       $('halt').focus();
     });
     renderAccount();
