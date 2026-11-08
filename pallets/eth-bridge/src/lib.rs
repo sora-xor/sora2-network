@@ -60,10 +60,6 @@ secret key (differs from validator's key) and participate in bridge consensus (a
 The bridge peer set (`Peers` in storage) forms an n-of-m-multisignature account (`BridgeAccount`
 in storage), which is used to finalize all requests.
 
-Each peer signs an outgoing request only after `Config::OutgoingApprovalDelayMs` has passed on its
-own clock, counted from the first time its off-chain worker was ready to sign that request. The
-start time is kept in the peer's offchain storage; block and transaction timestamps are not used.
-
 ## Bridge contract
 Persists the same multi-sig account (+- 1 signatory) for validating all its incoming requests.
 */
@@ -197,9 +193,6 @@ pub const STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY: &str =
     "eth-bridge-ocw::outgoing-zero-approval-requests";
 pub const STORAGE_OUTGOING_APPROVAL_FAILURES_KEY: &str =
     "eth-bridge-ocw::outgoing-approval-failures";
-/// Per-request prefix for the local time at which this worker's signing delay started.
-pub const STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY: &str =
-    "eth-bridge-ocw::outgoing-approval-delay-start-v1";
 pub const OUTGOING_APPROVAL_FAILURE_NO_LOCAL_PEER_KEY: &str = "no_local_peer_key";
 pub const OUTGOING_APPROVAL_FAILURE_FAILED_SIGN: &str = "failed_sign";
 pub const OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX: &str = "failed_send_signed_tx";
@@ -470,12 +463,6 @@ pub mod pallet {
         type MaxRequestsPerQueue: Get<u32>;
         /// Maximum number of recent requests retained in the per-account RPC index.
         type MaxRequestsPerAccount: Get<u32>;
-        /// How long, in milliseconds, a peer's off-chain worker waits before signing an
-        /// outgoing request. Each worker starts its own timer the first time it is ready to
-        /// sign the request and measures it on its local clock; block and transaction
-        /// timestamps are never used. Zero disables the delay.
-        #[pallet::constant]
-        type OutgoingApprovalDelayMs: Get<u64>;
     }
 
     /// The current storage version.

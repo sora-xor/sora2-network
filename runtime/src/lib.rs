@@ -1986,9 +1986,6 @@ pub type NetworkId = u32;
 
 parameter_types! {
     pub const MaxEthBridgeRequestsPerAccount: u32 = 2048;
-    /// Each bridge peer's off-chain worker waits this long on its own clock before
-    /// signing an outgoing request, leaving time to halt the bridge.
-    pub const EthBridgeOutgoingApprovalDelayMs: u64 = 120_000;
 }
 
 impl eth_bridge::Config for Runtime {
@@ -2006,7 +2003,6 @@ impl eth_bridge::Config for Runtime {
     type Denominator = Denomination;
     type MaxRequestsPerQueue = MaxEthBridgeRequestsPerQueue;
     type MaxRequestsPerAccount = MaxEthBridgeRequestsPerAccount;
-    type OutgoingApprovalDelayMs = EthBridgeOutgoingApprovalDelayMs;
 }
 
 #[cfg(feature = "private-net")]

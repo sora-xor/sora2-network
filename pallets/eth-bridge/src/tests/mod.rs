@@ -61,7 +61,6 @@ mod incoming_transfer;
 mod migration_encoding;
 pub mod mock;
 mod ocw;
-mod outgoing_approval_delay;
 mod outgoing_tranfser;
 mod peer;
 mod rpc;

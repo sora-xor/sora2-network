@@ -133,8 +133,6 @@ parameter_types! {
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub const MaxRequestsPerQueueConst: u32 = 64;
     pub static MaxRequestsPerAccountConst: u32 = 3;
-    /// Zero by default so existing worker tests sign on their first run.
-    pub static OutgoingApprovalDelayMsConst: u64 = 0;
     pub const ReservedBridgeQueueSlotsConst: u32 = 4;
     pub const MaxPendingLoadIncomingRequestsPerAccountConst: u32 = 16;
 }
@@ -279,7 +277,6 @@ impl Config for Runtime {
     type Denominator = TestDenominator;
     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
     type MaxRequestsPerAccount = MaxRequestsPerAccountConst;
-    type OutgoingApprovalDelayMs = OutgoingApprovalDelayMsConst;
 }
 
 construct_runtime!(
@@ -854,7 +851,6 @@ impl ExtBuilder {
                 .try_init();
         });
         MaxRequestsPerAccountConst::set(3);
-        OutgoingApprovalDelayMsConst::set(0);
         set_http_fault(None);
         set_signed_transaction_creation_results(&[]);
         RESPONSES.with(|responses| responses.borrow_mut().clear());

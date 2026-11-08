@@ -46,11 +46,10 @@ use crate::{
     OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX, OUTGOING_APPROVAL_FAILURE_FAILED_SIGN,
     OUTGOING_APPROVAL_FAILURE_NO_LOCAL_PEER_KEY, OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT,
     RE_HANDLE_TXS_PERIOD, STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_LOCAL_PEER_READY_KEY,
-    STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY, STORAGE_OUTGOING_APPROVAL_FAILURES_KEY,
-    STORAGE_OUTGOING_PENDING_REQUESTS_KEY, STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY,
-    STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY,
-    SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
-    ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
+    STORAGE_OUTGOING_APPROVAL_FAILURES_KEY, STORAGE_OUTGOING_PENDING_REQUESTS_KEY,
+    STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
+    STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
+    SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION, ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
 };
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -63,7 +62,6 @@ use frame_support::sp_runtime::traits::{
     IdentifyAccount, One, Saturating, UniqueSaturatedInto, Zero,
 };
 use frame_support::sp_runtime::RuntimeAppPublic;
-use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction, Signer};
 use rustc_hex::ToHex;
@@ -179,39 +177,6 @@ impl<T: Config> Pallet<T> {
             })
         })
         .unwrap_or(false)
-    }
-
-    /// Whether this worker's signing delay for an outgoing request has passed.
-    ///
-    /// The first time the worker is ready to sign a request it stores its own local time in
-    /// persistent offchain storage, then signs only after its clock has moved on by
-    /// `OutgoingApprovalDelayMs`. Block and transaction timestamps are never consulted, so
-    /// nothing on chain can shorten the wait. A start time in the future (the local clock
-    /// went backwards) or an unreadable entry restarts the wait instead of blocking signing.
-    pub(crate) fn outgoing_approval_delay_elapsed(
-        network_id: T::NetworkId,
-        request_hash: H256,
-    ) -> bool {
-        let delay = T::OutgoingApprovalDelayMs::get();
-        if delay == 0 {
-            return true;
-        }
-        let now = sp_io::offchain::timestamp().unix_millis();
-        let key = format!(
-            "{}-{:?}-{:?}",
-            STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY, network_id, request_hash
-        );
-        let started_at = StorageValueRef::persistent(key.as_bytes()).mutate::<u64, (), _>(
-            |stored| match stored {
-                Ok(Some(started_at)) if started_at <= now => Ok(started_at),
-                _ => Ok(now),
-            },
-        );
-        match started_at {
-            Ok(started_at) => now.saturating_sub(started_at) >= delay,
-            // Another worker changed the entry meanwhile; look again on the next run.
-            Err(_) => false,
-        }
     }
 
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
@@ -1219,13 +1184,6 @@ impl<T: Config> Pallet<T> {
                 _ => true,
             };
             if need_to_handle && confirmed {
-                if matches!(request, OffchainRequest::Outgoing(_, _))
-                    && !Self::outgoing_approval_delay_elapsed(network_id, request_hash)
-                {
-                    // Not handled yet: the next worker run checks the delay again.
-                    debug!("Outgoing signing delay running: {:?}", request_hash);
-                    continue;
-                }
                 let timepoint = request.timepoint();
                 let error = Self::handle_offchain_request(request).err();
                 let mut should_mark_as_handled = true;
