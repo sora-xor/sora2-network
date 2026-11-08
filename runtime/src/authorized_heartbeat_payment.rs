@@ -33,7 +33,8 @@ type LegacyPayment = pallet_skip_feeless_payment::SkipCheckIfFeeless<Runtime, Le
 ///
 /// Only a zero-tip ImOnline heartbeat already authenticated by AuthorizeCall may
 /// proceed without a signed fee payer. Every signed path keeps the legacy feeless
-/// checks, post-dispatch refunds and VAL payouts. Bare heartbeats are rejected before
+/// checks, post-dispatch refunds and VAL payouts, and a signed Operational call
+/// must first pass `operational_admission`. Bare heartbeats are rejected before
 /// dispatch; other bare calls retain the existing feeless wrapper behavior.
 #[derive(Encode, Decode, DecodeWithMemTracking, Clone, Eq, PartialEq, Debug)]
 pub struct AuthorizedHeartbeatPayment(LegacyPayment);
@@ -121,6 +122,9 @@ impl TransactionExtension<RuntimeCall> for AuthorizedHeartbeatPayment {
         {
             return Err(InvalidTransaction::BadSigner.into());
         }
+        if let Some(frame_system::RawOrigin::Signed(account)) = origin.as_system_ref() {
+            crate::operational_admission::validate(account, call, info.class)?;
+        }
         if Self::is_authorized_heartbeat(&origin, call) {
             self.ensure_zero_tip()?;
             return Ok((ValidTransaction::default(), None, origin));
@@ -150,6 +154,9 @@ impl TransactionExtension<RuntimeCall> for AuthorizedHeartbeatPayment {
         if matches!(origin.as_system_ref(), Some(frame_system::RawOrigin::Signed(account)) if crate::incident_recovery::account_retired(account))
         {
             return Err(InvalidTransaction::BadSigner.into());
+        }
+        if let Some(frame_system::RawOrigin::Signed(account)) = origin.as_system_ref() {
+            crate::operational_admission::validate(account, call, info.class)?;
         }
         match val {
             Some(val) => self.0.prepare(val, origin, call, info, len).map(Some),

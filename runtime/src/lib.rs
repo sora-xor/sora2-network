@@ -73,6 +73,7 @@ mod incident_recovery_preview_audits;
 mod incident_recovery_staking_tests;
 mod liveness;
 pub mod migrations;
+mod operational_admission;
 pub mod staking_async;
 pub mod staking_async_migration;
 mod xor_fee_impls;
@@ -3027,7 +3028,8 @@ parameter_types! {
 }
 
 /// Emergency brake for every bridge. Guardians halt fee-free; see
-/// `xor_fee_impls::validate_bridge_fee_exemption` for transaction admission.
+/// `xor_fee_impls::validate_bridge_fee_exemption` for transaction admission and
+/// `operational_admission` for wrapped halts.
 impl bridge_halt::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     /// The same authority that manages BridgeProxy.

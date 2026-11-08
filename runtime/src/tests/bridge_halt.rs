@@ -248,22 +248,51 @@ fn repeat_halts_are_rejected_while_halted() {
 }
 
 #[test]
-fn a_wrapped_halt_is_not_free_and_still_needs_a_guardian() {
+fn a_wrapped_halt_pays_and_is_admitted_only_when_it_can_halt() {
     ext().execute_with(|| {
         setup();
-        let who = account(&stranger());
-        let batch = RuntimeCall::Utility(pallet_utility::Call::batch_all {
-            calls: vec![halt(b"x")],
-        });
+        let wrapped = || {
+            RuntimeCall::Utility(pallet_utility::Call::batch_all {
+                calls: vec![halt(b"x")],
+            })
+        };
         assert_eq!(
-            crate::xor_fee_impls::validate_bridge_fee_exemption(&who, &batch),
+            crate::xor_fee_impls::validate_bridge_fee_exemption(&account(&guardian()), &wrapped()),
             Ok(false)
         );
+
+        // Another signer's wrapped halt can only fail, so it never reaches a block.
+        let who = account(&stranger());
+        assert_eq!(
+            validate(wrapped(), &stranger()),
+            Err(InvalidTransaction::BadSigner.into())
+        );
         let before = Balances::free_balance(&who);
-        let _ = Executive::apply_extrinsic(signed(batch, &stranger()))
-            .expect("an ordinary paid wrapper is admitted");
-        assert!(Balances::free_balance(&who) < before);
+        let nonce = System::account_nonce(&who);
+        assert_eq!(
+            Executive::apply_extrinsic(signed(wrapped(), &stranger())),
+            Err(TransactionValidityError::Invalid(
+                InvalidTransaction::BadSigner
+            ))
+        );
+        assert_eq!(Balances::free_balance(&who), before);
+        assert_eq!(System::account_nonce(&who), nonce);
         assert_eq!(latch(), None);
+
+        // A guardian's wrapped halt is admitted and pays the ordinary fee.
+        let who = account(&guardian());
+        assert_ok!(validate(wrapped(), &guardian()));
+        let before = Balances::free_balance(&who);
+        assert_ok!(Executive::apply_extrinsic(signed(wrapped(), &guardian())).unwrap());
+        assert!(Balances::free_balance(&who) < before);
+        assert_eq!(latch(), Some(vec![1]));
+
+        // Once the bridges are halted, a wrapped halt is stale like a direct one.
+        fresh_block();
+        assert_eq!(
+            validate(wrapped(), &guardian()),
+            Err(InvalidTransaction::Stale.into())
+        );
     });
 }
 
