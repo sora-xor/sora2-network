@@ -138,20 +138,20 @@ fn apply_paid(
     let details = XorFee::query_fee_details(&extrinsic, &extrinsic.function, len);
     assert_eq!(quote.partial_fee, details.final_fee());
     assert_eq!(quote.weight, info.total_weight());
+    // A flat payout batch pays the direct-payout fee for every submitted payout.
     let multiplier = xor_fee::Multiplier::<Runtime>::get();
-    let floor = multiplier.saturating_mul_int(MINIMAL_FEE * submitted as Balance)
+    let expected = multiplier.saturating_mul_int(MINIMAL_FEE * submitted as Balance)
         + TransactionPayment::length_to_fee(len);
-    assert!(quote.partial_fee >= floor);
+    assert_eq!(quote.partial_fee, expected);
     let who = AccountId::from(signer.public());
     let before = Balances::free_balance(&who);
     let nonce = System::account_nonce(&who);
     let result = Executive::apply_extrinsic(extrinsic).expect("funded payout batch is admitted");
     let charged = before - Balances::free_balance(&who);
-    assert!(
-        charged >= floor,
-        "all submitted calls retain a positive fee floor"
+    assert_eq!(
+        charged, expected,
+        "every submitted payout pays the direct fee, with no weight refund"
     );
-    assert!(charged <= quote.partial_fee);
     assert_eq!(System::account_nonce(&who), nonce + 1);
     let paid = System::events()
         .into_iter()
@@ -352,7 +352,7 @@ fn payout_batches_require_xor_before_validation_and_execution() {
 }
 
 #[test]
-fn payout_discount_excludes_empty_mixed_nested_and_other_wrapped_calls() {
+fn payout_batch_price_excludes_empty_mixed_nested_and_other_wrapped_calls() {
     ext().execute_with(|| {
         let (signer, validators) = fixture(true);
         let direct = payout(&validators.accounts[0], false);
@@ -399,11 +399,31 @@ fn payout_discount_excludes_empty_mixed_nested_and_other_wrapped_calls() {
                 Some((MINIMAL_FEE, CustomFeeDetails::Regular(MINIMAL_FEE)))
             );
         }
+        // Every flat batch kind pays exactly the direct fee per payout, whatever
+        // its weight.
+        for kind in KINDS {
+            for count in [1, 2, 3] {
+                let call = kind.call(
+                    (0..count)
+                        .map(|index| payout(&validators.accounts[index % 2], index % 2 == 1))
+                        .collect(),
+                );
+                let fee = MINIMAL_FEE * count as Balance;
+                assert_eq!(
+                    CustomFees::compute_fee(&call),
+                    Some((fee, CustomFeeDetails::Regular(fee)))
+                );
+                assert_eq!(
+                    CustomFees::compute_fee_with_dispatch_info(&call, &call.get_dispatch_info()),
+                    CustomFees::compute_fee(&call)
+                );
+            }
+        }
     });
 }
 
 #[test]
-fn payout_batch_fee_quotes_preserve_length_tips_multipliers_and_extension_weight() {
+fn payout_batch_fee_is_the_direct_fee_per_payout_plus_length_and_tip() {
     ext().execute_with(|| {
         let (signer, validators) = fixture(true);
         let call = BatchKind::Batch.call(vec![
@@ -414,21 +434,19 @@ fn payout_batch_fee_quotes_preserve_length_tips_multipliers_and_extension_weight
         let info = extrinsic.get_dispatch_info();
         assert!(info.extension_weight.ref_time() > 0);
         let len = extrinsic.encoded_size() as u32;
-        let floor = 2 * MINIMAL_FEE;
+        let fee = 2 * MINIMAL_FEE;
         // Distinct multipliers catch accidentally applying either one twice.
         let multiplier = FixedU128::saturating_from_integer(7);
         xor_fee::Multiplier::<Runtime>::put(multiplier);
         pallet_transaction_payment::NextFeeMultiplier::<Runtime>::put(
             FixedU128::saturating_from_integer(3),
         );
-        let standard = TransactionPayment::compute_fee(0, &info, 0);
-        let discounted = standard.div_ceil(100).max(floor);
         let length_fee = TransactionPayment::length_to_fee(len);
         let quote = XorFee::query_info(&extrinsic, &call, len);
         let details = XorFee::query_fee_details(&extrinsic, &call, len);
         assert_eq!(
             quote.partial_fee,
-            multiplier.saturating_mul_int(discounted) + length_fee
+            multiplier.saturating_mul_int(fee) + length_fee
         );
         assert_eq!(quote.partial_fee, details.final_fee());
         assert_eq!(quote.weight, info.total_weight());
@@ -437,18 +455,17 @@ fn payout_batch_fee_quotes_preserve_length_tips_multipliers_and_extension_weight
         assert_eq!(inclusion.len_fee, length_fee);
         assert_eq!(
             inclusion.adjusted_weight_fee,
-            multiplier.saturating_mul_int(discounted)
+            multiplier.saturating_mul_int(fee)
         );
-        assert!(
-            quote.partial_fee > XorFee::compute_fee(len, &call, &call.get_dispatch_info(), 0).0,
-            "extension weight participates in both quote and admission price"
+        // Weight does not set the price: the quote is the same with or without
+        // the transaction-extension weight.
+        assert_eq!(
+            XorFee::compute_fee(len, &call, &call.get_dispatch_info(), 0).0,
+            quote.partial_fee
         );
         let tip = UNIT / 10;
         let (upfront, custom) = XorFee::compute_fee(len, &call, &info, tip);
-        assert_eq!(
-            custom,
-            Some(CustomFeeDetails::PayoutBatch { minimum_fee: floor })
-        );
+        assert_eq!(custom, Some(CustomFeeDetails::Regular(fee)));
         assert_eq!(
             upfront,
             quote.partial_fee + multiplier.saturating_mul_int(tip)
@@ -457,6 +474,7 @@ fn payout_batch_fee_quotes_preserve_length_tips_multipliers_and_extension_weight
             XorFee::compute_fee(len + 100, &call, &info, tip).0 - upfront,
             TransactionPayment::length_to_fee(100)
         );
+        // No weight refund: success, failure and an empty run all cost the same.
         for actual_weight in [
             Weight::zero(),
             info.total_weight() / 10,
@@ -466,23 +484,18 @@ fn payout_batch_fee_quotes_preserve_length_tips_multipliers_and_extension_weight
                 actual_weight: Some(actual_weight),
                 pays_fee: Pays::Yes,
             };
-            let old_actual = TransactionPayment::compute_actual_fee(0, &info, &post, 0);
-            let expected = multiplier.saturating_mul_int(old_actual.div_ceil(100).max(floor))
-                + length_fee
-                + multiplier.saturating_mul_int(tip);
             for result in [
                 Ok(()),
                 Err(sp_runtime::DispatchError::Other("failed payout")),
             ] {
                 assert_eq!(
                     XorFee::compute_actual_fee(len, &info, &post, &result, tip, custom),
-                    expected
+                    upfront
                 );
             }
-            assert!(expected <= upfront);
         }
-        // Even an immediate error retains a floor for every submitted child.
-        // Doubling a skipped tail must double that floor, irrespective of weight refunds.
+        // Even an immediate error charges every submitted payout, so doubling a
+        // skipped tail doubles the fee.
         let post = PostDispatchInfo {
             actual_weight: Some(Weight::zero()),
             pays_fee: Pays::Yes,
@@ -538,7 +551,7 @@ fn payout_batch_must_fund_full_quote_even_when_execution_would_refund() {
 }
 
 #[test]
-fn payout_batch_discount_preserves_extrinsic_and_block_weight_admission_limits() {
+fn payout_batch_price_preserves_extrinsic_and_block_weight_admission_limits() {
     ext().execute_with(|| {
         let (signer, validators) = fixture(true);
         let child = payout(&validators.accounts[0], false);

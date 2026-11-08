@@ -38,7 +38,7 @@ use common::LiquidityProxyTrait;
 use common::PriceToolsProvider;
 #[cfg(feature = "wip")] // Xorless fee
 use common::PriceVariant;
-use frame_support::dispatch::{DispatchInfo, DispatchResult, GetDispatchInfo};
+use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Currency;
 use pallet_utility::Call as UtilityCall;
 use sp_runtime::traits::Zero;
@@ -310,10 +310,13 @@ fn pay_val_to_reward_destination(
 }
 
 impl CustomFees {
-    /// Only flat, nonempty payout batches receive the resource-price discount.
-    /// Do not recurse into wrappers: that would also subsidize unrelated work
-    /// or permit arbitrary nesting overhead at the payout price.
-    fn payout_batch_minimum(call: &RuntimeCall) -> Option<Balance> {
+    /// A flat, nonempty batch of staking payouts pays the direct-payout fee
+    /// (`MINIMAL_FEE`) once for every payout it submits, the same as sending each
+    /// payout on its own. The price does not depend on weight, and failed,
+    /// skipped or replayed payouts are still charged. Only flat batches qualify:
+    /// recursing into wrappers would also subsidize unrelated work or permit
+    /// arbitrary nesting overhead at the payout price.
+    fn payout_batch_fee(call: &RuntimeCall) -> Option<Balance> {
         let calls = match call {
             RuntimeCall::Utility(UtilityCall::batch { calls })
             | RuntimeCall::Utility(UtilityCall::batch_all { calls })
@@ -332,13 +335,6 @@ impl CustomFees {
             return None;
         }
         Some(MINIMAL_FEE.saturating_mul(calls.len() as Balance))
-    }
-
-    fn discounted_payout_batch_fee(standard_fee: Balance, minimum_fee: Balance) -> Balance {
-        // Round up, keep a paid floor for every submitted payout (including
-        // skipped/failed/replayed claims), and retain normal weight refunds.
-        // Length fees and tips are added separately by XorFee, without discount.
-        standard_fee.div_ceil(100).max(minimum_fee)
     }
 
     fn match_call(call: &RuntimeCall) -> Option<Balance> {
@@ -392,6 +388,7 @@ impl CustomFees {
             }
             // NOTE: reducing fees to 1/10 for payout_stakers (from SMALL_FEE)
             // https://github.com/sora-xor/sora2-network/issues/1335#issuecomment-3004262480
+            // Flat payout batches pay this fee per payout; see `payout_batch_fee`.
             RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
             | RuntimeCall::Staking(pallet_staking::Call::payout_stakers_by_page { .. })
             | RuntimeCall::Band(..)
@@ -412,10 +409,6 @@ pub enum CustomFeeDetails {
     /// Regular call with custom fee without any additional logic
     Regular(Balance),
 
-    /// One percent of the ordinary base/weight fee, bounded below by the
-    /// direct-payout fee for every submitted call. No change to execution weight.
-    PayoutBatch { minimum_fee: Balance },
-
     /// OrderBook::place_limit_order custom fee depends on limit order lifetime
     LimitOrderLifetime(Option<Moment>),
 
@@ -430,19 +423,8 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     type FeeDetails = CustomFeeDetails;
 
     fn compute_fee(call: &RuntimeCall) -> Option<(Balance, CustomFeeDetails)> {
-        Self::compute_fee_with_dispatch_info(call, &call.get_dispatch_info())
-    }
-
-    fn compute_fee_with_dispatch_info(
-        call: &RuntimeCall,
-        info: &DispatchInfo,
-    ) -> Option<(Balance, CustomFeeDetails)> {
-        if let Some(minimum_fee) = Self::payout_batch_minimum(call) {
-            let standard_fee = TransactionPayment::compute_fee(0, info, 0);
-            return Some((
-                Self::discounted_payout_batch_fee(standard_fee, minimum_fee),
-                CustomFeeDetails::PayoutBatch { minimum_fee },
-            ));
+        if let Some(fee) = Self::payout_batch_fee(call) {
+            return Some((fee, CustomFeeDetails::Regular(fee)));
         }
         let mut fee = Self::base_fee(call)?;
 
@@ -621,10 +603,6 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
         let fee_details = fee_details?;
         match fee_details {
             CustomFeeDetails::Regular(fee) => Some(fee),
-            CustomFeeDetails::PayoutBatch { minimum_fee } => {
-                let standard_fee = TransactionPayment::compute_actual_fee(0, _info, _post_info, 0);
-                Some(Self::discounted_payout_batch_fee(standard_fee, minimum_fee))
-            }
             CustomFeeDetails::LimitOrderLifetime(lifetime) => {
                 order_book::fee_calculator::FeeCalculator::<Runtime>::place_limit_order_fee(
                     lifetime,
