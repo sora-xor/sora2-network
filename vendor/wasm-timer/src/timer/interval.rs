@@ -1,4 +1,3 @@
-use pin_utils::unsafe_pinned;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -24,7 +23,12 @@ pub struct Interval {
 }
 
 impl Interval {
-    unsafe_pinned!(delay: Delay);
+    // `pin_utils::unsafe_pinned!(delay: Delay)` from pin-utils 0.1.0, written out
+    // with the lifetimes elided.
+    #[allow(unsafe_code)]
+    fn delay(self: Pin<&mut Self>) -> Pin<&mut Delay> {
+        unsafe { Pin::map_unchecked_mut(self, |x| &mut x.delay) }
+    }
 
     /// Creates a new interval which will fire at `dur` time into the future,
     /// and will repeat every `dur` interval after

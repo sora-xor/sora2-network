@@ -11,3 +11,13 @@ The 2026-10-25 compiler-warning cleanup declares the existing optional
 it. Explicitly ignoring Copy return values replaces no-op drops; the calls to
 `into_usize()` (which relinquishes ownership) and `poll()` still execute exactly
 once. No timing, ownership, or scheduling policy changes.
+
+The 2026-11-08 change removes the archived `pin-utils` dependency, which
+RUSTSEC-2026-0441 reports as unmaintained. The five `unsafe_pinned!` field
+projections in `Interval`, `Timeout` and `TimeoutStream` are the pin-utils 0.1.0
+macro expansion written out with the lifetimes elided, so the generated code is
+unchanged. The helper thread pins its timer with `std::pin::pin!` instead of
+`pin_mut!`, as the advisory recommends. No timing, ownership or scheduling
+behaviour changes. The 13 upstream timer tests and the doctest pass, the
+wasm32-unknown-unknown build compiles, and Clippy finds nothing beyond what it
+found in the previous copy.

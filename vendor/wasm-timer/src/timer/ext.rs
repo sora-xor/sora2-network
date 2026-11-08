@@ -6,7 +6,6 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use futures::prelude::*;
-use pin_utils::unsafe_pinned;
 
 use crate::{Delay, Instant};
 
@@ -92,8 +91,19 @@ where
     F: TryFuture,
     F::Error: From<io::Error>,
 {
-    unsafe_pinned!(future: F);
-    unsafe_pinned!(timeout: Delay);
+    // `pin_utils::unsafe_pinned!(future: F)` from pin-utils 0.1.0, written out
+    // with the lifetimes elided.
+    #[allow(unsafe_code)]
+    fn future(self: Pin<&mut Self>) -> Pin<&mut F> {
+        unsafe { Pin::map_unchecked_mut(self, |x| &mut x.future) }
+    }
+
+    // `pin_utils::unsafe_pinned!(timeout: Delay)` from pin-utils 0.1.0, written out
+    // with the lifetimes elided.
+    #[allow(unsafe_code)]
+    fn timeout(self: Pin<&mut Self>) -> Pin<&mut Delay> {
+        unsafe { Pin::map_unchecked_mut(self, |x| &mut x.timeout) }
+    }
 }
 
 impl<F> Future for Timeout<F>
@@ -163,8 +173,19 @@ where
     S: TryStream,
     S::Error: From<io::Error>,
 {
-    unsafe_pinned!(timeout: Delay);
-    unsafe_pinned!(stream: S);
+    // `pin_utils::unsafe_pinned!(timeout: Delay)` from pin-utils 0.1.0, written out
+    // with the lifetimes elided.
+    #[allow(unsafe_code)]
+    fn timeout(self: Pin<&mut Self>) -> Pin<&mut Delay> {
+        unsafe { Pin::map_unchecked_mut(self, |x| &mut x.timeout) }
+    }
+
+    // `pin_utils::unsafe_pinned!(stream: S)` from pin-utils 0.1.0, written out
+    // with the lifetimes elided.
+    #[allow(unsafe_code)]
+    fn stream(self: Pin<&mut Self>) -> Pin<&mut S> {
+        unsafe { Pin::map_unchecked_mut(self, |x| &mut x.stream) }
+    }
 }
 
 impl<S> Stream for TimeoutStream<S>

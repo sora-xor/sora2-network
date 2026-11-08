@@ -8,8 +8,6 @@ use std::thread;
 use std::thread::Thread;
 use std::time::Instant;
 
-use pin_utils::pin_mut;
-
 use crate::{Timer, TimerHandle};
 
 pub struct HelperThread {
@@ -58,7 +56,7 @@ fn run(timer: Timer, done: Arc<AtomicBool>) {
     let mut waker = current_thread_waker();
     let mut cx = Context::from_waker(&mut waker);
 
-    pin_mut!(timer);
+    let mut timer = std::pin::pin!(timer);
     while !done.load(Ordering::SeqCst) {
         let _ = timer.as_mut().poll(&mut cx);
 
