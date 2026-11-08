@@ -3,13 +3,13 @@
 
 //! Admission for signed Operational-class calls.
 //!
-//! The pool priority of every Operational transaction saturates:
-//! `get_priority` scales its fee by `OperationalFeeMultiplier` and by the
+//! The pool priority of most Operational transactions saturates:
+//! `get_priority` scales the fee by `OperationalFeeMultiplier` and by the
 //! number of such transactions a block holds, which exceeds `u64::MAX` with
-//! 18-decimal balances. A call that can only fail would therefore tie with
-//! legitimate operational traffic, including a guardian's fee-free bridge halt,
-//! which has no tip to outbid it. Pool validation and pre-dispatch admit a
-//! signed Operational call only when its signer can make it succeed:
+//! 18-decimal balances, and `pool_priority` caps it just below a guardian's
+//! halt. A call that can only fail would therefore tie with legitimate
+//! operational traffic. Pool validation and pre-dispatch admit a signed
+//! Operational call only when its signer can make it succeed:
 //!
 //! - council and technical committee members vote, propose and execute;
 //! - anyone closes a motion that closes now within the bounds it states;

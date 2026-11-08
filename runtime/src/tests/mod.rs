@@ -33,6 +33,7 @@ mod bridge_halt;
 mod liquidity_proxy;
 mod liveness;
 mod operational_admission;
+mod pool_priority;
 mod referrals;
 #[cfg(feature = "try-runtime")]
 mod remote;

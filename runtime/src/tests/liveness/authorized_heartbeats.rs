@@ -44,6 +44,35 @@ fn authorization_rejects_forged_heartbeats_and_unapproved_calls_without_payment(
 }
 
 #[test]
+fn an_authorized_heartbeat_ranks_below_a_guardian_halt() {
+    ext().execute_with(|| {
+        let validators = Validators::new();
+        validators.start_session(FIRST_SESSION + 1);
+        let heartbeat = Heartbeat {
+            block_number: System::block_number(),
+            session_index: FIRST_SESSION + 1,
+            authority_index: 0,
+            validators_len: VALIDATORS,
+        };
+        let call = RuntimeCall::ImOnline(pallet_im_online::Call::heartbeat {
+            signature: authority_pair(0).sign(&heartbeat.encode()),
+            heartbeat,
+        });
+        sp_io::storage::start_transaction();
+        let validity = Executive::validate_transaction(
+            TransactionSource::External,
+            general(call),
+            Default::default(),
+        );
+        sp_io::storage::rollback_transaction();
+        assert_eq!(
+            validity.map(|validity| validity.priority),
+            Ok(crate::pool_priority::BELOW_GUARDIAN_HALT)
+        );
+    });
+}
+
+#[test]
 fn authorized_heartbeat_cannot_silently_ignore_a_nonzero_tip() {
     ext().execute_with(|| {
         let validators = Validators::new();

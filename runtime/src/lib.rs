@@ -74,6 +74,7 @@ mod incident_recovery_staking_tests;
 mod liveness;
 pub mod migrations;
 mod operational_admission;
+mod pool_priority;
 pub mod staking_async;
 pub mod staking_async_migration;
 mod xor_fee_impls;
@@ -548,7 +549,8 @@ parameter_types! {
     pub MigrationMaxServiceWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
     pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
-    pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::MAX;
+    // Below a guardian's bridge halt, like every other transaction; see `pool_priority`.
+    pub const ImOnlineUnsignedPriority: TransactionPriority = pool_priority::BELOW_GUARDIAN_HALT;
     pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
     pub const ElectionsCandidacyBond: Balance = balance!(1);
     // 1 storage item created, key size is 32 bytes, value size is 16+16.
@@ -3027,9 +3029,10 @@ parameter_types! {
     pub const BridgeHaltMaxReasonLength: u32 = 256;
 }
 
-/// Emergency brake for every bridge. Guardians halt fee-free; see
-/// `xor_fee_impls::validate_bridge_fee_exemption` for transaction admission and
-/// `operational_admission` for wrapped halts.
+/// Emergency brake for every bridge. Guardians halt fee-free and ahead of every
+/// other transaction; see `xor_fee_impls::validate_bridge_fee_exemption` for
+/// transaction admission, `operational_admission` for wrapped halts and
+/// `pool_priority` for the ordering.
 impl bridge_halt::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     /// The same authority that manages BridgeProxy.
@@ -4060,12 +4063,13 @@ pub type UncheckedExtrinsic =
     generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-/// Executive: handles dispatch to the various modules.
+/// Executive: handles dispatch to the various modules. Unsigned validation is
+/// the runtime's own, capped below a guardian's bridge halt (`pool_priority`).
 pub type Executive = frame_executive::Executive<
     Runtime,
     Block,
     frame_system::ChainContext<Runtime>,
-    Runtime,
+    pool_priority::UnsignedBelowGuardianHalt,
     AllPalletsWithSystem,
     (),
 >;

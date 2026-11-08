@@ -34,8 +34,10 @@ type LegacyPayment = pallet_skip_feeless_payment::SkipCheckIfFeeless<Runtime, Le
 /// Only a zero-tip ImOnline heartbeat already authenticated by AuthorizeCall may
 /// proceed without a signed fee payer. Every signed path keeps the legacy feeless
 /// checks, post-dispatch refunds and VAL payouts, and a signed Operational call
-/// must first pass `operational_admission`. Bare heartbeats are rejected before
-/// dispatch; other bare calls retain the existing feeless wrapper behavior.
+/// must first pass `operational_admission`. `pool_priority` then ranks a
+/// guardian's direct bridge halt above every other transaction. Bare heartbeats
+/// are rejected before dispatch; other bare calls retain the existing feeless
+/// wrapper behavior.
 #[derive(Encode, Decode, DecodeWithMemTracking, Clone, Eq, PartialEq, Debug)]
 pub struct AuthorizedHeartbeatPayment(LegacyPayment);
 
@@ -140,7 +142,13 @@ impl TransactionExtension<RuntimeCall> for AuthorizedHeartbeatPayment {
                 inherited_implication,
                 source,
             )
-            .map(|(validity, val, origin)| (validity, Some(val), origin))
+            .map(|(mut validity, val, origin)| {
+                // The other extensions give a signed transaction zero priority,
+                // so this is its pool priority.
+                validity.priority =
+                    crate::pool_priority::validated(&origin, call, validity.priority);
+                (validity, Some(val), origin)
+            })
     }
 
     fn prepare(
