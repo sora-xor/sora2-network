@@ -1,0 +1,267 @@
+{
+  "endpoint": "wss://mof2.sora.org",
+  "checks": [
+    {
+      "name": "live chain runs the expected runtime",
+      "ok": true,
+      "detail": {
+        "specVersion": 138,
+        "codeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6"
+      }
+    },
+    {
+      "name": "candidate is spec 141, transaction version 134",
+      "ok": true,
+      "detail": {
+        "spec": 141,
+        "tx": 134
+      }
+    },
+    {
+      "name": "upgrade block applied runtime 141",
+      "ok": true,
+      "detail": {
+        "specVersion": 141,
+        "specName": "sora-substrate"
+      }
+    },
+    {
+      "name": "no inherent failed in the upgrade block",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "migration seeded the requested guardian",
+      "ok": true
+    },
+    {
+      "name": "guardian list is exactly the seeded account",
+      "ok": true,
+      "detail": [
+        "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY"
+      ]
+    },
+    {
+      "name": "upgrade block weight fits in a block",
+      "ok": true,
+      "detail": {
+        "mandatoryRefTime": "128455888052",
+        "maxRefTime": "2000000000000"
+      }
+    },
+    {
+      "name": "native XOR issuance unchanged by the upgrade",
+      "ok": true,
+      "detail": "34970634067830043815575529"
+    },
+    {
+      "name": "Root's recovery latch left as it was",
+      "ok": true,
+      "detail": "0x01"
+    },
+    {
+      "name": "no guardian halt before anyone halts",
+      "ok": true
+    },
+    {
+      "name": "the next block builds on runtime 141",
+      "ok": true,
+      "detail": {
+        "number": 28296249
+      }
+    },
+    {
+      "name": "a non-guardian halt is rejected before inclusion",
+      "ok": true,
+      "detail": "{\"invalid\":{\"badSigner\":null}}"
+    },
+    {
+      "name": "guardian halt included as halt #1",
+      "ok": true,
+      "detail": {
+        "section": "bridgeHalt",
+        "method": "BridgeHalted",
+        "data": {
+          "number": "1",
+          "guardian": "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY",
+          "reason": "live-fork rehearsal: guardian halt"
+        }
+      }
+    },
+    {
+      "name": "guardian paid no fee",
+      "ok": true,
+      "detail": {
+        "section": "transactionPayment",
+        "method": "TransactionFeePaid",
+        "data": {
+          "who": "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY",
+          "actualFee": "0",
+          "tip": "0"
+        }
+      }
+    },
+    {
+      "name": "guardian balance unchanged",
+      "ok": true
+    },
+    {
+      "name": "workers see halt #1 at its block",
+      "ok": true,
+      "detail": {
+        "signal": "0x010000003ac4af01",
+        "expected": "0x010000003ac4af01"
+      }
+    },
+    {
+      "name": "LastHalt records number, guardian and block",
+      "ok": true,
+      "detail": {
+        "number": 1,
+        "guardian": "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY",
+        "block": 28296250,
+        "reason": "0x6c6976652d666f726b2072656865617273616c3a20677561726469616e2068616c74"
+      }
+    },
+    {
+      "name": "Root's recovery latch still untouched",
+      "ok": true
+    },
+    {
+      "name": "a second halt inside the cooldown is refused",
+      "ok": true,
+      "detail": "{\"invalid\":{\"stale\":null}}"
+    }
+  ],
+  "candidate": {
+    "path": "runtime-upgrade-4.8.15/framenode-runtime-4.8.15.compact.compressed.wasm",
+    "bytes": 2135814,
+    "sha256": "449d4f231091a7f7230c6e6b61ca0aca797b44ff36424ba5604b96d16481d5e0",
+    "specVersion": 141,
+    "transactionVersion": 134
+  },
+  "base": {
+    "hash": "0x21ca4145bf9ee732a8508f0a99f8c877e5111b130401a2aa5f2d81600b6a1c3d",
+    "number": 28296247
+  },
+  "deployed": {
+    "specVersion": 138,
+    "codeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6"
+  },
+  "upgradeBlock": {
+    "number": 28296248,
+    "hash": "0x19fd34ec30d393ad54bb90775f0eaf43001f4dc530d0de9ecaeecfa751609316",
+    "seconds": 238.362
+  },
+  "upgradeEvents": [
+    {
+      "section": "bridgeHalt",
+      "method": "GuardianAdded",
+      "data": {
+        "account": "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY"
+      }
+    },
+    {
+      "section": "multiBlockMigrations",
+      "method": "UpgradeStarted",
+      "data": {
+        "migrations": "1"
+      }
+    },
+    {
+      "section": "system",
+      "method": "ExtrinsicSuccess",
+      "data": {
+        "dispatchInfo": {
+          "weight": {
+            "refTime": "413,973,000",
+            "proofSize": "17,877"
+          },
+          "class": "Mandatory",
+          "paysFee": "Yes"
+        }
+      }
+    },
+    {
+      "section": "multiBlockMigrations",
+      "method": "MigrationSkipped",
+      "data": {
+        "index": "0"
+      }
+    },
+    {
+      "section": "multiBlockMigrations",
+      "method": "UpgradeCompleted",
+      "data": {}
+    }
+  ],
+  "upgradeWeight": {
+    "used": {
+      "normal": {
+        "refTime": 0,
+        "proofSize": 0
+      },
+      "operational": {
+        "refTime": 0,
+        "proofSize": 0
+      },
+      "mandatory": {
+        "refTime": 128455888052,
+        "proofSize": 7478761
+      }
+    },
+    "maxBlock": {
+      "refTime": 2000000000000,
+      "proofSize": "0xffffffffffffffff"
+    }
+  },
+  "haltEvents": [
+    {
+      "section": "system",
+      "method": "ExtrinsicSuccess",
+      "data": {
+        "dispatchInfo": {
+          "weight": {
+            "refTime": "413,973,000",
+            "proofSize": "17,877"
+          },
+          "class": "Mandatory",
+          "paysFee": "Yes"
+        }
+      }
+    },
+    {
+      "section": "bridgeHalt",
+      "method": "BridgeHalted",
+      "data": {
+        "number": "1",
+        "guardian": "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY",
+        "reason": "live-fork rehearsal: guardian halt"
+      }
+    },
+    {
+      "section": "transactionPayment",
+      "method": "TransactionFeePaid",
+      "data": {
+        "who": "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY",
+        "actualFee": "0",
+        "tip": "0"
+      }
+    },
+    {
+      "section": "system",
+      "method": "ExtrinsicSuccess",
+      "data": {
+        "dispatchInfo": {
+          "weight": {
+            "refTime": "1,050,491,000",
+            "proofSize": "44,361"
+          },
+          "class": "Operational",
+          "paysFee": "Yes"
+        }
+      }
+    }
+  ],
+  "ok": true
+}

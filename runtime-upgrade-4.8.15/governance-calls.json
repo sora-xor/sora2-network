@@ -1,0 +1,86 @@
+{
+  "preparedAt": "2026-11-09T08:07:04.209Z",
+  "endpoint": "wss://mof2.sora.org",
+  "signed": false,
+  "submittedTransactions": 0,
+  "finalized": {
+    "hash": "0xa3286ae360aa1cd692f3fb80f03b7c4a6b3355108afd2d87ba7e8e6bde762fa8",
+    "number": 28299621,
+    "metadataSha256": "0d8aaf8c1f6974e2256a0b7bb71c16d1fb502c1d1327e6ca46c44e0f554af3c2"
+  },
+  "rehearsal": {
+    "base": {
+      "hash": "0x21ca4145bf9ee732a8508f0a99f8c877e5111b130401a2aa5f2d81600b6a1c3d",
+      "number": 28296247
+    },
+    "candidateSha256": "449d4f231091a7f7230c6e6b61ca0aca797b44ff36424ba5604b96d16481d5e0",
+    "deployedCodeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6"
+  },
+  "liveRuntime": {
+    "specVersion": 138,
+    "transactionVersion": 134
+  },
+  "wasm": {
+    "file": "framenode-runtime-4.8.15.compact.compressed.wasm",
+    "bytes": 2135814,
+    "sha256": "449d4f231091a7f7230c6e6b61ca0aca797b44ff36424ba5604b96d16481d5e0",
+    "blake2_256": "0x4e168765f5f9f4632ff30aefc40d5da5760c79d49b90b47399223b9f87e858e0"
+  },
+  "setCode": {
+    "file": "set-code-call.scale",
+    "bytes": 2135820,
+    "proposalHash": "0xf22f51846c2766204d4f40f83f3c9c0a69149cd6d2d55263e5eb4a5cce760845"
+  },
+  "council": {
+    "members": 8,
+    "threshold": 4
+  },
+  "technicalCommittee": {
+    "members": 4,
+    "threshold": 3
+  },
+  "democracy": {
+    "fastTrackVotingPeriod": 1800,
+    "enactmentDelay": 0,
+    "nextExternal": null,
+    "proposalBlacklisted": false
+  },
+  "preimageRequestStatus": null,
+  "calls": {
+    "preimage-note-call": {
+      "file": "preimage-note-call.hex",
+      "bytes": 2135826,
+      "hash": "0x47b22dd7edc23e961397b96ba8e88d7be4cadbdf9baea4d6e8642088f7ebcbf1",
+      "section": "preimage",
+      "method": "notePreimage"
+    },
+    "utility-guarded-external-majority-call": {
+      "file": "utility-guarded-external-majority-call.hex",
+      "bytes": 81,
+      "hash": "0x1f6d1b41a6a4f294f28921ceb6307196c07dbb01daf51bd2d1178f23bbacc825",
+      "section": "utility",
+      "method": "batchAll"
+    },
+    "council-propose-guarded-external-majority-threshold-4-call": {
+      "file": "council-propose-guarded-external-majority-threshold-4-call.hex",
+      "bytes": 86,
+      "hash": "0xb6a25641c0372e20b7f2620791e94e5d115faa80af69b728c0c0a76bdb3159b1",
+      "section": "council",
+      "method": "propose"
+    },
+    "democracy-fast-track-call": {
+      "file": "democracy-fast-track-call.hex",
+      "bytes": 42,
+      "hash": "0x27bafcfe8fc7259c0bbd86b3b1bcfbf9ce8eac9f91486d1a8b990323bbaec75e",
+      "section": "democracy",
+      "method": "fastTrack"
+    },
+    "technical-committee-fast-track-threshold-3-call": {
+      "file": "technical-committee-fast-track-threshold-3-call.hex",
+      "bytes": 46,
+      "hash": "0x1a44d5d7cb37fa2348b6f26d12a7158f616eb517a09612832bc5805e65019848",
+      "section": "technicalCommittee",
+      "method": "propose"
+    }
+  }
+}
