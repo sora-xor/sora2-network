@@ -14,7 +14,7 @@
 //! - council and technical committee members vote, propose and execute;
 //! - anyone closes a motion that closes now within the bounds it states;
 //! - anyone applies the authorized runtime upgrade;
-//! - a bridge guardian halts the bridges while they run;
+//! - a bridge guardian halts the bridge workers, once per halt cooldown;
 //! - wrappers qualify when every call they may dispatch qualifies for the
 //!   account it is dispatched as.
 //!

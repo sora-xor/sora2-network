@@ -101,6 +101,53 @@ pub(crate) fn set_offchain_metric_u64(key: &[u8], value: u64) {
     StorageValueRef::persistent(key).set(&value);
 }
 
+/// Whether a guardian halt keeps this node's workers stopped.
+///
+/// The workers stop when the chain names a guardian halt that this node's
+/// operator has not confirmed with `--bridge-resume-after-halt`, and when the
+/// chain's halt record does not decode. Sets the stopped-halt metric each run and
+/// logs a warning once per halt.
+pub(crate) fn stopped_by_guardian_halt() -> bool {
+    let latest = common::bridge_halt::latest_guardian_halt();
+    let confirmed = StorageValueRef::persistent(crate::STORAGE_RESUMED_AFTER_HALT_KEY)
+        .get::<common::bridge_halt::GuardianHalt>()
+        .ok()
+        .flatten();
+    if common::bridge_halt::workers_may_run(&latest, confirmed) {
+        set_offchain_metric_u64(crate::STORAGE_GUARDIAN_HALT_STOPPED_KEY, 0);
+        return false;
+    }
+    let stopped_by = match latest {
+        Ok(Some(halt)) => Some(halt),
+        _ => None,
+    };
+    set_offchain_metric_u64(
+        crate::STORAGE_GUARDIAN_HALT_STOPPED_KEY,
+        stopped_by.map_or(u64::MAX, |halt| u64::from(halt.number)),
+    );
+    let reported = StorageValueRef::persistent(crate::STORAGE_GUARDIAN_HALT_REPORTED_KEY);
+    if reported
+        .get::<Option<common::bridge_halt::GuardianHalt>>()
+        .ok()
+        .flatten()
+        != Some(stopped_by)
+    {
+        reported.set(&stopped_by);
+        match stopped_by {
+            Some(halt) => frame_support::__private::log::warn!(
+                "Guardian halt #{} (block #{}) stopped the HASHI bridge workers. Once it is safe, restart this node with --bridge-resume-after-halt {}.",
+                halt.number,
+                halt.block,
+                halt.number,
+            ),
+            None => frame_support::__private::log::error!(
+                "The guardian halt record on chain does not decode; the HASHI bridge workers stay stopped."
+            ),
+        }
+    }
+    true
+}
+
 pub(crate) fn increment_offchain_metric_u64(key: &[u8]) {
     let storage = StorageValueRef::persistent(key);
     let current = storage.get::<u64>().ok().flatten().unwrap_or_default();

@@ -21,13 +21,15 @@ impl frame_system::Config for Test {
 }
 
 pub type MaxReasonLength = ConstU32<64>;
+pub const COOLDOWN: u64 = 10;
+pub type HaltCooldown = frame_support::traits::ConstU64<COOLDOWN>;
 
 impl bridge_halt::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type GuardianOrigin = EnsureRoot<u64>;
-    type ResumeOrigin = EnsureRoot<u64>;
     type MaxGuardians = ConstU32<3>;
     type MaxReasonLength = MaxReasonLength;
+    type HaltCooldown = HaltCooldown;
     type WeightInfo = ();
 }
 

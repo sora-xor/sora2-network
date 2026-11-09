@@ -510,6 +510,21 @@ body[data-state="halted"] .status {
   animation: readout-pulse 0.9s ease-in-out infinite alternate;
 }
 
+.status-detail {
+  margin: -4px 0 12px;
+  min-height: 1em;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  text-align: center;
+  color: #9aa6ba;
+  overflow-wrap: anywhere;
+}
+
+.status-detail:empty {
+  display: none;
+}
+
 /* Bridge link diagram. */
 .links {
   display: block;

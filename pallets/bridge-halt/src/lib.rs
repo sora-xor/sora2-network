@@ -3,27 +3,32 @@
 
 //! # Bridge halt
 //!
-//! An emergency brake for every SORA bridge.
+//! An emergency stop for the SORA bridge workers.
 //!
 //! Governance keeps a short list of guardian accounts; the runtime may install
 //! the first ones in the upgrade that adds this pallet. A guardian calls
-//! [`Pallet::halt`] with a short message. The call sets the persistent bridge
-//! latch [`common::recovery::BRIDGE_HALT_STORAGE_KEY`]. HASHI (`eth-bridge`),
-//! `bridge-proxy`, the inbound and outbound channels, the bridge applications,
-//! the data signer and the multisig verifier already check that latch: while it
-//! is present they refuse new bridge work, and the HASHI offchain workers stop.
-//! The message is kept in [`LastHalt`] and in [`Event::BridgeHalted`].
+//! [`Pallet::halt`] with a short message. The call numbers the halt, keeps the
+//! message in [`LastHalt`] and [`Event::BridgeHalted`], and writes the halt's
+//! number and block to [`common::bridge_halt::GUARDIAN_HALT_STORAGE_KEY`].
+//!
+//! Bridge workers read that key. A HASHI offchain worker stops as soon as it
+//! names a halt that the node's operator has not confirmed, and stays stopped
+//! until devops restart the node with `--bridge-resume-after-halt <number>`.
+//! Nothing on chain restarts the workers, so bringing the bridges back needs no
+//! Root call, and a guardian can stop the workers but never restart them.
+//!
+//! A halt leaves Root's recovery latch
+//! ([`common::recovery::BRIDGE_HALT_STORAGE_KEY`]) alone. When the bridge pallets
+//! themselves must refuse calls, governance sets that latch with Root.
 //!
 //! The SORA runtime charges guardians no fee for `halt`. It rejects the call from
 //! every other signer while validating the transaction, through
 //! [`Pallet::validate_halt`], so another account's attempt never reaches a block:
-//! it changes no state and costs no fee. The checks inside `halt` remain the
-//! authority for wrapped calls (batch, multisig, scheduler), which pay their own
-//! fees as usual.
-//!
-//! Guardians cannot reopen a bridge. Only [`Pallet::resume`], restricted to
-//! `ResumeOrigin`, clears the latch. Clearing the raw key with Root
-//! `System::kill_storage` has the same effect.
+//! it changes no state and costs no fee. After a halt, the next one is refused
+//! for [`Config::HaltCooldown`] blocks, so guardians who react to the same
+//! incident send one halt and a guardian key cannot fill blocks with free calls.
+//! The checks inside `halt` remain the authority for wrapped calls (batch,
+//! multisig, scheduler), which pay their own fees as usual.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -42,10 +47,14 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::weights::WeightInfo;
-    use common::recovery::BRIDGE_HALT_STORAGE_KEY;
+    use codec::Encode;
+    use common::bridge_halt::{GuardianHalt, GUARDIAN_HALT_STORAGE_KEY};
     use frame_support::{pallet_prelude::*, BoundedBTreeSet};
     use frame_system::pallet_prelude::*;
-    use sp_runtime::transaction_validity::InvalidTransaction;
+    use sp_runtime::{
+        traits::{Saturating, UniqueSaturatedInto},
+        transaction_validity::InvalidTransaction,
+    };
 
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -61,9 +70,6 @@ pub mod pallet {
         /// Adds and removes guardians.
         type GuardianOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 
-        /// Clears the halt latch so the bridges can run again.
-        type ResumeOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-
         /// Upper bound on the number of guardians.
         #[pallet::constant]
         type MaxGuardians: Get<u32>;
@@ -72,6 +78,10 @@ pub mod pallet {
         #[pallet::constant]
         type MaxReasonLength: Get<u32>;
 
+        /// Blocks after a halt during which the next halt is refused.
+        #[pallet::constant]
+        type HaltCooldown: Get<BlockNumberFor<Self>>;
+
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -79,11 +89,14 @@ pub mod pallet {
     /// The message a guardian attaches to a halt. UTF-8 by convention, not enforced.
     pub type ReasonOf<T> = BoundedVec<u8, <T as Config>::MaxReasonLength>;
 
-    /// Who halted the bridges, when, and why.
+    /// Which halt this was, who sent it, when, and why.
     #[derive(
         Clone, Encode, Decode, DecodeWithMemTracking, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen,
     )]
     pub struct HaltRecord<AccountId, BlockNumber, Reason> {
+        /// 1 for the first halt, then counting up. Operators pass it to
+        /// `--bridge-resume-after-halt` to restart their workers.
+        pub number: u32,
         pub guardian: AccountId,
         pub block: BlockNumber,
         pub reason: Reason,
@@ -97,22 +110,20 @@ pub mod pallet {
     pub type Guardians<T: Config> =
         StorageValue<_, BoundedBTreeSet<T::AccountId, T::MaxGuardians>, ValueQuery>;
 
-    /// The most recent successful [`Pallet::halt`]. This is history: the bridges are
-    /// halted exactly while the latch is present, whoever set it, and `resume` keeps
-    /// this record.
+    /// The most recent halt. Bridge workers stay stopped after it until their
+    /// operators confirm its number; the chain does not record those restarts.
     #[pallet::storage]
     pub type LastHalt<T: Config> = StorageValue<_, HaltRecordOf<T>, OptionQuery>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// A guardian halted every bridge.
+        /// A guardian halted the bridge workers.
         BridgeHalted {
+            number: u32,
             guardian: T::AccountId,
             reason: ReasonOf<T>,
         },
-        /// The halt latch was cleared; the bridges may run again.
-        BridgeResumed,
         /// An account became a guardian.
         GuardianAdded { account: T::AccountId },
         /// An account stopped being a guardian.
@@ -123,10 +134,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// The account is not a guardian.
         NotGuardian,
-        /// The bridges are already halted.
-        AlreadyHalted,
-        /// The bridges are not halted.
-        NotHalted,
+        /// A halt was sent less than `HaltCooldown` blocks ago.
+        HaltedRecently,
         /// The account is already a guardian.
         AlreadyGuardian,
         /// The guardian list is full.
@@ -135,41 +144,44 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Halt every bridge and record why.
+        /// Stop every bridge worker and record why.
         ///
-        /// Only a guardian can call this, and only while the bridges are running.
-        /// The SORA runtime charges no fee for it and rejects it from any other
-        /// signer before it reaches a block. Operational class, so it fits even
-        /// when ordinary transactions fill a block.
+        /// Only a guardian can call this, and not within `HaltCooldown` blocks of
+        /// the previous halt. The SORA runtime charges no fee for it and rejects
+        /// it from any other signer before it reaches a block. Operational class,
+        /// so it fits even when ordinary transactions fill a block.
         #[pallet::call_index(0)]
         #[pallet::weight((<T as Config>::WeightInfo::halt(), DispatchClass::Operational))]
         pub fn halt(origin: OriginFor<T>, reason: ReasonOf<T>) -> DispatchResult {
             let guardian = ensure_signed(origin)?;
             ensure!(Self::is_guardian(&guardian), Error::<T>::NotGuardian);
-            ensure!(!Self::is_halted(), Error::<T>::AlreadyHalted);
-            sp_io::storage::set(BRIDGE_HALT_STORAGE_KEY, &[1]);
+            ensure!(!Self::halted_recently(), Error::<T>::HaltedRecently);
+            let block = frame_system::Pallet::<T>::block_number();
+            // The block keeps the identity unique even if the count ever saturates.
+            let number = LastHalt::<T>::get()
+                .map_or(0, |last| last.number)
+                .saturating_add(1);
+            let signal = GuardianHalt {
+                number,
+                block: block.unique_saturated_into(),
+            };
+            sp_io::storage::set(GUARDIAN_HALT_STORAGE_KEY, &signal.encode());
             LastHalt::<T>::put(HaltRecord {
+                number,
                 guardian: guardian.clone(),
-                block: frame_system::Pallet::<T>::block_number(),
+                block,
                 reason: reason.clone(),
             });
-            Self::deposit_event(Event::BridgeHalted { guardian, reason });
+            Self::deposit_event(Event::BridgeHalted {
+                number,
+                guardian,
+                reason,
+            });
             Ok(())
         }
 
-        /// Clear the halt latch so the bridges can run again.
-        ///
-        /// Whoever set the latch, this removes only that key. Bridge-specific
-        /// quarantines stay in place.
-        #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::resume())]
-        pub fn resume(origin: OriginFor<T>) -> DispatchResult {
-            T::ResumeOrigin::ensure_origin(origin)?;
-            ensure!(Self::is_halted(), Error::<T>::NotHalted);
-            sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
-            Self::deposit_event(Event::BridgeResumed);
-            Ok(())
-        }
+        // Call index 1 held `resume`, which cleared Root's latch. Halts no longer
+        // set that latch, so the index stays unused.
 
         /// Allow `account` to halt the bridges.
         #[pallet::call_index(2)]
@@ -216,9 +228,12 @@ pub mod pallet {
             Guardians::<T>::get().contains(account)
         }
 
-        /// The bridges are halted while the latch key exists, whatever its value.
-        pub fn is_halted() -> bool {
-            sp_io::storage::exists(BRIDGE_HALT_STORAGE_KEY)
+        /// The previous halt is less than `HaltCooldown` blocks old.
+        pub fn halted_recently() -> bool {
+            LastHalt::<T>::get().is_some_and(|last| {
+                frame_system::Pallet::<T>::block_number()
+                    < last.block.saturating_add(T::HaltCooldown::get())
+            })
         }
 
         /// Transaction admission for a direct, signed `halt`.
@@ -226,12 +241,12 @@ pub mod pallet {
         /// The runtime runs this in pool validation and again before dispatch,
         /// and charges no fee when it passes. Rejecting here, rather than failing
         /// in dispatch, keeps other signers' attempts out of blocks entirely and
-        /// stops a guardian from repeating the free call once the bridges are halted.
+        /// limits a guardian to one free halt per `HaltCooldown` blocks.
         pub fn validate_halt(account: &T::AccountId) -> Result<(), TransactionValidityError> {
             if !Self::is_guardian(account) {
                 return Err(InvalidTransaction::BadSigner.into());
             }
-            if Self::is_halted() {
+            if Self::halted_recently() {
                 return Err(InvalidTransaction::Stale.into());
             }
             Ok(())

@@ -3,6 +3,7 @@
 
 use crate::{mock::*, Call, Error, Event, Guardians, HaltRecord, LastHalt};
 use codec::{Decode, Encode};
+use common::bridge_halt::{latest_guardian_halt, GuardianHalt};
 use common::recovery::BRIDGE_HALT_STORAGE_KEY;
 use frame_support::{
     assert_noop, assert_ok,
@@ -19,6 +20,11 @@ fn latch() -> Option<Vec<u8>> {
     sp_io::storage::get(BRIDGE_HALT_STORAGE_KEY).map(|value| value.to_vec())
 }
 
+/// What bridge workers read.
+fn signal() -> Option<GuardianHalt> {
+    latest_guardian_halt().unwrap()
+}
+
 fn with_guardian(test: impl FnOnce()) {
     new_test_ext().execute_with(|| {
         assert_ok!(BridgeHalt::add_guardian(RuntimeOrigin::root(), GUARDIAN));
@@ -28,7 +34,7 @@ fn with_guardian(test: impl FnOnce()) {
 }
 
 #[test]
-fn guardian_halt_sets_the_bridge_latch_and_records_the_message() {
+fn a_guardian_halt_is_numbered_and_tells_the_workers_to_stop() {
     with_guardian(|| {
         System::set_block_number(7);
         assert_eq!(BridgeHalt::validate_halt(&GUARDIAN), Ok(()));
@@ -36,11 +42,17 @@ fn guardian_halt_sets_the_bridge_latch_and_records_the_message() {
             RuntimeOrigin::signed(GUARDIAN),
             reason("relayer key leaked")
         ));
-        assert_eq!(latch(), Some(vec![1]));
-        assert!(BridgeHalt::is_halted());
+        assert_eq!(
+            signal(),
+            Some(GuardianHalt {
+                number: 1,
+                block: 7
+            })
+        );
         assert_eq!(
             LastHalt::<Test>::get(),
             Some(HaltRecord {
+                number: 1,
                 guardian: GUARDIAN,
                 block: 7,
                 reason: reason("relayer key leaked"),
@@ -48,11 +60,14 @@ fn guardian_halt_sets_the_bridge_latch_and_records_the_message() {
         );
         System::assert_last_event(
             Event::BridgeHalted {
+                number: 1,
                 guardian: GUARDIAN,
                 reason: reason("relayer key leaked"),
             }
             .into(),
         );
+        // Root's recovery latch is not involved, so no Root call is needed afterwards.
+        assert_eq!(latch(), None);
     });
 }
 
@@ -68,7 +83,7 @@ fn halt_is_operational_and_accepts_an_empty_message() {
             RuntimeOrigin::signed(GUARDIAN),
             reason("")
         ));
-        assert!(BridgeHalt::is_halted());
+        assert_eq!(signal().map(|halt| halt.number), Some(1));
     });
 }
 
@@ -92,7 +107,7 @@ fn other_accounts_and_origins_have_no_effect() {
             BridgeHalt::halt(RuntimeOrigin::none(), reason("x")),
             DispatchError::BadOrigin
         );
-        assert_eq!(latch(), None);
+        assert_eq!(signal(), None);
         assert_eq!(LastHalt::<Test>::get(), None);
         assert!(System::events().is_empty());
         assert_eq!(sp_io::storage::root(StateVersion::V1), before);
@@ -100,75 +115,94 @@ fn other_accounts_and_origins_have_no_effect() {
 }
 
 #[test]
-fn guardians_pass_admission_only_while_the_bridges_run() {
+fn the_next_halt_waits_out_the_cooldown_and_gets_the_next_number() {
     with_guardian(|| {
+        assert_ok!(BridgeHalt::add_guardian(RuntimeOrigin::root(), 3));
+        System::set_block_number(7);
         assert_ok!(BridgeHalt::halt(
             RuntimeOrigin::signed(GUARDIAN),
             reason("first")
         ));
-        assert_eq!(
-            BridgeHalt::validate_halt(&GUARDIAN),
-            Err(InvalidTransaction::Stale.into())
-        );
-        assert_noop!(
-            BridgeHalt::halt(RuntimeOrigin::signed(GUARDIAN), reason("second")),
-            Error::<Test>::AlreadyHalted
-        );
+        // Any guardian is refused until the cooldown has passed.
+        for (block, guardian) in [(7, GUARDIAN), (8, 3), (7 + COOLDOWN - 1, GUARDIAN)] {
+            System::set_block_number(block);
+            assert!(BridgeHalt::halted_recently());
+            assert_eq!(
+                BridgeHalt::validate_halt(&guardian),
+                Err(InvalidTransaction::Stale.into())
+            );
+            assert_noop!(
+                BridgeHalt::halt(RuntimeOrigin::signed(guardian), reason("again")),
+                Error::<Test>::HaltedRecently
+            );
+        }
         assert_eq!(LastHalt::<Test>::get().unwrap().reason, reason("first"));
+
+        System::set_block_number(7 + COOLDOWN);
+        assert!(!BridgeHalt::halted_recently());
+        assert_eq!(BridgeHalt::validate_halt(&3), Ok(()));
+        assert_ok!(BridgeHalt::halt(RuntimeOrigin::signed(3), reason("second")));
+        assert_eq!(
+            signal(),
+            Some(GuardianHalt {
+                number: 2,
+                block: 7 + COOLDOWN as u32
+            })
+        );
+        let last = LastHalt::<Test>::get().unwrap();
+        assert_eq!((last.number, last.guardian), (2, 3));
     });
 }
 
 #[test]
-fn any_existing_latch_counts_as_halted() {
-    // The recovery set [1]; bridge pallets treat any value, even empty, as halted.
+fn root_latch_neither_comes_from_a_halt_nor_blocks_one() {
+    // The recovery sets [1]; bridge pallets treat any value, even empty, as halted.
     for value in [vec![1u8], vec![0], vec![]] {
         with_guardian(|| {
             sp_io::storage::set(BRIDGE_HALT_STORAGE_KEY, &value);
-            assert!(BridgeHalt::is_halted());
-            assert_eq!(
-                BridgeHalt::validate_halt(&GUARDIAN),
-                Err(InvalidTransaction::Stale.into())
-            );
-            assert_noop!(
-                BridgeHalt::halt(RuntimeOrigin::signed(GUARDIAN), reason("x")),
-                Error::<Test>::AlreadyHalted
-            );
-            assert_ok!(BridgeHalt::resume(RuntimeOrigin::root()));
-            assert_eq!(latch(), None);
+            assert_eq!(BridgeHalt::validate_halt(&GUARDIAN), Ok(()));
+            assert_ok!(BridgeHalt::halt(
+                RuntimeOrigin::signed(GUARDIAN),
+                reason("x")
+            ));
+            assert_eq!(signal().map(|halt| halt.number), Some(1));
+            assert_eq!(latch(), Some(value.clone()));
         });
     }
 }
 
 #[test]
-fn only_the_resume_origin_reopens_the_bridges() {
+fn the_number_saturates_but_the_block_still_tells_halts_apart() {
     with_guardian(|| {
-        assert_noop!(
-            BridgeHalt::resume(RuntimeOrigin::root()),
-            Error::<Test>::NotHalted
-        );
+        LastHalt::<Test>::put(HaltRecord {
+            number: u32::MAX,
+            guardian: GUARDIAN,
+            block: 1,
+            reason: reason(""),
+        });
+        System::set_block_number(1 + COOLDOWN);
         assert_ok!(BridgeHalt::halt(
             RuntimeOrigin::signed(GUARDIAN),
             reason("x")
         ));
-        assert_noop!(
-            BridgeHalt::resume(RuntimeOrigin::signed(GUARDIAN)),
-            DispatchError::BadOrigin
+        assert_eq!(
+            signal(),
+            Some(GuardianHalt {
+                number: u32::MAX,
+                block: 1 + COOLDOWN as u32
+            })
         );
-        assert_noop!(
-            BridgeHalt::resume(RuntimeOrigin::signed(OTHER)),
-            DispatchError::BadOrigin
-        );
-        assert_ok!(BridgeHalt::resume(RuntimeOrigin::root()));
-        assert_eq!(latch(), None);
-        System::assert_last_event(Event::BridgeResumed.into());
-        // The record stays as history, and a guardian can halt again.
-        assert!(LastHalt::<Test>::get().is_some());
-        assert_eq!(BridgeHalt::validate_halt(&GUARDIAN), Ok(()));
-        assert_ok!(BridgeHalt::halt(
-            RuntimeOrigin::signed(GUARDIAN),
-            reason("again")
-        ));
     });
+}
+
+#[test]
+fn the_retired_resume_index_does_not_decode() {
+    // Index 1 was `resume`. Nothing on chain restarts bridge workers any more.
+    assert!(Call::<Test>::decode(&mut &[1u8][..]).is_err());
+    assert_eq!(
+        Call::<Test>::add_guardian { account: GUARDIAN }.encode()[0],
+        2
+    );
 }
 
 #[test]

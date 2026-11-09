@@ -56,6 +56,7 @@ mod coverage_rpc;
 mod coverage_types;
 mod ethabi;
 mod genesis;
+mod guardian_halt;
 mod http_status;
 mod incoming_transfer;
 mod migration_encoding;

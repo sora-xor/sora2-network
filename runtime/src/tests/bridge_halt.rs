@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: BSD-4-Clause
 
 //! The emergency halt through the real signed-transaction pipeline: guardians
-//! halt for free, other signers are rejected before inclusion, and halted
-//! bridges refuse work until Root resumes them.
+//! halt for free, other signers are rejected before inclusion, and a halt is a
+//! numbered signal for the bridge workers that needs no Root call afterwards.
 
 use crate::{
     AccountId, Balances, BridgeHalt, BridgeProxy, Executive, Runtime, RuntimeCall, RuntimeEvent,
@@ -11,6 +11,7 @@ use crate::{
 };
 use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId};
 use codec::Encode;
+use common::bridge_halt::{latest_guardian_halt, GuardianHalt};
 use common::{balance, recovery::BRIDGE_HALT_STORAGE_KEY, XOR};
 use frame_support::{
     assert_noop, assert_ok,
@@ -102,6 +103,15 @@ fn latch() -> Option<Vec<u8>> {
     sp_io::storage::get(BRIDGE_HALT_STORAGE_KEY).map(|value| value.to_vec())
 }
 
+/// The halt the bridge workers read.
+fn signal() -> Option<GuardianHalt> {
+    latest_guardian_halt().unwrap()
+}
+
+fn cooldown() -> u32 {
+    crate::BridgeHaltCooldown::get()
+}
+
 /// A bridge entry point that checks the latch before anything else.
 fn burn_error() -> DispatchError {
     BridgeProxy::burn(
@@ -116,17 +126,13 @@ fn burn_error() -> DispatchError {
 }
 
 #[test]
-fn guardian_halts_every_bridge_without_paying() {
+fn a_guardian_halt_is_free_and_signals_the_workers() {
     ext().execute_with(|| {
         setup();
         let who = account(&guardian());
         assert_eq!(
             halt(b"x").get_dispatch_info().class,
             DispatchClass::Operational
-        );
-        assert_eq!(
-            burn_error(),
-            bridge_proxy::Error::<Runtime>::WrongAccountKind.into()
         );
 
         assert_ok!(validate(halt(b"HASHI peer keys leaked"), &guardian()));
@@ -140,7 +146,13 @@ fn guardian_halts_every_bridge_without_paying() {
 
         assert_eq!(Balances::free_balance(&who), before);
         assert_eq!(System::account_nonce(&who), nonce + 1);
-        assert_eq!(latch(), Some(vec![1]));
+        assert_eq!(
+            signal(),
+            Some(GuardianHalt {
+                number: 1,
+                block: 1
+            })
+        );
         assert!(System::events().iter().any(|record| matches!(
             &record.event,
             RuntimeEvent::TransactionPayment(pallet_transaction_payment::Event::TransactionFeePaid {
@@ -151,12 +163,15 @@ fn guardian_halts_every_bridge_without_paying() {
         )));
         assert!(System::events().iter().any(|record| matches!(
             &record.event,
-            RuntimeEvent::BridgeHalt(bridge_halt::Event::BridgeHalted { guardian, reason })
+            RuntimeEvent::BridgeHalt(bridge_halt::Event::BridgeHalted { number: 1, guardian, reason })
                 if guardian == &who && reason.as_slice() == b"HASHI peer keys leaked"
         )));
+        // The workers stop; the bridge pallets keep their state, and Root's latch,
+        // which only a Root call clears, is not set.
+        assert_eq!(latch(), None);
         assert_eq!(
             burn_error(),
-            bridge_proxy::Error::<Runtime>::RecoveryHalted.into()
+            bridge_proxy::Error::<Runtime>::WrongAccountKind.into()
         );
     });
 }
@@ -182,7 +197,7 @@ fn other_signers_are_rejected_before_inclusion() {
         );
         assert_eq!(Balances::free_balance(&who), before);
         assert_eq!(System::account_nonce(&who), nonce);
-        assert_eq!(latch(), None);
+        assert_eq!(signal(), None);
         assert_eq!(bridge_halt::LastHalt::<Runtime>::get(), None);
         assert!(System::events().is_empty());
     });
@@ -216,12 +231,12 @@ fn a_tip_is_refused_because_the_halt_is_free() {
                 InvalidTransaction::Payment
             ))
         );
-        assert_eq!(latch(), None);
+        assert_eq!(signal(), None);
     });
 }
 
 #[test]
-fn repeat_halts_are_rejected_while_halted() {
+fn the_next_free_halt_waits_out_the_cooldown() {
     ext().execute_with(|| {
         setup();
         let who = account(&guardian());
@@ -237,12 +252,28 @@ fn repeat_halts_are_rejected_while_halted() {
             Err(TransactionValidityError::Invalid(InvalidTransaction::Stale))
         );
         assert_eq!(Balances::free_balance(&who), before);
+        assert_eq!(signal().map(|halt| halt.number), Some(1));
+
+        // Validation checks the next block, so one block before the end it passes.
+        System::set_block_number(cooldown());
+        assert_ok!(validate(halt(b"second"), &guardian()));
+        System::set_block_number(1 + cooldown());
+        fresh_block();
+        assert_ok!(Executive::apply_extrinsic(signed(halt(b"second"), &guardian())).unwrap());
+        assert_eq!(Balances::free_balance(&who), before);
+        assert_eq!(
+            signal(),
+            Some(GuardianHalt {
+                number: 2,
+                block: 1 + cooldown()
+            })
+        );
         assert_eq!(
             bridge_halt::LastHalt::<Runtime>::get()
                 .unwrap()
                 .reason
                 .as_slice(),
-            b"first"
+            b"second"
         );
     });
 }
@@ -277,7 +308,7 @@ fn a_wrapped_halt_pays_and_is_admitted_only_when_it_can_halt() {
         );
         assert_eq!(Balances::free_balance(&who), before);
         assert_eq!(System::account_nonce(&who), nonce);
-        assert_eq!(latch(), None);
+        assert_eq!(signal(), None);
 
         // A guardian's wrapped halt is admitted and pays the ordinary fee.
         let who = account(&guardian());
@@ -285,9 +316,9 @@ fn a_wrapped_halt_pays_and_is_admitted_only_when_it_can_halt() {
         let before = Balances::free_balance(&who);
         assert_ok!(Executive::apply_extrinsic(signed(wrapped(), &guardian())).unwrap());
         assert!(Balances::free_balance(&who) < before);
-        assert_eq!(latch(), Some(vec![1]));
+        assert_eq!(signal().map(|halt| halt.number), Some(1));
 
-        // Once the bridges are halted, a wrapped halt is stale like a direct one.
+        // Within the cooldown, a wrapped halt is stale like a direct one.
         fresh_block();
         assert_eq!(
             validate(wrapped(), &guardian()),
@@ -297,23 +328,23 @@ fn a_wrapped_halt_pays_and_is_admitted_only_when_it_can_halt() {
 }
 
 #[test]
-fn halted_bridges_reopen_only_through_root() {
+fn roots_latch_stays_separate_from_guardian_halts() {
     ext().execute_with(|| {
         setup();
-        assert_ok!(BridgeHalt::halt(
-            RuntimeOrigin::signed(account(&guardian())),
-            b"x".to_vec().try_into().unwrap()
-        ));
-        assert_noop!(
-            BridgeHalt::resume(RuntimeOrigin::signed(account(&guardian()))),
-            DispatchError::BadOrigin
-        );
-        assert_ok!(BridgeHalt::resume(RuntimeOrigin::root()));
-        assert_eq!(latch(), None);
+        // Governance's hard stop: bridge pallets refuse calls while it is set.
+        sp_io::storage::set(BRIDGE_HALT_STORAGE_KEY, &[1]);
         assert_eq!(
             burn_error(),
-            bridge_proxy::Error::<Runtime>::WrongAccountKind.into()
+            bridge_proxy::Error::<Runtime>::RecoveryHalted.into()
         );
+        // A guardian can still signal the workers, and the latch stays as Root set it.
+        assert_ok!(Executive::apply_extrinsic(signed(halt(b"x"), &guardian())).unwrap());
+        assert_eq!(signal().map(|halt| halt.number), Some(1));
+        assert_eq!(latch(), Some(vec![1]));
+        // The old Root-only resume call is gone: index 1 no longer decodes.
+        let mut bytes = halt(b"").encode();
+        bytes[1] = 1;
+        assert!(<RuntimeCall as codec::Decode>::decode(&mut &bytes[..]).is_err());
     });
 }
 
@@ -391,7 +422,7 @@ fn the_initial_guardian_halts_without_a_fee() {
         crate::migrations::SeedBridgeHaltGuardians::on_runtime_upgrade();
 
         // The admission check the signed pipeline runs before charging a direct
-        // halt: fee-exempt for this account, refused for others and once halted.
+        // halt: fee-exempt for this account, refused for others and right after a halt.
         assert_eq!(
             crate::xor_fee_impls::validate_bridge_fee_exemption(&initial_guardian(), &halt(b"x")),
             Ok(true)
@@ -404,7 +435,8 @@ fn the_initial_guardian_halts_without_a_fee() {
             RuntimeOrigin::signed(initial_guardian()),
             b"x".to_vec().try_into().unwrap()
         ));
-        assert_eq!(latch(), Some(vec![1]));
+        assert_eq!(signal().map(|halt| halt.number), Some(1));
+        assert_eq!(latch(), None);
         assert_eq!(
             crate::xor_fee_impls::validate_bridge_fee_exemption(&initial_guardian(), &halt(b"x")),
             Err(InvalidTransaction::Stale.into())

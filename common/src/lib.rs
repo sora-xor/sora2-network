@@ -61,6 +61,7 @@ pub mod test_utils;
 
 pub mod alt;
 mod balance_unit;
+pub mod bridge_halt;
 pub mod cache_storage;
 pub mod eth;
 mod fixed_wrapper;

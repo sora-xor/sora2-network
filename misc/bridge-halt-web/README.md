@@ -1,36 +1,45 @@
 # SORA bridge emergency halt page
 
-A static page with one button: **HALT ALL BRIDGES**. Guardians press it during an
-attack. It submits `bridgeHalt.halt(message)`, which writes the message on chain and
-sets the bridge latch that every SORA bridge already obeys. Guardians pay no fee.
-For any other account the button has no effect: the chain rejects the transaction
-before it reaches a block, so nothing is written and no fee is charged. Only devops
-can reopen the bridges, with a Root call.
+A static page with one button: **HALT BRIDGE WORKERS**. Guardians press it during an
+attack. It submits `bridgeHalt.halt(message)`, which writes a numbered halt on chain.
+The HASHI offchain worker on every bridge node stops as soon as it sees the halt and
+stays stopped until devops restart that node with `--bridge-resume-after-halt <number>`.
+No Root call or vote is needed to bring the bridge back, and guardians cannot restart
+anything. Guardians pay no fee. For any other account the button has no effect: the
+chain rejects the transaction before it reaches a block, so nothing is written and no
+fee is charged.
 
 The page needs runtime 139 or later (the `BridgeHalt` pallet). On older runtimes it
-still shows whether the bridges are halted, and says the button is unavailable.
+still shows whether Root's recovery latch halts the bridges, and says the button is
+unavailable.
 
 ## What is on chain
 
 | Item | Value |
 | --- | --- |
 | Call | `bridgeHalt.halt(reason: Bytes ≤ 256)`, operational class |
-| Latch | raw key `:sora-nexus:recovery:bridge-halt:v1` = `0x3a736f72612d6e657875733a7265636f766572793a6272696467652d68616c743a7631` |
-| Record | `bridgeHalt.lastHalt` (guardian, block, message) and the `bridgeHalt.BridgeHalted` event |
+| Signal | raw key `:sora-nexus:bridge-halt:latest:v1` = `0x3a736f72612d6e657875733a6272696467652d68616c743a6c61746573743a7631`, holding the newest halt as SCALE `(number: u32, block: u32)` |
+| Record | `bridgeHalt.lastHalt` (number, guardian, block, message) and the `bridgeHalt.BridgeHalted` event |
+| Cooldown | `bridgeHalt.haltCooldown`: 10 blocks (one minute) from one halt to the next |
 | Guardian list | `bridgeHalt.guardians`, changed by the technical committee (more than 2/3) or Root; the upgrade that adds the pallet installs `cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY` |
-| Reopen | `bridgeHalt.resume()`, Root only |
 
-While the latch is present, HASHI (`ethBridge`), `bridgeProxy`, the bridge channels and
-apps, the data signer and the multisig verifier refuse new bridge work, and the HASHI
-offchain workers stop. Inbound submissions are refused, not consumed, so relayers can
-resubmit them after reopening. The latch is the same one the October 2026 recovery set;
-any value, even empty, counts as halted.
+Halts are numbered from 1. Each HASHI bridge node compares the signal with the halt its
+operator last confirmed, which the node keeps in its offchain database. While the two
+differ, the worker does nothing: it signs no withdrawals and imports no deposits. The
+node's log names the halt that stopped it, and the Prometheus gauge
+`eth_bridge_guardian_halt_stopped` holds that halt's number (0 while the worker runs).
+Nodes without a HASHI bridge key ignore halts.
+
+Root's recovery latch, raw key `:sora-nexus:recovery:bridge-halt:v1`, is separate: a halt
+neither sets it nor needs it to be clear. While governance keeps it set, the bridge
+pallets refuse new bridge work and the HASHI workers stop whatever the halts say. The
+October 2026 recovery set it; any value, even empty, counts.
 
 Admission rules, enforced in transaction validation and again before dispatch:
 
-- signer is a guardian and the bridges are running: accepted, fee 0;
+- signer is a guardian and no halt in the last 10 blocks: accepted, fee 0;
 - signer is not a guardian: rejected with `BadSigner` ("Invalid signing address");
-- bridges already halted: rejected with `Stale` ("Transaction is outdated");
+- a halt in the last 10 blocks: rejected with `Stale` ("Transaction is outdated");
 - any tip: rejected with `Payment`.
 
 A rejected transaction is never included, so it changes no state and costs nothing.
@@ -39,9 +48,13 @@ wrapper pays its usual fee and dispatch still requires a guardian.
 
 ### What a halt does not do
 
+- It does not make the chain refuse bridge calls. Transfers users submit during a halt
+  wait until the workers run again. When the calls themselves must stop, governance sets
+  Root's latch.
+- The relayers of the EVM, TON and Liberland bridges do not read the signal yet. Devops
+  stop them on their servers.
 - It does not pause the Ethereum, TON or Liberland contracts. Withdrawals the bridge has
   already signed stay redeemable there. Pause those contracts separately.
-- External relayers keep running; the chain refuses their submissions.
 - It cannot carry a tip. If the page reports the halt as dropped, press again.
 
 ## For guardians
@@ -64,8 +77,12 @@ wrapper pays its usual fee and dispatch still requires a guardian.
    type a short message, press the button, confirm, and sign in the wallet. The log
    shows the block that included the halt, then when it became final.
 
-If two guardians press at once, the first halt wins; the second is rejected as already
-halted.
+If two guardians press within a minute, the first halt stands and the second is rejected
+as outdated. A press after that records the next halt number and stops every worker
+again, including any that devops restarted in between.
+
+The status shows a halt as current for 24 hours. The chain does not record when devops
+restart the workers, so after that the page shows only when the last halt was.
 
 ## For devops
 
@@ -76,27 +93,40 @@ bridgeHalt.addGuardian(account)
 bridgeHalt.removeGuardian(account)
 ```
 
-Reopen the bridges with Root only:
+### Restarting the workers after a halt
 
-```text
-bridgeHalt.resume()
+Once it is safe to bridge again, restart each HASHI bridge node with the newest halt's
+number, which the page and the node's log both show:
+
+```sh
+framenode <usual flags> --bridge-resume-after-halt 3
 ```
 
-`system.killStorage(["0x3a736f72612d6e657875733a7265636f766572793a6272696467652d68616c743a7631"])`
-has the same effect. Never use `killPrefix` on `:sora-nexus:recovery:`; it deletes
-recovery state the chain still reads. Before reopening after an incident, finish the
-bridge reconciliation (counterparty nonces, HASHI scan height, peer key rotation).
+At startup the node checks the number against its finalized chain, records it, and logs
+`Confirmed guardian halt #3`; its worker then runs again. Only the newest finalized halt
+is accepted. An older number would leave the worker stopped anyway, and a number the
+chain has not reached yet is refused, so it can never cover a halt that has not happened.
+A wrong number does not stop the node: it starts, the worker stays stopped, and the log
+says why. The flag may stay in the service definition, because the next halt stops the
+worker again until the node is restarted with that halt's number. A node started on an
+empty database must sync past the halt first; restart it with the flag once it has.
 
 If the halt was not warranted (for example a guardian key was stolen), remove that
-guardian in the same Root call that reopens, or it can halt again at once:
-`utility.batchAll([bridgeHalt.removeGuardian(account), bridgeHalt.resume()])`.
+guardian before restarting the workers, or it can halt again a minute later.
+
+### Root's latch
+
+Remove Root's recovery latch only with Root, and only that key:
+`system.killStorage(["0x3a736f72612d6e657875733a7265636f766572793a6272696467652d68616c743a7631"])`.
+Never use `killPrefix` on `:sora-nexus:recovery:`; it deletes recovery state the chain
+still reads. Before reopening after an incident, finish the bridge reconciliation
+(counterparty nonces, HASHI scan height, peer key rotation).
 
 The upgrade that adds BridgeHalt installs one guardian,
 `cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY`: the runtime lists it in
 `BridgeHaltInitialGuardians`, and `migrations::SeedBridgeHaltGuardians` adds it once, so a
 later upgrade does not re-add it if governance removes it. Add any other guardians with
-the motion above, and fund every guardian before the bridges reopen. Root on mainnet goes
-through a referendum, so check how quickly devops can get a reopening enacted.
+the motion above, and fund every guardian before the bridges reopen.
 
 ## Hosting
 

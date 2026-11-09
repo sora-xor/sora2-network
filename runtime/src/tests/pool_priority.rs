@@ -95,7 +95,7 @@ fn uncapped(call: RuntimeCall, pair: &sr25519::Pair, tip: Balance) -> Transactio
 }
 
 /// Every account holds XOR, the council has three members and a guardian may
-/// halt the running bridges.
+/// halt the bridge workers.
 fn setup() {
     System::set_block_number(1);
     for pair in members().iter().chain([guardian(), stranger()].iter()) {
