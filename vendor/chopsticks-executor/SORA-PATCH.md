@@ -19,6 +19,12 @@ Rust libraries inside its Wasm. This migration:
   k256-backed `sora-secp256k1-compat` package, retaining their wire semantics.
 - Rebuilds with wasm-bindgen 0.2.129 and regenerates matching ESM/CJS glue and
   declarations. Rust sources and JavaScript callback signatures are unchanged.
+- Removes smoldot's optional `database-sqlite` feature, its `rusqlite` and
+  `parking_lot` dependencies, and the `database::full_sqlite` module. The
+  executor builds smoldot with default features off and never enables that
+  feature, so no executor build compiled it. The lock still carried rusqlite
+  0.32.1 and its bundled C SQLite, libsqlite3-sys 0.30.1, which
+  RUSTSEC-2026-0459 flags. Upstream smoldot 6.0.0 also drops rusqlite.
 
 The independent `Cargo.lock` audits with zero vulnerabilities and zero warnings
 using the current RustSec database and `--deny warnings`. No advisory is ignored
@@ -40,6 +46,13 @@ Validation on 2026-10-24:
 - The canonical Linux rebuild compares all fourteen generated assets byte for byte.
   The embedded Wasm is 2,723,362 bytes; SHA-256:
   `e58f725beeb705f1b79234046ea2f12b5b6a73f9b8851980b0d7895252c41966`.
+
+Validation of the sqlite removal on 2026-11-10: the lock only loses twelve
+packages, with nothing added or upgraded, and `cargo audit --deny warnings`
+passes on it. `verify-artifacts.py` passes. A local (macOS) build of the locked
+`wasm32-unknown-unknown` release, with the profile and flags of
+`build-reviewed.mjs`, is byte-identical before and after the change, so the
+committed assets are unchanged.
 
 `build-provenance.json` binds the committed Rust source, manifests, lockfile,
 shared compatibility adapter, build script, and generated assets. The verifier
