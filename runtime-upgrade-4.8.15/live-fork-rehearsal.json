@@ -2,11 +2,12 @@
   "endpoint": "wss://mof2.sora.org",
   "checks": [
     {
-      "name": "live chain runs the expected runtime",
+      "name": "fork uses finalized mainnet state and the expected prior runtime",
       "ok": true,
       "detail": {
         "specVersion": 138,
-        "codeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6"
+        "codeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6",
+        "policyCommitment": "0x1f4e11427a9c0a61a4868af40c9e0bdf263bb44a9ee59886a537c52164f3cdbb"
       }
     },
     {
@@ -32,14 +33,23 @@
     },
     {
       "name": "migration seeded the requested guardian",
-      "ok": true
-    },
-    {
-      "name": "guardian list is exactly the seeded account",
       "ok": true,
-      "detail": [
-        "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY"
-      ]
+      "detail": {
+        "priorSpec": 138,
+        "before": {
+          "guardians": null,
+          "lastHalt": null,
+          "signal": null
+        },
+        "after": {
+          "guardians": "0x0420bc37a28e010164d91ab08cd4b985db5ea4c83f93dca42f8c87c247d8c8a137",
+          "lastHalt": null,
+          "signal": null
+        },
+        "guardians": [
+          "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY"
+        ]
+      }
     },
     {
       "name": "upgrade block weight fits in a block",
@@ -55,12 +65,16 @@
       "detail": "34970634067830043815575529"
     },
     {
+      "name": "mainnet recovery policy preserved by the upgrade",
+      "ok": true
+    },
+    {
       "name": "Root's recovery latch left as it was",
       "ok": true,
       "detail": "0x01"
     },
     {
-      "name": "no guardian halt before anyone halts",
+      "name": "last halt and worker signal preserved by the upgrade",
       "ok": true
     },
     {
@@ -76,7 +90,7 @@
       "detail": "{\"invalid\":{\"badSigner\":null}}"
     },
     {
-      "name": "guardian halt included as halt #1",
+      "name": "guardian halt advances the previous number",
       "ok": true,
       "detail": {
         "section": "bridgeHalt",
@@ -106,7 +120,7 @@
       "ok": true
     },
     {
-      "name": "workers see halt #1 at its block",
+      "name": "workers see the next halt at its block",
       "ok": true,
       "detail": {
         "signal": "0x010000003ac4af01",
@@ -135,23 +149,25 @@
   ],
   "candidate": {
     "path": "runtime-upgrade-4.8.15/framenode-runtime-4.8.15.compact.compressed.wasm",
-    "bytes": 2135814,
-    "sha256": "449d4f231091a7f7230c6e6b61ca0aca797b44ff36424ba5604b96d16481d5e0",
+    "bytes": 2151777,
+    "sha256": "41fbec1aee1a828e4f86eab4b44bea174e5da1406c2b5d9d83bfecdeb79449bc",
     "specVersion": 141,
     "transactionVersion": 134
   },
+  "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
   "base": {
     "hash": "0x21ca4145bf9ee732a8508f0a99f8c877e5111b130401a2aa5f2d81600b6a1c3d",
     "number": 28296247
   },
   "deployed": {
     "specVersion": 138,
-    "codeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6"
+    "codeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6",
+    "policyCommitment": "0x1f4e11427a9c0a61a4868af40c9e0bdf263bb44a9ee59886a537c52164f3cdbb"
   },
   "upgradeBlock": {
     "number": 28296248,
     "hash": "0x19fd34ec30d393ad54bb90775f0eaf43001f4dc530d0de9ecaeecfa751609316",
-    "seconds": 238.362
+    "seconds": 203.366
   },
   "upgradeEvents": [
     {
@@ -195,6 +211,22 @@
       "data": {}
     }
   ],
+  "guardianTransition": {
+    "priorSpec": 138,
+    "before": {
+      "guardians": null,
+      "lastHalt": null,
+      "signal": null
+    },
+    "after": {
+      "guardians": "0x0420bc37a28e010164d91ab08cd4b985db5ea4c83f93dca42f8c87c247d8c8a137",
+      "lastHalt": null,
+      "signal": null
+    },
+    "guardians": [
+      "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY"
+    ]
+  },
   "upgradeWeight": {
     "used": {
       "normal": {
@@ -254,8 +286,8 @@
       "data": {
         "dispatchInfo": {
           "weight": {
-            "refTime": "1,050,491,000",
-            "proofSize": "44,361"
+            "refTime": "1,440,491,000",
+            "proofSize": "52,361"
           },
           "class": "Operational",
           "paysFee": "Yes"

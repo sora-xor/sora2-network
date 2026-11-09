@@ -1,11 +1,12 @@
 {
-  "preparedAt": "2026-11-09T08:07:04.209Z",
+  "preparedAt": "2026-11-09T16:42:07.401Z",
   "endpoint": "wss://mof2.sora.org",
+  "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
   "signed": false,
   "submittedTransactions": 0,
   "finalized": {
-    "hash": "0xa3286ae360aa1cd692f3fb80f03b7c4a6b3355108afd2d87ba7e8e6bde762fa8",
-    "number": 28299621,
+    "hash": "0xf97be5d7103266f40010cf35ba5679c4281457b65e63e2dc26e3bbf877d8e6d9",
+    "number": 28304118,
     "metadataSha256": "0d8aaf8c1f6974e2256a0b7bb71c16d1fb502c1d1327e6ca46c44e0f554af3c2"
   },
   "rehearsal": {
@@ -13,7 +14,7 @@
       "hash": "0x21ca4145bf9ee732a8508f0a99f8c877e5111b130401a2aa5f2d81600b6a1c3d",
       "number": 28296247
     },
-    "candidateSha256": "449d4f231091a7f7230c6e6b61ca0aca797b44ff36424ba5604b96d16481d5e0",
+    "candidateSha256": "41fbec1aee1a828e4f86eab4b44bea174e5da1406c2b5d9d83bfecdeb79449bc",
     "deployedCodeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6"
   },
   "liveRuntime": {
@@ -22,14 +23,14 @@
   },
   "wasm": {
     "file": "framenode-runtime-4.8.15.compact.compressed.wasm",
-    "bytes": 2135814,
-    "sha256": "449d4f231091a7f7230c6e6b61ca0aca797b44ff36424ba5604b96d16481d5e0",
-    "blake2_256": "0x4e168765f5f9f4632ff30aefc40d5da5760c79d49b90b47399223b9f87e858e0"
+    "bytes": 2151777,
+    "sha256": "41fbec1aee1a828e4f86eab4b44bea174e5da1406c2b5d9d83bfecdeb79449bc",
+    "blake2_256": "0x62f7b8afa6bc04ff312912b024208fccd4af3e256e7f02d8353452d7f2b637bc"
   },
   "setCode": {
     "file": "set-code-call.scale",
-    "bytes": 2135820,
-    "proposalHash": "0xf22f51846c2766204d4f40f83f3c9c0a69149cd6d2d55263e5eb4a5cce760845"
+    "bytes": 2151783,
+    "proposalHash": "0x916b010bffddfb8c414f1efda3f7efb84b3fd05c1f5997680fb268e77ae9fcdf"
   },
   "council": {
     "members": 8,
@@ -49,36 +50,36 @@
   "calls": {
     "preimage-note-call": {
       "file": "preimage-note-call.hex",
-      "bytes": 2135826,
-      "hash": "0x47b22dd7edc23e961397b96ba8e88d7be4cadbdf9baea4d6e8642088f7ebcbf1",
+      "bytes": 2151789,
+      "hash": "0x1b18ea97da13ab768e15feffb69b3dadb455af7f38524d9e86b7a638dd05bcb0",
       "section": "preimage",
       "method": "notePreimage"
     },
     "utility-guarded-external-majority-call": {
       "file": "utility-guarded-external-majority-call.hex",
       "bytes": 81,
-      "hash": "0x1f6d1b41a6a4f294f28921ceb6307196c07dbb01daf51bd2d1178f23bbacc825",
+      "hash": "0x22c93f9ad5e42282775a71992359adc435162426c6b05d7fd2a56eb28b7e3da0",
       "section": "utility",
       "method": "batchAll"
     },
     "council-propose-guarded-external-majority-threshold-4-call": {
       "file": "council-propose-guarded-external-majority-threshold-4-call.hex",
       "bytes": 86,
-      "hash": "0xb6a25641c0372e20b7f2620791e94e5d115faa80af69b728c0c0a76bdb3159b1",
+      "hash": "0xf64e3890d06053d9c6972fd573ebdf506ba7459503be22035433fc8ec6981df9",
       "section": "council",
       "method": "propose"
     },
     "democracy-fast-track-call": {
       "file": "democracy-fast-track-call.hex",
       "bytes": 42,
-      "hash": "0x27bafcfe8fc7259c0bbd86b3b1bcfbf9ce8eac9f91486d1a8b990323bbaec75e",
+      "hash": "0x4845ed59d1bcebb72820a8617ac998ac1c23f6460cc3845ceb219d39f05ab5bc",
       "section": "democracy",
       "method": "fastTrack"
     },
     "technical-committee-fast-track-threshold-3-call": {
       "file": "technical-committee-fast-track-threshold-3-call.hex",
       "bytes": 46,
-      "hash": "0x1a44d5d7cb37fa2348b6f26d12a7158f616eb517a09612832bc5805e65019848",
+      "hash": "0x64b14860391d1294273e9cc7fc2c36790f18f0d9dfb1826bde6f180a6fb477a0",
       "section": "technicalCommittee",
       "method": "propose"
     }
