@@ -3,7 +3,8 @@ use framenode_runtime::eth_bridge::{
     OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX, OUTGOING_APPROVAL_FAILURE_FAILED_SIGN,
     OUTGOING_APPROVAL_FAILURE_NO_LOCAL_PEER_KEY, OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT,
     STORAGE_BOOTSTRAP_READY_KEY, STORAGE_FAILED_PENDING_TRANSACTIONS_KEY,
-    STORAGE_LOCAL_PEER_READY_KEY, STORAGE_LOCAL_SIGNING_KEY_READY_KEY, STORAGE_NETWORK_IDS_KEY,
+    STORAGE_GUARDIAN_HALT_STOPPED_KEY, STORAGE_LOCAL_PEER_READY_KEY,
+    STORAGE_LOCAL_SIGNING_KEY_READY_KEY, STORAGE_NETWORK_IDS_KEY,
     STORAGE_OUTGOING_APPROVAL_FAILURES_KEY, STORAGE_OUTGOING_PENDING_REQUESTS_KEY,
     STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
     STORAGE_SIDECHAIN_RPC_CONFIGURED_KEY, STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY,
@@ -64,6 +65,7 @@ pub struct Metrics<B> {
     pub backend: Arc<B>,
     pub period: std::time::Duration,
     pub bootstrap_ready: Gauge<U64>,
+    pub guardian_halt_stopped: Gauge<U64>,
     pub local_signing_key_ready: Gauge<U64>,
     pub substrate_rpc_configured: Gauge<U64>,
     pub pending_transactions: Gauge<U64>,
@@ -175,6 +177,13 @@ where
                 )?,
                 registry,
             )?,
+            guardian_halt_stopped: register(
+                Gauge::new(
+                    "eth_bridge_guardian_halt_stopped",
+                    "Number of the guardian halt that stopped the bridge workers, 0 while they may run",
+                )?,
+                registry,
+            )?,
             local_signing_key_ready: register(
                 Gauge::new(
                     "eth_bridge_local_signing_key_ready",
@@ -228,6 +237,14 @@ where
                 self.bootstrap_ready.set(
                     get_offchain_value(&storage, STORAGE_BOOTSTRAP_READY_KEY, "bootstrap ready")
                         .unwrap_or(0),
+                );
+                self.guardian_halt_stopped.set(
+                    get_offchain_value(
+                        &storage,
+                        STORAGE_GUARDIAN_HALT_STOPPED_KEY,
+                        "guardian halt stopped",
+                    )
+                    .unwrap_or(0),
                 );
                 self.local_signing_key_ready.set(
                     get_offchain_value(

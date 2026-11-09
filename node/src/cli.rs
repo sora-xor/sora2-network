@@ -57,6 +57,15 @@ pub struct Cli {
     /// Independently admitted outer release-manifest SHA-256 (0x-prefixed).
     #[clap(long, requires = "recovery_hashi_witness_dir")]
     pub recovery_hashi_release_sha256: Option<sp_core::H256>,
+
+    /// Restart this node's HASHI bridge workers after guardian halt NUMBER.
+    ///
+    /// A guardian halt stops the workers on every bridge node. Once it is safe to
+    /// bridge again, restart the node with the halt's number, as the halt page and
+    /// this node's log show it. The node accepts only the newest halt in its
+    /// finalized chain, and the next halt stops the workers again.
+    #[clap(long, value_name = "NUMBER")]
+    pub bridge_resume_after_halt: Option<u32>,
 }
 
 #[derive(Debug, clap::Subcommand)]

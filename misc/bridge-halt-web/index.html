@@ -19,9 +19,10 @@
         <p class="eyebrow">Guardian console · SORA network</p>
         <h1>SORA bridge emergency halt</h1>
         <p class="lede">
-          Guardians use this page to stop every SORA bridge during an attack. The request is
+          Guardians use this page to stop the SORA bridge workers during an attack. The halt is
           written on chain and costs guardians no fee. The chain rejects it from any other
-          account, so for them the button does nothing. Only devops can reopen the bridges.
+          account, so for them the button does nothing. Every bridge node stops its workers when
+          it sees the halt, and devops restart them on their servers. No Root call is needed.
         </p>
       </header>
 
@@ -44,6 +45,7 @@
           </div>
           <div class="readout">
             <p id="status" class="status status-unknown" role="status" aria-live="polite">Connecting…</p>
+            <p id="status-detail" class="status-detail"></p>
             <svg class="links" viewBox="0 0 360 132" aria-hidden="true" focusable="false">
               <path class="conduit" d="M64 66 C 150 66, 190 22, 280 22" />
               <path class="conduit" d="M64 66 L 280 66" />
@@ -83,6 +85,7 @@
         <div id="last-halt" class="last-halt" hidden>
           <h3>Last halt</h3>
           <dl class="facts">
+            <div><dt>Halt</dt><dd id="last-number"></dd></div>
             <div><dt>Guardian</dt><dd id="last-guardian" class="mono"></dd></div>
             <div><dt>Block</dt><dd id="last-block"></dd></div>
             <div><dt>Message</dt><dd id="last-reason"></dd></div>
@@ -138,13 +141,13 @@
 
         <div class="estop">
           <div class="estop-housing">
-            <button id="halt" type="button" class="halt" disabled>HALT ALL BRIDGES</button>
+            <button id="halt" type="button" class="halt" disabled>HALT BRIDGE WORKERS</button>
             <span class="estop-cover" aria-hidden="true"></span>
           </div>
         </div>
 
         <div id="confirm" class="confirm" hidden>
-          <p><strong>Halt every SORA bridge now?</strong> Deposits, withdrawals and relaying stop until devops reopen the bridges.</p>
+          <p><strong>Stop the bridge workers now?</strong> HASHI stops signing and importing transfers on every bridge node until devops restart the workers.</p>
           <div class="row">
             <button id="confirm-yes" type="button" class="halt small">Yes, halt</button>
             <button id="confirm-no" type="button" class="secondary">Cancel</button>
@@ -163,10 +166,13 @@
       <section class="card" aria-labelledby="about-title">
         <h2 id="about-title">What a halt does</h2>
         <ul class="about">
-          <li>Sets the chain's bridge latch. HASHI, BridgeProxy, the bridge channels and apps, the data signer and the multisig verifier then refuse new bridge work, and the HASHI offchain workers stop.</li>
+          <li>Writes a numbered halt on chain. The HASHI offchain worker on every bridge node stops as soon as it sees the halt: it signs no withdrawals and imports no deposits.</li>
+          <li>The workers stay stopped until devops restart each node with <code>--bridge-resume-after-halt</code> and the halt's number. No Root call or vote is needed, and guardians cannot restart anything.</li>
+          <li>The relayers for the EVM, TON and Liberland bridges do not read the halt yet. Devops stop those relayers on their servers.</li>
+          <li>Does not make the chain refuse bridge calls: transfers sent during a halt wait for the workers. Root's recovery latch still does that when governance sets it.</li>
           <li>Does not pause contracts on Ethereum, TON or Liberland. Withdrawals already signed by the bridge can still be redeemed there; pause those contracts separately.</li>
           <li>Has no effect from accounts that are not guardians: the chain rejects the transaction before it reaches a block, so nothing is written and no fee is charged.</li>
-          <li>Cannot be undone from this page. Devops reopen the bridges with a Root call (<code>bridgeHalt.resume</code>).</li>
+          <li>Within a minute of a halt the chain refuses another one, so guardians who react together send a single halt.</li>
         </ul>
       </section>
     </main>

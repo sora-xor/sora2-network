@@ -3027,6 +3027,10 @@ impl bridge_proxy::Config for Runtime {
 parameter_types! {
     pub const BridgeHaltMaxGuardians: u32 = 32;
     pub const BridgeHaltMaxReasonLength: u32 = 256;
+    /// One minute between halts. Guardians who react to the same incident send
+    /// one halt, and a guardian key cannot fill blocks with free calls. Devops
+    /// cannot restart the workers that fast, so it never holds back a needed halt.
+    pub const BridgeHaltCooldown: BlockNumber = 10;
     /// Guardians that `migrations::SeedBridgeHaltGuardians` installs once, in the
     /// upgrade that adds BridgeHalt, so a halt works as soon as it is enacted.
     /// Governance manages the list after that.
@@ -3036,10 +3040,11 @@ parameter_types! {
     ];
 }
 
-/// Emergency brake for every bridge. Guardians halt fee-free and ahead of every
-/// other transaction; see `xor_fee_impls::validate_bridge_fee_exemption` for
-/// transaction admission, `operational_admission` for wrapped halts and
-/// `pool_priority` for the ordering.
+/// Emergency stop for the bridge workers. Guardians halt fee-free and ahead of
+/// every other transaction; see `xor_fee_impls::validate_bridge_fee_exemption`
+/// for transaction admission, `operational_admission` for wrapped halts and
+/// `pool_priority` for the ordering. The HASHI offchain workers stop on a halt
+/// until devops restart each node with `--bridge-resume-after-halt`.
 impl bridge_halt::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     /// The same authority that manages BridgeProxy.
@@ -3047,10 +3052,9 @@ impl bridge_halt::Config for Runtime {
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 2, 3>,
         EnsureRoot<AccountId>,
     >;
-    /// Reopening needs Root, as removing the latch with `System::kill_storage` does.
-    type ResumeOrigin = EnsureRoot<AccountId>;
     type MaxGuardians = BridgeHaltMaxGuardians;
     type MaxReasonLength = BridgeHaltMaxReasonLength;
+    type HaltCooldown = BridgeHaltCooldown;
     type WeightInfo = bridge_halt::weights::SubstrateWeight<Runtime>;
 }
 

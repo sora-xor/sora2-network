@@ -179,6 +179,15 @@ pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_BOOTSTRAP_READY_KEY: &[u8] = b"eth-bridge-ocw::bootstrap-ready";
 pub const STORAGE_LOCAL_SIGNING_KEY_READY_KEY: &[u8] = b"eth-bridge-ocw::local-signing-key-ready";
 pub const STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY: &[u8] = b"eth-bridge-ocw::substrate-rpc-configured";
+/// The guardian halt this node's operator confirmed with `--bridge-resume-after-halt`,
+/// as a SCALE `common::bridge_halt::GuardianHalt`. The node writes it at startup; the
+/// workers run only while it names the newest halt on chain.
+pub const STORAGE_RESUMED_AFTER_HALT_KEY: &[u8] = b"eth-bridge-ocw::resumed-after-halt";
+/// Metric: the number of the guardian halt that stopped this node's workers, or 0 while
+/// they may run. `u64::MAX` when the halt on chain does not decode.
+pub const STORAGE_GUARDIAN_HALT_STOPPED_KEY: &[u8] = b"eth-bridge-ocw::guardian-halt-stopped";
+/// The guardian halt last reported in the log, so the warning appears once per halt.
+pub const STORAGE_GUARDIAN_HALT_REPORTED_KEY: &[u8] = b"eth-bridge-ocw::guardian-halt-reported";
 pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
 pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
 pub const STORAGE_PENDING_TRANSACTIONS_KEY: &[u8] = b"eth-bridge-ocw::pending-transactions";
@@ -543,6 +552,12 @@ pub mod pallet {
                 return;
             }
             crate::offchain::set_offchain_metric_u64(STORAGE_BOOTSTRAP_READY_KEY, 1);
+
+            // A guardian halt stops this node's workers until its operator confirms
+            // that halt with `--bridge-resume-after-halt`. Nothing on chain restarts them.
+            if crate::offchain::stopped_by_guardian_halt() {
+                return;
+            }
 
             let mut lock = StorageLock::<'_, Time>::with_deadline(
                 b"eth-bridge-ocw::lock",

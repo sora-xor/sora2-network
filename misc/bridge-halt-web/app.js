@@ -10,7 +10,12 @@
 
   const CONFIG = window.BRIDGE_HALT_CONFIG || {};
   const SS58_PREFIX = 69; // SORA addresses start with "cn".
+  // Root's recovery latch. While it exists the bridge pallets refuse calls; only a
+  // Root call removes it. A guardian halt does not set it.
   const HALT_KEY = u8aToHex(stringToU8a(':sora-nexus:recovery:bridge-halt:v1'));
+  // How long after a guardian halt the console keeps showing it as current. The
+  // chain does not record when devops restart the workers.
+  const RECENT_HALT_MS = 24 * 60 * 60 * 1000;
   // BridgeHalt is pallet 122 in construct_runtime and halt is its call 0. The page
   // signs only these bytes, so a node serving forged metadata cannot swap the call.
   const HALT_CALL_PREFIX = new Uint8Array([122, 0]);
@@ -64,7 +69,10 @@
     endpoint: null,
     generation: 0,
     supported: false,
-    halted: null,
+    halted: null, // Root's latch is set
+    lastHalt: null, // { number, block, guardian, reason } of the newest guardian halt
+    blockMs: 6000, // expected block time
+    cooldown: 10, // blocks after a halt before the next one is accepted
     guardians: new Set(), // hex public keys
     wallet: null, // { id, title, logo? } of the connected wallet
     unsubAccounts: null, // stops the wallet's account subscription
@@ -112,12 +120,37 @@
     return u8aConcat(HALT_CALL_PREFIX, compactToU8a(reason.length), reason);
   }
 
-  function setStatus(kind, text) {
+  function setStatus(kind, text, detail = '') {
     const element = $('status');
     element.className = `status status-${kind}`;
     element.textContent = text;
+    $('status-detail').textContent = detail;
     // The console styling (beacon, link diagram, alarm glow) follows this state.
     document.body.dataset.state = kind;
+  }
+
+  /// "4 min ago", from a block count and the chain's block time.
+  function ago(blocks) {
+    const minutes = Math.max(0, Math.round((blocks * state.blockMs) / 60000));
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 48) return `${hours} h ago`;
+    return `${Math.round(hours / 24)} days ago`;
+  }
+
+  /// Blocks until the chain accepts the next halt; 0 when it would accept one now.
+  /// Pool validation checks against the next block.
+  function cooldownLeft() {
+    if (!state.lastHalt) return 0;
+    return Math.max(0, state.lastHalt.block + state.cooldown - (state.lastBlock + 1));
+  }
+
+  function recentHalt() {
+    return (
+      Boolean(state.lastHalt) &&
+      (state.lastBlock - state.lastHalt.block) * state.blockMs < RECENT_HALT_MS
+    );
   }
 
   function log(text, kind) {
@@ -160,7 +193,8 @@
       return 'Rejected by the chain: this account is not a guardian. Nothing was written on chain and no fee was charged.';
     }
     if (/outdated|Stale/i.test(text)) {
-      return 'Rejected by the chain: the bridges are already halted. Nothing was written and no fee was charged.';
+      const seconds = Math.round((state.cooldown * state.blockMs) / 1000);
+      return `Rejected by the chain: a guardian sent a halt less than ${seconds} seconds ago, and that halt stands. Nothing was written and no fee was charged.`;
     }
     if (/Inability to pay|Payment/i.test(text)) {
       return 'Rejected by the chain: the account holds no XOR, so it does not exist on chain, or the wallet added a tip. Send the account a little XOR and sign without a tip; the halt itself is free.';
@@ -203,8 +237,14 @@
     }
 
     const button = $('halt');
-    button.textContent = state.halted ? 'BRIDGES ALREADY HALTED' : 'HALT ALL BRIDGES';
-    button.disabled = !state.api || !state.supported || !account || state.busy || tooLong;
+    const waiting = state.supported && cooldownLeft() > 0;
+    button.textContent = waiting
+      ? 'HALT JUST SENT'
+      : state.supported && recentHalt()
+        ? 'HALT AGAIN'
+        : 'HALT BRIDGE WORKERS';
+    button.disabled =
+      !state.api || !state.supported || !account || state.busy || tooLong || waiting;
   }
 
   function renderGuardians() {
@@ -388,6 +428,7 @@
     state.lastBlock = 0;
     state.supported = false;
     state.halted = null;
+    state.lastHalt = null;
     state.guardians = new Set();
     $('chain').textContent = '–';
     $('block').textContent = '–';
@@ -485,9 +526,20 @@
         at.query.bridgeHalt.lastHalt(),
       ]);
       guardians = new Set([...set].map((account) => account.toHex()));
-      last = record.isSome ? record.unwrap() : null;
-      if (api.consts.bridgeHalt && api.consts.bridgeHalt.maxReasonLength) {
-        state.maxReason = api.consts.bridgeHalt.maxReasonLength.toNumber();
+      if (record.isSome) {
+        const value = record.unwrap();
+        last = {
+          number: value.number.toNumber(),
+          block: value.block.toNumber(),
+          guardian: value.guardian.toHex(),
+          reason: u8aToString(value.reason.toU8a(true)),
+        };
+      }
+      const consts = api.consts.bridgeHalt || {};
+      if (consts.maxReasonLength) state.maxReason = consts.maxReasonLength.toNumber();
+      if (consts.haltCooldown) state.cooldown = consts.haltCooldown.toNumber();
+      if (api.consts.babe && api.consts.babe.expectedBlockTime) {
+        state.blockMs = api.consts.babe.expectedBlockTime.toNumber();
       }
     }
     if (!current()) return;
@@ -498,6 +550,7 @@
       [...guardians].sort().join() !== [...state.guardians].sort().join();
     state.lastBlock = number;
     state.halted = latch !== null && latch !== undefined;
+    state.lastHalt = last;
     state.supported = supported;
     state.guardians = guardians;
     const block = $('block');
@@ -509,10 +562,29 @@
       block.classList.add('tick');
     }
     $('runtime').textContent = `${version.specName.toString()} ${version.specVersion.toNumber()}`;
-    setStatus(
-      state.halted ? 'halted' : 'running',
-      state.halted ? 'Bridges are HALTED' : 'Bridges are running',
-    );
+    if (state.halted) {
+      setStatus(
+        'halted',
+        'Bridges are HALTED',
+        "Root's recovery latch is set: the bridge pallets refuse calls until a Root call removes it.",
+      );
+    } else if (last && recentHalt()) {
+      setStatus(
+        'halted',
+        `Halt #${last.number} sent`,
+        `${ago(number - last.block)}. Bridge workers stop on it and stay stopped until devops ` +
+          `restart each node with --bridge-resume-after-halt ${last.number}.`,
+      );
+    } else if (last) {
+      setStatus(
+        'running',
+        'No recent halt',
+        `Last halt #${last.number}, ${ago(number - last.block)}. The chain does not show ` +
+          'whether devops have restarted the workers since.',
+      );
+    } else {
+      setStatus('running', 'Bridges are running', supported ? 'No guardian halt so far.' : '');
+    }
 
     const notice = $('unsupported');
     notice.hidden = supported;
@@ -528,10 +600,11 @@
 
     $('last-halt').hidden = !last;
     if (last) {
-      $('last-guardian').textContent = sora(last.guardian.toHex());
-      $('last-block').textContent = `#${last.block.toNumber().toLocaleString('en-US')}`;
-      const message = u8aToString(last.reason.toU8a(true));
-      $('last-reason').textContent = message || '(no message)';
+      $('last-number').textContent = `#${last.number}`;
+      $('last-guardian').textContent = sora(last.guardian);
+      $('last-block').textContent =
+        `#${last.block.toLocaleString('en-US')} · ${ago(number - last.block)}`;
+      $('last-reason').textContent = last.reason || '(no message)';
     }
     if (listChanged) {
       renderGuardians();
@@ -807,7 +880,10 @@
           close();
           return;
         }
-        log(`Included in block ${block}: the bridges are halted. Waiting for finality…`, 'success');
+        log(
+          `Included in block ${block}: the halt is on chain, and the bridge workers stop on it. Waiting for finality…`,
+          'success',
+        );
         idle(); // Keep watching for finality, but free the page.
       } else if (status.isRetracted) {
         log('That block was replaced by a fork. Waiting for the halt to be included again…');
@@ -816,13 +892,13 @@
         close();
       } else if (status.isFinalityTimeout) {
         log(
-          'The including block has not been finalized; finality may be stalled. The status at the top shows whether the bridges are halted.',
+          'The including block has not been finalized; finality may be stalled. The status at the top shows whether the halt is on chain.',
           'error',
         );
         close();
       } else if (status.isDropped || status.isInvalid || status.isUsurped) {
         log(
-          'The network dropped the transaction. If another guardian halted first, the bridges are already halted; otherwise press the button again.',
+          'The network dropped the transaction. If another guardian sent a halt in the last minute, that halt stands; otherwise press the button again.',
           'error',
         );
         close();

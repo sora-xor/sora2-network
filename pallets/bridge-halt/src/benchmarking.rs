@@ -5,7 +5,6 @@
 
 use super::*;
 use alloc::vec;
-use common::recovery::BRIDGE_HALT_STORAGE_KEY;
 use frame_benchmarking::v2::*;
 use frame_support::{
     traits::{EnsureOrigin, Get},
@@ -29,27 +28,21 @@ mod benchmarks {
     fn halt() {
         fill_guardians::<T>(T::MaxGuardians::get());
         let guardian: T::AccountId = account("guardian", 0, 0);
-        sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
         let reason: ReasonOf<T> =
             BoundedVec::truncate_from(vec![b'x'; T::MaxReasonLength::get() as usize]);
+        // A full-length earlier halt, old enough that the cooldown has passed.
+        LastHalt::<T>::put(HaltRecord {
+            number: 1,
+            guardian: guardian.clone(),
+            block: frame_system::pallet_prelude::BlockNumberFor::<T>::default(),
+            reason: reason.clone(),
+        });
+        frame_system::Pallet::<T>::set_block_number(T::HaltCooldown::get());
 
         #[extrinsic_call]
         _(RawOrigin::Signed(guardian), reason);
 
-        assert!(Pallet::<T>::is_halted());
-    }
-
-    #[benchmark]
-    fn resume() -> Result<(), BenchmarkError> {
-        sp_io::storage::set(BRIDGE_HALT_STORAGE_KEY, &[1]);
-        let origin =
-            T::ResumeOrigin::try_successful_origin().map_err(|_| BenchmarkError::Weightless)?;
-
-        #[extrinsic_call]
-        _(origin as T::RuntimeOrigin);
-
-        assert!(!Pallet::<T>::is_halted());
-        Ok(())
+        assert_eq!(LastHalt::<T>::get().map(|last| last.number), Some(2));
     }
 
     #[benchmark]

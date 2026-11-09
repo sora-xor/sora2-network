@@ -415,6 +415,7 @@ pub fn run() -> sc_cli::Result<()> {
                             cli.recovery_hashi_witness_dir
                                 .clone()
                                 .zip(cli.recovery_hashi_release_sha256),
+                            cli.bridge_resume_after_halt,
                         )
                         .map_err(sc_cli::Error::Service)
                     }
@@ -428,6 +429,7 @@ pub fn run() -> sc_cli::Result<()> {
                             cli.recovery_hashi_witness_dir
                                 .clone()
                                 .zip(cli.recovery_hashi_release_sha256),
+                            cli.bridge_resume_after_halt,
                         )
                         .map_err(sc_cli::Error::Service)
                     }
@@ -447,6 +449,7 @@ pub fn run() -> sc_cli::Result<()> {
                             cli.recovery_hashi_witness_dir
                                 .clone()
                                 .zip(cli.recovery_hashi_release_sha256),
+                            cli.bridge_resume_after_halt,
                         )
                         .map_err(sc_cli::Error::Service)
                     }
@@ -460,6 +463,7 @@ pub fn run() -> sc_cli::Result<()> {
                             cli.recovery_hashi_witness_dir
                                 .clone()
                                 .zip(cli.recovery_hashi_release_sha256),
+                            cli.bridge_resume_after_halt,
                         )
                         .map_err(sc_cli::Error::Service)
                     }

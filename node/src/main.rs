@@ -49,6 +49,7 @@ mod data_feed_metrics;
 mod eth_bridge_metrics;
 #[cfg(feature = "private-net")]
 mod fork_off;
+mod guardian_halt;
 mod recovery;
 mod recovery_evidence;
 mod recovery_hashi;

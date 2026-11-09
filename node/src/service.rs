@@ -732,6 +732,7 @@ pub fn new_full<FullNetwork>(
     recovery_inherent_dir: Option<PathBuf>,
     recovery_evidence_dir: Option<PathBuf>,
     recovery_hashi: Option<(PathBuf, sp_core::H256)>,
+    bridge_resume_after_halt: Option<u32>,
 ) -> Result<TaskManager, ServiceError>
 where
     FullNetwork: NetworkBackend<Block, <Block as BlockT>::Hash> + 'static,
@@ -775,6 +776,8 @@ where
         false,
         recovery_evidence.clone(),
     )?;
+    // Before any offchain worker runs, so a confirmed halt applies from the first block.
+    crate::guardian_halt::on_startup(&client, &backend, bridge_resume_after_halt);
     let hashi_witness_pump = recovery_hashi
         .as_ref()
         .map(|(directory, pin)| {

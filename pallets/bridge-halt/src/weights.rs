@@ -23,7 +23,6 @@ use frame_support::{traits::Get, weights::{constants::RocksDbWeight, Weight}};
 /// Weight functions needed for bridge-halt.
 pub trait WeightInfo {
 	fn halt() -> Weight;
-	fn resume() -> Weight;
 	fn add_guardian() -> Weight;
 	fn remove_guardian() -> Weight;
 }
@@ -32,21 +31,15 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: BridgeHalt Guardians (r:1 w:0), max 1_029 bytes
-	/// Storage: unhashed `:sora-nexus:recovery:bridge-halt:v1` (r:1 w:1)
-	/// Storage: BridgeHalt LastHalt (r:0 w:1), max 300 bytes
+	/// Storage: BridgeHalt LastHalt (r:1 w:1), max 304 bytes
+	/// Storage: unhashed `:sora-nexus:bridge-halt:latest:v1` (r:0 w:1), 8 bytes
 	/// Admission (`validate_halt`, in validation and again before dispatch) reads
-	/// Guardians and the latch twice more; counted here (r:4) because no
+	/// Guardians and LastHalt twice more; counted here (r:4) because no
 	/// transaction-extension weight covers them.
 	fn halt() -> Weight {
 		Weight::from_parts(40_000_000, 8_000)
 			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
-	}
-	/// Storage: unhashed `:sora-nexus:recovery:bridge-halt:v1` (r:1 w:1)
-	fn resume() -> Weight {
-		Weight::from_parts(25_000_000, 1_500)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	/// Storage: BridgeHalt Guardians (r:1 w:1), max 1_029 bytes
 	fn add_guardian() -> Weight {
@@ -68,11 +61,6 @@ impl WeightInfo for () {
 		Weight::from_parts(40_000_000, 8_000)
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
-	}
-	fn resume() -> Weight {
-		Weight::from_parts(25_000_000, 1_500)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	fn add_guardian() -> Weight {
 		Weight::from_parts(30_000_000, 3_000)
