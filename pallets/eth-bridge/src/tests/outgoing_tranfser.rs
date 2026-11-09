@@ -1883,3 +1883,47 @@ fn zero_outgoing_transfer_is_rejected_before_nonce_queue_or_balance_changes() {
         }
     });
 }
+
+#[test]
+fn guardian_halt_guard_denied_signature_retries_a_partial_approval_next_block() {
+    for fail_submission in [false, true] {
+        let (mut ext, mut state) = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let net = ETH_NETWORK_ID;
+            let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+            Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+            assert_ok!(EthBridge::transfer_to_sidechain(
+                RuntimeOrigin::signed(alice),
+                XOR.into(),
+                EthAddress::repeat_byte(7),
+                100,
+                net,
+            ));
+            let (request, hash) = last_outgoing_request(net).unwrap();
+            // Another peer approved already: the zero-approval retry cannot rescue this request.
+            let (_, other_peer, seed) = &state.networks[&net].ocw_keypairs[1];
+            let (public, proof) = approval_params(&request, hash, seed);
+            assert_ok!(EthBridge::approve_request(
+                RuntimeOrigin::signed(other_peer.clone()),
+                public,
+                hash,
+                proof,
+                net
+            ));
+
+            // Refuse signing the outer extrinsic, or refuse its submission and
+            // signing again to construct its persistent retry record.
+            state.set_should_fail_send_signed_transactions(fail_submission);
+            set_signed_transaction_creation_results(&[false]);
+            state.run_next_offchain_worker_and_dispatch_txs();
+            assert_eq!(crate::RequestApprovals::<Runtime>::get(net, hash).len(), 1);
+            assert!(state.pending_txs().is_empty());
+            let handled = format!("eth-bridge-ocw::handled-request-{:?}", hash);
+            assert_eq!(state.storage_read::<BlockNumber>(handled.as_bytes()), None);
+
+            state.set_should_fail_send_signed_transactions(false);
+            state.run_next_offchain_worker_and_dispatch_txs();
+            assert_eq!(crate::RequestApprovals::<Runtime>::get(net, hash).len(), 2);
+        });
+    }
+}

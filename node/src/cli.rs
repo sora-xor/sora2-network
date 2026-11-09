@@ -68,6 +68,52 @@ pub struct Cli {
     pub bridge_resume_after_halt: Option<u32>,
 }
 
+impl Cli {
+    /// Retained validator keys alone must not opt a recovery node into bridge bootstrap.
+    pub(crate) fn bridge_worker_options(
+        &self,
+    ) -> crate::bridge_bootstrap_policy::BridgeWorkerOptions {
+        crate::bridge_bootstrap_policy::BridgeWorkerOptions {
+            recovery_bootstrap: matches!(
+                self.run.offchain_worker_params.enabled,
+                sc_cli::OffchainWorkerEnabled::Always
+            ),
+            resume_after_halt: self.bridge_resume_after_halt,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::Parser;
+
+    #[test]
+    fn recovery_bridge_bootstrap_requires_explicit_always() {
+        for arguments in [
+            vec!["framenode"],
+            vec!["framenode", "--validator"],
+            vec![
+                "framenode",
+                "--validator",
+                "--offchain-worker",
+                "when-authority",
+            ],
+            vec!["framenode", "--validator", "--offchain-worker", "never"],
+        ] {
+            let cli = Cli::try_parse_from(arguments).expect("valid node arguments");
+            assert!(!cli.bridge_worker_options().recovery_bootstrap);
+        }
+        for arguments in [
+            vec!["framenode", "--offchain-worker", "always"],
+            vec!["framenode", "--validator", "--offchain-worker=always"],
+        ] {
+            let cli = Cli::try_parse_from(arguments).expect("valid bridge peer arguments");
+            assert!(cli.bridge_worker_options().recovery_bootstrap);
+        }
+    }
+}
+
 #[derive(Debug, clap::Subcommand)]
 pub enum Subcommand {
     /// Key management cli utilities

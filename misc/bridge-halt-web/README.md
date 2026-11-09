@@ -26,9 +26,13 @@ unavailable.
 Halts are numbered from 1. Each HASHI bridge node compares the signal with the halt its
 operator last confirmed, which the node keeps in its offchain database. While the two
 differ, the worker does nothing: it signs no withdrawals and imports no deposits. The
-node's log names the halt that stopped it, and the Prometheus gauge
-`eth_bridge_guardian_halt_stopped` holds that halt's number (0 while the worker runs).
-Nodes without a HASHI bridge key ignore halts.
+node's log names the halt, and the Prometheus gauge
+`eth_bridge_guardian_halt_stopped` holds its number until acknowledged, including while
+Root's separate recovery latch is set. A zero value means no guardian halt is outstanding.
+Spec 141 requires a 4.8.15 or compatible guarded node for HASHI work. A peer still
+running an older host remains idle. The node checks the current chain state when a
+worker signs or submits bridge transactions. Approvals already handed to the pool
+before a halt can still propagate and be included afterward.
 
 Root's recovery latch, raw key `:sora-nexus:recovery:bridge-halt:v1`, is separate: a halt
 neither sets it nor needs it to be clear. While governance keeps it set, the bridge
@@ -95,21 +99,25 @@ bridgeHalt.removeGuardian(account)
 
 ### Restarting the workers after a halt
 
-Once it is safe to bridge again, restart each HASHI bridge node with the newest halt's
-number, which the page and the node's log both show:
+On each HASHI peer, wait for the halt to finalize and confirm that bridge work can
+resume. Start the peer with its usual recovery chain specification and the halt number
+shown on the console. For example, to acknowledge halt 3:
 
 ```sh
-framenode <usual flags> --bridge-resume-after-halt 3
+framenode <usual flags> --offchain-worker always --bridge-resume-after-halt 3
 ```
 
-At startup the node checks the number against its finalized chain, records it, and logs
-`Confirmed guardian halt #3`; its worker then runs again. Only the newest finalized halt
-is accepted. An older number would leave the worker stopped anyway, and a number the
-chain has not reached yet is refused, so it can never cover a halt that has not happened.
-A wrong number does not stop the node: it starts, the worker stays stopped, and the log
-says why. The flag may stay in the service definition, because the next halt stops the
-worker again until the node is restarted with that halt's number. A node started on an
-empty database must sync past the halt first; restart it with the flag once it has.
+A replacement peer needs its current HASHI key in the node keystore, a local HTTP RPC
+listener, and a `bridge/eth.json` in the recovery chain configuration directory with
+the peer's sidechain RPC settings. Start it with `--offchain-worker always` to
+initialize the public peer marker and network configuration on the fresh database.
+Once it has synced past the finalized halt, restart it with both flags as shown above.
+
+`Confirmed guardian halt #3` acknowledges that halt on this peer. Check the peer's
+bootstrap, signing-key, and guardian-halt gauges. Root's recovery latch and peer
+membership still govern whether the worker can process requests. An old or future
+halt number is refused and the node logs the reason. The next halt requires its own
+acknowledgement.
 
 If the halt was not warranted (for example a guardian key was stolen), remove that
 guardian before restarting the workers, or it can halt again a minute later.

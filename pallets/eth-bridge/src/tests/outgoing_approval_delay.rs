@@ -16,6 +16,7 @@ use codec::Encode;
 use common::{DEFAULT_BALANCE_PRECISION, XOR};
 use frame_support::assert_ok;
 use hex_literal::hex;
+use rustc_hex::ToHex;
 use sp_core::offchain::OffchainStorage;
 use sp_core::{sr25519, H160, H256};
 use std::str::FromStr;
@@ -23,11 +24,15 @@ use std::str::FromStr;
 const DELAY_MS: u64 = 120_000;
 
 fn delay_start_key(request_hash: H256) -> Vec<u8> {
-    format!(
-        "{}-{:?}-{:?}",
-        STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY, ETH_NETWORK_ID, request_hash
+    let peers = sp_io::crypto::ecdsa_public_keys(crate::KEY_TYPE);
+    assert_eq!(peers.len(), 1);
+    (
+        STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY,
+        ETH_NETWORK_ID,
+        request_hash,
+        &peers[0],
     )
-    .into_bytes()
+        .encode()
 }
 
 fn delay_start(state: &State, request_hash: H256) -> Option<u64> {
@@ -86,6 +91,54 @@ fn ocw_signs_outgoing_request_only_after_its_own_delay() {
             crate::RequestStatuses::<Runtime>::get(ETH_NETWORK_ID, hash),
             Some(RequestStatus::Pending)
         );
+    });
+}
+
+#[test]
+fn a_replacement_peer_waits_from_its_own_first_eligible_run() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        OutgoingApprovalDelayMsConst::set(DELAY_MS);
+        let start = 1_000_000;
+        set_local_time(&state, start);
+        let hash = transfer_out();
+        // A timestamp inherited from the node-only timer names no signing key.
+        let legacy = format!(
+            "eth-bridge-ocw::outgoing-approval-delay-start-v1-{:?}-{:?}",
+            ETH_NETWORK_ID, hash
+        );
+        state
+            .offchain_state
+            .write()
+            .persistent_storage
+            .set(b"", legacy.as_bytes(), &0u64.encode());
+        state.run_next_offchain_and_dispatch_txs();
+        assert_eq!(approvals(hash), 0);
+
+        let keys = &state.networks[&ETH_NETWORK_ID].ocw_keypairs;
+        let old_peer = keys[0].1.clone();
+        let (new_public, new_peer, seed) = keys[1].clone();
+        let key = sp_io::crypto::ecdsa_generate(
+            crate::KEY_TYPE,
+            Some(format!("0x{}", seed.to_hex::<String>()).into_bytes()),
+        );
+        assert_eq!(sp_runtime::MultiSigner::from(key), new_public);
+        crate::Peers::<Runtime>::mutate(ETH_NETWORK_ID, |peers| {
+            assert!(peers.remove(&old_peer));
+        });
+
+        let switched = start + DELAY_MS - 1;
+        set_local_time(&state, switched);
+        state.run_next_offchain_and_dispatch_txs();
+        set_local_time(&state, switched + DELAY_MS - 1);
+        state.run_next_offchain_and_dispatch_txs();
+        assert!(state.pending_txs().is_empty());
+        assert_eq!(approvals(hash), 0);
+
+        set_local_time(&state, switched + DELAY_MS);
+        state.run_next_offchain_and_dispatch_txs();
+        assert_eq!(approvals(hash), 1);
+        assert!(crate::RequestApprovers::<Runtime>::get(ETH_NETWORK_ID, hash).contains(&new_peer));
     });
 }
 

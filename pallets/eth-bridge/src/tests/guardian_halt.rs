@@ -157,3 +157,34 @@ fn roots_recovery_latch_still_stops_the_workers_on_its_own() {
         assert!(state.http_requests().is_empty());
     });
 }
+
+#[test]
+fn guardian_reporting_continues_while_roots_latch_stops_work() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        halt_on_chain(&FIRST);
+        run_hook(6);
+        assert_eq!(stopped_metric(), Some(1));
+        operator_confirms(FIRST);
+        run_hook(7);
+        assert_eq!(stopped_metric(), Some(0));
+        halt_on_chain(&GuardianHalt {
+            number: 2,
+            block: 20,
+        });
+        run_hook(21);
+        assert_eq!(stopped_metric(), Some(2));
+        assert!(state.http_requests().is_empty());
+    });
+}
+
+#[test]
+fn hosts_without_a_live_guard_cannot_start_a_bridge_pass() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        StorageValueRef::persistent(crate::STORAGE_LIVE_SIGNING_GUARD_KEY).clear();
+        run_hook(6);
+        assert!(state.http_requests().is_empty());
+    });
+}

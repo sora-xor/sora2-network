@@ -77,6 +77,12 @@ use sp_std::convert::TryInto;
 // Revisit learned provider/body limits without retrying a rejected range every other scan.
 const LOG_RANGE_LIMIT_RETRY_DELAY_MS: u64 = 30 * 60 * 1000;
 
+#[derive(Debug, Eq, PartialEq)]
+enum RequestHandling {
+    Handled,
+    WaitingForPeerDelay,
+}
+
 #[cfg(test)]
 #[path = "../tests/coverage_offchain_paths.rs"]
 mod coverage_paths;
@@ -181,32 +187,40 @@ impl<T: Config> Pallet<T> {
         .unwrap_or(false)
     }
 
-    /// Whether this worker's signing delay for an outgoing request has passed.
+    /// Whether this peer key's signing delay for an outgoing request has passed.
     ///
-    /// The first time the worker is ready to sign a request it stores its own local time in
+    /// On the first run eligible to sign with this key, the worker stores its local time in
     /// persistent offchain storage, then signs only after its clock has moved on by
     /// `OutgoingApprovalDelayMs`. Block and transaction timestamps are never consulted, so
     /// nothing on chain can shorten the wait. A start time in the future (the local clock
     /// went backwards) or an unreadable entry restarts the wait instead of blocking signing.
-    pub(crate) fn outgoing_approval_delay_elapsed(
+    fn outgoing_approval_delay_elapsed(
         network_id: T::NetworkId,
         request_hash: H256,
+        peer: &ecdsa::Public,
     ) -> bool {
         let delay = T::OutgoingApprovalDelayMs::get();
         if delay == 0 {
             return true;
         }
         let now = sp_io::offchain::timestamp().unix_millis();
-        let key = format!(
-            "{}-{:?}-{:?}",
-            STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY, network_id, request_hash
-        );
-        let started_at = StorageValueRef::persistent(key.as_bytes()).mutate::<u64, (), _>(
-            |stored| match stored {
-                Ok(Some(started_at)) if started_at <= now => Ok(started_at),
-                _ => Ok(now),
-            },
-        );
+        let key = (
+            STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY,
+            network_id,
+            request_hash,
+            peer,
+        )
+            .encode();
+        let timer = StorageValueRef::persistent(&key);
+        if let Ok(Some(started_at)) = timer.get::<u64>() {
+            if started_at <= now {
+                return now - started_at >= delay;
+            }
+        }
+        let started_at = timer.mutate::<u64, (), _>(|stored| match stored {
+            Ok(Some(started_at)) if started_at <= now => Ok(started_at),
+            _ => Ok(now),
+        });
         match started_at {
             Ok(started_at) => now.saturating_sub(started_at) >= delay,
             // Another worker changed the entry meanwhile; look again on the next run.
@@ -216,7 +230,10 @@ impl<T: Config> Pallet<T> {
 
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
     /// key and sends the approve as a signed transaction.
-    fn handle_outgoing_request(request: OutgoingRequest<T>, hash: H256) -> Result<(), Error<T>> {
+    fn handle_outgoing_request(
+        request: OutgoingRequest<T>,
+        hash: H256,
+    ) -> Result<RequestHandling, Error<T>> {
         crate::recovery::ensure_outgoing_active::<T>(request.network_id(), hash)?;
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
@@ -228,10 +245,9 @@ impl<T: Config> Pallet<T> {
             return Err(<Error<T>>::NoLocalAccountForSigning);
         }
         let peers = Self::peers(request.network_id());
-        let encoded_request = request.to_eth_abi(hash)?;
-        let message = common::eth::prepare_message(encoded_request.as_raw()).serialize();
+        let mut ready = Vec::new();
+        let mut waiting_for_delay = false;
         let mut found_local_peer_key = false;
-        let mut attempted_submission = false;
 
         for runtime_key in
             <T::PeerId as AppCrypto<T::Public, T::Signature>>::RuntimeAppPublic::all()
@@ -255,6 +271,20 @@ impl<T: Config> Pallet<T> {
                 continue;
             }
 
+            if !Self::outgoing_approval_delay_elapsed(request.network_id(), hash, &ocw_public) {
+                waiting_for_delay = true;
+                continue;
+            }
+            ready.push((signer, signer_account, ocw_public));
+        }
+        if ready.is_empty() && waiting_for_delay {
+            return Ok(RequestHandling::WaitingForPeerDelay);
+        }
+
+        let encoded_request = request.to_eth_abi(hash)?;
+        let message = common::eth::prepare_message(encoded_request.as_raw()).serialize();
+        let mut retry_cached = false;
+        for (signer, signer_account, ocw_public) in ready {
             let Some(signature) =
                 sp_io::crypto::ecdsa_sign_prehashed(crate::KEY_TYPE, &ocw_public, &message)
             else {
@@ -274,15 +304,13 @@ impl<T: Config> Pallet<T> {
                 ),
                 network_id: request.network_id(),
             };
-            attempted_submission = true;
-
             match Self::send_signed_transaction(&signer, &call) {
                 Some((account, res)) => {
-                    Self::add_pending_extrinsic(call, &account, res.is_ok());
+                    retry_cached |= Self::add_pending_extrinsic(call, &account, res.is_ok());
                     match res {
                         Ok(_) => {
                             trace!("Signed transaction sent");
-                            return Ok(());
+                            return Ok(RequestHandling::Handled);
                         }
                         Err(e) => {
                             error!(
@@ -318,7 +346,9 @@ impl<T: Config> Pallet<T> {
             );
             return Err(Error::<T>::NoLocalAccountForSigning);
         }
-        if !attempted_submission {
+        // If the node refused key use before submission or while building the
+        // retry record, leave the request eligible for the next worker pass.
+        if !retry_cached {
             error!(
                 "Failed to sign outgoing approval payload. network_id={:?} request_hash={:?}",
                 request.network_id(),
@@ -472,7 +502,7 @@ impl<T: Config> Pallet<T> {
     /// The function delegates further handling depending on request type.
     /// There are 4 flows. 3 for incoming request: handle 'mark as done', handle 'cancel outgoing
     /// request' and for the rest, and only one for all outgoing requests.
-    fn handle_offchain_request(request: OffchainRequest<T>) -> Result<(), Error<T>> {
+    fn handle_offchain_request(request: OffchainRequest<T>) -> Result<RequestHandling, Error<T>> {
         crate::recovery::ensure_request_active::<T>(&request)?;
         debug!("Handling request: {:?}", request.hash());
         match request {
@@ -540,12 +570,13 @@ impl<T: Config> Pallet<T> {
                 }
             }
             OffchainRequest::Outgoing(request, hash) => {
-                Self::handle_outgoing_request(request, hash)
+                return Self::handle_outgoing_request(request, hash);
             }
             OffchainRequest::Incoming(request, hash) => {
                 Self::handle_pending_incoming_requests(request, hash)
             }
         }
+        .map(|()| RequestHandling::Handled)
     }
 
     /// Parses the logs emitted on the Sidechain's contract to an `IncomingRequest` and imports it
@@ -1219,15 +1250,11 @@ impl<T: Config> Pallet<T> {
                 _ => true,
             };
             if need_to_handle && confirmed {
-                if matches!(request, OffchainRequest::Outgoing(_, _))
-                    && !Self::outgoing_approval_delay_elapsed(network_id, request_hash)
-                {
-                    // Not handled yet: the next worker run checks the delay again.
-                    debug!("Outgoing signing delay running: {:?}", request_hash);
-                    continue;
-                }
                 let timepoint = request.timepoint();
-                let error = Self::handle_offchain_request(request).err();
+                let error = match Self::handle_offchain_request(request) {
+                    Ok(RequestHandling::WaitingForPeerDelay) => continue,
+                    outcome => outcome.err(),
+                };
                 let mut should_mark_as_handled = true;
                 if let Some(e) = error {
                     error!(

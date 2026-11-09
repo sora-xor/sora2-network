@@ -43,7 +43,7 @@ use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, BeefyId, Runtime, RuntimeApi};
 use log::debug;
 use prometheus_endpoint::Registry;
-use sc_client_api::{Backend, BlockBackend};
+use sc_client_api::{Backend, BlockBackend, StorageProvider};
 use sc_executor::WasmExecutor;
 use sc_network::{config::MultiaddrWithPeerId, multiaddr::Protocol, Multiaddr, NetworkBackend};
 use sc_network_sync::strategy::warp::WarpSyncConfig;
@@ -352,7 +352,49 @@ where
         return Ok(None);
     };
 
-    Ok(Some((marker, load_peer_config()?)))
+    let peer_config = load_peer_config()?;
+    if peer_config.networks.is_empty() {
+        return Err(ServiceError::Other(
+            "Ethereum bridge node config must contain at least one network.".into(),
+        ));
+    }
+    Ok(Some((marker, peer_config)))
+}
+
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
+fn initialize_bridge_offchain_storage<S: OffchainStorage>(
+    storage: &mut S,
+    marker: &[u8],
+    peer_config: BridgePeerConfig,
+    rpc_listen_addr: Option<std::net::SocketAddr>,
+) -> Result<BTreeSet<framenode_runtime::NetworkId>, ServiceError> {
+    // Validate all fallible local configuration before publishing a ready marker.
+    let rpc_url = bridge_rpc_url(rpc_listen_addr)?;
+    if peer_config.networks.is_empty() {
+        return Err(ServiceError::Other(
+            "Ethereum bridge node config must contain at least one network.".into(),
+        ));
+    }
+    let mut network_ids = BTreeSet::new();
+    for (net_id, params) in peer_config.networks {
+        let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
+        storage.set(STORAGE_PREFIX, string.as_bytes(), &params.encode());
+        set_offchain_network_metric(storage, STORAGE_SIDECHAIN_RPC_CONFIGURED_KEY, net_id, 1);
+        network_ids.insert(net_id);
+    }
+    storage.set(
+        STORAGE_PREFIX,
+        STORAGE_NETWORK_IDS_KEY,
+        &network_ids.encode(),
+    );
+    storage.set(STORAGE_PREFIX, STORAGE_SUB_NODE_URL_KEY, &rpc_url.encode());
+    // This is a public-key activation marker, never a private-key copy.
+    storage.set(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY, &marker.encode());
+    set_offchain_u64_metric(storage, STORAGE_BOOTSTRAP_READY_KEY, 1);
+    Ok(network_ids)
 }
 
 #[allow(
@@ -364,6 +406,7 @@ pub fn new_partial(
     telemetry_worker_handle: Option<TelemetryWorkerHandle>,
     offline: bool,
     recovery_evidence: Option<Arc<crate::recovery_evidence::Recorder>>,
+    recovery_bridge_bootstrap: bool,
 ) -> Result<
     sc_service::PartialComponents<
         FullClient,
@@ -460,8 +503,36 @@ pub fn new_partial(
     if let Some(mut storage) = backend.offchain_storage() {
         remove_legacy_bridge_secret(&mut storage);
     }
-    let bridge_bootstrap = if recovery.is_some() || offline {
-        // Recovery never re-arms HASHI from an operator's existing bridge files.
+    if !offline {
+        let best_hash = client.info().best_hash;
+        match client.storage(
+            best_hash,
+            &sp_core::storage::StorageKey(common::recovery::BRIDGE_HALT_STORAGE_KEY.to_vec()),
+        ) {
+            Ok(Some(_)) => log::info!(
+                target: "eth_bridge",
+                "Bridge halted, offchain worker idle at startup: recovery bridge halt key is present at best head {best_hash:?}"
+            ),
+            Ok(None) => {}
+            Err(error) => log::warn!(
+                target: "eth_bridge",
+                "Could not read bridge halt status at startup: {error}; bridge readiness is unknown"
+            ),
+        }
+    }
+    let bridge_bootstrap = if !crate::bridge_bootstrap_policy::enabled(
+        recovery.is_some(),
+        offline,
+        config.offchain_worker.enabled,
+        recovery_bridge_bootstrap,
+    ) {
+        // Recovery defaults never re-arm HASHI from retained validator keys/files.
+        if !offline {
+            log::info!(
+                target: "eth_bridge",
+                "SORA Nexus recovery mode: bridge bootstrap skipped; use --offchain-worker always with the recovery chain's bridge/eth.json to prepare a bridge peer before activation"
+            );
+        }
         None
     } else {
         let bridge_public_keys = keystore_container
@@ -505,32 +576,22 @@ pub fn new_partial(
                     .into(),
             )
         })?;
-        // Keep a non-secret OCW activation marker in offchain DB for bridge workers.
-        storage.set(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY, &marker.encode());
-        let mut network_ids = BTreeSet::new();
-        for (net_id, params) in peer_config.networks {
-            let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
-            storage.set(STORAGE_PREFIX, string.as_bytes(), &params.encode());
-            set_offchain_network_metric(
-                &mut storage,
-                STORAGE_SIDECHAIN_RPC_CONFIGURED_KEY,
-                net_id,
-                1,
-            );
-            network_ids.insert(net_id);
-        }
-        storage.set(
-            STORAGE_PREFIX,
-            STORAGE_NETWORK_IDS_KEY,
-            &network_ids.encode(),
-        );
-        let rpc_url = bridge_rpc_url(local_rpc_listen_addr(config))?;
-        storage.set(STORAGE_PREFIX, STORAGE_SUB_NODE_URL_KEY, &rpc_url.encode());
-        set_offchain_u64_metric(&mut storage, STORAGE_BOOTSTRAP_READY_KEY, 1);
+        let network_ids = initialize_bridge_offchain_storage(
+            &mut storage,
+            &marker,
+            peer_config,
+            local_rpc_listen_addr(config),
+        )?;
         log::info!(
             "Ethereum bridge peer initialized for networks: {:?}",
             network_ids
         );
+        if recovery.is_some() {
+            log::info!(
+                target: "eth_bridge",
+                "SORA Nexus recovery bridge configuration prepared; workers remain gated by verified recovery completion and the on-chain bridge halt"
+            );
+        }
     }
     config
         .prometheus_registry()
@@ -732,7 +793,7 @@ pub fn new_full<FullNetwork>(
     recovery_inherent_dir: Option<PathBuf>,
     recovery_evidence_dir: Option<PathBuf>,
     recovery_hashi: Option<(PathBuf, sp_core::H256)>,
-    bridge_resume_after_halt: Option<u32>,
+    bridge_workers: crate::bridge_bootstrap_policy::BridgeWorkerOptions,
 ) -> Result<TaskManager, ServiceError>
 where
     FullNetwork: NetworkBackend<Block, <Block as BlockT>::Hash> + 'static,
@@ -775,9 +836,10 @@ where
         telemetry_worker_handle,
         false,
         recovery_evidence.clone(),
+        bridge_workers.recovery_bootstrap,
     )?;
     // Before any offchain worker runs, so a confirmed halt applies from the first block.
-    crate::guardian_halt::on_startup(&client, &backend, bridge_resume_after_halt);
+    crate::guardian_halt::on_startup(&client, &backend, bridge_workers.resume_after_halt);
     let hashi_witness_pump = recovery_hashi
         .as_ref()
         .map(|(directory, pin)| {
@@ -881,15 +943,26 @@ where
         })?;
 
     if config.offchain_worker.enabled {
+        use crate::guardian_halt::worker_guard::{
+            WorkerGuard, WorkerKeystore, WorkerPool, WorkerStorage,
+        };
+        let guard = WorkerGuard {
+            client: client.clone(),
+            backend: backend.clone(),
+        };
         let offchain_workers =
             sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
                 runtime_api_provider: client.clone(),
                 is_validator: config.role.is_authority(),
-                keystore: Some(keystore_container.keystore()),
-                offchain_db: backend.offchain_storage(),
-                transaction_pool: Some(OffchainTransactionPoolFactory::new(
-                    transaction_pool.clone(),
-                )),
+                keystore: Some(Arc::new(WorkerKeystore {
+                    inner: keystore_container.keystore(),
+                    guard: guard.clone(),
+                })),
+                offchain_db: backend.offchain_storage().map(WorkerStorage),
+                transaction_pool: Some(OffchainTransactionPoolFactory::new(WorkerPool {
+                    inner: transaction_pool.clone(),
+                    guard,
+                })),
                 network_provider: Arc::new(network.clone()),
                 enable_http_requests: true,
                 custom_extensions: |_| vec![],
@@ -1145,9 +1218,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::{
-        bridge_rpc_url, load_bridge_peer_config, remove_legacy_bridge_secret,
-        resolve_local_bridge_bootstrap,
+        bridge_rpc_url, initialize_bridge_offchain_storage, load_bridge_peer_config,
+        remove_legacy_bridge_secret, resolve_local_bridge_bootstrap, BridgePeerConfig,
+        STORAGE_BOOTSTRAP_READY_KEY, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY,
+        STORAGE_PEER_MARKER_KEY, STORAGE_PEER_SECRET_KEY, STORAGE_PREFIX, STORAGE_SUB_NODE_URL_KEY,
     };
+    use codec::{Decode, Encode};
     use sp_core::offchain::{storage::InMemOffchainStorage, OffchainStorage};
     use sp_core::Pair;
     use std::cell::Cell;
@@ -1162,6 +1238,16 @@ mod tests {
             .public()
             .0
             .to_vec()
+    }
+
+    fn sample_bridge_peer_config() -> BridgePeerConfig {
+        serde_json::from_value(serde_json::json!({
+            "networks": {
+                "0": { "url": "http://127.0.0.1:8545", "credentials": null },
+                "42": { "url": "http://127.0.0.1:8546", "credentials": null }
+            }
+        }))
+        .expect("bridge config fixture should decode")
     }
 
     #[test]
@@ -1224,6 +1310,110 @@ mod tests {
 
         let _ = fs::remove_file(&invalid_path);
         assert!(result.is_err());
+    }
+
+    #[test]
+    #[expect(
+        clippy::result_large_err,
+        reason = "test callbacks retain the production bootstrap API's ServiceError"
+    )]
+    fn local_bridge_bootstrap_rejects_empty_network_configuration() {
+        let mut config = sample_bridge_peer_config();
+        config.networks.clear();
+        let result = resolve_local_bridge_bootstrap(
+            vec![sample_bridge_public_key()],
+            |_| Ok(true),
+            || Ok(config),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[expect(
+        clippy::result_large_err,
+        reason = "test callbacks retain the production bootstrap API's ServiceError"
+    )]
+    fn recovery_bridge_bootstrap_prepares_networks_without_clearing_halt() {
+        let mut externalities = sp_io::TestExternalities::default();
+        externalities.execute_with(|| {
+            let halt_key = common::recovery::BRIDGE_HALT_STORAGE_KEY;
+            sp_io::storage::set(halt_key, &[1]);
+            assert!(crate::bridge_bootstrap_policy::enabled(
+                true, false, true, true
+            ));
+            let (marker, config) = resolve_local_bridge_bootstrap(
+                vec![sample_bridge_public_key()],
+                |_| Ok(true),
+                || Ok(sample_bridge_peer_config()),
+            )
+            .expect("explicit recovery bootstrap should accept valid configuration")
+            .expect("local peer should be found");
+            let expected_networks = config.networks.clone();
+            let mut storage = InMemOffchainStorage::default();
+            let networks = initialize_bridge_offchain_storage(
+                &mut storage,
+                &marker,
+                config,
+                Some(SocketAddr::from(([0, 0, 0, 0], 9944))),
+            )
+            .expect("local bridge initialization should succeed while halted");
+
+            assert_eq!(networks, [0, 42].into_iter().collect());
+            assert_eq!(
+                storage.get(STORAGE_PREFIX, STORAGE_NETWORK_IDS_KEY),
+                Some(networks.encode())
+            );
+            assert_eq!(
+                storage.get(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY),
+                Some(marker.encode())
+            );
+            for (network, params) in expected_networks {
+                let key = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, network);
+                assert_eq!(
+                    storage.get(STORAGE_PREFIX, key.as_bytes()),
+                    Some(params.encode())
+                );
+            }
+            let encoded_url = storage
+                .get(STORAGE_PREFIX, STORAGE_SUB_NODE_URL_KEY)
+                .expect("local RPC URL must be stored before workers start");
+            assert_eq!(
+                String::decode(&mut encoded_url.as_slice()).expect("SCALE RPC URL"),
+                "http://127.0.0.1:9944"
+            );
+            assert_eq!(
+                storage.get(STORAGE_PREFIX, STORAGE_BOOTSTRAP_READY_KEY),
+                Some(1u64.encode())
+            );
+            assert!(storage
+                .get(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY)
+                .is_none());
+            assert_eq!(sp_io::storage::get(halt_key).as_deref(), Some(&[1u8][..]));
+        });
+    }
+
+    #[test]
+    fn bridge_bootstrap_rpc_failure_does_not_publish_partial_configuration() {
+        let mut storage = InMemOffchainStorage::default();
+        let result = initialize_bridge_offchain_storage(
+            &mut storage,
+            &sample_bridge_public_key(),
+            sample_bridge_peer_config(),
+            None,
+        );
+        assert!(result.is_err());
+        for key in [
+            STORAGE_PEER_MARKER_KEY,
+            STORAGE_NETWORK_IDS_KEY,
+            STORAGE_SUB_NODE_URL_KEY,
+            STORAGE_BOOTSTRAP_READY_KEY,
+        ] {
+            assert!(storage.get(STORAGE_PREFIX, key).is_none());
+        }
+        for network in [0, 42] {
+            let key = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, network);
+            assert!(storage.get(STORAGE_PREFIX, key.as_bytes()).is_none());
+        }
     }
 
     #[test]

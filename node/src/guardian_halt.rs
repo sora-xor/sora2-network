@@ -10,6 +10,8 @@
 //! storage, where the workers read it. The next halt stops them again, so the
 //! flag can stay in a service definition.
 
+pub(crate) mod worker_guard;
+
 use crate::service::{FullBackend, FullClient};
 use codec::{DecodeAll, Encode};
 use common::bridge_halt::{GuardianHalt, GUARDIAN_HALT_STORAGE_KEY};
@@ -23,17 +25,18 @@ use sp_runtime::offchain::STORAGE_PREFIX;
 /// The newest guardian halt in this node's finalized state.
 fn finalized_halt(client: &FullClient) -> Result<Option<GuardianHalt>, String> {
     let info = client.info();
-    let value = client
-        .storage(
-            info.finalized_hash,
-            &StorageKey(GUARDIAN_HALT_STORAGE_KEY.to_vec()),
+    halt_at(client, info.finalized_hash).map_err(|error| {
+        format!(
+            "cannot read finalized block #{}: {error}",
+            info.finalized_number
         )
-        .map_err(|error| {
-            format!(
-                "cannot read finalized block #{}: {error}",
-                info.finalized_number
-            )
-        })?;
+    })
+}
+
+fn halt_at(client: &FullClient, hash: sp_core::H256) -> Result<Option<GuardianHalt>, String> {
+    let value = client
+        .storage(hash, &StorageKey(GUARDIAN_HALT_STORAGE_KEY.to_vec()))
+        .map_err(|error| error.to_string())?;
     value
         .map(|data| {
             GuardianHalt::decode_all(&mut &data.0[..])
@@ -89,7 +92,7 @@ pub(crate) fn on_startup(client: &FullClient, backend: &FullBackend, requested: 
                 storage.set(STORAGE_PREFIX, STORAGE_RESUMED_AFTER_HALT_KEY, &halt.encode());
                 // Warn level, like the bridge's "Peer info", so quiet log settings show it.
                 log::warn!(
-                    "Confirmed guardian halt #{} (block #{}): the HASHI bridge workers run again. The next halt stops them.",
+                    "Acknowledged guardian halt #{} (block #{}). The next halt requires a new acknowledgement.",
                     halt.number,
                     halt.block
                 );
@@ -105,6 +108,11 @@ pub(crate) fn on_startup(client: &FullClient, backend: &FullBackend, requested: 
         .get(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY)
         .is_none()
     {
+        if requested.is_some() {
+            log::warn!(
+                "HASHI peer activation marker missing. To run this node as a bridge peer, enable --offchain-worker always, install the peer signing key and eth.json, and configure the recovery peer bootstrap."
+            );
+        }
         return;
     }
     let confirmed = storage

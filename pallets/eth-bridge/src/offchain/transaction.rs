@@ -326,8 +326,12 @@ impl<T: Config> Pallet<T> {
 
         match result {
             Some((account, res)) => {
-                Self::add_pending_extrinsic(call, &account, res.is_ok());
+                let retry_cached = Self::add_pending_extrinsic(call, &account, res.is_ok());
                 if let Err(e) = res {
+                    if !retry_cached {
+                        // Re-signing for the retry record can be refused by a concurrent halt.
+                        return Err(Error::<T>::FailedToSignMessage);
+                    }
                     error!(
                         "[{:?}] Failed to send signed transaction: {:?}",
                         account.id, e
@@ -428,7 +432,8 @@ impl<T: Config> Pallet<T> {
         call: LocalCall,
         account: &Account<T>,
         added_to_pool: bool,
-    ) where
+    ) -> bool
+    where
         T: CreateSignedTransaction<LocalCall>,
         LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::RuntimeCall>,
     {
@@ -451,13 +456,14 @@ impl<T: Config> Pallet<T> {
                 "[{:?}] Failed to cache signed transaction for retry",
                 account.id
             );
-            return;
+            return false;
         };
         transactions.insert(
             signed_transaction_data.extrinsic_hash,
             signed_transaction_data,
         );
         s_signed_txs.set(&transactions);
+        true
     }
 
     /// Sends a multisig transaction to register the parsed (from pre-incoming) incoming request.

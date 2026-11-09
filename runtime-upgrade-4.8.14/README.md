@@ -1,4 +1,9 @@
-# SORA 4.8.14 runtime upgrade
+# SORA Nexus 4.8.14 runtime upgrade
+
+This directory records the published 4.8.14 release. For the corrected runtime and
+bridge node, use [4.8.15](../runtime-upgrade-4.8.15/README.md). The validation entry
+points here use the current rehearsal and digest checks for this historical candidate.
+The published 4.8.14 ZIP and its checksum identify the original release at its signed tag.
 
 Runtime spec **140**, transaction version **134**. It upgrades the live runtime 138.
 

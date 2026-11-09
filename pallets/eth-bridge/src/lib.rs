@@ -183,6 +183,9 @@ pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_BOOTSTRAP_READY_KEY: &[u8] = b"eth-bridge-ocw::bootstrap-ready";
 pub const STORAGE_LOCAL_SIGNING_KEY_READY_KEY: &[u8] = b"eth-bridge-ocw::local-signing-key-ready";
 pub const STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY: &[u8] = b"eth-bridge-ocw::substrate-rpc-configured";
+/// Read-only OCW host capability. Supporting nodes synthesize this value; it is
+/// never persisted, so downgrading a node cannot leave a stale permission behind.
+pub const STORAGE_LIVE_SIGNING_GUARD_KEY: &[u8] = b"eth-bridge-ocw::live-signing-guard:v1";
 /// The guardian halt this node's operator confirmed with `--bridge-resume-after-halt`,
 /// as a SCALE `common::bridge_halt::GuardianHalt`. The node writes it at startup; the
 /// workers run only while it names the newest halt on chain.
@@ -206,9 +209,9 @@ pub const STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY: &str =
     "eth-bridge-ocw::outgoing-zero-approval-requests";
 pub const STORAGE_OUTGOING_APPROVAL_FAILURES_KEY: &str =
     "eth-bridge-ocw::outgoing-approval-failures";
-/// Per-request prefix for the local time at which this worker's signing delay started.
+/// Prefix for local signing-delay timers scoped to a network, request and peer public key.
 pub const STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY: &str =
-    "eth-bridge-ocw::outgoing-approval-delay-start-v1";
+    "eth-bridge-ocw::outgoing-approval-delay-start-v2";
 pub const OUTGOING_APPROVAL_FAILURE_NO_LOCAL_PEER_KEY: &str = "no_local_peer_key";
 pub const OUTGOING_APPROVAL_FAILURE_FAILED_SIGN: &str = "failed_sign";
 pub const OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX: &str = "failed_send_signed_tx";
@@ -480,8 +483,8 @@ pub mod pallet {
         /// Maximum number of recent requests retained in the per-account RPC index.
         type MaxRequestsPerAccount: Get<u32>;
         /// How long, in milliseconds, a peer's off-chain worker waits before signing an
-        /// outgoing request. Each worker starts its own timer the first time it is ready to
-        /// sign the request and measures it on its local clock; block and transaction
+        /// outgoing request. The worker starts a timer for each eligible signing key and
+        /// request, measuring on its local clock; block and transaction
         /// timestamps are never used. Zero disables the delay.
         #[pallet::constant]
         type OutgoingApprovalDelayMs: Get<u64>;
@@ -508,9 +511,6 @@ pub mod pallet {
         ///
         /// Note: only one worker is expected to be used.
         fn offchain_worker(block_number: frame_system::pallet_prelude::BlockNumberFor<T>) {
-            if crate::recovery::halted() {
-                return;
-            }
             debug!("Entering off-chain workers {:?}", block_number);
             let marker_ref = StorageValueRef::persistent(STORAGE_PEER_MARKER_KEY);
             let legacy_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
@@ -568,7 +568,16 @@ pub mod pallet {
 
             // A guardian halt stops this node's workers until its operator confirms
             // that halt with `--bridge-resume-after-halt`. Nothing on chain restarts them.
-            if crate::offchain::stopped_by_guardian_halt() {
+            if crate::offchain::stopped_by_guardian_halt() || crate::recovery::halted() {
+                return;
+            }
+            // A pre-upgrade host only sees the block that spawned this worker.
+            // Require the live signing/submission guard before doing any work.
+            let guarded_host = sp_io::offchain::local_storage_get(
+                sp_core::offchain::StorageKind::PERSISTENT,
+                STORAGE_LIVE_SIGNING_GUARD_KEY,
+            );
+            if guarded_host.as_deref() != Some(&[1]) {
                 return;
             }
 

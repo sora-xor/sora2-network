@@ -382,7 +382,7 @@ pub(crate) fn unknown_benchmark_genesis_preset_is_rejected() {
 }
 
 pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
-    assert_eq!(crate::VERSION.spec_version, 140);
+    assert_eq!(crate::VERSION.spec_version, 141);
     assert_eq!(crate::VERSION.transaction_version, 134);
     assert_eq!(
         band::Pallet::<crate::Runtime>::in_code_storage_version(),

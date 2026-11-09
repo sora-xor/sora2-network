@@ -30,6 +30,7 @@
 //! dispatched, so the call's own weight covers them.
 
 use crate::{AccountId, BlockNumber, Hash, Runtime, RuntimeCall};
+use alloc::collections::BTreeMap;
 use codec::{Decode, DecodeAll, Encode};
 use frame_support::{
     dispatch::{DispatchClass, GetDispatchInfo},
@@ -54,13 +55,28 @@ pub fn validate(
     class: DispatchClass,
 ) -> Result<(), TransactionValidityError> {
     if class == DispatchClass::Operational {
-        admit(who, call, 0)
+        admit(who, call, 0, &mut BatchVotes::new())
     } else {
         Ok(())
     }
 }
 
-fn admit(who: &AccountId, call: &RuntimeCall, depth: u32) -> Result<(), TransactionValidityError> {
+#[derive(Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
+enum Collective {
+    Council,
+    TechnicalCommittee,
+}
+
+/// The latest vote the current signer would cast on each motion in this ordered
+/// sequence. Its size is bounded by the number of votes in the extrinsic.
+type BatchVotes = BTreeMap<(Collective, Hash, ProposalIndex), bool>;
+
+fn admit(
+    who: &AccountId,
+    call: &RuntimeCall,
+    depth: u32,
+    votes: &mut BatchVotes,
+) -> Result<(), TransactionValidityError> {
     if depth >= MAX_DEPTH {
         return Err(InvalidTransaction::Call.into());
     }
@@ -72,18 +88,52 @@ fn admit(who: &AccountId, call: &RuntimeCall, depth: u32) -> Result<(), Transact
             pallet_utility::Call::batch { calls }
             | pallet_utility::Call::batch_all { calls }
             | pallet_utility::Call::force_batch { calls },
-        ) => calls.iter().try_for_each(|call| admit(who, call, next)),
+        ) => {
+            return calls
+                .iter()
+                .try_for_each(|call| admit(who, call, next, votes))
+        }
+        RuntimeCall::Council(pallet_collective::Call::vote {
+            proposal,
+            index,
+            approve,
+        }) => {
+            member::<crate::CouncilCollective>(who)?;
+            votes.insert((Collective::Council, *proposal, *index), *approve);
+            return Ok(());
+        }
+        RuntimeCall::TechnicalCommittee(pallet_collective::Call::vote {
+            proposal,
+            index,
+            approve,
+        }) => {
+            member::<crate::TechnicalCollective>(who)?;
+            votes.insert(
+                (Collective::TechnicalCommittee, *proposal, *index),
+                *approve,
+            );
+            return Ok(());
+        }
+        _ => (),
+    }
+    // A close may execute an arbitrary proposal, and conditional or origin-changing
+    // wrappers need their own admission. Carry votes only across definite voting calls.
+    let preceding_votes = core::mem::take(votes);
+    match call {
         RuntimeCall::Utility(pallet_utility::Call::if_else { main, fallback }) => {
-            admit(who, main, next)?;
-            admit(who, fallback, next)
+            admit(who, main, next, &mut BatchVotes::new())?;
+            admit(who, fallback, next, &mut BatchVotes::new())
         }
         // Outside `wip`, xorless_call is Normal and never dispatches its call.
         #[cfg(feature = "wip")]
-        RuntimeCall::XorFee(xor_fee::Call::xorless_call { call, .. }) => admit(who, call, next),
+        RuntimeCall::XorFee(xor_fee::Call::xorless_call { call, .. }) => {
+            admit(who, call, next, &mut BatchVotes::new())
+        }
         RuntimeCall::Utility(pallet_utility::Call::as_derivative { index, call }) => admit(
             &pallet_utility::derivative_account_id(who.clone(), *index),
             call,
             next,
+            &mut BatchVotes::new(),
         ),
         RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
             other_signatories,
@@ -91,17 +141,13 @@ fn admit(who: &AccountId, call: &RuntimeCall, depth: u32) -> Result<(), Transact
         }) => {
             let multisig =
                 threshold_one_multisig(who, other_signatories).ok_or(InvalidTransaction::Call)?;
-            admit(&multisig, call, next)
+            admit(&multisig, call, next, &mut BatchVotes::new())
         }
         RuntimeCall::Council(
-            pallet_collective::Call::vote { .. }
-            | pallet_collective::Call::propose { .. }
-            | pallet_collective::Call::execute { .. },
+            pallet_collective::Call::propose { .. } | pallet_collective::Call::execute { .. },
         ) => member::<crate::CouncilCollective>(who),
         RuntimeCall::TechnicalCommittee(
-            pallet_collective::Call::vote { .. }
-            | pallet_collective::Call::propose { .. }
-            | pallet_collective::Call::execute { .. },
+            pallet_collective::Call::propose { .. } | pallet_collective::Call::execute { .. },
         ) => member::<crate::TechnicalCollective>(who),
         RuntimeCall::Council(pallet_collective::Call::close {
             proposal_hash,
@@ -113,6 +159,9 @@ fn admit(who: &AccountId, call: &RuntimeCall, depth: u32) -> Result<(), Transact
             *index,
             *proposal_weight_bound,
             *length_bound,
+            preceding_votes
+                .get(&(Collective::Council, *proposal_hash, *index))
+                .map(|approve| (who, *approve)),
         ),
         RuntimeCall::TechnicalCommittee(pallet_collective::Call::close {
             proposal_hash,
@@ -124,6 +173,9 @@ fn admit(who: &AccountId, call: &RuntimeCall, depth: u32) -> Result<(), Transact
             *index,
             *proposal_weight_bound,
             *length_bound,
+            preceding_votes
+                .get(&(Collective::TechnicalCommittee, *proposal_hash, *index))
+                .map(|approve| (who, *approve)),
         ),
         RuntimeCall::System(frame_system::Call::apply_authorized_upgrade { code }) => {
             authorized_upgrade(code)
@@ -177,6 +229,7 @@ fn closable<I: 'static>(
     index: ProposalIndex,
     proposal_weight_bound: Weight,
     length_bound: u32,
+    preceding_vote: Option<(&AccountId, bool)>,
 ) -> Result<(), TransactionValidityError>
 where
     Runtime: pallet_collective::Config<I, Proposal = RuntimeCall>,
@@ -186,12 +239,21 @@ where
         proposal_hash,
     ))
     .ok_or_else(cannot_close)?;
-    let Ok(motion) = Motion::decode_all(&mut &voting[..]) else {
+    let Ok(mut motion) = Motion::decode_all(&mut &voting[..]) else {
         // Never block governance on an unexpected layout; dispatch decides.
         return Ok(());
     };
     if motion.index != index {
         return Err(cannot_close());
+    }
+    if let Some((who, approve)) = preceding_vote {
+        motion.ayes.retain(|member| member != who);
+        motion.nays.retain(|member| member != who);
+        if approve {
+            motion.ayes.push(who.clone());
+        } else {
+            motion.nays.push(who.clone());
+        }
     }
     let seats = pallet_collective::Members::<Runtime, I>::get().len() as MemberCount;
     let mut yes = motion.ayes.len() as MemberCount;

@@ -146,7 +146,7 @@ fn failed_signed_transaction_construction_never_creates_or_replaces_retry_record
         let hash = OffchainRequest::outgoing(request.clone()).hash();
         assert_eq!(
             EthBridge::handle_outgoing_request(request, hash),
-            Err(Error::FailedToSendSignedTransaction)
+            Err(Error::FailedToSignMessage)
         );
         assert!(state.pending_txs().is_empty());
     });

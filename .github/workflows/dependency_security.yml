@@ -212,6 +212,7 @@ jobs:
           node "$GITHUB_WORKSPACE/vendor/chopsticks-core/tests/zod-migration.cjs"
           node "$GITHUB_WORKSPACE/vendor/chopsticks-executor/scripts/smoke.cjs" "$NPM_AUDIT_PROJECT/node_modules/@acala-network/chopsticks-executor/dist/cjs/index.js"
           node "$GITHUB_WORKSPACE/misc/dependency_security/test_js_native_integration.cjs" "$NPM_AUDIT_PROJECT"
+          SORA_VALIDATION_PACKAGE="$NPM_AUDIT_PROJECT/package.json" node --test "$GITHUB_WORKSPACE/runtime-upgrade-4.8.15/validation/release-validation.test.cjs"
           node "$GITHUB_WORKSPACE/vendor/fetch-blob/tests/native-domexception.mjs" "$NPM_AUDIT_PROJECT/node_modules/fetch-blob"
           node "$GITHUB_WORKSPACE/vendor/polkadot-wasm-crypto/tests/compatibility.cjs" --candidate "$NPM_AUDIT_PROJECT/node_modules/@polkadot/wasm-crypto" --security-regressions true
       - name: Preserve frontend reproduction behavior

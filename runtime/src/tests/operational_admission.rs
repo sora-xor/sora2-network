@@ -495,6 +495,140 @@ fn anyone_closes_a_motion_that_closes_now_within_its_bounds() {
 }
 
 #[test]
+fn a_batch_may_close_after_its_deciding_vote() {
+    ext().execute_with(|| {
+        setup();
+        let council = members();
+        let [first, second, _] = &council[..] else {
+            unreachable!()
+        };
+        for kind in 0..3u8 {
+            let proposal = remark(&[kind]);
+            let (hash, index) = motion(first, 2, &proposal);
+            assert_ok!(Council::vote(
+                RuntimeOrigin::signed(account(first)),
+                hash,
+                index,
+                true
+            ));
+            // The deciding vote changes an existing nay to an aye.
+            assert_ok!(Council::vote(
+                RuntimeOrigin::signed(account(second)),
+                hash,
+                index,
+                false
+            ));
+            let batch = |calls| {
+                RuntimeCall::Utility(match kind {
+                    0 => pallet_utility::Call::batch { calls },
+                    1 => pallet_utility::Call::batch_all { calls },
+                    _ => pallet_utility::Call::force_batch { calls },
+                })
+            };
+            let deciding = vote(hash, index, true);
+            let finish = exact_close(&proposal, index);
+            rejected(
+                batch(vec![finish.clone(), deciding.clone()]),
+                second,
+                InvalidTransaction::Call,
+            );
+            rejected(
+                batch(vec![vote(hash, index + 1, true), finish.clone()]),
+                second,
+                InvalidTransaction::Call,
+            );
+            rejected(
+                batch(vec![
+                    deciding.clone(),
+                    close(hash, index, Weight::zero(), 0),
+                ]),
+                second,
+                InvalidTransaction::Call,
+            );
+            rejected(
+                batch(vec![deciding.clone(), finish.clone()]),
+                &stranger(),
+                InvalidTransaction::BadSigner,
+            );
+            assert_ok!(admitted(batch(vec![deciding, finish]), second));
+            assert!(council_event(pallet_collective::Event::Closed {
+                proposal_hash: hash,
+                yes: 2,
+                no: 0
+            }));
+            assert!(council_event(pallet_collective::Event::Executed {
+                proposal_hash: hash,
+                result: Ok(())
+            }));
+        }
+    });
+}
+
+#[test]
+fn technical_committee_can_close_an_early_disapproval_in_its_voting_batch() {
+    ext().execute_with(|| {
+        setup();
+        let council = members();
+        let [first, second, _] = &council[..] else {
+            unreachable!()
+        };
+        let old_count =
+            pallet_collective::Members::<Runtime, TechnicalCollective>::get().len() as u32;
+        assert_ok!(TechnicalCommittee::set_members(
+            RuntimeOrigin::root(),
+            council.iter().map(account).collect(),
+            None,
+            old_count
+        ));
+        let proposal = remark(b"committee vote");
+        let (hash, index) = motion(first, 2, &proposal);
+        assert_ok!(Council::vote(
+            RuntimeOrigin::signed(account(first)),
+            hash,
+            index,
+            false
+        ));
+        let tc_index = pallet_collective::ProposalCount::<Runtime, TechnicalCollective>::get();
+        assert_ok!(TechnicalCommittee::propose(
+            RuntimeOrigin::signed(account(first)),
+            2,
+            Box::new(proposal.clone()),
+            proposal.encoded_size() as u32
+        ));
+        assert_ok!(TechnicalCommittee::vote(
+            RuntimeOrigin::signed(account(first)),
+            hash,
+            tc_index,
+            false
+        ));
+        let nay = RuntimeCall::TechnicalCommittee(pallet_collective::Call::vote {
+            proposal: hash,
+            index: tc_index,
+            approve: false,
+        });
+        let batch = |calls| RuntimeCall::Utility(pallet_utility::Call::batch_all { calls });
+        assert_eq!(index, tc_index);
+        // A matching hash and index do not mix two collective instances.
+        rejected(
+            batch(vec![nay.clone(), close(hash, index, Weight::zero(), 0)]),
+            second,
+            InvalidTransaction::Call,
+        );
+        let finish = RuntimeCall::TechnicalCommittee(pallet_collective::Call::close {
+            proposal_hash: hash,
+            index: tc_index,
+            proposal_weight_bound: Weight::zero(),
+            length_bound: 0,
+        });
+        assert_ok!(admitted(batch(vec![nay, finish]), second));
+        assert!(System::events().iter().any(|record| record.event
+            == RuntimeEvent::TechnicalCommittee(pallet_collective::Event::Disapproved {
+                proposal_hash: hash
+            })));
+    });
+}
+
+#[test]
 fn an_undecided_motion_closes_only_when_its_vote_ends() {
     ext().execute_with(|| {
         setup();
