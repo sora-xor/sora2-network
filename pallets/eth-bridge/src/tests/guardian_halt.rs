@@ -183,7 +183,14 @@ fn guardian_reporting_continues_while_roots_latch_stops_work() {
 fn hosts_without_a_live_guard_cannot_start_a_bridge_pass() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
-        StorageValueRef::persistent(crate::STORAGE_LIVE_SIGNING_GUARD_KEY).clear();
+        StorageValueRef::persistent(crate::STORAGE_SERIAL_SIGNING_GUARD_KEY).clear();
+        // A host providing just the v1 signing guard cannot serialize overdue passes.
+        assert_eq!(
+            StorageValueRef::persistent(crate::STORAGE_LIVE_SIGNING_GUARD_KEY)
+                .get::<u8>()
+                .unwrap(),
+            Some(1)
+        );
         run_hook(6);
         assert!(state.http_requests().is_empty());
     });

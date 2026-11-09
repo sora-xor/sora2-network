@@ -153,6 +153,44 @@ fn failed_signed_transaction_construction_never_creates_or_replaces_retry_record
 }
 
 #[test]
+fn recovery_scan_never_defaults_a_missing_or_corrupt_cursor_to_the_tip() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1]);
+        let key = crate::eth_scan_cursor_key(0);
+        for raw in [None, Some(vec![0; 9])] {
+            if let Some(bytes) = &raw {
+                sp_io::offchain::local_storage_set(
+                    sp_core::offchain::StorageKind::PERSISTENT,
+                    &key,
+                    bytes,
+                );
+            }
+            assert_eq!(
+                EthBridge::handle_ethereum(0, false),
+                Err(Error::ReadStorageError)
+            );
+            assert_eq!(
+                sp_io::offchain::local_storage_get(
+                    sp_core::offchain::StorageKind::PERSISTENT,
+                    &key
+                ),
+                raw
+            );
+            <EthBridge as frame_support::traits::Hooks<BlockNumber>>::offchain_worker(1);
+            assert_eq!(
+                state.storage_read::<u64>(crate::STORAGE_BOOTSTRAP_READY_KEY),
+                Some(0)
+            );
+        }
+        assert!(state
+            .http_requests()
+            .iter()
+            .all(|r| r["method"] != "eth_getLogs"));
+    });
+}
+
+#[test]
 fn http_start_deadline_and_body_errors_are_retryable_and_do_not_advance_scan() {
     for fault in [HttpFault::Start, HttpFault::Deadline, HttpFault::ReadBody] {
         let (mut ext, _) = ExtBuilder::default().build();

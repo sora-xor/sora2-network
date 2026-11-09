@@ -34,13 +34,13 @@
 
 use codec::Encode;
 use framenode_runtime::eth_bridge::{
-    self, PeerConfig, STORAGE_BOOTSTRAP_READY_KEY, STORAGE_ETH_NODE_PARAMS,
+    self, STORAGE_BOOTSTRAP_READY_KEY, STORAGE_ETH_NODE_PARAMS,
     STORAGE_LOCAL_SIGNING_KEY_READY_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_MARKER_KEY,
     STORAGE_PEER_SECRET_KEY, STORAGE_SIDECHAIN_RPC_CONFIGURED_KEY,
     STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY, STORAGE_SUB_NODE_URL_KEY,
 };
 use framenode_runtime::opaque::Block;
-use framenode_runtime::{self, BeefyId, Runtime, RuntimeApi};
+use framenode_runtime::{self, BeefyId, RuntimeApi};
 use log::debug;
 use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, BlockBackend, StorageProvider};
@@ -94,7 +94,12 @@ type FullBabeBlockImport = sc_consensus_babe::BabeBlockImport<
     FullSelectChain,
 >;
 type RecoveryBabeBlockImport = crate::recovery::RecoveryBlockImport<FullBabeBlockImport>;
-type BridgePeerConfig = PeerConfig<<Runtime as eth_bridge::Config>::NetworkId>;
+#[derive(Clone, Debug, serde::Deserialize)]
+struct BridgePeerConfig {
+    networks: std::collections::BTreeMap<framenode_runtime::NetworkId, eth_bridge::NodeParams>,
+    #[serde(default)]
+    recovery_scan_start: Option<crate::bridge_scan_cursor::ScanStart>,
+}
 const GRANDPA_JUSTIFICATION_PERIOD: u32 = 512;
 
 // If we're using prometheus, use a registry with a prefix of `polkadot`.
@@ -370,6 +375,7 @@ fn initialize_bridge_offchain_storage<S: OffchainStorage>(
     marker: &[u8],
     peer_config: BridgePeerConfig,
     rpc_listen_addr: Option<std::net::SocketAddr>,
+    restored_cursors: std::collections::BTreeMap<framenode_runtime::NetworkId, u64>,
 ) -> Result<BTreeSet<framenode_runtime::NetworkId>, ServiceError> {
     // Validate all fallible local configuration before publishing a ready marker.
     let rpc_url = bridge_rpc_url(rpc_listen_addr)?;
@@ -377,6 +383,13 @@ fn initialize_bridge_offchain_storage<S: OffchainStorage>(
         return Err(ServiceError::Other(
             "Ethereum bridge node config must contain at least one network.".into(),
         ));
+    }
+    for (network, height) in restored_cursors {
+        storage.set(
+            STORAGE_PREFIX,
+            &eth_bridge::eth_scan_cursor_key(network),
+            &height.encode(),
+        );
     }
     let mut network_ids = BTreeSet::new();
     for (net_id, params) in peer_config.networks {
@@ -576,11 +589,36 @@ pub fn new_partial(
                     .into(),
             )
         })?;
+        let restored_cursors = if recovery.is_some() {
+            crate::bridge_scan_cursor::prepare(
+                &storage,
+                peer_config.networks.keys().copied(),
+                peer_config.recovery_scan_start.as_ref(),
+                || {
+                    let path = bridge_config_path(config)
+                        .map_err(|e| e.to_string())?
+                        .with_file_name("eth-scan-cursors.json");
+                    std::fs::read(&path)
+                        .map_err(|e| format!("Cannot read HASHI scan backup at {path:?}: {e}"))
+                },
+                |backup| {
+                    let info = client.info();
+                    let hash = client
+                        .hash(backup.source_number)
+                        .map_err(|e| e.to_string())?;
+                    backup.verify_history(info.genesis_hash, info.finalized_number, hash)
+                },
+            )
+            .map_err(ServiceError::Other)?
+        } else {
+            Default::default()
+        };
         let network_ids = initialize_bridge_offchain_storage(
             &mut storage,
             &marker,
             peer_config,
             local_rpc_listen_addr(config),
+            restored_cursors,
         )?;
         log::info!(
             "Ethereum bridge peer initialized for networks: {:?}",
@@ -598,6 +636,7 @@ pub fn new_partial(
         .and_then(|registry| {
             crate::eth_bridge_metrics::Metrics::register(
                 registry,
+                client.clone(),
                 backend.clone(),
                 std::time::Duration::from_secs(6),
             )
@@ -944,12 +983,14 @@ where
 
     if config.offchain_worker.enabled {
         use crate::guardian_halt::worker_guard::{
-            WorkerGuard, WorkerKeystore, WorkerPool, WorkerStorage,
+            WorkerGuard, WorkerKeystore, WorkerPasses, WorkerPool,
         };
         let guard = WorkerGuard {
             client: client.clone(),
             backend: backend.clone(),
         };
+        let storage = backend.offchain_storage();
+        let passes = WorkerPasses::default();
         let offchain_workers =
             sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
                 runtime_api_provider: client.clone(),
@@ -958,14 +999,22 @@ where
                     inner: keystore_container.keystore(),
                     guard: guard.clone(),
                 })),
-                offchain_db: backend.offchain_storage().map(WorkerStorage),
+                // Each per-block runtime API gets its own storage extension and
+                // pass token; other offchain storage uses the original backend.
+                offchain_db: None::<sc_offchain::NoOffchainStorage>,
                 transaction_pool: Some(OffchainTransactionPoolFactory::new(WorkerPool {
                     inner: transaction_pool.clone(),
                     guard,
                 })),
                 network_provider: Arc::new(network.clone()),
                 enable_http_requests: true,
-                custom_extensions: |_| vec![],
+                custom_extensions: move |_| {
+                    storage
+                        .clone()
+                        .map(|db| passes.extension(db))
+                        .into_iter()
+                        .collect()
+                },
             })?;
         let worker_client = client.clone();
         let worker_spawner = task_manager.spawn_handle();
@@ -1355,10 +1404,20 @@ mod tests {
                 &marker,
                 config,
                 Some(SocketAddr::from(([0, 0, 0, 0], 9944))),
+                [(0, 5), (42, 17)].into_iter().collect(),
             )
             .expect("local bridge initialization should succeed while halted");
 
             assert_eq!(networks, [0, 42].into_iter().collect());
+            for (network, height) in [(0u32, 5u64), (42, 17)] {
+                assert_eq!(
+                    storage.get(
+                        STORAGE_PREFIX,
+                        &framenode_runtime::eth_bridge::eth_scan_cursor_key(network)
+                    ),
+                    Some(height.encode())
+                );
+            }
             assert_eq!(
                 storage.get(STORAGE_PREFIX, STORAGE_NETWORK_IDS_KEY),
                 Some(networks.encode())
@@ -1400,6 +1459,7 @@ mod tests {
             &sample_bridge_public_key(),
             sample_bridge_peer_config(),
             None,
+            [(0, 5)].into_iter().collect(),
         );
         assert!(result.is_err());
         for key in [

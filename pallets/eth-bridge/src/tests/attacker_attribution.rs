@@ -486,3 +486,41 @@ fn recovery_scanner_canonical_unsupported_asset_does_not_pin_later_deposits() {
         assert_eq!(hashes, BTreeSet::from([invalid_hash, valid_hash]));
     });
 }
+
+#[test]
+fn restored_scan_revisits_the_outage_deposit_if_acceptance_was_not_cached() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        enable_policy();
+        let height = &crate::eth_scan_cursor_key(0);
+        StorageValueRef::persistent(height).set(&5u64);
+        let deposit = receipt(H256::repeat_byte(11));
+        let tip = CONFIRMATION_INTERVAL + 7;
+        let scan = || {
+            push_global_json_rpc_response(types::U64::from(tip));
+            push_global_json_rpc_response(deposit.logs.clone());
+            push_global_json_rpc_response(deposit.clone());
+            EthBridge::handle_ethereum(0, false)
+        };
+
+        set_signed_transaction_creation_results(&[true, false]);
+        assert_ok!(scan());
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+        assert!(state.pending_txs().is_empty());
+        assert_eq!(state.storage_read::<u64>(height), Some(5));
+
+        // A restart loses the accepted but unfinalized pool transaction.
+        state.pool_state.write().transactions.clear();
+        assert_ok!(scan());
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+        assert_eq!(state.pending_txs().len(), 1);
+        assert_eq!(state.storage_read::<u64>(height), Some(8));
+        let from_blocks: Vec<_> = state
+            .http_requests()
+            .into_iter()
+            .filter(|request| request["method"] == "eth_getLogs")
+            .map(|request| request["params"][0]["fromBlock"].clone())
+            .collect();
+        assert_eq!(from_blocks, vec!["0x5", "0x5"]);
+    });
+}

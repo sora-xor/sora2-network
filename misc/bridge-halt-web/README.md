@@ -28,9 +28,12 @@ operator last confirmed, which the node keeps in its offchain database. While th
 differ, the worker does nothing: it signs no withdrawals and imports no deposits. The
 node's log names the halt, and the Prometheus gauge
 `eth_bridge_guardian_halt_stopped` holds its number until acknowledged, including while
-Root's separate recovery latch is set. A zero value means no guardian halt is outstanding.
-Spec 141 requires a 4.8.15 or compatible guarded node for HASHI work. A peer still
-running an older host remains idle. The node checks the current chain state when a
+Root's separate recovery latch is set. The exporter reads the current best-chain signal
+and local acknowledgement. A zero value means no guardian halt is outstanding.
+The corrected spec-141 candidate requires the node guard that keeps one HASHI pass
+active until it finishes, even when an Ethereum RPC stalls beyond the original lease.
+Deploy the corrected node binary before enacting this candidate. Peers providing only
+the earlier signing guard remain idle on the corrected runtime. The node checks the current chain state when a
 worker signs or submits bridge transactions. Approvals already handed to the pool
 before a halt can still propagate and be included afterward.
 
@@ -108,10 +111,35 @@ framenode <usual flags> --offchain-worker always --bridge-resume-after-halt 3
 ```
 
 A replacement peer needs its current HASHI key in the node keystore, a local HTTP RPC
-listener, and a `bridge/eth.json` in the recovery chain configuration directory with
-the peer's sidechain RPC settings. Start it with `--offchain-worker always` to
-initialize the public peer marker and network configuration on the fresh database.
-Once it has synced past the finalized halt, restart it with both flags as shown above.
+listener, and `bridge/eth.json` in the recovery chain configuration directory. Each
+configured network needs its first unscanned Ethereum height. The node preserves
+existing SCALE `u64` cursors and validates the complete set before publishing the
+peer marker. Missing or malformed cursors cannot default to the current Ethereum tip.
+
+For an empty or partial database, use a trusted, reconciled pre-outage snapshot of a
+peer that continuously scanned these networks. Serve the **snapshot copy** on loopback
+with workers stopped and its local offchain read RPC available. Export the cursor
+manifest for the required network IDs (here, network 0):
+
+```sh
+python3 misc/incident_recovery/export_hashi_scan_cursors.py \
+  --rpc http://127.0.0.1:9944 --output eth-scan-cursors.json 0
+```
+
+The exporter refuses a moving snapshot or outstanding bridge retries. Only use heights
+known to precede all unreconciled deposits. A valid chain anchor verifies the source
+fork; the operator's trusted snapshot supplies the actual scan progress. Copy the
+file into the replacement chain's `bridge/` directory. In `bridge/eth.json`, set
+`"recovery_scan_start": {"backup": {"sha256": "0x<exported SHA-256>"}}` alongside
+`networks`. First sync the replacement through the source block without bridge
+bootstrap. On restart with `--offchain-worker always`, the node verifies the exact
+file digest, genesis hash, and source block against its own finalized history before
+initializing any missing network. Existing heights are never advanced by the backup.
+
+When a trustworthy pre-outage cursor is unavailable, set
+`"recovery_scan_start": "genesis"` to scan missing networks from Ethereum block 0.
+Use a sidechain RPC serving historical logs for the replay. Once the guardian halt
+is finalized, acknowledge it with the restart flags above.
 
 `Confirmed guardian halt #3` acknowledges that halt on this peer. Check the peer's
 bootstrap, signing-key, and guardian-halt gauges. Root's recovery latch and peer

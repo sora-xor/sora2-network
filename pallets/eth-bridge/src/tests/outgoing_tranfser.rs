@@ -1886,7 +1886,11 @@ fn zero_outgoing_transfer_is_rejected_before_nonce_queue_or_balance_changes() {
 
 #[test]
 fn guardian_halt_guard_denied_signature_retries_a_partial_approval_next_block() {
-    for fail_submission in [false, true] {
+    for (fail_submission, signing, accepted) in [
+        (false, &[false][..], false),
+        (true, &[false][..], false),
+        (false, &[true, false][..], true),
+    ] {
         let (mut ext, mut state) = ExtBuilder::default().build();
         ext.execute_with(|| {
             let net = ETH_NETWORK_ID;
@@ -1914,8 +1918,17 @@ fn guardian_halt_guard_denied_signature_retries_a_partial_approval_next_block() 
             // Refuse signing the outer extrinsic, or refuse its submission and
             // signing again to construct its persistent retry record.
             state.set_should_fail_send_signed_transactions(fail_submission);
-            set_signed_transaction_creation_results(&[false]);
-            state.run_next_offchain_worker_and_dispatch_txs();
+            set_signed_transaction_creation_results(signing);
+            state.run_next_offchain_worker_with_params(
+                crate::CONFIRMATION_INTERVAL,
+                frame_system::Pallet::<Runtime>::block_number() + 1,
+                false,
+            );
+            assert_eq!(
+                state.pool_state.read().transactions.len(),
+                usize::from(accepted)
+            );
+            state.pool_state.write().transactions.clear();
             assert_eq!(crate::RequestApprovals::<Runtime>::get(net, hash).len(), 1);
             assert!(state.pending_txs().is_empty());
             let handled = format!("eth-bridge-ocw::handled-request-{:?}", hash);

@@ -1,17 +1,19 @@
-use codec::Decode;
+use codec::{Decode, DecodeAll};
+use common::bridge_halt::GuardianHalt;
 use framenode_runtime::eth_bridge::{
     OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX, OUTGOING_APPROVAL_FAILURE_FAILED_SIGN,
     OUTGOING_APPROVAL_FAILURE_NO_LOCAL_PEER_KEY, OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT,
     STORAGE_BOOTSTRAP_READY_KEY, STORAGE_FAILED_PENDING_TRANSACTIONS_KEY,
-    STORAGE_GUARDIAN_HALT_STOPPED_KEY, STORAGE_LOCAL_PEER_READY_KEY,
-    STORAGE_LOCAL_SIGNING_KEY_READY_KEY, STORAGE_NETWORK_IDS_KEY,
+    STORAGE_LOCAL_PEER_READY_KEY, STORAGE_LOCAL_SIGNING_KEY_READY_KEY, STORAGE_NETWORK_IDS_KEY,
     STORAGE_OUTGOING_APPROVAL_FAILURES_KEY, STORAGE_OUTGOING_PENDING_REQUESTS_KEY,
-    STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
+    STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY, STORAGE_PEER_MARKER_KEY,
+    STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_RESUMED_AFTER_HALT_KEY,
     STORAGE_SIDECHAIN_RPC_CONFIGURED_KEY, STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY,
     STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY,
 };
 use framenode_runtime::{eth_bridge::offchain::SignedTransactionData, opaque::Block, Runtime};
 use prometheus_endpoint::{register, Gauge, Opts, PrometheusError, Registry, U64};
+use sp_blockchain::HeaderBackend;
 use sp_core::H256;
 use sp_runtime::offchain::OffchainStorage;
 use std::collections::{BTreeMap, BTreeSet};
@@ -40,28 +42,39 @@ where
         })
 }
 
-fn get_offchain_value_or_clear<T, S>(storage: &mut S, key: &[u8], description: &str) -> Option<T>
-where
-    T: Decode,
-    S: OffchainStorage,
-{
-    storage
-        .get(sp_core::offchain::STORAGE_PREFIX, key)
-        .and_then(|value| match T::decode(&mut &value[..]) {
-            Ok(value) => Some(value),
-            Err(e) => {
-                log::error!("Failed to decode {} offchain value: {:?}", description, e);
-                storage.remove(sp_core::offchain::STORAGE_PREFIX, key);
-                log::warn!(
-                    "Cleared stale {} offchain value after decode failure",
-                    description
-                );
-                None
+/// Only the exporter publishes this gauge. OCWs may finish out of order, so
+/// even a recent local metric from an OCW cannot identify the current best fork.
+fn guardian_halt_number(
+    storage: &impl OffchainStorage,
+    read_best: impl FnOnce() -> Result<Option<GuardianHalt>, String>,
+) -> u64 {
+    if storage
+        .get(sp_core::offchain::STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY)
+        .is_none()
+    {
+        return 0;
+    }
+    match read_best() {
+        Ok(None) => 0,
+        Ok(Some(halt)) => {
+            let confirmed = storage
+                .get(
+                    sp_core::offchain::STORAGE_PREFIX,
+                    STORAGE_RESUMED_AFTER_HALT_KEY,
+                )
+                .and_then(|bytes| GuardianHalt::decode_all(&mut &bytes[..]).ok());
+            if confirmed == Some(halt) {
+                0
+            } else {
+                u64::from(halt.number)
             }
-        })
+        }
+        Err(_) => u64::MAX,
+    }
 }
 
 pub struct Metrics<B> {
+    client: Arc<crate::service::FullClient>,
     pub backend: Arc<B>,
     pub period: std::time::Duration,
     pub bootstrap_ready: Gauge<U64>,
@@ -88,6 +101,7 @@ where
 {
     pub fn register(
         registry: &Registry,
+        client: Arc<crate::service::FullClient>,
         backend: Arc<B>,
         period: std::time::Duration,
     ) -> Result<Self, PrometheusError> {
@@ -170,6 +184,7 @@ where
         }
 
         Ok(Self {
+            client,
             bootstrap_ready: register(
                 Gauge::new(
                     "eth_bridge_bootstrap_ready",
@@ -233,19 +248,21 @@ where
 
     pub async fn run(self) {
         loop {
-            if let Some(mut storage) = self.backend.offchain_storage() {
+            if let Some(storage) = self.backend.offchain_storage() {
                 self.bootstrap_ready.set(
                     get_offchain_value(&storage, STORAGE_BOOTSTRAP_READY_KEY, "bootstrap ready")
                         .unwrap_or(0),
                 );
-                self.guardian_halt_stopped.set(
-                    get_offchain_value(
-                        &storage,
-                        STORAGE_GUARDIAN_HALT_STOPPED_KEY,
-                        "guardian halt stopped",
-                    )
-                    .unwrap_or(0),
-                );
+                {
+                    let _import = self.backend.get_import_lock().read();
+                    self.guardian_halt_stopped
+                        .set(guardian_halt_number(&storage, || {
+                            crate::guardian_halt::halt_at(
+                                &self.client,
+                                self.client.info().best_hash,
+                            )
+                        }));
+                }
                 self.local_signing_key_ready.set(
                     get_offchain_value(
                         &storage,
@@ -263,8 +280,8 @@ where
                     .unwrap_or(0),
                 );
 
-                let pending_transactions = get_offchain_value_or_clear(
-                    &mut storage,
+                let pending_transactions = get_offchain_value(
+                    &storage,
                     STORAGE_PENDING_TRANSACTIONS_KEY,
                     "pending transactions",
                 )
@@ -272,8 +289,8 @@ where
                 .unwrap_or(0);
                 self.pending_transactions.set(pending_transactions);
 
-                let failed_pending_transactions = get_offchain_value_or_clear(
-                    &mut storage,
+                let failed_pending_transactions = get_offchain_value(
+                    &storage,
                     STORAGE_FAILED_PENDING_TRANSACTIONS_KEY,
                     "failed pending transactions",
                 )
@@ -378,13 +395,57 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{get_offchain_value, get_offchain_value_or_clear};
+    use super::get_offchain_value;
     use codec::Encode;
     use sp_core::offchain::storage::InMemOffchainStorage;
     use sp_core::offchain::OffchainStorage;
 
     #[test]
-    fn invalid_value_is_cleared_after_decode_failure() {
+    fn delayed_worker_status_cannot_overwrite_the_current_guardian_gauge() {
+        use super::{
+            guardian_halt_number, GuardianHalt, STORAGE_PEER_MARKER_KEY,
+            STORAGE_RESUMED_AFTER_HALT_KEY,
+        };
+        use framenode_runtime::eth_bridge::STORAGE_GUARDIAN_HALT_STOPPED_KEY;
+        use sp_core::offchain::STORAGE_PREFIX;
+        let mut storage = InMemOffchainStorage::default();
+        let halt = GuardianHalt {
+            number: 2,
+            block: 99,
+        };
+        storage.set(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY, &[1]);
+        // The N-1 worker finishes after N and publishes zero from its old snapshot.
+        storage.set(
+            STORAGE_PREFIX,
+            STORAGE_GUARDIAN_HALT_STOPPED_KEY,
+            &0u64.encode(),
+        );
+        assert_eq!(guardian_halt_number(&storage, || Ok(Some(halt))), 2);
+        storage.set(
+            STORAGE_PREFIX,
+            STORAGE_RESUMED_AFTER_HALT_KEY,
+            &halt.encode(),
+        );
+        storage.set(
+            STORAGE_PREFIX,
+            STORAGE_GUARDIAN_HALT_STOPPED_KEY,
+            &2u64.encode(),
+        );
+        assert_eq!(guardian_halt_number(&storage, || Ok(Some(halt))), 0);
+        let fork = GuardianHalt {
+            number: 2,
+            block: 100,
+        };
+        assert_eq!(guardian_halt_number(&storage, || Ok(Some(fork))), 2);
+        assert_eq!(guardian_halt_number(&storage, || Ok(None)), 0);
+        assert_eq!(
+            guardian_halt_number(&storage, || Err("unreadable".into())),
+            u64::MAX
+        );
+    }
+
+    #[test]
+    fn metrics_preserve_a_queue_after_decode_failure() {
         let mut storage = InMemOffchainStorage::default();
         storage.set(
             sp_core::offchain::STORAGE_PREFIX,
@@ -392,12 +453,12 @@ mod tests {
             &[0xff, 0x00, 0x01],
         );
 
-        let value = get_offchain_value_or_clear::<u32, _>(&mut storage, b"bad-key", "bad key");
+        let value = get_offchain_value::<u32, _>(&storage, b"bad-key", "bad key");
 
         assert!(value.is_none());
         assert_eq!(
             storage.get(sp_core::offchain::STORAGE_PREFIX, b"bad-key"),
-            None
+            Some(vec![0xff, 0x00, 0x01])
         );
     }
 

@@ -306,12 +306,14 @@ impl<T: Config> Pallet<T> {
             };
             match Self::send_signed_transaction(&signer, &call) {
                 Some((account, res)) => {
-                    retry_cached |= Self::add_pending_extrinsic(call, &account, res.is_ok());
+                    let cached = Self::add_pending_extrinsic(call, &account, res.is_ok());
+                    retry_cached |= cached;
                     match res {
-                        Ok(_) => {
+                        Ok(()) if cached => {
                             trace!("Signed transaction sent");
                             return Ok(RequestHandling::Handled);
                         }
+                        Ok(()) => return Err(Error::<T>::FailedToSignMessage),
                         Err(e) => {
                             error!(
                                 "[{:?}] Failed in handle_outgoing_transfer. network_id={:?} request_hash={:?} error={:?}",
@@ -579,6 +581,19 @@ impl<T: Config> Pallet<T> {
         .map(|()| RequestHandling::Handled)
     }
 
+    pub(crate) fn eth_scan_cursor(network: T::NetworkId) -> Result<Option<u64>, Error<T>> {
+        sp_io::offchain::local_storage_get(
+            sp_core::offchain::StorageKind::PERSISTENT,
+            &crate::eth_scan_cursor_key(network),
+        )
+        .map(|bytes| {
+            <[u8; 8]>::try_from(bytes.as_slice())
+                .map(u64::from_le_bytes)
+                .map_err(|_| Error::<T>::ReadStorageError)
+        })
+        .transpose()
+    }
+
     /// Parses the logs emitted on the Sidechain's contract to an `IncomingRequest` and imports it
     /// to Thischain.
     fn handle_logs(
@@ -822,6 +837,13 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
         skip_log_request: bool,
     ) -> Result<(u64, bool), Error<T>> {
+        let key = crate::eth_scan_cursor_key(network_id);
+        let s_eth_to_handle_from_height = StorageValueRef::persistent(&key);
+        let from_block_opt = Self::eth_scan_cursor(network_id)?;
+        if from_block_opt.is_none() && sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)
+        {
+            return Err(Error::<T>::ReadStorageError);
+        }
         let string = format!("eth-bridge-ocw::eth-height-{:?}", network_id);
         let s_eth_height = StorageValueRef::persistent(string.as_bytes());
         let current_eth_height = match Self::load_current_height(network_id) {
@@ -836,9 +858,6 @@ impl<T: Config> Pallet<T> {
         };
         s_eth_height.set(&current_eth_height);
 
-        let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
-        let s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
-        let from_block_opt = s_eth_to_handle_from_height.get::<u64>().ok().flatten();
         if from_block_opt.is_none() {
             s_eth_to_handle_from_height.set(&current_eth_height);
         }

@@ -327,11 +327,12 @@ impl<T: Config> Pallet<T> {
         match result {
             Some((account, res)) => {
                 let retry_cached = Self::add_pending_extrinsic(call, &account, res.is_ok());
+                // Pool acceptance alone does not survive a restart. Keep the
+                // scanner on this deposit until its retry record is durable.
+                if !retry_cached {
+                    return Err(Error::<T>::FailedToSignMessage);
+                }
                 if let Err(e) = res {
-                    if !retry_cached {
-                        // Re-signing for the retry record can be refused by a concurrent halt.
-                        return Err(Error::<T>::FailedToSignMessage);
-                    }
                     error!(
                         "[{:?}] Failed to send signed transaction: {:?}",
                         account.id, e

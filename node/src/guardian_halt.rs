@@ -33,7 +33,10 @@ fn finalized_halt(client: &FullClient) -> Result<Option<GuardianHalt>, String> {
     })
 }
 
-fn halt_at(client: &FullClient, hash: sp_core::H256) -> Result<Option<GuardianHalt>, String> {
+pub(crate) fn halt_at(
+    client: &FullClient,
+    hash: sp_core::H256,
+) -> Result<Option<GuardianHalt>, String> {
     let value = client
         .storage(hash, &StorageKey(GUARDIAN_HALT_STORAGE_KEY.to_vec()))
         .map_err(|error| error.to_string())?;

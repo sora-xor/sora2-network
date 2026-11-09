@@ -107,7 +107,10 @@ impl TransactionExtension<RuntimeCall> for AuthorizedHeartbeatPayment {
         let retirement = <Runtime as frame_system::Config>::DbWeight::get()
             .reads(8)
             .saturating_add(Weight::from_parts(4_000_000, 16_384));
-        self.0.weight(call).saturating_add(retirement)
+        self.0
+            .weight(call)
+            .saturating_add(retirement)
+            .saturating_add(crate::operational_admission::weight(call))
     }
 
     fn validate(
@@ -163,9 +166,9 @@ impl TransactionExtension<RuntimeCall> for AuthorizedHeartbeatPayment {
         {
             return Err(InvalidTransaction::BadSigner.into());
         }
-        if let Some(frame_system::RawOrigin::Signed(account)) = origin.as_system_ref() {
-            crate::operational_admission::validate(account, call, info.class)?;
-        }
+        // DispatchTransaction::validate_and_prepare runs validate against the
+        // current block immediately before prepare. None of the preceding
+        // extensions changes collective state; do not scan the batch twice.
         match val {
             Some(val) => self.0.prepare(val, origin, call, info, len).map(Some),
             None if Self::is_authorized_heartbeat(origin, call) => {

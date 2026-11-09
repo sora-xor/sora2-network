@@ -183,9 +183,17 @@ pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_BOOTSTRAP_READY_KEY: &[u8] = b"eth-bridge-ocw::bootstrap-ready";
 pub const STORAGE_LOCAL_SIGNING_KEY_READY_KEY: &[u8] = b"eth-bridge-ocw::local-signing-key-ready";
 pub const STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY: &[u8] = b"eth-bridge-ocw::substrate-rpc-configured";
+/// Persistent first-unscanned Ethereum block, also restored by the peer node.
+pub fn eth_scan_cursor_key<N: core::fmt::Debug>(network: N) -> Vec<u8> {
+    alloc::format!("eth-bridge-ocw::eth-to-handle-from-height-{network:?}").into_bytes()
+}
+
 /// Read-only OCW host capability. Supporting nodes synthesize this value; it is
 /// never persisted, so downgrading a node cannot leave a stale permission behind.
 pub const STORAGE_LIVE_SIGNING_GUARD_KEY: &[u8] = b"eth-bridge-ocw::live-signing-guard:v1";
+/// v2 adds exclusive, process-lifetime ownership for the entire HASHI pass.
+pub const STORAGE_SERIAL_SIGNING_GUARD_KEY: &[u8] = b"eth-bridge-ocw::live-signing-guard:v2";
+pub const STORAGE_WORKER_LOCK_KEY: &[u8] = b"eth-bridge-ocw::lock";
 /// The guardian halt this node's operator confirmed with `--bridge-resume-after-halt`,
 /// as a SCALE `common::bridge_halt::GuardianHalt`. The node writes it at startup; the
 /// workers run only while it names the newest halt on chain.
@@ -564,25 +572,42 @@ pub mod pallet {
                 debug!("No local bridge peer account configured. Skipping off-chain procedure.");
                 return;
             }
-            crate::offchain::set_offchain_metric_u64(STORAGE_BOOTSTRAP_READY_KEY, 1);
+            let cursors_ready = !sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)
+                || StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY)
+                    .get::<BTreeSet<T::NetworkId>>()
+                    .ok()
+                    .flatten()
+                    .is_some_and(|nets| {
+                        !nets.is_empty()
+                            && nets
+                                .into_iter()
+                                .all(|net| matches!(Self::eth_scan_cursor(net), Ok(Some(_))))
+                    });
+            crate::offchain::set_offchain_metric_u64(
+                STORAGE_BOOTSTRAP_READY_KEY,
+                u64::from(cursors_ready),
+            );
 
             // A guardian halt stops this node's workers until its operator confirms
             // that halt with `--bridge-resume-after-halt`. Nothing on chain restarts them.
-            if crate::offchain::stopped_by_guardian_halt() || crate::recovery::halted() {
+            if crate::offchain::stopped_by_guardian_halt()
+                || crate::recovery::halted()
+                || !cursors_ready
+            {
                 return;
             }
             // A pre-upgrade host only sees the block that spawned this worker.
             // Require the live signing/submission guard before doing any work.
             let guarded_host = sp_io::offchain::local_storage_get(
                 sp_core::offchain::StorageKind::PERSISTENT,
-                STORAGE_LIVE_SIGNING_GUARD_KEY,
+                STORAGE_SERIAL_SIGNING_GUARD_KEY,
             );
             if guarded_host.as_deref() != Some(&[1]) {
                 return;
             }
 
             let mut lock = StorageLock::<'_, Time>::with_deadline(
-                b"eth-bridge-ocw::lock",
+                STORAGE_WORKER_LOCK_KEY,
                 sp_core::offchain::Duration::from_millis(100000),
             );
             let guard = lock.try_lock();

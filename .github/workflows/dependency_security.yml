@@ -13,6 +13,9 @@ on:
       - "rust-toolchain.toml"
       - "vendor/sora-secp256k1-compat/**"
       - "misc/runtime_upgrade/**"
+      - "runtime-upgrade-4.8.15/**"
+      - "misc/incident_recovery/*hashi_scan_cursors.py"
+      - "council-runtime-4.8.15.zip*"
       - "misc/dependency_security/**"
       - "runtime-rehearsal-dependency-migrations-2026-10-25/**"
       - "runtime-rehearsal-sdk2609-2026-10-25/**"
@@ -37,6 +40,9 @@ on:
       - "rust-toolchain.toml"
       - "vendor/sora-secp256k1-compat/**"
       - "misc/runtime_upgrade/**"
+      - "runtime-upgrade-4.8.15/**"
+      - "misc/incident_recovery/*hashi_scan_cursors.py"
+      - "council-runtime-4.8.15.zip*"
       - "misc/dependency_security/**"
       - "runtime-rehearsal-dependency-migrations-2026-10-25/**"
       - "runtime-rehearsal-sdk2609-2026-10-25/**"
@@ -117,6 +123,7 @@ jobs:
           "$RUNNER_TEMP/runtime-tooling/bin/python" misc/runtime_upgrade/install_dependencies.py
           "$RUNNER_TEMP/runtime-tooling/bin/python" -m pip check
           "$RUNNER_TEMP/runtime-tooling/bin/python" -m unittest discover -s misc/runtime_upgrade/tests -v
+          "$RUNNER_TEMP/runtime-tooling/bin/python" -m unittest discover -s misc/incident_recovery -p test_export_hashi_scan_cursors.py -v
       - name: Audit installed Python distributions
         run: |
           site_packages=$("$RUNNER_TEMP/runtime-tooling/bin/python" -c 'import sysconfig; print(sysconfig.get_path("purelib"))')

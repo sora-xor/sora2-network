@@ -565,6 +565,222 @@ fn a_batch_may_close_after_its_deciding_vote() {
 }
 
 #[test]
+fn two_deciding_votes_can_close_both_motions_in_order() {
+    ext().execute_with(|| {
+        setup();
+        let council = members();
+        let [first, second, _] = &council[..] else {
+            unreachable!()
+        };
+        for kind in 0..3 {
+            let a = remark(&[kind, 1]);
+            let b = remark(&[kind, 2]);
+            let (ha, ia) = motion(first, 2, &a);
+            let (hb, ib) = motion(first, 2, &b);
+            for (hash, index) in [(ha, ia), (hb, ib)] {
+                assert_ok!(Council::vote(
+                    RuntimeOrigin::signed(account(first)),
+                    hash,
+                    index,
+                    true
+                ));
+            }
+            let calls = vec![
+                vote(ha, ia, true),
+                vote(hb, ib, true),
+                exact_close(&a, ia),
+                exact_close(&b, ib),
+            ];
+            let call = match kind {
+                0 => pallet_utility::Call::batch { calls },
+                1 => pallet_utility::Call::batch_all { calls },
+                _ => pallet_utility::Call::force_batch { calls },
+            };
+            assert_ok!(admitted(RuntimeCall::Utility(call), second));
+            for hash in [ha, hb] {
+                assert!(council_event(pallet_collective::Event::Approved {
+                    proposal_hash: hash
+                }));
+                assert!(
+                    pallet_collective::Voting::<Runtime, CouncilCollective>::get(hash).is_none()
+                );
+            }
+        }
+    });
+}
+
+#[test]
+fn a_conditional_vote_preserves_earlier_votes_and_does_not_grant_membership() {
+    ext().execute_with(|| {
+        setup();
+        let council = members();
+        let [first, second, _] = &council[..] else {
+            unreachable!()
+        };
+        let a = remark(b"first");
+        let b = remark(b"conditional");
+        let (ha, ia) = motion(first, 2, &a);
+        let (hb, ib) = motion(first, 2, &b);
+        for (hash, index) in [(ha, ia), (hb, ib)] {
+            assert_ok!(Council::vote(
+                RuntimeOrigin::signed(account(first)),
+                hash,
+                index,
+                true
+            ));
+        }
+        let conditional = RuntimeCall::Utility(pallet_utility::Call::if_else {
+            main: Box::new(vote(hb, ib, true)),
+            fallback: Box::new(vote(hb, ib, true)),
+        });
+        let steps = vec![
+            vote(ha, ia, true),
+            conditional,
+            exact_close(&a, ia),
+            exact_close(&b, ib),
+        ];
+        let batch = |calls| RuntimeCall::Utility(pallet_utility::Call::batch_all { calls });
+        let mut bad = steps.clone();
+        // Neither a harmless proposal nor a conditional vote can make this
+        // council member a technical committee member.
+        bad.push(RuntimeCall::TechnicalCommittee(
+            pallet_collective::Call::vote {
+                proposal: hb,
+                index: ib,
+                approve: true,
+            },
+        ));
+        rejected(batch(bad), second, InvalidTransaction::BadSigner);
+        assert_ok!(admitted(batch(steps), second));
+        for hash in [ha, hb] {
+            assert!(council_event(pallet_collective::Event::Approved {
+                proposal_hash: hash
+            }));
+        }
+    });
+}
+
+#[test]
+fn a_close_that_changes_committee_membership_uses_the_new_seat_count() {
+    ext().execute_with(|| {
+        setup();
+        let council = members();
+        let [first, second, third] = &council[..] else {
+            unreachable!()
+        };
+        assert_ok!(crate::TechnicalMembership::reset_members(
+            RuntimeOrigin::root(),
+            council.iter().map(account).collect()
+        ));
+        let tc_proposal = remark(b"committee motion");
+        let hash = <Runtime as frame_system::Config>::Hashing::hash_of(&tc_proposal);
+        let index = pallet_collective::ProposalCount::<Runtime, TechnicalCollective>::get();
+        assert_ok!(TechnicalCommittee::propose(
+            RuntimeOrigin::signed(account(first)),
+            2,
+            Box::new(tc_proposal.clone()),
+            tc_proposal.encoded_size() as u32
+        ));
+        assert_ok!(TechnicalCommittee::vote(
+            RuntimeOrigin::signed(account(first)),
+            hash,
+            index,
+            false
+        ));
+        let finish = RuntimeCall::TechnicalCommittee(pallet_collective::Call::close {
+            proposal_hash: hash,
+            index,
+            proposal_weight_bound: Weight::zero(),
+            length_bound: 0,
+        });
+        // The motion is undecided at three seats. Removing an abstaining member
+        // makes two ayes impossible, so close will disapprove with zero bounds.
+        rejected(finish.clone(), second, InvalidTransaction::Call);
+        let remove = RuntimeCall::TechnicalMembership(pallet_membership::Call::remove_member {
+            who: account(third).into(),
+        });
+        let (remove_hash, remove_index) = motion(first, 2, &remove);
+        assert_ok!(Council::vote(
+            RuntimeOrigin::signed(account(first)),
+            remove_hash,
+            remove_index,
+            true
+        ));
+        let deciding = vote(remove_hash, remove_index, true);
+        let execute = exact_close(&remove, remove_index);
+        let batch = |calls| RuntimeCall::Utility(pallet_utility::Call::batch_all { calls });
+        // A preceding approved motion does not confer Root on the signed batch.
+        rejected(
+            batch(vec![deciding.clone(), execute.clone(), set_storage()]),
+            second,
+            InvalidTransaction::BadSigner,
+        );
+        assert_ok!(admitted(batch(vec![deciding, execute, finish]), second));
+        assert!(!TechnicalCommittee::is_member(&account(third)));
+        assert!(System::events().iter().any(|e| e.event
+            == RuntimeEvent::TechnicalCommittee(pallet_collective::Event::Disapproved {
+                proposal_hash: hash
+            })));
+    });
+}
+
+#[test]
+fn skipped_closes_keep_their_admission_weight_after_batch_all_rolls_back() {
+    ext().execute_with(|| {
+        setup();
+        let council = members();
+        let [first, second, _] = &council[..] else {
+            unreachable!()
+        };
+        let proposal = remark(b"ready to close");
+        let (hash, index) = motion(first, 2, &proposal);
+        for signer in [first, second] {
+            assert_ok!(Council::vote(
+                RuntimeOrigin::signed(account(signer)),
+                hash,
+                index,
+                true
+            ));
+        }
+        let close = exact_close(&proposal, index);
+        let run = |count| {
+            let call = RuntimeCall::Utility(pallet_utility::Call::batch_all {
+                calls: vec![close.clone(); count],
+            });
+            let admission = crate::operational_admission::weight(&call);
+            let extension = signed(call.clone(), &stranger())
+                .get_dispatch_info()
+                .extension_weight;
+            // First close succeeds, the second fails and rolls the first back.
+            assert!(admitted(call, &stranger()).is_err());
+            assert!(pallet_collective::Voting::<Runtime, CouncilCollective>::contains_key(hash));
+            (admission, extension, transaction_weight().1)
+        };
+        let (admit_two, ext_two, used_two) = run(2);
+        let (admit_six, ext_six, used_six) = run(6);
+        let skipped = admit_six.saturating_sub(admit_two);
+        assert!(skipped.ref_time() > 0 && skipped.proof_size() > 0);
+        assert_eq!(ext_six.saturating_sub(ext_two), skipped);
+        assert!(used_six.saturating_sub(used_two).all_gte(skipped));
+        let mixed = RuntimeCall::Utility(pallet_utility::Call::batch_all {
+            calls: vec![remark(b"normal"), close],
+        });
+        assert_eq!(crate::operational_admission::weight(&mixed), Weight::zero());
+        #[cfg(feature = "private-net")]
+        {
+            let normal_sudo = RuntimeCall::Sudo(pallet_sudo::Call::sudo {
+                call: Box::new(remark(b"normal priority")),
+            });
+            assert_eq!(normal_sudo.get_dispatch_info().class, DispatchClass::Normal);
+            assert_eq!(
+                crate::operational_admission::weight(&normal_sudo),
+                Weight::zero()
+            );
+        }
+    });
+}
+
+#[test]
 fn technical_committee_can_close_an_early_disapproval_in_its_voting_batch() {
     ext().execute_with(|| {
         setup();

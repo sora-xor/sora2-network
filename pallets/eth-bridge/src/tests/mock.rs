@@ -926,6 +926,7 @@ impl ExtBuilder {
             _ => unreachable!("only ecdsa bridge peers are expected in tests"),
         };
         offchain_storage.set(b"", crate::STORAGE_LIVE_SIGNING_GUARD_KEY, &[1]);
+        offchain_storage.set(b"", crate::STORAGE_SERIAL_SIGNING_GUARD_KEY, &[1]);
         offchain_storage.set(b"", STORAGE_PEER_MARKER_KEY, &ocw_marker.encode());
         // Keep legacy key populated for backward-compatibility paths.
         offchain_storage.set(b"", STORAGE_PEER_SECRET_KEY, &ocw_marker.encode());
