@@ -414,8 +414,8 @@ mod tests {
 
     #[test]
     fn an_expired_lease_cannot_lose_pending_or_failed_entries_to_an_overlapping_pass() {
-        use sp_core::offchain::storage::InMemOffchainStorage;
-        let db = InMemOffchainStorage::default();
+        use sp_core::offchain::testing::TestPersistentOffchainDB;
+        let db = TestPersistentOffchainDB::new();
         let passes = WorkerPasses::default();
         let mut a = passes.storage(db.clone());
         let mut b = passes.storage(db.clone());
@@ -445,16 +445,16 @@ mod tests {
         drop(b); // runtime error/trap dropped its per-invocation extension without unlocking.
         assert!(a.compare_and_set(STORAGE_PREFIX, lock, None, &300u64.encode()));
         assert!(
-            db.get(STORAGE_PREFIX, lock).is_none(),
+            OffchainStorage::get(&db, STORAGE_PREFIX, lock).is_none(),
             "a node restart cannot retain the lease"
         );
     }
 
     #[test]
     fn per_invocation_sdk_database_extension_releases_an_abandoned_pass() {
-        use sp_core::offchain::{storage::InMemOffchainStorage, StorageKind::PERSISTENT};
+        use sp_core::offchain::{testing::TestPersistentOffchainDB, StorageKind::PERSISTENT};
         let passes = WorkerPasses::default();
-        let db = InMemOffchainStorage::default();
+        let db = TestPersistentOffchainDB::new();
         let mut older = sp_io::TestExternalities::default();
         older.register_extension(passes.extension(db.clone()));
         let mut newer = sp_io::TestExternalities::default();
