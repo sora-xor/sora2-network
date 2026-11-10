@@ -1,0 +1,5 @@
+error: Invalid pallet::storage, expect item type.
+  --> tests/pallet_ui/storage_wrong_item.rs:36:2
+   |
+36 |     impl Foo {}
+   |     ^^^^

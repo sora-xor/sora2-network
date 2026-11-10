@@ -7,12 +7,15 @@ use crate::{
     XorFee,
 };
 use common::{AssetInfoProvider, VAL};
-use ed25519_dalek_iroha::{Digest, Keypair, PublicKey, SecretKey};
+use ed25519_dalek::{
+    hazmat::{raw_sign, ExpandedSecretKey},
+    VerifyingKey,
+};
 use frame_support::{
     assert_err,
     dispatch::{GetDispatchInfo, Pays},
 };
-use sha3::Sha3_256;
+use sha3::{Digest, Sha3_256, Sha3_512};
 use sp_core::sr25519;
 use sp_runtime::{generic::Era, DispatchResult, FixedPointNumber, FixedU128};
 
@@ -26,7 +29,7 @@ fn hex(bytes: &[u8]) -> String {
 fn raw_map(name: &[u8], key: impl Encode, value: impl Encode) {
     let encoded = key.encode();
     let mut storage_key = frame_support::storage::storage_prefix(b"IrohaMigration", name).to_vec();
-    storage_key.extend(sp_core::blake2_128(&encoded));
+    storage_key.extend(sp_io::hashing::blake2_128(&encoded));
     storage_key.extend(encoded);
     sp_io::storage::set(&storage_key, &value.encode());
 }
@@ -68,12 +71,9 @@ fn fixture(fail_settlement: bool) -> (sr25519::Pair, AccountId, RuntimeCall) {
         CLAIM as i128,
     ));
     raw_map(b"Balances", ADDRESS.to_string(), CLAIM);
-    let secret = SecretKey::from_bytes(&[71; 32]).unwrap();
-    let key = Keypair {
-        public: PublicKey::from(&secret),
-        secret,
-    };
-    let public = hex(key.public.as_bytes());
+    let secret = ExpandedSecretKey::from_bytes(&Sha3_512::digest([71; 32]).into());
+    let key = VerifyingKey::from(&secret);
+    let public = hex(key.as_bytes());
     raw_map(
         b"PublicKeys",
         ADDRESS.to_string(),
@@ -83,9 +83,8 @@ fn fixture(fail_settlement: bool) -> (sr25519::Pair, AccountId, RuntimeCall) {
         "SORA2-IROHA-MIGRATION-V2\ngenesis_hash=0x{}\niroha_address={}\niroha_public_key={}\nsubstrate_account=0x{}",
         hex(&crate::IrohaMigrationGenesisHash::get().encode()), ADDRESS, public, hex(&who.encode()),
     );
-    let mut digest = Sha3_256::default();
-    digest.update(message.as_bytes());
-    let signature = hex(&key.sign_prehashed(digest, None).unwrap().to_bytes());
+    let digest = Sha3_256::digest(message.as_bytes());
+    let signature = hex(&raw_sign::<Sha3_512>(&secret, &digest, &key).to_bytes());
     let call = RuntimeCall::IrohaMigration(iroha_migration::Call::migrate {
         iroha_address: ADDRESS.to_string(),
         iroha_public_key: public,
@@ -116,6 +115,7 @@ fn fixture(fail_settlement: bool) -> (sr25519::Pair, AccountId, RuntimeCall) {
 fn wire(call: RuntimeCall, signer: &sr25519::Pair) -> UncheckedExtrinsic {
     let who = AccountId::from(signer.public());
     let extra: SignedExtra = (
+        frame_system::AuthorizeCall::new(),
         frame_system::CheckSpecVersion::new(),
         frame_system::CheckTxVersion::new(),
         frame_system::CheckGenesis::new(),

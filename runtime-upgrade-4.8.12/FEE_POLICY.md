@@ -9,6 +9,7 @@ before dispatch; peer identity never makes unrelated calls free.
 
 | Calls | Policy in 4.8.12 |
 | --- | --- |
+| Flat nonempty validator payout batches (`utility.batch`, `batchAll`, `forceBatch`) | Only payout calls qualify. Base plus weight fee is divided by 100, rounded up, with a floor of one direct-payout fee per submitted call. Actual-weight refunds use the same formula. Length fees, tips and multipliers retain existing policy. Full block weights remain unchanged. Mixed, nested, empty and XOR-less wrapped batches keep normal pricing. |
 | BABE and GRANDPA equivocation reports, including the legacy `report_equivocation_unsigned` names | Signed funded payer; normal fees on success, invalid proof and duplicate report. Bare calls rejected. Existing proof verification and offence processing remain in use. |
 | OrderBook single and batch cancellation | Successful cancellation refunded. Failure, replay, empty groups and empty batches charged. Group count and total order IDs are bounded. A failed atomic batch retains the orders. |
 | Legacy EthBridge and BridgeMultisig | Registered peers' authenticated bridge protocol calls are free without XOR, including accepted protocol failures. Read-only admission checks reject invalid/replayed work before execution. Arbitrary peer calls and unrelated wrappers remain paid. The public user load-request call retains its existing fee. |
@@ -18,6 +19,26 @@ before dispatch; peer identity never makes unrelated calls free.
 | Iroha migration | The signed claimant funds the normal transaction fee in XOR. Success, invalid proof, replay and failed settlement all pay; there is no success refund or sponsorship. Insufficient XOR rejects admission before execution without consuming the claim. |
 | Rewards UMI NFT receiver update (`add_umi_nft_receivers`) | Root success retains its exemption; a signed unauthorized call is charged. |
 | Requested preimage provision | The first useful signed provision retains its refund. Repeated signed provision is rejected and charged. Internal preimage reference handling remains compatible. |
+
+## Validator payout batches
+
+**Validator payout batches now use 1% of the normal base-and-weight fee**, rounded up, with a floor of one existing direct-payout fee per submitted payout. Eligible calls are nonempty, flat `utility.batch`, `utility.batchAll` and `utility.forceBatch` containing only `staking.payoutStakers` or `staking.payoutStakersByPage`. Normal actual-weight refunds use the same formula. Length fees, tips, fee multipliers and full block-weight reservations remain intact. Mixed, nested, empty and XOR-less wrapped batches retain normal pricing. This changes real chain charges; it is not an API-only correction. The complete batch fee still depends on its size, execution weight and the live multiplier.
+
+The target is approximately 10 XOR for the whole usual validator payout batch,
+based on the reported roughly 1,000 XOR baseline. This is a proportional estimate,
+not a fixed price or a verified live quote: byte fees and tips remain unchanged,
+and the final total depends on the per-payout minimum, live multiplier and actual
+workload.
+
+The resource component is `max(ceil(normal_base_and_weight_fee / 100),
+number_of_submitted_payouts × MINIMAL_FEE)` before the existing XOR fee multiplier.
+The minimum counts every submitted payout, including failed, skipped or replayed
+claims. Standard post-dispatch weight correction feeds the same formula. The
+existing fee multiplier applies as before; the length fee is added unchanged and
+tips retain their existing multiplier treatment. A direct payout keeps its
+existing price. Empty, mixed or nested batches and the XOR-less fee wrapper cannot
+opt into this discount. Full dispatch and extension weights remain reserved and
+corrected under the normal runtime rules.
 
 ## Paid migration and retained bridge reservation
 

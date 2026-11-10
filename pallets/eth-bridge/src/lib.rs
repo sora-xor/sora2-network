@@ -60,11 +60,16 @@ secret key (differs from validator's key) and participate in bridge consensus (a
 The bridge peer set (`Peers` in storage) forms an n-of-m-multisignature account (`BridgeAccount`
 in storage), which is used to finalize all requests.
 
+Each peer signs an outgoing request only after `Config::OutgoingApprovalDelayMs` has passed on its
+own clock, counted from the first time its off-chain worker was ready to sign that request. The
+start time is kept in the peer's offchain storage; block and transaction timestamps are not used.
+
 ## Bridge contract
 Persists the same multi-sig account (+- 1 signatory) for validating all its incoming requests.
 */
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 #![allow(
     clippy::style,
     clippy::complexity,
@@ -73,6 +78,8 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
 
 #[macro_use]
 extern crate alloc;
+
+pub mod recovery;
 extern crate jsonrpc_core as jsonrpc;
 
 use crate::offchain::SignatureParams;
@@ -88,7 +95,9 @@ use common::{
 };
 use core::stringify;
 use frame_support::__private::log::{debug, error, info, warn};
-use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo, GetDispatchInfo, Pays};
+use frame_support::dispatch::{
+    DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, GetDispatchInfo, Pays,
+};
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::offchain::storage_lock::{StorageLock, Time};
@@ -126,6 +135,11 @@ pub mod weights;
 
 mod benchmarking;
 mod contract;
+// Public host fixture tooling uses the exact native event decoder; no Wasm API changes.
+#[cfg(feature = "std")]
+pub use contract::{
+    ContractEvent as PublicFixtureContractEvent, DepositEvent as PublicFixtureDepositEvent,
+};
 mod macros;
 pub mod migration;
 pub mod offchain;
@@ -169,6 +183,26 @@ pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_BOOTSTRAP_READY_KEY: &[u8] = b"eth-bridge-ocw::bootstrap-ready";
 pub const STORAGE_LOCAL_SIGNING_KEY_READY_KEY: &[u8] = b"eth-bridge-ocw::local-signing-key-ready";
 pub const STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY: &[u8] = b"eth-bridge-ocw::substrate-rpc-configured";
+/// Persistent first-unscanned Ethereum block, also restored by the peer node.
+pub fn eth_scan_cursor_key<N: core::fmt::Debug>(network: N) -> Vec<u8> {
+    alloc::format!("eth-bridge-ocw::eth-to-handle-from-height-{network:?}").into_bytes()
+}
+
+/// Read-only OCW host capability. Supporting nodes synthesize this value; it is
+/// never persisted, so downgrading a node cannot leave a stale permission behind.
+pub const STORAGE_LIVE_SIGNING_GUARD_KEY: &[u8] = b"eth-bridge-ocw::live-signing-guard:v1";
+/// v2 adds exclusive, process-lifetime ownership for the entire HASHI pass.
+pub const STORAGE_SERIAL_SIGNING_GUARD_KEY: &[u8] = b"eth-bridge-ocw::live-signing-guard:v2";
+pub const STORAGE_WORKER_LOCK_KEY: &[u8] = b"eth-bridge-ocw::lock";
+/// The guardian halt this node's operator confirmed with `--bridge-resume-after-halt`,
+/// as a SCALE `common::bridge_halt::GuardianHalt`. The node writes it at startup; the
+/// workers run only while it names the newest halt on chain.
+pub const STORAGE_RESUMED_AFTER_HALT_KEY: &[u8] = b"eth-bridge-ocw::resumed-after-halt";
+/// Metric: the number of the guardian halt that stopped this node's workers, or 0 while
+/// they may run. `u64::MAX` when the halt on chain does not decode.
+pub const STORAGE_GUARDIAN_HALT_STOPPED_KEY: &[u8] = b"eth-bridge-ocw::guardian-halt-stopped";
+/// The guardian halt last reported in the log, so the warning appears once per halt.
+pub const STORAGE_GUARDIAN_HALT_REPORTED_KEY: &[u8] = b"eth-bridge-ocw::guardian-halt-reported";
 pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
 pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
 pub const STORAGE_PENDING_TRANSACTIONS_KEY: &[u8] = b"eth-bridge-ocw::pending-transactions";
@@ -183,6 +217,9 @@ pub const STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY: &str =
     "eth-bridge-ocw::outgoing-zero-approval-requests";
 pub const STORAGE_OUTGOING_APPROVAL_FAILURES_KEY: &str =
     "eth-bridge-ocw::outgoing-approval-failures";
+/// Prefix for local signing-delay timers scoped to a network, request and peer public key.
+pub const STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY: &str =
+    "eth-bridge-ocw::outgoing-approval-delay-start-v2";
 pub const OUTGOING_APPROVAL_FAILURE_NO_LOCAL_PEER_KEY: &str = "no_local_peer_key";
 pub const OUTGOING_APPROVAL_FAILURE_FAILED_SIGN: &str = "failed_sign";
 pub const OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX: &str = "failed_send_signed_tx";
@@ -380,7 +417,7 @@ pub mod pallet {
     use common::{ContentSource, Description};
     use frame_support::__private::log;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::{GetCallMetadata, StorageVersion};
+    use frame_support::traits::{GetCallMetadata, IsSubType, StorageVersion};
     use frame_support::transactional;
     use frame_support::weights::WeightToFeePolynomial;
     use frame_system::pallet_prelude::*;
@@ -403,6 +440,8 @@ pub mod pallet {
         /// The overarching dispatch call type.
         type RuntimeCall: From<Call<Self>>
             + From<bridge_multisig::Call<Self>>
+            + IsSubType<Call<Self>>
+            + IsSubType<bridge_multisig::Call<Self>>
             + Codec
             + Clone
             + GetCallMetadata
@@ -430,6 +469,9 @@ pub mod pallet {
 
         type BridgeAssetLockChecker: BridgeAssetLockChecker<Self::AssetId, Balance>;
 
+        /// Permanent beneficiary/query ownership resolution after native authentication.
+        type IncomingAccountResolver: crate::recovery::IncomingAccountResolver<Self::AccountId>;
+
         type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
 
         /// To retrieve asset info
@@ -448,6 +490,12 @@ pub mod pallet {
         type MaxRequestsPerQueue: Get<u32>;
         /// Maximum number of recent requests retained in the per-account RPC index.
         type MaxRequestsPerAccount: Get<u32>;
+        /// How long, in milliseconds, a peer's off-chain worker waits before signing an
+        /// outgoing request. The worker starts a timer for each eligible signing key and
+        /// request, measuring on its local clock; block and transaction
+        /// timestamps are never used. Zero disables the delay.
+        #[pallet::constant]
+        type OutgoingApprovalDelayMs: Get<u64>;
     }
 
     /// The current storage version.
@@ -524,10 +572,42 @@ pub mod pallet {
                 debug!("No local bridge peer account configured. Skipping off-chain procedure.");
                 return;
             }
-            crate::offchain::set_offchain_metric_u64(STORAGE_BOOTSTRAP_READY_KEY, 1);
+            let cursors_ready = !sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)
+                || StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY)
+                    .get::<BTreeSet<T::NetworkId>>()
+                    .ok()
+                    .flatten()
+                    .is_some_and(|nets| {
+                        !nets.is_empty()
+                            && nets
+                                .into_iter()
+                                .all(|net| matches!(Self::eth_scan_cursor(net), Ok(Some(_))))
+                    });
+            crate::offchain::set_offchain_metric_u64(
+                STORAGE_BOOTSTRAP_READY_KEY,
+                u64::from(cursors_ready),
+            );
+
+            // A guardian halt stops this node's workers until its operator confirms
+            // that halt with `--bridge-resume-after-halt`. Nothing on chain restarts them.
+            if crate::offchain::stopped_by_guardian_halt()
+                || crate::recovery::halted()
+                || !cursors_ready
+            {
+                return;
+            }
+            // A pre-upgrade host only sees the block that spawned this worker.
+            // Require the live signing/submission guard before doing any work.
+            let guarded_host = sp_io::offchain::local_storage_get(
+                sp_core::offchain::StorageKind::PERSISTENT,
+                STORAGE_SERIAL_SIGNING_GUARD_KEY,
+            );
+            if guarded_host.as_deref() != Some(&[1]) {
+                return;
+            }
 
             let mut lock = StorageLock::<'_, Time>::with_deadline(
-                b"eth-bridge-ocw::lock",
+                STORAGE_WORKER_LOCK_KEY,
                 sp_core::offchain::Duration::from_millis(100000),
             );
             let guard = lock.try_lock();
@@ -557,6 +637,7 @@ pub mod pallet {
             initial_peers: Vec<<T as frame_system::pallet::Config>::AccountId>,
             signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             ensure_root(origin)?;
             let net_id = NextNetworkId::<T>::get();
             ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
@@ -593,6 +674,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
@@ -630,6 +712,7 @@ pub mod pallet {
             decimals: u8,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called add_sidechain_token");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -675,6 +758,7 @@ pub mod pallet {
             amount: Balance,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called transfer_to_sidechain");
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
@@ -703,15 +787,26 @@ pub mod pallet {
 
         #[transactional]
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
         pub fn request_from_sidechain(
             origin: OriginFor<T>,
             eth_tx_hash: H256,
             kind: IncomingRequestKind,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
+            // Public transaction hashes are unauthenticated work hints. Reserve the
+            // remaining queue capacity for authenticated imports and bridge operations.
+            ensure!(
+                RequestsQueue::<T>::get(network_id).len()
+                    < (T::MaxRequestsPerQueue::get() / 4) as usize,
+                Error::<T>::RequestsQueueFull
+            );
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             let request = match kind {
                 IncomingRequestKind::Transaction(kind) => {
@@ -756,12 +851,16 @@ pub mod pallet {
         /// - `request` - an incoming request.
         /// - `network_id` - network identifier.
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
         pub fn finalize_incoming_request(
             origin: OriginFor<T>,
             hash: H256,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called finalize_incoming_request");
             let _ = Self::ensure_bridge_account(origin, network_id)?;
             let request =
@@ -791,6 +890,7 @@ pub mod pallet {
             address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called change_peers_out");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -840,6 +940,7 @@ pub mod pallet {
             peer_address: Option<EthAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called change_peers_out");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -906,6 +1007,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called prepare_for_migration");
             ensure_root(origin)?;
             if BridgeSignatureVersions::<T>::get(network_id) == BridgeSignatureVersion::V1
@@ -948,6 +1050,7 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
             new_signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("called prepare_for_migration");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -975,11 +1078,15 @@ pub mod pallet {
         ///
         /// Can only be called by a bridge account.
         #[pallet::call_index(10)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
         pub fn register_incoming_request(
             origin: OriginFor<T>,
             incoming_request: IncomingRequest<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called register_incoming_request");
             let net_id = incoming_request.network_id();
             let _ = Self::ensure_bridge_account(origin, net_id)?;
@@ -1000,6 +1107,7 @@ pub mod pallet {
         #[pallet::call_index(11)]
         #[pallet::weight({
             <T as Config>::WeightInfo::request_from_sidechain()
+                .saturating_add(crate::recovery::resolution_weight::<T>())
                 .saturating_add(<T as Config>::WeightInfo::register_incoming_request())
                 .saturating_add(if incoming_request_result.is_ok() {
                     <T as Config>::WeightInfo::finalize_incoming_request()
@@ -1012,6 +1120,10 @@ pub mod pallet {
             load_incoming_request: LoadIncomingRequest<T>,
             incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called import_incoming_request");
             let net_id = load_incoming_request.network_id();
             let _ = Self::ensure_bridge_account(origin, net_id)?;
@@ -1034,6 +1146,7 @@ pub mod pallet {
                 .max(<T as Config>::WeightInfo::approve_request_finalize())
                 .saturating_mul(3)
                 .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
+                .saturating_add(Pallet::<T>::approval_reconciliation_weight(*network_id, *hash).saturating_mul(3))
         )]
         pub fn approve_request(
             origin: OriginFor<T>,
@@ -1045,12 +1158,24 @@ pub mod pallet {
             debug!("called approve_request");
             let author = ensure_signed(origin)?;
             let net_id = network_id;
-            Self::ensure_peer(&author, net_id)?;
-            Self::inner_approve_request(ocw_public, hash, signature_params, author, net_id)
-                // The declared weight also covers fee-exemption validation in both
-                // transaction-extension phases. The inner weight accounts only for
-                // dispatch, so refunding to it would discard that validation work.
-                .map(|_| Pays::Yes.into())
+            let target = Self::ensure_peer(&author, net_id)
+                .and_then(|_| Self::retryable_outgoing_request(net_id, hash))
+                .map_err(|error| Self::approval_rejection(net_id, hash, error))?;
+            Self::inner_approve_request(target, ocw_public, hash, signature_params, author, net_id)
+                // Validation and preparation reconcile the same pre-dispatch
+                // signatures too. Refund only unused recovery work, keeping the
+                // allowance for both admission passes and dispatch.
+                .map(|(dispatch_weight, recoveries, message_bytes)| {
+                    (
+                        Some(Self::approval_actual_weight(
+                            dispatch_weight,
+                            recoveries,
+                            message_bytes,
+                        )),
+                        Pays::Yes,
+                    )
+                        .into()
+                })
                 .map_err(Into::into)
         }
 
@@ -1093,6 +1218,7 @@ pub mod pallet {
             address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             let _ = ensure_root(origin)?;
             let mut peers = Peers::<T>::get(network_id);
             if !peers.contains(&who) {
@@ -1127,6 +1253,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             log::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
             ensure!(
@@ -1143,11 +1270,10 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Register existing asset
-        ///
-        /// Can only be called by root.
+        /// Retained for decoding historical calls. New registration requires
+        /// `register_existing_sidechain_asset_with_precision`, because local
+        /// asset precision cannot establish the remote token's decimals.
         #[pallet::call_index(16)]
-        // eth-bridge pallet will be deprecated soon, so we set const weight here
         #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
@@ -1155,32 +1281,10 @@ pub mod pallet {
             token_address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            log::debug!(
-                "called register_existing_sidechain_asset. asset_id: {:?}",
-                asset_id
-            );
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             ensure_root(origin)?;
-            T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
-            ensure!(
-                network_id != T::GetEthNetworkId::get()
-                    || !Self::is_legacy_ethereum_xor_asset(&asset_id),
-                Error::<T>::DeprecatedLegacyXor
-            );
-            ensure!(
-                !Self::is_deprecated_sidechain_token(network_id, &token_address),
-                Error::<T>::DeprecatedLegacyXor
-            );
-            ensure!(
-                !RegisteredAsset::<T>::contains_key(network_id, &asset_id),
-                Error::<T>::TokenIsAlreadyAdded
-            );
-
-            let (_, _, precision, ..) = T::AssetInfoProvider::get_asset_info(&asset_id);
-            RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
-            RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
-            RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
-            SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
-            Ok(().into())
+            let _ = (asset_id, token_address, network_id);
+            Err(Error::<T>::Unavailable.into())
         }
 
         /// Explicitly clear collected signatures for a request.
@@ -1194,7 +1298,9 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
             hash: H256,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             ensure_root(origin)?;
+            crate::recovery::ensure_outgoing_active::<T>(network_id, hash)?;
             let status =
                 RequestStatuses::<T>::get(network_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
             ensure!(
@@ -1237,6 +1343,108 @@ pub mod pallet {
                 &call_hash,
                 |peer| peers.contains(peer),
             )?;
+            Ok(().into())
+        }
+
+        /// Recheck an already signed request after a peer change or repair of a
+        /// failed local finalization. Signatures authorize the operation; the
+        /// submitter only pays to retry its bounded local accounting.
+        #[pallet::call_index(19)]
+        #[pallet::weight(Pallet::<T>::finalization_declared_weight(*network_id, *hash))]
+        pub fn finalize_approved_request(
+            origin: OriginFor<T>,
+            network_id: BridgeNetworkId<T>,
+            hash: H256,
+        ) -> DispatchResultWithPostInfo {
+            let _ = ensure_signed(origin)?;
+            let request = Self::finalizable_outgoing_request(network_id, hash)
+                .map_err(|error| Self::approval_rejection(network_id, hash, error))?;
+            // Applied signed transactions perform these pre-signature checks in
+            // both validate and prepare. Capture their byte bound before local
+            // finalization can change any request or bridge metadata. The extra
+            // length/tag query is charged explicitly with the two admissions.
+            let admission_weight = Self::finalization_admission_weight(
+                Self::approval_message_byte_bound(network_id, hash),
+            );
+            let encoded = request.to_eth_abi(hash)?;
+            let (approvals, approvers, recoveries) =
+                Self::current_request_approvals(network_id, hash, encoded.as_raw())?;
+            ensure!(
+                Self::has_current_approval_quorum(network_id, &request, &approvers)?,
+                Error::<T>::InsufficientCurrentApprovals
+            );
+            RequestApprovals::<T>::insert(network_id, hash, approvals);
+            RequestApprovers::<T>::insert(network_id, hash, approvers);
+            Self::finalize_outgoing_with_public_approvals(&request, hash, network_id);
+            Ok((
+                Some(
+                    <T as Config>::WeightInfo::approve_request_finalize()
+                        .saturating_add(Self::approval_reconciliation_weight_for(recoveries))
+                        .saturating_add(Self::approval_metadata_read_weight())
+                        .saturating_add(
+                            Self::approval_message_weight(encoded.as_raw().len() as u64),
+                        )
+                        .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
+                        .saturating_add(admission_weight),
+                ),
+                Pays::Yes,
+            )
+                .into())
+        }
+
+        /// Attach a bridge-owned local representation to a remote token.
+        /// Governance must verify and supply the remote token's precision; it
+        /// is independent of the local representation's precision. Existing
+        /// registrations and partial mappings are never overwritten.
+        #[pallet::call_index(20)]
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT
+            .saturating_add(T::DbWeight::get().reads_writes(12, 4))
+            .saturating_add(frame_support::weights::Weight::from_parts(0, 32_768)))]
+        pub fn register_existing_sidechain_asset_with_precision(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            token_address: EthAddress,
+            sidechain_precision: BalancePrecision,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure_root(origin)?;
+            let bridge_account =
+                Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
+            T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
+            ensure!(
+                network_id != T::GetEthNetworkId::get()
+                    || !Self::is_legacy_ethereum_xor_asset(&asset_id),
+                Error::<T>::DeprecatedLegacyXor
+            );
+            ensure!(
+                !Self::is_deprecated_sidechain_token(network_id, &token_address),
+                Error::<T>::DeprecatedLegacyXor
+            );
+            ensure!(!token_address.is_zero(), Error::<T>::InvalidAddress);
+            ensure!(
+                !RegisteredAsset::<T>::contains_key(network_id, &asset_id)
+                    && !RegisteredSidechainToken::<T>::contains_key(network_id, &asset_id)
+                    && !RegisteredSidechainAsset::<T>::contains_key(network_id, &token_address)
+                    && !SidechainAssetPrecision::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenIsAlreadyAdded
+            );
+            // Native asset issuers cannot be silently reclassified as remote
+            // assets, even though the historical bridge has mint permissions.
+            ensure!(
+                T::AssetInfoProvider::is_asset_owner(&asset_id, &bridge_account),
+                Error::<T>::TokenIsNotOwnedByTheAuthor
+            );
+            let (_, _, local_precision, ..) = T::AssetInfoProvider::get_asset_info(&asset_id);
+            ensure!(
+                sidechain_precision <= DEFAULT_BALANCE_PRECISION
+                    && local_precision <= DEFAULT_BALANCE_PRECISION,
+                Error::<T>::UnsupportedAssetPrecision
+            );
+            RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
+            RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
+            RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
+            SidechainAssetPrecision::<T>::insert(network_id, &asset_id, sidechain_precision);
             Ok(().into())
         }
     }
@@ -1458,6 +1666,12 @@ pub mod pallet {
         /// The request has reached the maximum number of stored approvals.
         TooManyApprovals,
         DuplicateApproval,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
+        /// Public outgoing approvals require remote settlement, never an automatic refund.
+        PublicApprovalsRequireSettlement,
+        /// Too few valid signatures from the current peer set.
+        InsufficientCurrentApprovals,
     }
 
     impl<T: Config> Error<T> {
@@ -1870,10 +2084,35 @@ impl<T: Config> Pallet<T> {
 
     /// Validate an authenticated peer protocol call without changing storage.
     /// Arbitrary bridge/user/admin calls return false and remain fee-paying.
+    /// Protocol calls from accounts that can never make them (non-peers, or
+    /// anyone but the bridge account for its calls) and finalizations that
+    /// cannot reach quorum are rejected instead. Dispatch would fail them after
+    /// a declaration that, for an absent approval request, covers a message of
+    /// twice the operational block length.
     pub fn validate_peer_protocol_call(
         account: &T::AccountId,
         call: &Call<T>,
     ) -> Result<bool, DispatchError> {
+        if let Call::finalize_approved_request { network_id, hash } = call {
+            // Public by design, so it remains fee-paying. A recorded current-peer
+            // quorum is only a cheap necessary condition: retained signatures may
+            // belong to an earlier contract or signature domain. Admission and
+            // fee withdrawal must require the same live-domain quorum as dispatch.
+            let request = Self::finalizable_outgoing_request(*network_id, *hash)?;
+            let recorded = RequestApprovers::<T>::get(network_id, hash);
+            ensure!(
+                Self::has_current_approval_quorum(*network_id, &request, &recorded)?,
+                Error::<T>::InsufficientCurrentApprovals
+            );
+            let encoded = request.to_eth_abi(*hash)?;
+            let (_, approvers, _) =
+                Self::current_request_approvals(*network_id, *hash, encoded.as_raw())?;
+            ensure!(
+                Self::has_current_approval_quorum(*network_id, &request, &approvers)?,
+                Error::<T>::InsufficientCurrentApprovals
+            );
+            return Ok(false);
+        }
         let Some(network) = Self::peer_protocol_network(call) else {
             return Ok(false);
         };
@@ -1884,9 +2123,7 @@ impl<T: Config> Pallet<T> {
         } = call
         {
             let peers = Peers::<T>::get(network);
-            if !peers.contains(account) {
-                return Ok(false);
-            }
+            ensure!(peers.contains(account), Error::<T>::Forbidden);
             let id = BridgeAccount::<T>::get(network).ok_or(Error::<T>::UnknownNetwork)?;
             bridge_multisig::Pallet::<T>::validate_cancellation(
                 account,
@@ -1904,15 +2141,18 @@ impl<T: Config> Pallet<T> {
             ..
         } = call
         {
-            if !Peers::<T>::get(network).contains(account) {
-                return Ok(false);
-            }
+            ensure!(
+                Peers::<T>::get(network).contains(account),
+                Error::<T>::Forbidden
+            );
             Self::validate_outgoing_approval(ocw_public, hash, signature_params, account, network)?;
             return Ok(true);
         }
-        if BridgeAccount::<T>::get(network).as_ref() != Some(account) {
-            return Ok(false);
-        }
+        // Only the bridge multisig account can make the remaining calls.
+        ensure!(
+            BridgeAccount::<T>::get(network).as_ref() == Some(account),
+            Error::<T>::Forbidden
+        );
         ensure!(
             BridgeStatuses::<T>::contains_key(network),
             Error::<T>::UnknownNetwork
@@ -1927,8 +2167,11 @@ impl<T: Config> Pallet<T> {
             } => {
                 load_incoming_request.validate()?;
                 let hash = load_incoming_request.hash();
+                let retained = Self::retained_recovery_load(load_incoming_request)?;
                 ensure!(
-                    !Requests::<T>::contains_key(network, hash),
+                    retained
+                        || Self::unconsumed_public_transaction_load(network, hash)
+                        || !Requests::<T>::contains_key(network, hash),
                     Error::<T>::DuplicatedRequest
                 );
                 ensure!(
@@ -1958,9 +2201,14 @@ impl<T: Config> Pallet<T> {
                     RequestStatuses::<T>::get(network, hash) == Some(RequestStatus::Pending),
                     Error::<T>::ExpectedPendingRequest
                 );
+                crate::recovery::ensure_incoming_active::<T>(incoming)?;
                 incoming.validate()?;
             }
             Call::abort_request { hash, .. } => {
+                let request =
+                    Requests::<T>::get(network, hash).ok_or(Error::<T>::UnknownRequest)?;
+                crate::recovery::ensure_request_active::<T>(&request)?;
+                Self::ensure_outgoing_refund_unsigned(&request, network, *hash)?;
                 ensure!(
                     Requests::<T>::contains_key(network, hash),
                     Error::<T>::UnknownRequest
@@ -1979,6 +2227,11 @@ impl<T: Config> Pallet<T> {
         incoming: &IncomingRequest<T>,
         network: T::NetworkId,
     ) -> DispatchResult {
+        crate::recovery::ensure_incoming_active::<T>(incoming)?;
+        ensure!(
+            crate::recovery::inbound_allowed::<T>(),
+            Error::<T>::RecoveryHalted
+        );
         ensure!(
             !LoadToIncomingRequestHash::<T>::contains_key(network, incoming.hash()),
             Error::<T>::RequestIsAlreadyRegistered
@@ -2007,16 +2260,15 @@ impl<T: Config> Pallet<T> {
         author: &T::AccountId,
         network: T::NetworkId,
     ) -> DispatchResult {
+        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+        crate::recovery::ensure_outgoing_active::<T>(network, *hash)?;
         Self::ensure_peer(author, network)?;
         let request = Requests::<T>::get(network, hash)
             .and_then(|request| request.into_outgoing().map(|x| x.0))
             .ok_or(Error::<T>::UnknownRequest)?;
         let status = RequestStatuses::<T>::get(network, hash).ok_or(Error::<T>::UnknownRequest)?;
         ensure!(
-            matches!(
-                status,
-                RequestStatus::Pending | RequestStatus::ApprovalsReady
-            ),
+            Self::outgoing_finalization_retryable(&status),
             Error::<T>::RequestIsNotReady
         );
         ensure!(
@@ -2024,23 +2276,28 @@ impl<T: Config> Pallet<T> {
             Error::<T>::DeprecatedLegacyXor
         );
         ensure!(
-            status != RequestStatus::Pending || !request.should_be_skipped(),
+            !Self::outgoing_finalization_retryable(&status) || !request.should_be_skipped(),
             Error::<T>::RequestIsNotReady
-        );
-        ensure!(
-            !RequestApprovers::<T>::get(network, hash).contains(author),
-            Error::<T>::DuplicateApproval
-        );
-        ensure!(
-            RequestApprovals::<T>::get(network, hash).len() < MAX_PEERS
-                && RequestApprovers::<T>::get(network, hash).len() < MAX_PEERS,
-            Error::<T>::TooManyApprovals
         );
         let encoded = request.to_eth_abi(*hash)?;
         ensure!(
             Self::verify_message(encoded.as_raw(), signature, public, author),
             Error::<T>::InvalidSignature
         );
+        let (approvals, approvers, _) =
+            Self::current_request_approvals(network, *hash, encoded.as_raw())?;
+        if approvers.contains(author) {
+            ensure!(
+                status == RequestStatus::Pending
+                    && Self::has_current_approval_quorum(network, &request, &approvers)?,
+                Error::<T>::DuplicateApproval
+            );
+        } else {
+            ensure!(
+                approvals.len() < MAX_PEERS && approvers.len() < MAX_PEERS,
+                Error::<T>::TooManyApprovals
+            );
+        }
         Ok(())
     }
 
@@ -2053,7 +2310,14 @@ impl<T: Config> Pallet<T> {
     /// 4. There is no registered request with the same hash.
     /// 5. The request's `validate` and `prepare` should pass.
     fn add_request(request: &OffchainRequest<T>) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(request)?;
+        ensure!(
+            !crate::recovery::halted()
+                || (request.as_outgoing().is_none() && crate::recovery::inbound_allowed::<T>()),
+            Error::<T>::RecoveryHalted
+        );
         let net_id = request.network_id();
+        crate::recovery::ensure_outgoing_active::<T>(net_id, request.hash())?;
         let bridge_status = BridgeStatuses::<T>::get(net_id).ok_or(Error::<T>::UnknownNetwork)?;
         if request.is_incoming() {
             Self::register_incoming_request_inner(request, net_id)?;
@@ -2099,15 +2363,36 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::DuplicatedRequest
             );
         }
+        if matches!(request, OffchainRequest::LoadIncoming(_)) {
+            ensure!(
+                !LoadToIncomingRequestHash::<T>::contains_key(net_id, hash),
+                Error::<T>::RequestIsAlreadyRegistered
+            );
+            // Do not let a fresh public hint erase a historical failed canonical
+            // import whose Sidechain timepoint predates explicit tombstones.
+            if matches!(
+                request,
+                OffchainRequest::LoadIncoming(LoadIncomingRequest::Transaction(_))
+            ) && matches!(
+                RequestStatuses::<T>::get(net_id, hash),
+                Some(RequestStatus::Failed(_))
+            ) {
+                ensure!(
+                    Self::unconsumed_public_transaction_load(net_id, hash),
+                    Error::<T>::RequestIsAlreadyRegistered
+                );
+            }
+        }
         let queue_len = RequestsQueue::<T>::get(net_id).len();
         ensure!(
             queue_len < T::MaxRequestsPerQueue::get() as usize,
             Error::<T>::RequestsQueueFull
         );
+        let index_author = crate::recovery::incoming_index_author::<T>(request)?;
         request.validate()?;
         request.prepare()?;
         Self::clear_request_signatures(net_id, &hash);
-        Self::record_account_request(request.author(), net_id, hash);
+        Self::record_account_request(&index_author, net_id, hash);
         Requests::<T>::insert(net_id, &hash, request);
         RequestsQueue::<T>::mutate(net_id, |queue| queue.push(hash));
         RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
@@ -2123,13 +2408,18 @@ impl<T: Config> Pallet<T> {
         incoming_request: &OffchainRequest<T>,
         network_id: T::NetworkId,
     ) -> Result<H256, DispatchError> {
+        crate::recovery::ensure_request_active::<T>(incoming_request)?;
+        ensure!(
+            crate::recovery::inbound_allowed::<T>(),
+            Error::<T>::RecoveryHalted
+        );
         let replay_key = incoming_request
             .as_incoming()
             .ok_or(Error::<T>::ExpectedIncomingRequest)?
             .0
             .hash();
         let incoming_request_hash = incoming_request.hash();
-        let request_author = incoming_request.author().clone();
+        let request_author = crate::recovery::incoming_index_author::<T>(incoming_request)?;
         ensure!(
             !LoadToIncomingRequestHash::<T>::contains_key(network_id, replay_key),
             Error::<T>::RequestIsAlreadyRegistered
@@ -2210,13 +2500,30 @@ impl<T: Config> Pallet<T> {
         hash: H256,
         network_id: T::NetworkId,
     ) -> DispatchResult {
+        crate::recovery::ensure_incoming_active::<T>(request)?;
+        ensure!(
+            crate::recovery::inbound_allowed::<T>(),
+            Error::<T>::RecoveryHalted
+        );
         ensure!(
             RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?
                 == RequestStatus::Pending,
             Error::<T>::ExpectedPendingRequest
         );
+        // A policy/resolver failure is not a failed external transfer. Reject it
+        // before finalize's ordinary cancellation fallback can alter reserves,
+        // request statuses or queue/replay bookkeeping.
+        if let IncomingRequest::Transfer(transfer) = request {
+            crate::recovery::ordinary_account::<T>(&transfer.to)?;
+        }
         let error_opt = request.finalize().err();
         if let Some(e) = error_opt {
+            // Recovery's outer transaction owns rollback. The ordinary cancellation
+            // path would relock/refund while outbound activity is deliberately halted.
+            // Propagate the failure instead of invoking cancellation (which may panic).
+            if crate::recovery::halted() {
+                return Err(e);
+            }
             error!("Incoming request failed {:?} {:?}", hash, e);
             Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
             RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
@@ -2245,6 +2552,9 @@ impl<T: Config> Pallet<T> {
 
     #[inline]
     pub(crate) fn clear_request_signatures(network_id: T::NetworkId, hash: &H256) {
+        if bridge_types::recovery::hashi_quarantined(network_id, *hash) {
+            return;
+        }
         RequestApprovals::<T>::remove(network_id, hash);
         RequestApprovers::<T>::remove(network_id, hash);
     }
@@ -2400,15 +2710,70 @@ impl<T: Config> Pallet<T> {
         error: DispatchError,
         network_id: T::NetworkId,
     ) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(request)?;
+        ensure!(
+            !crate::recovery::halted()
+                || (request.as_outgoing().is_none() && crate::recovery::inbound_allowed::<T>()),
+            Error::<T>::RecoveryHalted
+        );
+        Self::ensure_outgoing_refund_unsigned(request, network_id, hash)?;
         ensure!(
             RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?
                 == RequestStatus::Pending,
             Error::<T>::ExpectedPendingRequest
         );
+        crate::recovery::ensure_outgoing_active::<T>(network_id, hash)?;
         cancel!(request, hash, network_id, error);
         Self::remove_request_from_queue(network_id, &hash);
         Self::deposit_event(Event::RequestAborted(hash));
         Ok(())
+    }
+
+    /// A public load is only a hint: its author, kind and native timepoint do not
+    /// authenticate the sidechain transaction. Canonical peer imports may replace
+    /// it until an incoming attempt consumes the external replay identity.
+    fn unconsumed_public_transaction_load(network: T::NetworkId, hash: H256) -> bool {
+        !crate::recovery::halted()
+            && !LoadToIncomingRequestHash::<T>::contains_key(network, hash)
+            && matches!(
+                RequestStatuses::<T>::get(network, hash),
+                Some(RequestStatus::Pending | RequestStatus::Failed(_))
+            )
+            && matches!(Requests::<T>::get(network, hash),
+                Some(OffchainRequest::LoadIncoming(LoadIncomingRequest::Transaction(load)))
+                if load.network_id == network && load.hash == hash
+                    && matches!(load.timepoint.height, bridge_multisig::MultiChainHeight::Thischain(_)))
+    }
+
+    fn should_import_sidechain_transaction(network: T::NetworkId, hash: H256) -> bool {
+        !LoadToIncomingRequestHash::<T>::contains_key(network, hash)
+            && (RequestStatuses::<T>::get(network, hash).is_none()
+                || Self::unconsumed_public_transaction_load(network, hash))
+    }
+
+    /// The same exact admission is used by protocol validation and dispatch.
+    /// Merely being halted does not authorize reuse outside the internal
+    /// authenticated recovery inbound context.
+    fn retained_recovery_load(load: &LoadIncomingRequest<T>) -> Result<bool, DispatchError> {
+        if !crate::recovery::halted() || !crate::recovery::inbound_allowed::<T>() {
+            return Ok(false);
+        }
+        let network = load.network_id();
+        let hash = load.hash();
+        if Requests::<T>::get(network, hash) != Some(OffchainRequest::LoadIncoming(load.clone())) {
+            return Ok(false);
+        }
+        ensure!(
+            RequestStatuses::<T>::get(network, hash) == Some(RequestStatus::Pending)
+                && !LoadToIncomingRequestHash::<T>::contains_key(network, hash)
+                && RequestsQueue::<T>::get(network)
+                    .iter()
+                    .filter(|id| **id == hash)
+                    .count()
+                    == 1,
+            Error::<T>::RequestIsAlreadyRegistered
+        );
+        Ok(true)
     }
 
     fn inner_import_incoming_request(
@@ -2416,9 +2781,40 @@ impl<T: Config> Pallet<T> {
         load_incoming_request: LoadIncomingRequest<T>,
         incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
     ) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(&OffchainRequest::LoadIncoming(
+            load_incoming_request.clone(),
+        ))?;
+        if let Ok(incoming) = &incoming_request_result {
+            crate::recovery::ensure_incoming_active::<T>(incoming)?;
+        }
+        ensure!(
+            crate::recovery::inbound_allowed::<T>(),
+            Error::<T>::RecoveryHalted
+        );
+        // Resolve both ownership roles before even the nonfinancial load half
+        // can be registered. Its kind alone does not establish the type of the
+        // authenticated incoming result, and policy failure must not enter the
+        // ordinary abort/cancellation fallback after partial bookkeeping.
+        if let Ok(IncomingRequest::Transfer(transfer)) = &incoming_request_result {
+            crate::recovery::ordinary_account::<T>(&transfer.author)?;
+            crate::recovery::ordinary_account::<T>(&transfer.to)?;
+        }
         let replay_key = load_incoming_request.hash();
+        let canonical_sidechain_load = matches!(
+            load_incoming_request.timepoint().height,
+            bridge_multisig::MultiChainHeight::Sidechain(_)
+        );
+        let retained_load = Self::retained_recovery_load(&load_incoming_request)?
+            || (Self::unconsumed_public_transaction_load(net_id, replay_key)
+                && RequestStatuses::<T>::get(net_id, replay_key) == Some(RequestStatus::Pending));
         let load_incoming = OffchainRequest::LoadIncoming(load_incoming_request);
-        Self::add_request(&load_incoming)?;
+        // A checkpoint may already contain the load half of this exact receipt.
+        // Recovery still authenticates the complete import with a fresh native
+        // quorum; retaining this nonfinancial bookkeeping must not resubmit it,
+        // change its author/timepoint, or bypass a consumed replay identity.
+        if !retained_load {
+            Self::add_request(&load_incoming)?;
+        }
         match incoming_request_result {
             Ok(incoming_request) => {
                 if net_id != incoming_request.network_id() {
@@ -2473,35 +2869,115 @@ impl<T: Config> Pallet<T> {
                 }
             }
             Err(e) => {
+                if canonical_sidechain_load {
+                    // Preserve the canonical failed load, including when it
+                    // superseded a public hint. Its Sidechain timepoint keeps
+                    // scanners and public resubmission from reopening it, without
+                    // inventing a LoadToIncoming link to a nonexistent incoming.
+                    Requests::<T>::insert(net_id, replay_key, &load_incoming);
+                }
                 Self::inner_abort_request(&load_incoming, replay_key, e, net_id)?;
             }
         }
         Ok(().into())
     }
 
-    fn inner_approve_request(
-        ocw_public: ecdsa::Public,
-        hash: H256,
-        signature_params: SignatureParams,
-        author: <T as frame_system::pallet::Config>::AccountId,
+    /// Checks that precede ABI encoding and signature recovery for both
+    /// approval and permissionless finalization.
+    fn retryable_outgoing_request(
         net_id: T::NetworkId,
-    ) -> Result<Option<Weight>, DispatchError> {
+        hash: H256,
+    ) -> Result<(OutgoingRequest<T>, RequestStatus), DispatchError> {
+        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+        crate::recovery::ensure_outgoing_active::<T>(net_id, hash)?;
         let request = Requests::<T>::get(net_id, hash)
             .and_then(|x| x.into_outgoing().map(|x| x.0))
             .ok_or(Error::<T>::UnknownRequest)?;
         let current_status =
             RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+        // Ready signatures are the retained Ethereum settlement evidence. Do not
+        // reconcile them against today's peers or a missing legacy author map.
         ensure!(
-            matches!(
-                current_status,
-                RequestStatus::Pending | RequestStatus::ApprovalsReady
-            ),
+            Self::outgoing_finalization_retryable(&current_status),
             Error::<T>::RequestIsNotReady
         );
         ensure!(
             !Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(net_id, &hash),
             Error::<T>::DeprecatedLegacyXor
         );
+        Ok((request, current_status))
+    }
+
+    /// The checks `finalize_approved_request` makes before ABI encoding or
+    /// signature recovery. Pool validation requires them for this public call.
+    fn finalizable_outgoing_request(
+        net_id: T::NetworkId,
+        hash: H256,
+    ) -> Result<OutgoingRequest<T>, DispatchError> {
+        let (request, _) = Self::retryable_outgoing_request(net_id, hash)?;
+        ensure!(!request.should_be_skipped(), Error::<T>::RequestIsNotReady);
+        Ok(request)
+    }
+
+    /// Covers pre-signature request/status/quorum admission without adding a
+    /// secp256k1 recovery allowance. The byte bound supplied by finalization
+    /// covers at most two full stored-request decodes, including the legacy-XOR
+    /// check; unknown/non-outgoing values retain the operational-call envelope.
+    /// Keep both applied-extrinsic admission passes in successful actual weight.
+    fn approval_pre_signature_weight(message_byte_bound: u64) -> Weight {
+        <T as Config>::WeightInfo::approve_request()
+            .max(<T as Config>::WeightInfo::approve_request_finalize())
+            .saturating_add(Self::approval_metadata_read_weight())
+            .saturating_add(Self::approval_message_weight(message_byte_bound))
+    }
+
+    /// Retain both signed-extension admission passes and the dispatch-time
+    /// bound capture. Each admission verifies the full current-domain quorum:
+    /// add MAX_PEERS reconciliation and a second message envelope for ABI/hash
+    /// work alongside the pre-signature storage-decode envelope. The migration
+    /// benchmark covers full decoding, ABI construction and hashing; no request
+    /// or bound is reread by this pure weight calculation.
+    /// The host may read the whole value for the later bound capture even though
+    /// Wasm receives only its tag, so retain its message and metadata allowance.
+    fn finalization_admission_weight(message_byte_bound: u64) -> Weight {
+        Self::approval_pre_signature_weight(message_byte_bound)
+            .saturating_add(Self::approval_reconciliation_weight_for(MAX_PEERS as u32))
+            .saturating_add(Self::approval_message_weight(message_byte_bound))
+            .saturating_mul(2)
+            .saturating_add(Self::approval_metadata_read_weight())
+            .saturating_add(Self::approval_message_weight(message_byte_bound))
+    }
+
+    /// Failure before ABI encoding or signature recovery: not a peer, recovery
+    /// halt or quarantine, an unknown request or an unready status. Report only
+    /// that work, base reads and at most two decodes of the stored value, so
+    /// CheckWeight reclaims the rest of the declaration. For an absent request
+    /// it covers a message of twice the operational block length; retaining it
+    /// would let failed calls, including wrapped ones, fill blocks.
+    fn approval_rejection(
+        net_id: T::NetworkId,
+        hash: H256,
+        error: DispatchError,
+    ) -> DispatchErrorWithPostInfo {
+        let stored = sp_io::storage::read(&Requests::<T>::hashed_key_for(net_id, hash), &mut [], 0)
+            .map_or(0, u64::from);
+        DispatchErrorWithPostInfo {
+            post_info: Some(Self::approval_pre_signature_weight(
+                stored.saturating_mul(2),
+            ))
+            .into(),
+            error,
+        }
+    }
+
+    fn inner_approve_request(
+        (request, current_status): (OutgoingRequest<T>, RequestStatus),
+        ocw_public: ecdsa::Public,
+        hash: H256,
+        signature_params: SignatureParams,
+        author: <T as frame_system::pallet::Config>::AccountId,
+        net_id: T::NetworkId,
+    ) -> Result<(Weight, u32, u64), DispatchError> {
         let request_encoded = request.to_eth_abi(hash)?;
         if !Self::verify_message(
             request_encoded.as_raw(),
@@ -2513,48 +2989,251 @@ impl<T: Config> Pallet<T> {
             return Err(Error::<T>::InvalidSignature.into());
         }
         info!("Verified request approve {:?}", request_encoded);
-        let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
-        let mut approvers = RequestApprovers::<T>::get(net_id, &hash);
-        let pending_peers_len = if Self::is_additional_signature_needed(net_id, &request) {
-            1
-        } else {
-            0
-        };
-        let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
-        if current_status == RequestStatus::Pending && request.should_be_skipped() {
+        // Consumers add 27 when encoding Ethereum calls. Store only raw parity,
+        // even when a peer submitted the supported historical 27/28 spelling.
+        let signature_params = signature_params
+            .canonical_recovery_id()
+            .ok_or(Error::<T>::InvalidSignature)?;
+        let (mut approvals, mut approvers, recoveries) =
+            Self::current_request_approvals(net_id, hash, request_encoded.as_raw())?;
+        let may_finalize = Self::outgoing_finalization_retryable(&current_status);
+        if may_finalize && request.should_be_skipped() {
             return Err(Error::<T>::RequestIsNotReady.into());
         }
         if approvers.contains(&author) {
-            debug!(
-                "Peer {:?} attempted to resubmit approval for {:?}",
-                author, hash
+            // Existing peers can trigger the recheck without collecting a new
+            // signature after the threshold drops. Other duplicates stay invalid.
+            ensure!(
+                current_status == RequestStatus::Pending
+                    && Self::has_current_approval_quorum(net_id, &request, &approvers)?,
+                Error::<T>::DuplicateApproval
             );
-            return Err(Error::<T>::DuplicateApproval.into());
+        } else {
+            ensure!(
+                approvals.len() < MAX_PEERS && approvers.len() < MAX_PEERS,
+                Error::<T>::TooManyApprovals
+            );
+            approvers.insert(author);
+            approvals.insert(signature_params);
         }
-        ensure!(
-            approvals.len() < MAX_PEERS && approvers.len() < MAX_PEERS,
-            Error::<T>::TooManyApprovals
-        );
-        approvers.insert(author);
-        approvals.insert(signature_params);
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
         RequestApprovers::<T>::insert(net_id, &hash, &approvers);
-        if current_status == RequestStatus::Pending && approvers.len() == need_sigs {
-            if let Err(err) = request.finalize(hash) {
-                error!("Outgoing request finalization failed: {:?}", err);
-                RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
-                Self::deposit_event(Event::RequestFinalizationFailed(hash));
-                cancel!(request, hash, net_id, err);
-            } else {
-                debug!("Outgoing request approvals collected {:?}", hash);
-                RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
-                Self::deposit_event(Event::ApprovalsCollected(hash));
-            }
-            Self::remove_request_from_queue(net_id, &hash);
-            let weight_info = <T as Config>::WeightInfo::approve_request_finalize();
-            return Ok(Some(weight_info));
+        if may_finalize && Self::has_current_approval_quorum(net_id, &request, &approvers)? {
+            Self::finalize_outgoing_with_public_approvals(&request, hash, net_id);
+            return Ok((
+                <T as Config>::WeightInfo::approve_request_finalize(),
+                recoveries,
+                request_encoded.as_raw().len() as u64,
+            ));
         }
-        Ok(Some(<T as Config>::WeightInfo::approve_request()))
+        Ok((
+            <T as Config>::WeightInfo::approve_request(),
+            recoveries,
+            request_encoded.as_raw().len() as u64,
+        ))
+    }
+
+    /// Compute the finalization declaration with one request-bound query, as
+    /// before admission accounting was added. Reuse that bound for the existing
+    /// reconciliation components, both new admissions and the charged capture.
+    pub fn finalization_declared_weight(network: BridgeNetworkId<T>, hash: H256) -> Weight {
+        let message_byte_bound = Self::approval_message_byte_bound(network, hash);
+        <T as Config>::WeightInfo::approve_request_finalize()
+            .saturating_add(Self::approval_reconciliation_weight_for(MAX_PEERS as u32))
+            .saturating_add(Self::approval_message_weight(message_byte_bound).saturating_mul(2))
+            .saturating_add(Self::approval_metadata_read_weight())
+            .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
+            .saturating_add(Self::finalization_admission_weight(message_byte_bound))
+    }
+
+    /// Covers at most MAX_PEERS secp256k1 recoveries and the bounded signer sets.
+    /// Keep this allowance in both fee validation and dispatch weight accounting.
+    pub fn approval_reconciliation_weight(network: BridgeNetworkId<T>, hash: H256) -> Weight {
+        Self::approval_reconciliation_weight_for(MAX_PEERS as u32)
+            .saturating_add(
+                Self::approval_message_weight(Self::approval_message_byte_bound(network, hash))
+                    .saturating_mul(2),
+            )
+            .saturating_add(Self::approval_metadata_read_weight())
+    }
+
+    /// Outgoing payloads are content-hashed and retained unchanged. Read only
+    /// their enum tag into Wasm; storage::read also returns the full value length.
+    /// A public load hint can occupy a future outgoing hash, so every other tag
+    /// (or absent value) must retain the full admitted operational-call envelope.
+    /// Assuming the stored payload fits that envelope, use the same fixed margin
+    /// in both branches so a prior hint never supplies a smaller scalar bound.
+    pub fn approval_message_byte_bound(network: BridgeNetworkId<T>, hash: H256) -> u64 {
+        let mut tag = [u8::MAX; 1];
+        let length =
+            sp_io::storage::read(&Requests::<T>::hashed_key_for(network, hash), &mut tag, 0);
+        match length {
+            Some(length) if length > 0 && tag[0] == 0 => {
+                // V3 arrays expand 20-byte addresses to 32-byte ABI words.
+                // The fixed margin covers ABI heads and bounded asset metadata.
+                u64::from(length).saturating_mul(2).saturating_add(1024)
+            }
+            _ => u64::from(
+                *T::BlockLength::get()
+                    .max
+                    .get(frame_support::dispatch::DispatchClass::Operational),
+            )
+            .saturating_mul(2)
+            .saturating_add(1024),
+        }
+    }
+
+    fn approval_metadata_read_weight() -> Weight {
+        // The host still reads the storage value even though Wasm receives one
+        // byte. Message-byte allowances cover its length; retain trie overhead
+        // and a database read in actual weight as well as the declaration.
+        T::DbWeight::get()
+            .reads(1)
+            .saturating_add(Weight::from_parts(0, 4096))
+    }
+
+    // Two compiled-Wasm runs, each with five component levels and 20 repeats.
+    // Twice the larger FRAME robust model, rounded up and covering every bucket
+    // median; shared-host wall-clock outliers remain in the evidence. See
+    // misc/bridge-security-review-2026-10-30/followup/
+    // claude-review-findings-2026-10-31/weight-model.json.
+    pub fn approval_reconciliation_weight_for(recoveries: u32) -> Weight {
+        Weight::from_parts(
+            300_000_000u64.saturating_add(
+                100_000_000u64.saturating_mul(recoveries.min(MAX_PEERS as u32) as u64),
+            ),
+            4096 + 128 * MAX_PEERS as u64,
+        )
+        .saturating_add(T::DbWeight::get().reads(3))
+    }
+
+    pub fn approval_message_weight(bytes: u64) -> Weight {
+        // Covers both hashing and complete migration storage decoding/ABI
+        // construction, including the full operational block address envelope.
+        Weight::from_parts(2_100_000_000, 0)
+            .saturating_add(Weight::from_parts(7_100, 1).saturating_mul(bytes))
+    }
+
+    fn approval_actual_weight(
+        dispatch_weight: Weight,
+        recoveries: u32,
+        message_bytes: u64,
+    ) -> Weight {
+        <T as Config>::WeightInfo::approve_request()
+            .max(<T as Config>::WeightInfo::approve_request_finalize())
+            .saturating_mul(2)
+            .saturating_add(dispatch_weight)
+            .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
+            .saturating_add(Self::approval_reconciliation_weight_for(recoveries).saturating_mul(3))
+            .saturating_add(Self::approval_metadata_read_weight().saturating_mul(3))
+            // Each pass hashes the new caller's signature and the retained
+            // approval batch. Use the real byte count without truncation.
+            .saturating_add(Self::approval_message_weight(message_bytes).saturating_mul(6))
+    }
+
+    fn outgoing_finalization_retryable(status: &RequestStatus) -> bool {
+        matches!(status, RequestStatus::Pending)
+            || matches!(status, RequestStatus::Broken(_, reason)
+                if *reason == Error::<T>::PublicApprovalsRequireSettlement.into())
+    }
+
+    fn ensure_outgoing_refund_unsigned(
+        request: &OffchainRequest<T>,
+        network: T::NetworkId,
+        hash: H256,
+    ) -> DispatchResult {
+        if request.as_outgoing().is_some() {
+            // A historical or pending-peer threshold may differ from today's
+            // local threshold. Any published signature requires settlement proof.
+            ensure!(
+                RequestApprovals::<T>::get(network, hash).is_empty()
+                    && RequestApprovers::<T>::get(network, hash).is_empty(),
+                Error::<T>::PublicApprovalsRequireSettlement
+            );
+        }
+        Ok(())
+    }
+
+    fn current_request_approvals(
+        network: T::NetworkId,
+        hash: H256,
+        message: &[u8],
+    ) -> Result<(BTreeSet<SignatureParams>, BTreeSet<T::AccountId>, u32), DispatchError> {
+        let stored_signatures = RequestApprovals::<T>::get(network, hash);
+        let recorded = RequestApprovers::<T>::get(network, hash);
+        ensure!(
+            stored_signatures.len() <= MAX_PEERS && recorded.len() <= MAX_PEERS,
+            Error::<T>::TooManyApprovals
+        );
+        let peers = Peers::<T>::get(network);
+        ensure!(
+            !peers.is_empty() && peers.len() <= MAX_PEERS,
+            Error::<T>::NotEnoughPeers
+        );
+        let by_encoded_account: sp_std::collections::btree_map::BTreeMap<_, _> = recorded
+            .intersection(&peers)
+            .map(|account| (account.encode(), account.clone()))
+            .collect();
+        let mut signatures = BTreeSet::new();
+        let mut approvers = BTreeSet::new();
+        let mut recoveries = 0u32;
+        // The signed payload is identical for every peer. Hash it once, so a
+        // migration's token-list length does not multiply each curve recovery.
+        let prepared = common::eth::prepare_message(message);
+        for signature in stored_signatures {
+            let Some(signature) = signature.canonical_recovery_id() else {
+                continue;
+            };
+            recoveries += 1;
+            let Some(public) = Self::recover_prepared_message_signer(&prepared, &signature) else {
+                continue;
+            };
+            let signer = sp_runtime::MultiSigner::Ecdsa(public)
+                .into_account()
+                .encode();
+            if let Some(account) = by_encoded_account.get(&signer) {
+                if approvers.insert(account.clone()) {
+                    signatures.insert(signature);
+                }
+            }
+        }
+        Ok((signatures, approvers, recoveries))
+    }
+
+    fn has_current_approval_quorum(
+        network: T::NetworkId,
+        request: &OutgoingRequest<T>,
+        approvers: &BTreeSet<T::AccountId>,
+    ) -> Result<bool, DispatchError> {
+        let peers = Peers::<T>::get(network);
+        ensure!(
+            !peers.is_empty() && peers.len() <= MAX_PEERS,
+            Error::<T>::NotEnoughPeers
+        );
+        let required = majority(peers.len())
+            + usize::from(Self::is_additional_signature_needed(network, request));
+        Ok(approvers.intersection(&peers).count() >= required)
+    }
+
+    fn finalize_outgoing_with_public_approvals(
+        request: &OutgoingRequest<T>,
+        hash: H256,
+        network: T::NetworkId,
+    ) {
+        // Catching an error must not commit a partial burn, membership change or
+        // accounting update. The public signatures remain valid on Ethereum.
+        if let Err(error) = common::with_transaction(|| request.finalize(hash)) {
+            RequestStatuses::<T>::insert(
+                network,
+                hash,
+                RequestStatus::Broken(error, Error::<T>::PublicApprovalsRequireSettlement.into()),
+            );
+            Self::deposit_event(Event::RequestFinalizationFailed(hash));
+        } else {
+            RequestStatuses::<T>::insert(network, hash, RequestStatus::ApprovalsReady);
+            Self::deposit_event(Event::ApprovalsCollected(hash));
+        }
+        Self::remove_request_from_queue(network, &hash);
     }
 
     fn is_additional_signature_needed(net_id: T::NetworkId, request: &OutgoingRequest<T>) -> bool {

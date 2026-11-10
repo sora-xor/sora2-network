@@ -1,0 +1,29 @@
+error: Invalid generic declaration, trait is defined without instance but generic use some
+  --> tests/pallet_ui/inconsistent_instance_2.rs:27:20
+   |
+27 |     pub struct Pallet<T, I = ()>(core::marker::PhantomData<(T, I)>);
+   |                       ^
+
+error: Invalid generic declaration, trait is defined without instance but generic use some
+  --> tests/pallet_ui/inconsistent_instance_2.rs:33:7
+   |
+33 |     impl<T: Config<I>, I: 'static> Pallet<T, I> {}
+   |          ^
+
+error: Invalid generic declaration, trait is defined without instance but generic use some
+  --> tests/pallet_ui/inconsistent_instance_2.rs:33:33
+   |
+33 |     impl<T: Config<I>, I: 'static> Pallet<T, I> {}
+   |                                    ^^^^^^
+
+error: Invalid generic declaration, trait is defined without instance but generic use some
+  --> tests/pallet_ui/inconsistent_instance_2.rs:30:62
+   |
+30 |     impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {}
+   |                                                                 ^^^^^^
+
+error: Invalid generic declaration, trait is defined without instance but generic use some
+  --> tests/pallet_ui/inconsistent_instance_2.rs:30:7
+   |
+30 |     impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {}
+   |          ^

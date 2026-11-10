@@ -46,10 +46,11 @@ use crate::{
     OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX, OUTGOING_APPROVAL_FAILURE_FAILED_SIGN,
     OUTGOING_APPROVAL_FAILURE_NO_LOCAL_PEER_KEY, OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT,
     RE_HANDLE_TXS_PERIOD, STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_LOCAL_PEER_READY_KEY,
-    STORAGE_OUTGOING_APPROVAL_FAILURES_KEY, STORAGE_OUTGOING_PENDING_REQUESTS_KEY,
-    STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
-    STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
-    SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION, ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
+    STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY, STORAGE_OUTGOING_APPROVAL_FAILURES_KEY,
+    STORAGE_OUTGOING_PENDING_REQUESTS_KEY, STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY,
+    STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY,
+    SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
+    ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
 };
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -62,6 +63,7 @@ use frame_support::sp_runtime::traits::{
     IdentifyAccount, One, Saturating, UniqueSaturatedInto, Zero,
 };
 use frame_support::sp_runtime::RuntimeAppPublic;
+use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction, Signer};
 use rustc_hex::ToHex;
@@ -74,6 +76,24 @@ use sp_std::convert::TryInto;
 
 // Revisit learned provider/body limits without retrying a rejected range every other scan.
 const LOG_RANGE_LIMIT_RETRY_DELAY_MS: u64 = 30 * 60 * 1000;
+
+#[derive(Debug, Eq, PartialEq)]
+enum RequestHandling {
+    Handled,
+    WaitingForPeerDelay,
+}
+
+#[cfg(test)]
+#[path = "../tests/coverage_offchain_paths.rs"]
+mod coverage_paths;
+
+#[cfg(test)]
+#[path = "../tests/coverage_offchain_faults.rs"]
+mod coverage_faults;
+
+#[cfg(test)]
+#[path = "../tests/attacker_attribution.rs"]
+mod attacker_attribution;
 
 impl<T: Config> Pallet<T> {
     fn pending_multisig_rehandle_key(
@@ -167,9 +187,54 @@ impl<T: Config> Pallet<T> {
         .unwrap_or(false)
     }
 
+    /// Whether this peer key's signing delay for an outgoing request has passed.
+    ///
+    /// On the first run eligible to sign with this key, the worker stores its local time in
+    /// persistent offchain storage, then signs only after its clock has moved on by
+    /// `OutgoingApprovalDelayMs`. Block and transaction timestamps are never consulted, so
+    /// nothing on chain can shorten the wait. A start time in the future (the local clock
+    /// went backwards) or an unreadable entry restarts the wait instead of blocking signing.
+    fn outgoing_approval_delay_elapsed(
+        network_id: T::NetworkId,
+        request_hash: H256,
+        peer: &ecdsa::Public,
+    ) -> bool {
+        let delay = T::OutgoingApprovalDelayMs::get();
+        if delay == 0 {
+            return true;
+        }
+        let now = sp_io::offchain::timestamp().unix_millis();
+        let key = (
+            STORAGE_OUTGOING_APPROVAL_DELAY_START_KEY,
+            network_id,
+            request_hash,
+            peer,
+        )
+            .encode();
+        let timer = StorageValueRef::persistent(&key);
+        if let Ok(Some(started_at)) = timer.get::<u64>() {
+            if started_at <= now {
+                return now - started_at >= delay;
+            }
+        }
+        let started_at = timer.mutate::<u64, (), _>(|stored| match stored {
+            Ok(Some(started_at)) if started_at <= now => Ok(started_at),
+            _ => Ok(now),
+        });
+        match started_at {
+            Ok(started_at) => now.saturating_sub(started_at) >= delay,
+            // Another worker changed the entry meanwhile; look again on the next run.
+            Err(_) => false,
+        }
+    }
+
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
     /// key and sends the approve as a signed transaction.
-    fn handle_outgoing_request(request: OutgoingRequest<T>, hash: H256) -> Result<(), Error<T>> {
+    fn handle_outgoing_request(
+        request: OutgoingRequest<T>,
+        hash: H256,
+    ) -> Result<RequestHandling, Error<T>> {
+        crate::recovery::ensure_outgoing_active::<T>(request.network_id(), hash)?;
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
             error!(
@@ -180,10 +245,9 @@ impl<T: Config> Pallet<T> {
             return Err(<Error<T>>::NoLocalAccountForSigning);
         }
         let peers = Self::peers(request.network_id());
-        let encoded_request = request.to_eth_abi(hash)?;
-        let message = common::eth::prepare_message(encoded_request.as_raw()).serialize();
+        let mut ready = Vec::new();
+        let mut waiting_for_delay = false;
         let mut found_local_peer_key = false;
-        let mut attempted_submission = false;
 
         for runtime_key in
             <T::PeerId as AppCrypto<T::Public, T::Signature>>::RuntimeAppPublic::all()
@@ -207,6 +271,20 @@ impl<T: Config> Pallet<T> {
                 continue;
             }
 
+            if !Self::outgoing_approval_delay_elapsed(request.network_id(), hash, &ocw_public) {
+                waiting_for_delay = true;
+                continue;
+            }
+            ready.push((signer, signer_account, ocw_public));
+        }
+        if ready.is_empty() && waiting_for_delay {
+            return Ok(RequestHandling::WaitingForPeerDelay);
+        }
+
+        let encoded_request = request.to_eth_abi(hash)?;
+        let message = common::eth::prepare_message(encoded_request.as_raw()).serialize();
+        let mut retry_cached = false;
+        for (signer, signer_account, ocw_public) in ready {
             let Some(signature) =
                 sp_io::crypto::ecdsa_sign_prehashed(crate::KEY_TYPE, &ocw_public, &message)
             else {
@@ -226,16 +304,16 @@ impl<T: Config> Pallet<T> {
                 ),
                 network_id: request.network_id(),
             };
-            attempted_submission = true;
-
             match Self::send_signed_transaction(&signer, &call) {
                 Some((account, res)) => {
-                    Self::add_pending_extrinsic(call, &account, res.is_ok());
+                    let cached = Self::add_pending_extrinsic(call, &account, res.is_ok());
+                    retry_cached |= cached;
                     match res {
-                        Ok(_) => {
+                        Ok(()) if cached => {
                             trace!("Signed transaction sent");
-                            return Ok(());
+                            return Ok(RequestHandling::Handled);
                         }
+                        Ok(()) => return Err(Error::<T>::FailedToSignMessage),
                         Err(e) => {
                             error!(
                                 "[{:?}] Failed in handle_outgoing_transfer. network_id={:?} request_hash={:?} error={:?}",
@@ -270,7 +348,9 @@ impl<T: Config> Pallet<T> {
             );
             return Err(Error::<T>::NoLocalAccountForSigning);
         }
-        if !attempted_submission {
+        // If the node refused key use before submission or while building the
+        // retry record, leave the request eligible for the next worker pass.
+        if !retry_cached {
             error!(
                 "Failed to sign outgoing approval payload. network_id={:?} request_hash={:?}",
                 request.network_id(),
@@ -424,7 +504,8 @@ impl<T: Config> Pallet<T> {
     /// The function delegates further handling depending on request type.
     /// There are 4 flows. 3 for incoming request: handle 'mark as done', handle 'cancel outgoing
     /// request' and for the rest, and only one for all outgoing requests.
-    fn handle_offchain_request(request: OffchainRequest<T>) -> Result<(), Error<T>> {
+    fn handle_offchain_request(request: OffchainRequest<T>) -> Result<RequestHandling, Error<T>> {
+        crate::recovery::ensure_request_active::<T>(&request)?;
         debug!("Handling request: {:?}", request.hash());
         match request {
             OffchainRequest::LoadIncoming(request) => {
@@ -440,7 +521,16 @@ impl<T: Config> Pallet<T> {
                                 || !crate::migration::is_legacy_ethereum_xor_decommissioned::<T>(),
                             Error::<T>::DeprecatedLegacyXor
                         );
-                        let tx = Self::load_tx_receipt(tx_hash, network_id)?;
+                        let tx = if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)
+                            && matches!(
+                                kind,
+                                IncomingTransactionRequestKind::Transfer
+                                    | IncomingTransactionRequestKind::TransferXOR
+                            ) {
+                            Self::load_transfer_receipt(tx_hash, network_id)?
+                        } else {
+                            Self::load_tx_receipt(tx_hash, network_id)?
+                        };
                         let mut incoming_request = Self::parse_incoming_request(tx, request)?;
                         // Legacy path kept for already queued requests before decommission. New
                         // `TransferXOR` pre-requests are blocked in `request_from_sidechain`.
@@ -482,12 +572,26 @@ impl<T: Config> Pallet<T> {
                 }
             }
             OffchainRequest::Outgoing(request, hash) => {
-                Self::handle_outgoing_request(request, hash)
+                return Self::handle_outgoing_request(request, hash);
             }
             OffchainRequest::Incoming(request, hash) => {
                 Self::handle_pending_incoming_requests(request, hash)
             }
         }
+        .map(|()| RequestHandling::Handled)
+    }
+
+    pub(crate) fn eth_scan_cursor(network: T::NetworkId) -> Result<Option<u64>, Error<T>> {
+        sp_io::offchain::local_storage_get(
+            sp_core::offchain::StorageKind::PERSISTENT,
+            &crate::eth_scan_cursor_key(network),
+        )
+        .map(|bytes| {
+            <[u8; 8]>::try_from(bytes.as_slice())
+                .map(u64::from_le_bytes)
+                .map_err(|_| Error::<T>::ReadStorageError)
+        })
+        .transpose()
     }
 
     /// Parses the logs emitted on the Sidechain's contract to an `IncomingRequest` and imports it
@@ -499,6 +603,8 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         let logs = Self::load_transfers_logs(network_id, from_block, to_block)?;
+        let attribute_sender = sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY);
+        let mut imported_hashes = BTreeSet::new();
         for log in logs {
             // Check address to be sure what it came from our contract
             if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
@@ -518,8 +624,15 @@ impl<T: Config> Pallet<T> {
                     .ok_or(Error::<T>::EthTransactionIsPending)?
                     .0,
             );
-            if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
-                // Skip already submitted requests.
+            if attribute_sender && !imported_hashes.insert(tx_hash) {
+                // HASHI has one replay identity per transaction, not per log.
+                // Later Deposit logs from the same receipt cannot create another
+                // request or pin this pass while the first import is in the pool.
+                continue;
+            }
+            if !Self::should_import_sidechain_transaction(network_id, tx_hash) {
+                // Public pending/failed load hints cannot suppress the canonical
+                // deposit; authenticated attempts and their tombstones still do.
                 trace!("Skipped already submitted request: {:?}", tx_hash);
                 continue;
             }
@@ -543,11 +656,37 @@ impl<T: Config> Pallet<T> {
                 IncomingTransactionRequestKind::Transfer,
                 network_id,
             );
-            let inc_request_result = IncomingRequest::try_from_contract_event(
-                ContractEvent::Deposit(event),
-                load_incoming_transaction_request.clone(),
-                at_height,
-            );
+            let inc_request_result = if attribute_sender {
+                // Fetch and bind the full receipt before publishing any import.
+                // A stale/mismatched log or unavailable receipt leaves the cursor
+                // unchanged and must never create a failed-import tombstone.
+                let receipt = Self::load_transfer_receipt(tx_hash, network_id)?;
+                Self::attributed_deposit_log(
+                    &receipt,
+                    &load_incoming_transaction_request,
+                    Some(&log),
+                )?;
+                // Canonical economic errors retain native failed-import handling
+                // so an unsupported token/amount cannot stop all later deposits.
+                IncomingRequest::try_from_contract_event(
+                    ContractEvent::Deposit(event),
+                    load_incoming_transaction_request.clone(),
+                    at_height,
+                )
+                .map(|mut request| {
+                    if let IncomingRequest::Transfer(transfer) = &mut request {
+                        transfer.from = receipt.from.0.into();
+                    }
+                    request
+                })
+            } else {
+                // Preserve the original request bytes on pre-recovery chains.
+                IncomingRequest::try_from_contract_event(
+                    ContractEvent::Deposit(event),
+                    load_incoming_transaction_request.clone(),
+                    at_height,
+                )
+            };
             Self::send_import_incoming_request(
                 LoadIncomingRequest::Transaction(load_incoming_transaction_request),
                 inc_request_result.map_err(|e| e.into()),
@@ -595,7 +734,7 @@ impl<T: Config> Pallet<T> {
                         let network_id = load_incoming_request.network_id();
                         let tx_hash = load_incoming_request.hash();
 
-                        if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
+                        if !Self::should_import_sidechain_transaction(network_id, tx_hash) {
                             to_remove.push(*key);
                             // Skip already submitted requests.
                             continue;
@@ -698,6 +837,13 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
         skip_log_request: bool,
     ) -> Result<(u64, bool), Error<T>> {
+        let key = crate::eth_scan_cursor_key(network_id);
+        let s_eth_to_handle_from_height = StorageValueRef::persistent(&key);
+        let from_block_opt = Self::eth_scan_cursor(network_id)?;
+        if from_block_opt.is_none() && sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)
+        {
+            return Err(Error::<T>::ReadStorageError);
+        }
         let string = format!("eth-bridge-ocw::eth-height-{:?}", network_id);
         let s_eth_height = StorageValueRef::persistent(string.as_bytes());
         let current_eth_height = match Self::load_current_height(network_id) {
@@ -712,9 +858,6 @@ impl<T: Config> Pallet<T> {
         };
         s_eth_height.set(&current_eth_height);
 
-        let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
-        let s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
-        let from_block_opt = s_eth_to_handle_from_height.get::<u64>().ok().flatten();
         if from_block_opt.is_none() {
             s_eth_to_handle_from_height.set(&current_eth_height);
         }
@@ -1059,6 +1202,9 @@ impl<T: Config> Pallet<T> {
 
         let mut stale_hashes = BTreeSet::new();
         for request_hash in RequestsQueue::<T>::get(network_id) {
+            if bridge_types::recovery::hashi_quarantined(network_id, request_hash) {
+                continue;
+            }
             let request = match Requests::<T>::get(network_id, request_hash) {
                 Some(v) => v,
                 _ => {
@@ -1066,6 +1212,9 @@ impl<T: Config> Pallet<T> {
                     continue;
                 }
             };
+            if crate::recovery::ensure_request_active::<T>(&request).is_err() {
+                continue;
+            }
             if request.should_be_skipped() {
                 debug!("Temporary skip request: {:?}", request_hash);
                 continue;
@@ -1121,7 +1270,10 @@ impl<T: Config> Pallet<T> {
             };
             if need_to_handle && confirmed {
                 let timepoint = request.timepoint();
-                let error = Self::handle_offchain_request(request).err();
+                let error = match Self::handle_offchain_request(request) {
+                    Ok(RequestHandling::WaitingForPeerDelay) => continue,
+                    outcome => outcome.err(),
+                };
                 let mut should_mark_as_handled = true;
                 if let Some(e) = error {
                     error!(

@@ -12,12 +12,19 @@ threshold **{{TECHNICAL_THRESHOLD}}**. Use `council-settings.json` for exact cur
 lengths, weights and the unrequested-preimage deposit estimate. Obtain a fresh
 signed-account fee/deposit quote before submission.
 
-The finalized external queue at block **{{PREFLIGHT_BLOCK}}** contains **4.8.11**. Settings record
-`activationReady: false`; the guarded route rejects replacement of an occupied
-queue. Resolve the existing proposal through normal governance, then refresh
-finalized baseline/governance state. If 4.8.11 enacts, repeat metadata and exact
-Wasm validation against its deployed runtime before regenerating this package.
-No direct supersession alternative is provided.
+{{GOVERNANCE_QUEUE_STATUS}} The finalized baseline is deployed spec
+**{{BASELINE_SPEC}}**. Settings retain `activationReady: false` until operator
+readiness is attested. Refresh finalized baseline/governance state before use;
+repeat metadata and exact-Wasm validation if deployed code changes.
+
+## Validator payout fee check
+
+**Validator payout batches now use 1% of the normal base-and-weight fee**, rounded up, with a floor of one existing direct-payout fee per submitted payout. Eligible calls are nonempty, flat `utility.batch`, `utility.batchAll` and `utility.forceBatch` containing only `staking.payoutStakers` or `staking.payoutStakersByPage`. Normal actual-weight refunds use the same formula. Length fees, tips, fee multipliers and full block-weight reservations remain intact. Mixed, nested, empty and XOR-less wrapped batches retain normal pricing. This changes real chain charges; it is not an API-only correction. The complete batch fee still depends on its size, execution weight and the live multiplier.
+
+Before paying validators, obtain a current signed-account quote for the complete
+batch. After enactment, compare its `TransactionFeePaid` event with the payer's
+XOR balance change. The existing runtime dispatch weights and block limits remain
+in effect; split batches when the normal admission limit requires it.
 
 ## Operator readiness before activation
 
@@ -154,7 +161,7 @@ payer balances/fees and actual motion close bounds separately.
    bridge handling, pre-execution replay rejection, and XOR-paid legacy migration
    including successful VAL claims. Confirm sponsorship calls/storage are absent.
 
-The preceding 4.8.11 reward publication migration is included. From captured
-spec 132, verify retained completed-era VAL budgets are published to standard
-staking reward storage while claims/ledgers remain intact. Actual payouts
-remain VAL.
+The preceding 4.8.11 reward publication migration remains included and is
+idempotent. The captured baseline is spec {{BASELINE_SPEC}}. Verify existing
+staking rewards, claims and ledgers remain intact after upgrade. Actual rewards
+remain VAL; payout transaction fees are charged in XOR.

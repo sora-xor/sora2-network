@@ -1,11 +1,25 @@
 # Contributing
 
 ## Requirements
-* Nightly Rust of same version as defined in [housekeeping/docker/develop/Dockerfile](housekeeping/docker/develop/Dockerfile)
- ```
- rustup default set nightly
- rustup target add wasm32-unknown-unknown --toolchain nightly
- ```
+* Install Rust through `rustup`. Commands in this checkout use the exact nightly,
+  `rust-src` component, and Wasm target declared in [rust-toolchain.toml](rust-toolchain.toml).
+  The compiler pin supports the current security-patched dependency versions;
+  do not build the updated lockfile with the former May 2025 nightly.
+  ```sh
+  rustup show
+  ```
+
+### Dependency security
+
+The dependency-security workflow audits every tracked Cargo lockfile, the active
+Python runtime tooling, and temporary copies of the frozen npm dependency graphs.
+Rust memory-safety advisories fail the check as well as vulnerability advisories.
+Known findings are not suppressed. See the [dependency review](misc/runtime_upgrade/dependency_audit_2026-10-24.md)
+for current results, remaining upstream constraints, and validation limits.
+
+Release directories contain manifests and lockfiles covered by release hashes.
+Keep their evidence intact; dependency changes require a new build and regenerated
+validation evidence before a release can use them.
 
 ## Steps to take before opening a PR
 Unless all the steps are executed, CI will fail the build

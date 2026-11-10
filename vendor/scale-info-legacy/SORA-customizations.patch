@@ -1,0 +1,1402 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -63,9 +63,6 @@
+ ]
+ default-features = false
+ 
+-[dependencies.smallstr]
+-version = "0.3.0"
+-
+ [dependencies.smallvec]
+ version = "1.13.1"
+ 
+--- a/Cargo.toml.orig
++++ b/Cargo.toml.orig
+@@ -18,7 +18,6 @@
+ 
+ [dependencies]
+ scale-type-resolver = { version = "0.2", default-features = false, features = ["visitor"] }
+-smallstr = "0.3.0"
+ smallvec = "1.13.1"
+ yap = "0.12.0"
+ hashbrown = { version = "0.16.1", features = ["serde"] }
+--- a/src/chain_types.rs
++++ b/src/chain_types.rs
+@@ -213,7 +213,10 @@
+     deserializer: D,
+ ) -> Result<Vec<((u64, u64), TypeRegistry)>, D::Error> {
+     let for_spec = <Vec<DeserializableChainTypesForSpec>>::deserialize(deserializer)?;
+-    Ok(for_spec.into_iter().map(|s| (s.range, s.types.into_type_registry())).collect())
++    Ok(for_spec
++        .into_iter()
++        .map(|s| (s.range, s.types.into_type_registry()))
++        .collect())
+ }
+ 
+ /// This represents the global and per-pallet types for a chain.
+@@ -232,7 +235,9 @@
+     fn into_type_registry(self) -> TypeRegistry {
+         let global_types = self.types.into_iter().map(|(k, v)| (k, v.into()));
+         let pallet_types = self.pallet_types.into_iter().flat_map(|(pallet, types)| {
+-            types.into_iter().map(move |(k, v)| (k.in_pallet(pallet.clone()), v.into()))
++            types
++                .into_iter()
++                .map(move |(k, v)| (k.in_pallet(pallet.clone()), v.into()))
+         });
+ 
+         let mut registry = TypeRegistry::from_iter(global_types.chain(pallet_types));
+@@ -400,7 +405,10 @@
+                 // Otherwise, treat as a struct and deserialize each field, remembering
+                 // to deserialize the value for the key we've already deserialized
+                 let mut fields = Vec::new();
+-                fields.push(Field { name, value: map.next_value()? });
++                fields.push(Field {
++                    name,
++                    value: map.next_value()?,
++                });
+ 
+                 while let Some((name, value)) = map.next_entry()? {
+                     fields.push(Field { name, value });
+@@ -459,7 +467,11 @@
+                 while let Some((name, value)) =
+                     map.next_entry::<String, DeserializableEnumFields>()?
+                 {
+-                    variants.push(Variant { index, name, fields: value.0 });
++                    variants.push(Variant {
++                        index,
++                        name,
++                        fields: value.0,
++                    });
+                     index = index.saturating_add(1);
+                 }
+                 Ok(DeserializableEnum(variants))
+@@ -473,9 +485,11 @@
+                 let mut index = 0;
+                 while let Some(field) = seq.next_element::<DeserializableEnumSeq>()? {
+                     let variant = match field {
+-                        DeserializableEnumSeq::Name(name) => {
+-                            Variant { index, name, fields: VariantDesc::UnnamedStructOf(vec![]) }
+-                        }
++                        DeserializableEnumSeq::Name(name) => Variant {
++                            index,
++                            name,
++                            fields: VariantDesc::UnnamedStructOf(vec![]),
++                        },
+                         DeserializableEnumSeq::Explicit(variant) => variant,
+                     };
+                     variants.push(variant);
+@@ -571,7 +585,9 @@
+                     index: index.ok_or_else(|| A::Error::custom("field 'index' is missing"))?,
+                     name: name.ok_or_else(|| A::Error::custom("field 'name' is missing"))?,
+                     fields: fields
+-                        .unwrap_or(DeserializableEnumFields(VariantDesc::UnnamedStructOf(vec![])))
++                        .unwrap_or(DeserializableEnumFields(VariantDesc::UnnamedStructOf(
++                            vec![],
++                        )))
+                         .0,
+                 }))
+             }
+@@ -630,8 +646,14 @@
+             (
+                 r#"{ "a": "Vec<T>", "b": "bool" }"#,
+                 DeserializableShape::NamedStructOf(vec![
+-                    Field { name: "a".to_owned(), value: ln("Vec<T>") },
+-                    Field { name: "b".to_owned(), value: ln("bool") },
++                    Field {
++                        name: "a".to_owned(),
++                        value: ln("Vec<T>"),
++                    },
++                    Field {
++                        name: "b".to_owned(),
++                        value: ln("bool"),
++                    },
+                 ]),
+             ),
+             // Enum variants without data
+@@ -673,8 +695,14 @@
+                         index: 2,
+                         name: "Three".to_owned(),
+                         fields: VariantDesc::NamedStructOf(vec![
+-                            Field { name: "a".to_owned(), value: ln("Vec<T>") },
+-                            Field { name: "b".to_owned(), value: ln("bool") },
++                            Field {
++                                name: "a".to_owned(),
++                                value: ln("Vec<T>"),
++                            },
++                            Field {
++                                name: "b".to_owned(),
++                                value: ln("bool"),
++                            },
+                         ]),
+                     },
+                 ]),
+@@ -812,52 +840,83 @@
+         let tys: ChainTypeRegistry = serde_json::from_value(json).unwrap();
+ 
+         let resolver = tys.for_spec_version(12345);
+-        assert_eq!(to_resolved_info("Foo", &resolver), ResolvedTypeInfo::Primitive(Primitive::U8));
++        assert_eq!(
++            to_resolved_info("Foo", &resolver),
++            ResolvedTypeInfo::Primitive(Primitive::U8)
++        );
+         assert_eq!(
+             to_resolved_info(ln("Balance").in_pallet("balances"), &resolver),
+             ResolvedTypeInfo::Primitive(Primitive::U64)
+         );
+ 
+         // Check that named runtime API args work ok:
+-        let runtime_api = resolver.runtime_api("Metadata", "foo").expect("Can find Runtime API");
++        let runtime_api = resolver
++            .runtime_api("Metadata", "foo")
++            .expect("Can find Runtime API");
+         assert_eq!(
+             &runtime_api.inputs,
+             &[
+-                RuntimeApiInput { name: "a".into(), id: ln("u32") },
+-                RuntimeApiInput { name: "b".into(), id: ln("bool") },
+-                RuntimeApiInput { name: "c".into(), id: ln("u16") },
++                RuntimeApiInput {
++                    name: "a".into(),
++                    id: ln("u32")
++                },
++                RuntimeApiInput {
++                    name: "b".into(),
++                    id: ln("bool")
++                },
++                RuntimeApiInput {
++                    name: "c".into(),
++                    id: ln("u16")
++                },
+             ]
+         );
+         assert_eq!(&runtime_api.output, &ln("Vec<u32>"));
+ 
+         // Check that null runtime API args work ok:
+-        let runtime_api = resolver.runtime_api("Metadata", "bar").expect("Can find Runtime API");
++        let runtime_api = resolver
++            .runtime_api("Metadata", "bar")
++            .expect("Can find Runtime API");
+         assert_eq!(&runtime_api.inputs, &[]);
+         assert_eq!(&runtime_api.output, &ln("bool"));
+ 
+         // Check that unnamed runtime APi args work too:
+-        let runtime_api =
+-            resolver.runtime_api("Metadata", "metadata_at_version").expect("Can find Runtime API");
+-        assert_eq!(&runtime_api.inputs, &[RuntimeApiInput { name: "".into(), id: ln("u32") }]);
++        let runtime_api = resolver
++            .runtime_api("Metadata", "metadata_at_version")
++            .expect("Can find Runtime API");
++        assert_eq!(
++            &runtime_api.inputs,
++            &[RuntimeApiInput {
++                name: "".into(),
++                id: ln("u32")
++            }]
++        );
+         assert_eq!(&runtime_api.output, &ln("Option<Vec<u8>>"));
+ 
+         let resolver = tys.for_spec_version(500);
+-        assert_eq!(to_resolved_info("Foo", &resolver), ResolvedTypeInfo::Primitive(Primitive::U64));
++        assert_eq!(
++            to_resolved_info("Foo", &resolver),
++            ResolvedTypeInfo::Primitive(Primitive::U64)
++        );
+         assert_eq!(
+             to_resolved_info(ln("Balance").in_pallet("balances"), &resolver),
+             ResolvedTypeInfo::Primitive(Primitive::U128)
+         );
+ 
+-        let runtime_api =
+-            resolver.runtime_api("Metadata", "metadata_at_version").expect("Can find Runtime API");
++        let runtime_api = resolver
++            .runtime_api("Metadata", "metadata_at_version")
++            .expect("Can find Runtime API");
+         assert_eq!(&runtime_api.inputs, &[ln("u32").into()]);
+         assert_eq!(&runtime_api.output, &ln("Option<Vec<u8>>"));
+ 
+         let resolver = tys.for_spec_version(2000);
+-        assert_eq!(to_resolved_info("Foo", &resolver), ResolvedTypeInfo::Primitive(Primitive::Str));
+-
+-        let runtime_api =
+-            resolver.runtime_api("Metadata", "metadata_at_version").expect("Can find Runtime API");
++        assert_eq!(
++            to_resolved_info("Foo", &resolver),
++            ResolvedTypeInfo::Primitive(Primitive::Str)
++        );
++
++        let runtime_api = resolver
++            .runtime_api("Metadata", "metadata_at_version")
++            .expect("Can find Runtime API");
+         assert_eq!(&runtime_api.inputs, &[ln("u32").into()]);
+         assert_eq!(&runtime_api.output, &ln("Foo"));
+     }
+--- a/src/insert_name.rs
++++ b/src/insert_name.rs
+@@ -103,7 +103,11 @@
+             })
+             .collect::<Result<_, _>>()?;
+ 
+-        Ok(InsertName { name, params, pallet })
++        Ok(InsertName {
++            name,
++            params,
++            pallet,
++        })
+     }
+ }
+ 
+--- a/src/lookup_name.rs
++++ b/src/lookup_name.rs
+@@ -23,7 +23,6 @@
+     format,
+     string::{String, ToString},
+ };
+-use smallstr::SmallString;
+ use smallvec::SmallVec;
+ 
+ // Re-export errors in our public interface:
+@@ -66,8 +65,14 @@
+     fn default() -> Self {
+         // Various methods expect the registry to have at least one type in it,
+         // so we set the type to be the empty unit type.
+-        let unit_type = LookupNameInner::Unnamed { params: Params::new() };
+-        Self { registry: Registry::from_iter([unit_type]), idx: 0, pallet: None }
++        let unit_type = LookupNameInner::Unnamed {
++            params: Params::new(),
++        };
++        Self {
++            registry: Registry::from_iter([unit_type]),
++            idx: 0,
++            pallet: None,
++        }
+     }
+ }
+ 
+@@ -130,18 +135,32 @@
+ 
+ impl core::convert::From<crate::InsertName> for LookupName {
+     fn from(value: crate::InsertName) -> Self {
+-        let param_ids = value.params.iter().enumerate().map(|(idx, _)| idx + 1).collect();
+-
+-        let params_iter = value.params.into_iter().map(|param_name| LookupNameInner::Named {
+-            name: param_name.into(),
+-            params: Default::default(),
+-        });
+-
+-        let registry_iter =
+-            core::iter::once(LookupNameInner::Named { name: value.name.into(), params: param_ids })
+-                .chain(params_iter);
+-
+-        LookupName { registry: SmallVec::from_iter(registry_iter), idx: 0, pallet: value.pallet }
++        let param_ids = value
++            .params
++            .iter()
++            .enumerate()
++            .map(|(idx, _)| idx + 1)
++            .collect();
++
++        let params_iter = value
++            .params
++            .into_iter()
++            .map(|param_name| LookupNameInner::Named {
++                name: param_name,
++                params: Default::default(),
++            });
++
++        let registry_iter = core::iter::once(LookupNameInner::Named {
++            name: value.name,
++            params: param_ids,
++        })
++        .chain(params_iter);
++
++        LookupName {
++            registry: SmallVec::from_iter(registry_iter),
++            idx: 0,
++            pallet: value.pallet,
++        }
+     }
+ }
+ 
+@@ -203,14 +222,19 @@
+         let mut name = LookupName {
+             registry: SmallVec::from_iter([
+                 // This is just a placeholder; we'll replace it at the bottom.
+-                LookupNameInner::Unnamed { params: SmallVec::new() },
++                LookupNameInner::Unnamed {
++                    params: SmallVec::new(),
++                },
+             ]),
+             idx: 0,
+             pallet: None,
+         };
+ 
+         // Put the content of each of the given names into our new registry
+-        let ids = input.into_iter().map(|id| name.insert_def(id.def(), &[])).collect();
++        let ids = input
++            .into_iter()
++            .map(|id| name.insert_def(id.def(), &[]))
++            .collect();
+ 
+         // Overwrite our "entry point" to point to each of these inserted Ids.
+         name.registry[0] = LookupNameInner::Unnamed { params: ids };
+@@ -222,14 +246,20 @@
+         let mut name = LookupName {
+             registry: SmallVec::from_iter([
+                 // This is just a placeholder; we'll replace it at the bottom.
+-                LookupNameInner::Array { param: 0, length: 0 },
++                LookupNameInner::Array {
++                    param: 0,
++                    length: 0,
++                },
+             ]),
+             idx: 0,
+             pallet: None,
+         };
+ 
+         let inner_idx = name.insert_def(inner.def(), &[]);
+-        name.registry[0] = LookupNameInner::Array { param: inner_idx, length: len };
++        name.registry[0] = LookupNameInner::Array {
++            param: inner_idx,
++            length: len,
++        };
+         name
+     }
+ 
+@@ -348,7 +378,10 @@
+             *idx
+         });
+ 
+-        let new_inner = match &registry.get(idx).expect("type index used which doesn't exist") {
++        let new_inner = match &registry
++            .get(idx)
++            .expect("type index used which doesn't exist")
++        {
+             LookupNameInner::Named { name, params } => {
+                 let new_params = params
+                     .iter()
+@@ -356,7 +389,10 @@
+                         self.insert_entry_from_other_registry(*idx, registry, free_idxs)
+                     })
+                     .collect();
+-                LookupNameInner::Named { name: name.clone(), params: new_params }
++                LookupNameInner::Named {
++                    name: name.clone(),
++                    params: new_params,
++                }
+             }
+             LookupNameInner::Unnamed { params } => {
+                 let new_params = params
+@@ -369,7 +405,10 @@
+             }
+             LookupNameInner::Array { param, length } => {
+                 let new_param = self.insert_entry_from_other_registry(*param, registry, free_idxs);
+-                LookupNameInner::Array { param: new_param, length: *length }
++                LookupNameInner::Array {
++                    param: new_param,
++                    length: *length,
++                }
+             }
+         };
+ 
+@@ -386,15 +425,23 @@
+ 
+     // Fetch (and expect to exist) a definition at some index.
+     fn def_at(&self, idx: usize) -> LookupNameDef<'_> {
+-        let entry = self.registry.get(idx).expect("idx should exist in registry");
++        let entry = self
++            .registry
++            .get(idx)
++            .expect("idx should exist in registry");
+ 
+         match entry {
+-            LookupNameInner::Named { name, params } => {
+-                LookupNameDef::Named(NamedTypeDef { idx, name, params, handle: self })
+-            }
+-            LookupNameInner::Unnamed { params } => {
+-                LookupNameDef::Unnamed(UnnamedTypeDef { idx, params, handle: self })
+-            }
++            LookupNameInner::Named { name, params } => LookupNameDef::Named(NamedTypeDef {
++                idx,
++                name,
++                params,
++                handle: self,
++            }),
++            LookupNameInner::Unnamed { params } => LookupNameDef::Unnamed(UnnamedTypeDef {
++                idx,
++                params,
++                handle: self,
++            }),
+             LookupNameInner::Array { param, length } => LookupNameDef::Array(ArrayTypeDef {
+                 idx,
+                 param: *param,
+@@ -578,7 +625,7 @@
+ // Internal types used:
+ type Registry = SmallVec<[LookupNameInner; 2]>;
+ type Params = SmallVec<[usize; 2]>;
+-type NameStr = SmallString<[u8; 16]>;
++type NameStr = String;
+ 
+ /// The internal representation of some type name.
+ #[derive(Clone, Debug)]
+@@ -632,14 +679,22 @@
+         match (a, b) {
+             // Same variants; compare ordering of each field:
+             (
+-                LookupNameInner::Named { name: a_name, params: a_params },
+-                LookupNameInner::Named { name: b_name, params: b_params },
++                LookupNameInner::Named {
++                    name: a_name,
++                    params: a_params,
++                },
++                LookupNameInner::Named {
++                    name: b_name,
++                    params: b_params,
++                },
+             ) => {
+                 ord_eq!(a_name, b_name);
+                 ord_eq!(a_params.len(), b_params.len());
+ 
+                 for (a_param, b_param) in a_params.iter().zip(b_params.iter()) {
+-                    ord_eq!(LookupNameInner::cmp(*a_param, a_registry, *b_param, b_registry));
++                    ord_eq!(LookupNameInner::cmp(
++                        *a_param, a_registry, *b_param, b_registry
++                    ));
+                 }
+             }
+             (
+@@ -649,15 +704,25 @@
+                 ord_eq!(a_params.len(), b_params.len());
+ 
+                 for (a_param, b_param) in a_params.iter().zip(b_params.iter()) {
+-                    ord_eq!(LookupNameInner::cmp(*a_param, a_registry, *b_param, b_registry));
++                    ord_eq!(LookupNameInner::cmp(
++                        *a_param, a_registry, *b_param, b_registry
++                    ));
+                 }
+             }
+             (
+-                LookupNameInner::Array { param: a_param, length: a_len },
+-                LookupNameInner::Array { param: b_param, length: b_len },
++                LookupNameInner::Array {
++                    param: a_param,
++                    length: a_len,
++                },
++                LookupNameInner::Array {
++                    param: b_param,
++                    length: b_len,
++                },
+             ) => {
+                 ord_eq!(a_len, b_len);
+-                ord_eq!(LookupNameInner::cmp(*a_param, a_registry, *b_param, b_registry));
++                ord_eq!(LookupNameInner::cmp(
++                    *a_param, a_registry, *b_param, b_registry
++                ));
+             }
+             // Different variants; arbitrary ordering between them:
+             (LookupNameInner::Named { .. }, _) => return Ordering::Greater,
+@@ -714,7 +779,10 @@
+     impl ParseError {
+         /// Construct a new `ParseError` for tokens at the given location.
+         pub fn new_at<E: Into<ParseErrorKind>>(err: E, loc: usize) -> Self {
+-            Self { loc, err: err.into() }
++            Self {
++                loc,
++                err: err.into(),
++            }
+         }
+     }
+ 
+@@ -741,8 +809,12 @@
+         registry: &mut Registry,
+     ) -> Result<(), ParseError> {
+         let loc = input.location();
+-        try_parse_type_name(input, registry)
+-            .unwrap_or_else(|| Err(ParseError::new_at(ParseErrorKind::InvalidName, loc.offset())))
++        try_parse_type_name(input, registry).unwrap_or_else(|| {
++            Err(ParseError::new_at(
++                ParseErrorKind::InvalidName,
++                loc.offset(),
++            ))
++        })
+     }
+ 
+     fn try_parse_type_name(
+@@ -772,7 +844,7 @@
+         if !input.token('<') {
+             // No generics; just add the name to the registry
+             registry.push(LookupNameInner::Named {
+-                name: NameStr::from_str(&name),
++                name: name.into_owned(),
+                 params: Params::new(),
+             });
+             return Some(Ok(()));
+@@ -785,9 +857,15 @@
+ 
+         if !input.token('>') {
+             let loc = input.location().offset();
+-            Some(Err(ParseError::new_at(ParseErrorKind::ClosingAngleBracketMissing, loc)))
++            Some(Err(ParseError::new_at(
++                ParseErrorKind::ClosingAngleBracketMissing,
++                loc,
++            )))
+         } else {
+-            registry.push(LookupNameInner::Named { name: NameStr::from_str(&name), params });
++            registry.push(LookupNameInner::Named {
++                name: name.into_owned(),
++                params,
++            });
+             Some(Ok(()))
+         }
+     }
+@@ -808,7 +886,10 @@
+ 
+         if !input.token(')') {
+             let loc = input.location().offset();
+-            Some(Err(ParseError::new_at(ParseErrorKind::ClosingParenMissing, loc)))
++            Some(Err(ParseError::new_at(
++                ParseErrorKind::ClosingParenMissing,
++                loc,
++            )))
+         } else {
+             registry.push(LookupNameInner::Unnamed { params });
+             Some(Ok(()))
+@@ -835,17 +916,25 @@
+         skip_whitespace(input);
+ 
+         let loc = input.location().offset();
+-        let length: usize =
+-            match input.take_while(|toks| toks.is_numeric()).parse::<usize, String>() {
+-                Ok(n) => n,
+-                Err(_) => {
+-                    return Some(Err(ParseError::new_at(ParseErrorKind::InvalidUnsignedInt, loc)))
+-                }
+-            };
++        let length: usize = match input
++            .take_while(|toks| toks.is_numeric())
++            .parse::<usize, String>()
++        {
++            Ok(n) => n,
++            Err(_) => {
++                return Some(Err(ParseError::new_at(
++                    ParseErrorKind::InvalidUnsignedInt,
++                    loc,
++                )))
++            }
++        };
+ 
+         if !input.token(']') {
+             let loc = input.location().offset();
+-            Some(Err(ParseError::new_at(ParseErrorKind::ClosingSquareBracketMissing, loc)))
++            Some(Err(ParseError::new_at(
++                ParseErrorKind::ClosingSquareBracketMissing,
++                loc,
++            )))
+         } else {
+             registry.push(LookupNameInner::Array { param, length });
+             Some(Ok(()))
+@@ -878,7 +967,7 @@
+         }
+ 
+         registry.push(LookupNameInner::Named {
+-            name: NameStr::from_str("String"),
++            name: NameStr::from("String"),
+             params: SmallVec::new(),
+         });
+         Some(Ok(()))
+@@ -906,10 +995,13 @@
+ 
+         if !input.token(']') {
+             let loc = input.location().offset();
+-            Some(Err(ParseError::new_at(ParseErrorKind::ClosingSquareBracketMissing, loc)))
++            Some(Err(ParseError::new_at(
++                ParseErrorKind::ClosingSquareBracketMissing,
++                loc,
++            )))
+         } else {
+             registry.push(LookupNameInner::Named {
+-                name: NameStr::from_str("Vec"),
++                name: NameStr::from("Vec"),
+                 params: SmallVec::from_iter([param]),
+             });
+             Some(Ok(()))
+@@ -1044,7 +1136,10 @@
+         }
+ 
+         // Remove whitespaces in "foo::bar::Wibble" section.
+-        path_part.chars().filter(|c| !c.is_whitespace()).for_each(|c| new_s.push(c));
++        path_part
++            .chars()
++            .filter(|c| !c.is_whitespace())
++            .for_each(|c| new_s.push(c));
+ 
+         Cow::Owned(new_s)
+     }
+@@ -1114,11 +1209,23 @@
+             (expect_parse("&[u8]"), expect_parse("Vec<u8>"), true),
+             (expect_parse("&[Foo]"), expect_parse("Vec<Foo>"), true),
+             // basic named types
+-            (expect_parse("path::to::Foo"), expect_parse("path::to::Foo"), true),
++            (
++                expect_parse("path::to::Foo"),
++                expect_parse("path::to::Foo"),
++                true,
++            ),
+             (expect_parse("Foo<u8>"), expect_parse("Foo<u8>"), true),
+             (expect_parse("Foo<u8>"), expect_parse("Foo<bool>"), false),
+-            (expect_parse("Foo<u8>"), expect_parse("Foo<u8, bool>"), false),
+-            (expect_parse("path::to::Foo").in_pallet("bar"), expect_parse("path::to::Foo"), false),
++            (
++                expect_parse("Foo<u8>"),
++                expect_parse("Foo<u8, bool>"),
++                false,
++            ),
++            (
++                expect_parse("path::to::Foo").in_pallet("bar"),
++                expect_parse("path::to::Foo"),
++                false,
++            ),
+             (
+                 expect_parse("path::to::Foo").in_pallet("bar"),
+                 expect_parse("path::to::Foo").in_pallet("bar"),
+@@ -1129,7 +1236,11 @@
+                 expect_parse("path::to::Foo").in_pallet("bar"),
+                 false,
+             ),
+-            (expect_parse("path::for::Foo"), expect_parse("path::to::Foo"), false),
++            (
++                expect_parse("path::for::Foo"),
++                expect_parse("path::to::Foo"),
++                false,
++            ),
+             // arrays
+             (expect_parse("[u8; 32]"), expect_parse("[u8; 32]"), true),
+             (expect_parse("[u8; 32]"), expect_parse("[u8; 28]"), false),
+@@ -1137,9 +1248,21 @@
+             // unnameds
+             (expect_parse("()"), expect_parse("()"), true),
+             (expect_parse("(bool,)"), expect_parse("(bool,)"), true),
+-            (expect_parse("(char, u8, String)"), expect_parse("(char, u8, String)"), true),
+-            (expect_parse("(char, u8, String)"), expect_parse("(char, u8, String, bool)"), false),
+-            (expect_parse("(u8, char, String)"), expect_parse("(char, u8, String)"), false),
++            (
++                expect_parse("(char, u8, String)"),
++                expect_parse("(char, u8, String)"),
++                true,
++            ),
++            (
++                expect_parse("(char, u8, String)"),
++                expect_parse("(char, u8, String, bool)"),
++                false,
++            ),
++            (
++                expect_parse("(u8, char, String)"),
++                expect_parse("(char, u8, String)"),
++                false,
++            ),
+         ];
+ 
+         for (a, b, expected) in cmps {
+@@ -1166,20 +1289,39 @@
+         // are actually the same type and so should be equal.
+         let a = LookupName {
+             registry: SmallVec::from_iter([
+-                LookupNameInner::Named { name: "Foo".into(), params: SmallVec::from_iter([1]) },
+-                LookupNameInner::Array { param: 2, length: 32 },
+-                LookupNameInner::Unnamed { params: SmallVec::from_iter([]) },
++                LookupNameInner::Named {
++                    name: "Foo".into(),
++                    params: SmallVec::from_iter([1]),
++                },
++                LookupNameInner::Array {
++                    param: 2,
++                    length: 32,
++                },
++                LookupNameInner::Unnamed {
++                    params: SmallVec::from_iter([]),
++                },
+             ]),
+             idx: 0,
+             pallet: None,
+         };
+         let b = LookupName {
+             registry: SmallVec::from_iter([
+-                LookupNameInner::Array { param: 1, length: 32 },
+-                LookupNameInner::Unnamed { params: SmallVec::from_iter([]) },
+-                LookupNameInner::Named { name: "Foo".into(), params: SmallVec::from_iter([0]) },
++                LookupNameInner::Array {
++                    param: 1,
++                    length: 32,
++                },
++                LookupNameInner::Unnamed {
++                    params: SmallVec::from_iter([]),
++                },
++                LookupNameInner::Named {
++                    name: "Foo".into(),
++                    params: SmallVec::from_iter([0]),
++                },
+                 // this type isn't referenced so should be ignored:
+-                LookupNameInner::Array { param: 0, length: 128 },
++                LookupNameInner::Array {
++                    param: 0,
++                    length: 128,
++                },
+             ]),
+             idx: 2,
+             pallet: None,
+@@ -1246,10 +1388,20 @@
+         let cases = [
+             ("Foo<T>", "T", "(A,B,C)", "Foo<(A, B, C)>"),
+             ("T", "T", "Vec<u64>", "Vec<u64>"),
+-            ("(T, T, u32, T, T)", "T", "[u64; 3]", "([u64; 3], [u64; 3], u32, [u64; 3], [u64; 3])"),
++            (
++                "(T, T, u32, T, T)",
++                "T",
++                "[u64; 3]",
++                "([u64; 3], [u64; 3], u32, [u64; 3], [u64; 3])",
++            ),
+             ("Vec<T>", "T", "U", "Vec<U>"),
+             ("Foo<T, (A, [T; 32])>", "T", "U", "Foo<U, (A, [U; 32])>"),
+-            ("Foo<T, (A, [T; 32])>", "T", "(A,B,C)", "Foo<(A, B, C), (A, [(A, B, C); 32])>"),
++            (
++                "Foo<T, (A, [T; 32])>",
++                "T",
++                "(A,B,C)",
++                "Foo<(A, B, C), (A, [(A, B, C); 32])>",
++            ),
+             // Don't match types with params; they are not generics so should be left alone:
+             ("(T<A>, T)", "T", "U", "(T<A>, U)"),
+         ];
+@@ -1375,7 +1527,11 @@
+     #[test]
+     fn parsing_weird_paths_works() {
+         let cases = [
+-            ("<Foo as Bar>::Item<A, B>", "<Foo as Bar>::Item<A, B>", vec!["A", "B"]),
++            (
++                "<Foo as Bar>::Item<A, B>",
++                "<Foo as Bar>::Item<A, B>",
++                vec!["A", "B"],
++            ),
+             ("<Foo \tas \n\nBar>::Item", "<Foo as Bar>::Item", vec![]),
+             (
+                 "<<Foo<Thing> \tas \n\nBar<A,B>> as Wibble>::Item",
+@@ -1390,8 +1546,12 @@
+             let name = LookupName::parse(actual)
+                 .unwrap_or_else(|_| panic!("should be able to parse '{actual}'"));
+ 
+-            let actual_params: Vec<String> =
+-                name.def().unwrap_named().param_defs().map(|p| p.to_string()).collect();
++            let actual_params: Vec<String> = name
++                .def()
++                .unwrap_named()
++                .param_defs()
++                .map(|p| p.to_string())
++                .collect();
+ 
+             assert_eq!(actual_params, expected_params);
+             assert_eq!(name.to_string(), expected);
+@@ -1471,8 +1631,10 @@
+ 
+         for case in cases {
+             let lookup_name = LookupName::parse(case).expect("parses ok");
+-            let insert_name: crate::InsertName =
+-                lookup_name.clone().try_into().expect("converts to InsertName ok");
++            let insert_name: crate::InsertName = lookup_name
++                .clone()
++                .try_into()
++                .expect("converts to InsertName ok");
+             let lookup_name_again: LookupName = insert_name.into();
+ 
+             assert_eq!(
+--- a/src/test_utils.rs
++++ b/src/test_utils.rs
+@@ -76,7 +76,10 @@
+             ResolvedTypeInfo::BitSequence(store_format, order_format)
+         });
+ 
+-    match types.resolve_type(type_id.try_into().expect("type name should be valid"), visitor) {
++    match types.resolve_type(
++        type_id.try_into().expect("type name should be valid"),
++        visitor,
++    ) {
+         Err(e) => ResolvedTypeInfo::Err(e),
+         Ok(info) => info,
+     }
+--- a/src/type_registry.rs
++++ b/src/type_registry.rs
+@@ -56,7 +56,10 @@
+     #[error(
+         "Type '{type_name}' not found (either the name, pallet or number of generic params don't match any known types)"
+     )]
+-    TypeNotFound { type_name: LookupName, visitor: Visitor },
++    TypeNotFound {
++        type_name: LookupName,
++        visitor: Visitor,
++    },
+     #[error(transparent)]
+     Other(TypeRegistryResolveError),
+ }
+@@ -85,7 +88,12 @@
+ 
+ impl core::hash::Hash for TypeKey {
+     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+-        hash_key(self.pallet.as_deref(), &self.name, self.generic_params, state);
++        hash_key(
++            self.pallet.as_deref(),
++            &self.name,
++            self.generic_params,
++            state,
++        );
+     }
+ }
+ 
+@@ -153,12 +161,23 @@
+ 
+ impl From<LookupName> for RuntimeApiInput {
+     fn from(id: LookupName) -> Self {
+-        RuntimeApiInput { name: String::new(), id }
++        RuntimeApiInput {
++            name: String::new(),
++            id,
++        }
+     }
+ }
+ impl TryFrom<&str> for RuntimeApiInput {
+     type Error = lookup_name::ParseError;
+     fn try_from(value: &str) -> Result<Self, Self::Error> {
++        value.parse()
++    }
++}
++
++impl core::str::FromStr for RuntimeApiInput {
++    type Err = lookup_name::ParseError;
++
++    fn from_str(value: &str) -> Result<Self, Self::Err> {
+         let id = LookupName::parse(value)?;
+         Ok(id.into())
+     }
+@@ -177,7 +196,10 @@
+     /// start with [`TypeRegistry::basic()`] to get a registry pre-populated with built in
+     /// rust types.
+     pub fn empty() -> Self {
+-        TypeRegistry { types: HashMap::new(), runtime_apis: HashMap::new() }
++        TypeRegistry {
++            types: HashMap::new(),
++            runtime_apis: HashMap::new(),
++        }
+     }
+ 
+     /// Create a new [`TypeRegistry`] that's pre-populated with built-in rust types.
+@@ -207,18 +229,51 @@
+             ("i256", TypeShape::Primitive(Primitive::I256)),
+             ("str", TypeShape::Primitive(Primitive::Str)),
+             ("String", TypeShape::Primitive(Primitive::Str)),
+-            ("Box<T>", TypeShape::AliasOf(LookupName::parse("T").unwrap())),
+-            ("Arc<T>", TypeShape::AliasOf(LookupName::parse("T").unwrap())),
++            (
++                "Box<T>",
++                TypeShape::AliasOf(LookupName::parse("T").unwrap()),
++            ),
++            (
++                "Arc<T>",
++                TypeShape::AliasOf(LookupName::parse("T").unwrap()),
++            ),
+             ("Rc<T>", TypeShape::AliasOf(LookupName::parse("T").unwrap())),
+-            ("Cell<T>", TypeShape::AliasOf(LookupName::parse("T").unwrap())),
+-            ("RefCell<T>", TypeShape::AliasOf(LookupName::parse("T").unwrap())),
+-            ("Vec<T>", TypeShape::SequenceOf(LookupName::parse("T").unwrap())),
+-            ("LinkedList<T>", TypeShape::SequenceOf(LookupName::parse("T").unwrap())),
+-            ("VecDeque<T>", TypeShape::SequenceOf(LookupName::parse("T").unwrap())),
+-            ("BTreeMap<K,V>", TypeShape::SequenceOf(LookupName::parse("(K, V)").unwrap())),
+-            ("BTreeSet<V>", TypeShape::SequenceOf(LookupName::parse("V").unwrap())),
+-            ("BinaryHeap<V>", TypeShape::SequenceOf(LookupName::parse("V").unwrap())),
+-            ("Cow<T>", TypeShape::UnnamedStructOf(vec![LookupName::parse("T").unwrap()])),
++            (
++                "Cell<T>",
++                TypeShape::AliasOf(LookupName::parse("T").unwrap()),
++            ),
++            (
++                "RefCell<T>",
++                TypeShape::AliasOf(LookupName::parse("T").unwrap()),
++            ),
++            (
++                "Vec<T>",
++                TypeShape::SequenceOf(LookupName::parse("T").unwrap()),
++            ),
++            (
++                "LinkedList<T>",
++                TypeShape::SequenceOf(LookupName::parse("T").unwrap()),
++            ),
++            (
++                "VecDeque<T>",
++                TypeShape::SequenceOf(LookupName::parse("T").unwrap()),
++            ),
++            (
++                "BTreeMap<K,V>",
++                TypeShape::SequenceOf(LookupName::parse("(K, V)").unwrap()),
++            ),
++            (
++                "BTreeSet<V>",
++                TypeShape::SequenceOf(LookupName::parse("V").unwrap()),
++            ),
++            (
++                "BinaryHeap<V>",
++                TypeShape::SequenceOf(LookupName::parse("V").unwrap()),
++            ),
++            (
++                "Cow<T>",
++                TypeShape::UnnamedStructOf(vec![LookupName::parse("T").unwrap()]),
++            ),
+             (
+                 "Option<T>",
+                 TypeShape::EnumOf(vec![
+@@ -276,8 +331,14 @@
+                 TypeShape::AliasOf(LookupName::parse("bitvec::vec::BitVec<Store, Order>").unwrap()),
+             ),
+             // Defining this once means that anything wanting compact types can alias to this:
+-            ("codec::Compact<T>", TypeShape::Compact(LookupName::parse("T").unwrap())),
+-            ("Compact<T>", TypeShape::AliasOf(LookupName::parse("codec::Compact<T>").unwrap())),
++            (
++                "codec::Compact<T>",
++                TypeShape::Compact(LookupName::parse("T").unwrap()),
++            ),
++            (
++                "Compact<T>",
++                TypeShape::AliasOf(LookupName::parse("codec::Compact<T>").unwrap()),
++            ),
+         ];
+ 
+         for (name, desc) in basic_types {
+@@ -323,11 +384,21 @@
+     /// registry.insert(scoped_insert_name, TypeShape::SequenceOf(LookupName::parse("T").unwrap()));
+     /// ```
+     pub fn insert(&mut self, name: InsertName, shape: TypeShape) {
+-        let generic_params =
+-            name.params.len().try_into().expect("Expecting between 0 and 255 generic params");
++        let generic_params = name
++            .params
++            .len()
++            .try_into()
++            .expect("Expecting between 0 and 255 generic params");
+         self.types.insert(
+-            TypeKey { pallet: name.pallet, name: name.name, generic_params },
+-            TypeInfo { desc: shape, params: name.params },
++            TypeKey {
++                pallet: name.pallet,
++                name: name.name,
++                generic_params,
++            },
++            TypeInfo {
++                desc: shape,
++                params: name.params,
++            },
+         );
+     }
+ 
+@@ -357,11 +428,21 @@
+         shape: TypeShape,
+     ) -> Result<(), insert_name::ParseError> {
+         let name = InsertName::parse(name)?;
+-        let generic_params =
+-            name.params.len().try_into().expect("Expecting between 0 and 255 generic params");
++        let generic_params = name
++            .params
++            .len()
++            .try_into()
++            .expect("Expecting between 0 and 255 generic params");
+         self.types.insert(
+-            TypeKey { pallet: name.pallet, name: name.name, generic_params },
+-            TypeInfo { desc: shape, params: name.params },
++            TypeKey {
++                pallet: name.pallet,
++                name: name.name,
++                generic_params,
++            },
++            TypeInfo {
++                desc: shape,
++                params: name.params,
++            },
+         );
+         Ok(())
+     }
+@@ -397,7 +478,10 @@
+     ) -> Result<V::Value, TypeRegistryResolveError> {
+         match self.resolve_type_with_parent(self, type_id, visitor) {
+             Err(TypeRegistryResolveWithParentError::Other(e)) => Err(e),
+-            Err(TypeRegistryResolveWithParentError::TypeNotFound { visitor, mut type_name }) => {
++            Err(TypeRegistryResolveWithParentError::TypeNotFound {
++                visitor,
++                mut type_name,
++            }) => {
+                 if type_name.pallet().is_some() {
+                     // if the lookup was pallet scoped, try again without any pallet scope
+                     // to see if we do any better that way!
+@@ -514,7 +598,10 @@
+         I: TryInto<RuntimeApiInput, Error = O::Error>,
+         O: TryInto<LookupName>,
+     {
+-        let inputs = inputs.into_iter().map(TryInto::try_into).collect::<Result<Vec<_>, _>>()?;
++        let inputs = inputs
++            .into_iter()
++            .map(TryInto::try_into)
++            .collect::<Result<Vec<_>, _>>()?;
+         let output = output.try_into()?;
+         self.insert_runtime_api(trait_name, method_name, inputs, output);
+         Ok(())
+@@ -613,8 +700,11 @@
+         match type_id.def() {
+             LookupNameDef::Named(ty) => {
+                 // Types are uniquely hashed by name, pallet and number of generic params.
+-                let generic_params: u8 =
+-                    ty.param_defs().count().try_into().expect("Expecting 0-255 generic params");
++                let generic_params: u8 = ty
++                    .param_defs()
++                    .count()
++                    .try_into()
++                    .expect("Expecting 0-255 generic params");
+                 let Some((ty_key, type_info)) =
+                     lookup(pallet, ty.name(), generic_params, &self.types)
+                 else {
+@@ -800,7 +890,8 @@
+     };
+ 
+     // Look up the entry by hash, and then compare keys we get back to find the matching key.
+-    map.raw_entry().from_hash(hash, |k| k.name == name && k.pallet.as_deref() == pallet)
++    map.raw_entry()
++        .from_hash(hash, |k| k.name == name && k.pallet.as_deref() == pallet)
+ }
+ 
+ #[derive(Copy, Clone)]
+@@ -865,8 +956,9 @@
+     ty: LookupName,
+     param_mapping: &SmallVec<[(&str, LookupNameDef<'_>); 4]>,
+ ) -> LookupName {
+-    let new_ty =
+-        param_mapping.iter().fold(ty, |ty, (ident, def)| ty.with_substitution(ident, *def));
++    let new_ty = param_mapping
++        .iter()
++        .fold(ty, |ty, (ident, def)| ty.with_substitution(ident, *def));
+ 
+     // Scope lookups of the new type name to whatever pallet the original was defined in
+     if let Some(pallet) = pallet {
+@@ -990,14 +1082,23 @@
+                 "Option<char>",
+                 ResolvedTypeInfo::VariantOf(vec![
+                     ("None".to_owned(), vec![]),
+-                    ("Some".to_owned(), vec![(None, ResolvedTypeInfo::Primitive(Primitive::Char))]),
++                    (
++                        "Some".to_owned(),
++                        vec![(None, ResolvedTypeInfo::Primitive(Primitive::Char))],
++                    ),
+                 ]),
+             ),
+             (
+                 "Result<char, String>",
+                 ResolvedTypeInfo::VariantOf(vec![
+-                    ("Ok".to_owned(), vec![(None, ResolvedTypeInfo::Primitive(Primitive::Char))]),
+-                    ("Err".to_owned(), vec![(None, ResolvedTypeInfo::Primitive(Primitive::Str))]),
++                    (
++                        "Ok".to_owned(),
++                        vec![(None, ResolvedTypeInfo::Primitive(Primitive::Char))],
++                    ),
++                    (
++                        "Err".to_owned(),
++                        vec![(None, ResolvedTypeInfo::Primitive(Primitive::Str))],
++                    ),
+                 ]),
+             ),
+         ];
+@@ -1028,7 +1129,10 @@
+             )
+             .unwrap();
+         types
+-            .insert_str("AliasForU16", TypeShape::AliasOf(LookupName::parse("u16").unwrap()))
++            .insert_str(
++                "AliasForU16",
++                TypeShape::AliasOf(LookupName::parse("u16").unwrap()),
++            )
+             .unwrap();
+         types
+             .insert_str(
+@@ -1051,8 +1155,12 @@
+         let mut types = TypeRegistry::empty();
+ 
+         // Global types
+-        types.insert_str("u16", TypeShape::Primitive(Primitive::U16)).unwrap();
+-        types.insert_str("Primitive", TypeShape::Primitive(Primitive::U16)).unwrap();
++        types
++            .insert_str("u16", TypeShape::Primitive(Primitive::U16))
++            .unwrap();
++        types
++            .insert_str("Primitive", TypeShape::Primitive(Primitive::U16))
++            .unwrap();
+ 
+         // Type in balances pallet to override it. (u128, not u16 here)
+         types.insert(
+@@ -1124,7 +1232,10 @@
+         assert_eq!(
+             &foo.inputs,
+             &[
+-                RuntimeApiInput { name: "version".into(), id: LookupName::parse("u32").unwrap() },
++                RuntimeApiInput {
++                    name: "version".into(),
++                    id: LookupName::parse("u32").unwrap()
++                },
+                 RuntimeApiInput {
+                     name: "id".into(),
+                     id: LookupName::parse("AccountId32").unwrap()
+@@ -1136,7 +1247,10 @@
+         let bar = types.runtime_api("Bar", "other").unwrap();
+         assert_eq!(
+             &bar.inputs,
+-            &[RuntimeApiInput { name: "arg".into(), id: LookupName::parse("Wibble").unwrap() },]
++            &[RuntimeApiInput {
++                name: "arg".into(),
++                id: LookupName::parse("Wibble").unwrap()
++            },]
+         );
+         assert_eq!(&bar.output, &LookupName::parse("u64").unwrap());
+     }
+--- a/src/type_registry_set.rs
++++ b/src/type_registry_set.rs
+@@ -41,7 +41,11 @@
+     /// Take ownership of this [`TypeRegistrySet`]. If the underlying type registries are
+     /// borrowed, then they are cloned in order to take ownership of them.
+     pub fn to_owned(self) -> TypeRegistrySet<'static> {
+-        let registries = self.registries.into_iter().map(|r| Cow::Owned(r.into_owned())).collect();
++        let registries = self
++            .registries
++            .into_iter()
++            .map(|r| Cow::Owned(r.into_owned()))
++            .collect();
+         TypeRegistrySet { registries }
+     }
+ 
+@@ -65,7 +69,9 @@
+         let seen = Rc::new(RefCell::new(HashSet::<LookupName>::new()));
+         self.registries.iter().rev().flat_map(move |registry| {
+             let seen = seen.clone();
+-            registry.keys().filter(move |key| seen.borrow_mut().insert(key.clone()))
++            registry
++                .keys()
++                .filter(move |key| seen.borrow_mut().insert(key.clone()))
+         })
+     }
+ 
+@@ -151,7 +157,11 @@
+     /// and then [`RuntimeApiName::Method`] is returned for each of the method names in that
+     /// trait. A trait will only be iterated over once.
+     pub fn runtime_apis(&self) -> impl Iterator<Item = RuntimeApiName<'_>> {
+-        let it = self.registries.iter().rev().flat_map(|registry| registry.runtime_apis());
++        let it = self
++            .registries
++            .iter()
++            .rev()
++            .flat_map(|registry| registry.runtime_apis());
+ 
+         // We need to aggregate across our registries so that we return each
+         // trait name / entry exactly once.
+@@ -190,7 +200,9 @@
+ 
+ impl<'a, R: Into<Cow<'a, TypeRegistry>>> core::iter::FromIterator<R> for TypeRegistrySet<'a> {
+     fn from_iter<T: IntoIterator<Item = R>>(iter: T) -> Self {
+-        TypeRegistrySet { registries: iter.into_iter().map(Into::into).collect() }
++        TypeRegistrySet {
++            registries: iter.into_iter().map(Into::into).collect(),
++        }
+     }
+ }
+ 
+@@ -229,16 +241,21 @@
+     #[test]
+     fn picks_pallet_scope_before_global() {
+         let mut a = TypeRegistry::empty();
+-        a.insert_str("Val", TypeShape::Primitive(Primitive::I8)).unwrap();
++        a.insert_str("Val", TypeShape::Primitive(Primitive::I8))
++            .unwrap();
+         a.insert(n("Val").in_pallet("p"), TypeShape::Primitive(Primitive::U8));
+ 
+         let mut b = TypeRegistry::empty();
+-        b.insert_str("Val", TypeShape::Primitive(Primitive::I16)).unwrap();
++        b.insert_str("Val", TypeShape::Primitive(Primitive::I16))
++            .unwrap();
+ 
+         let types = TypeRegistrySet::from_iter([a, b]);
+ 
+         // Globally, we find the most recent val first.
+-        assert_eq!(to_resolved_info("Val", &types), ResolvedTypeInfo::Primitive(Primitive::I16));
++        assert_eq!(
++            to_resolved_info("Val", &types),
++            ResolvedTypeInfo::Primitive(Primitive::I16)
++        );
+         // In pallet, we find the first in-pallet val anywhere before looking at any global ones.
+         assert_eq!(
+             to_resolved_info(ln("Val").in_pallet("p"), &types),
+@@ -249,22 +266,34 @@
+     #[test]
+     fn picks_last_registry_first() {
+         let mut a = TypeRegistry::empty();
+-        a.insert_str("u8", TypeShape::Primitive(Primitive::U8)).unwrap();
+-        a.insert_str("Val", TypeShape::Primitive(Primitive::I8)).unwrap();
+-
+-        let mut b = TypeRegistry::empty();
+-        b.insert_str("Val", TypeShape::Primitive(Primitive::I16)).unwrap();
++        a.insert_str("u8", TypeShape::Primitive(Primitive::U8))
++            .unwrap();
++        a.insert_str("Val", TypeShape::Primitive(Primitive::I8))
++            .unwrap();
++
++        let mut b = TypeRegistry::empty();
++        b.insert_str("Val", TypeShape::Primitive(Primitive::I16))
++            .unwrap();
+ 
+         let mut c = TypeRegistry::empty();
+-        c.insert(n("Val").in_pallet("balances"), TypeShape::Primitive(Primitive::I32));
++        c.insert(
++            n("Val").in_pallet("balances"),
++            TypeShape::Primitive(Primitive::I32),
++        );
+ 
+         // Resolving will look in c, then b, then a.
+         let types = TypeRegistrySet::from_iter([a, b, c]);
+ 
+         // Sanity check; find val decalred inthe "bottom" registry only.
+-        assert_eq!(to_resolved_info("u8", &types), ResolvedTypeInfo::Primitive(Primitive::U8));
++        assert_eq!(
++            to_resolved_info("u8", &types),
++            ResolvedTypeInfo::Primitive(Primitive::U8)
++        );
+         // Ignores the pallet val since we aren't in said pallet.
+-        assert_eq!(to_resolved_info("Val", &types), ResolvedTypeInfo::Primitive(Primitive::I16));
++        assert_eq!(
++            to_resolved_info("Val", &types),
++            ResolvedTypeInfo::Primitive(Primitive::I16)
++        );
+         // Use the pallet specific val if the ID we pass is in that pallet.
+         assert_eq!(
+             to_resolved_info(ln("Val").in_pallet("balances"), &types),
+@@ -277,15 +306,20 @@
+         let mut a = TypeRegistry::empty();
+         a.insert_str(
+             "BitVec",
+-            TypeShape::BitSequence { order: ln("bitvec::order::Lsb0"), store: ln("Store") },
++            TypeShape::BitSequence {
++                order: ln("bitvec::order::Lsb0"),
++                store: ln("Store"),
++            },
+         )
+         .unwrap();
+ 
+         let mut b = TypeRegistry::empty();
+-        b.insert_str("bitvec::order::Lsb0", TypeShape::NamedStructOf(vec![])).unwrap();
++        b.insert_str("bitvec::order::Lsb0", TypeShape::NamedStructOf(vec![]))
++            .unwrap();
+ 
+         let mut c = TypeRegistry::empty();
+-        c.insert_str("Store", TypeShape::Primitive(Primitive::U8)).unwrap();
++        c.insert_str("Store", TypeShape::Primitive(Primitive::U8))
++            .unwrap();
+ 
+         // Resolving will look in c, then b, then a.
+         let types = TypeRegistrySet::from_iter([a, b, c]);
+@@ -307,27 +341,35 @@
+         b.insert_str("B", TypeShape::AliasOf(ln("C"))).unwrap();
+ 
+         let mut c = TypeRegistry::empty();
+-        c.insert_str("C", TypeShape::Primitive(Primitive::Bool)).unwrap();
++        c.insert_str("C", TypeShape::Primitive(Primitive::Bool))
++            .unwrap();
+ 
+         // Resolving will look in c, then b, then a.
+         let types = TypeRegistrySet::from_iter([a, b, c]);
+ 
+         // We try to resolve the alias A, which is in the last registry to be queried.
+         // This will need to backtrack to previous registries in the list to resolve.
+-        assert_eq!(to_resolved_info("A", &types), ResolvedTypeInfo::Primitive(Primitive::Bool));
++        assert_eq!(
++            to_resolved_info("A", &types),
++            ResolvedTypeInfo::Primitive(Primitive::Bool)
++        );
+     }
+ 
+     #[test]
+     fn runtime_apis_works_avoiding_dupes() {
+         let mut a = TypeRegistry::empty();
+-        a.try_insert_runtime_api_without_inputs("A", "a1", "bool").unwrap();
+-        a.try_insert_runtime_api_without_inputs("A", "a2", "u32").unwrap();
+-
+-        let mut b = TypeRegistry::empty();
+-        b.try_insert_runtime_api_without_inputs("A", "a2", "bool").unwrap();
++        a.try_insert_runtime_api_without_inputs("A", "a1", "bool")
++            .unwrap();
++        a.try_insert_runtime_api_without_inputs("A", "a2", "u32")
++            .unwrap();
++
++        let mut b = TypeRegistry::empty();
++        b.try_insert_runtime_api_without_inputs("A", "a2", "bool")
++            .unwrap();
+ 
+         let mut c = TypeRegistry::empty();
+-        c.try_insert_runtime_api_without_inputs("B", "b1", "bool").unwrap();
++        c.try_insert_runtime_api_without_inputs("B", "b1", "bool")
++            .unwrap();
+ 
+         // Resolving will look in c, then b, then a.
+         let types = TypeRegistrySet::from_iter([a, b, c]);
+@@ -375,23 +417,47 @@
+     #[test]
+     fn keys_returned_without_dupes() {
+         let mut a = TypeRegistry::empty();
+-        a.insert(InsertName::parse("u32").unwrap(), TypeShape::Primitive(Primitive::U32));
+-        a.insert(InsertName::parse("u64").unwrap(), TypeShape::Primitive(Primitive::U64));
+-
+-        let mut b = TypeRegistry::empty();
+-        b.insert(InsertName::parse("u32").unwrap(), TypeShape::Primitive(Primitive::U32));
+-        b.insert(InsertName::parse("u64").unwrap(), TypeShape::Primitive(Primitive::U64));
+-        b.insert(InsertName::parse("Foo").unwrap(), TypeShape::NamedStructOf(vec![]));
+-        b.insert(InsertName::parse("Bar").unwrap(), TypeShape::NamedStructOf(vec![]));
++        a.insert(
++            InsertName::parse("u32").unwrap(),
++            TypeShape::Primitive(Primitive::U32),
++        );
++        a.insert(
++            InsertName::parse("u64").unwrap(),
++            TypeShape::Primitive(Primitive::U64),
++        );
++
++        let mut b = TypeRegistry::empty();
++        b.insert(
++            InsertName::parse("u32").unwrap(),
++            TypeShape::Primitive(Primitive::U32),
++        );
++        b.insert(
++            InsertName::parse("u64").unwrap(),
++            TypeShape::Primitive(Primitive::U64),
++        );
++        b.insert(
++            InsertName::parse("Foo").unwrap(),
++            TypeShape::NamedStructOf(vec![]),
++        );
++        b.insert(
++            InsertName::parse("Bar").unwrap(),
++            TypeShape::NamedStructOf(vec![]),
++        );
+ 
+         let mut c = TypeRegistry::empty();
+-        c.insert(InsertName::parse("Foo").unwrap(), TypeShape::Primitive(Primitive::U32));
++        c.insert(
++            InsertName::parse("Foo").unwrap(),
++            TypeShape::Primitive(Primitive::U32),
++        );
+ 
+         // Resolving will look in c, then b, then a.
+         let types = TypeRegistrySet::from_iter([a, b, c]);
+ 
+         // No dupes back:
+         let keys: HashSet<LookupName> = types.keys().collect();
+-        assert_eq!(keys, HashSet::from_iter([ln("Foo"), ln("u32"), ln("u64"), ln("Bar"),]));
++        assert_eq!(
++            keys,
++            HashSet::from_iter([ln("Foo"), ln("u32"), ln("u64"), ln("Bar"),])
++        );
+     }
+ }

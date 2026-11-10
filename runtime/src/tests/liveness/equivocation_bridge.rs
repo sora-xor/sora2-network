@@ -124,12 +124,17 @@ fn bridge_multisig_filter_preserves_normal_bridge_dispatch() {
         assert!(<Runtime as bridge_multisig::Config>::CallFilter::contains(
             &remark
         ));
-        assert_ok!(BridgeMultisig::as_multi_threshold_1(
-            RuntimeOrigin::signed(signer),
-            id,
-            Box::new(remark),
-            Default::default(),
-        ));
+        assert_eq!(
+            BridgeMultisig::as_multi_threshold_1(
+                RuntimeOrigin::signed(signer),
+                id,
+                Box::new(remark),
+                Default::default(),
+            )
+            .unwrap_err()
+            .error,
+            frame_system::Error::<Runtime>::CallFiltered.into()
+        );
     });
 }
 
@@ -241,6 +246,21 @@ fn bridge_multisig_filter_checks_opaque_calls_stored_hashes_and_nesting_bounds()
         ));
         bridge_multisig::Calls::<Runtime>::insert(hash, (remark.encode(), signer, 0u128));
         assert!(<Runtime as bridge_multisig::Config>::CallFilter::contains(
+            &approval
+        ));
+
+        let key = bridge_multisig::Calls::<Runtime>::hashed_key_for(hash);
+        let mut malformed = sp_io::storage::get(&key).unwrap().to_vec();
+        malformed.push(0); // A valid call must not hide malformed tuple suffix bytes.
+        sp_io::storage::set(&key, &malformed);
+        assert!(!<Runtime as bridge_multisig::Config>::CallFilter::contains(
+            &approval
+        ));
+        bridge_multisig::Calls::<Runtime>::insert(
+            hash,
+            (vec![0u8; 16_385], AccountId::from([88; 32]), 0u128),
+        );
+        assert!(!<Runtime as bridge_multisig::Config>::CallFilter::contains(
             &approval
         ));
 

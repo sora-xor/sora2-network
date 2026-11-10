@@ -1,0 +1,19 @@
+{
+  "package": "@polkadot/wasm-crypto",
+  "version": "7.5.4",
+  "gitHead": "f55a3e75a2ab5408f6bf947f2ec9b294daef432d",
+  "dist": {
+    "shasum": "c83b91623e96e168262935a7f2e7c1ffd1875249",
+    "tarball": "https://registry.npmjs.org/@polkadot/wasm-crypto/-/wasm-crypto-7.5.4.tgz",
+    "fileCount": 41,
+    "integrity": "sha512-1seyClxa7Jd7kQjfnCzTTTfYhTa/KUTDUaD3DMHBk5Q4ZUN1D1unJgX+v1aUeXSPxmzocdZETPJJRZjhVOqg9g==",
+    "signatures": [
+      {
+        "sig": "MEUCIFrjEmz8/2NEn+6FahXYbTt+szeqxJWNKU9PEz/TtJ7XAiEAlcAY+AnSj4JwnKMhI3fBr+BOPoZe79xlNIehjWjNgvc=",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "unpackedSize": 303457
+  },
+  "sha256": "e2a63983f8e578548e3e103a7486768baa0895742f0afe92274ae6c208c3a9f5"
+}

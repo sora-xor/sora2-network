@@ -975,13 +975,16 @@ fn incoming_queue_respects_limit() {
 
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         let sidechain_tx = H256::from_low_u64_be(42);
-        request_incoming(
-            alice.clone(),
-            sidechain_tx,
-            IncomingTransactionRequestKind::Transfer.into(),
-            net_id,
-        )
-        .unwrap();
+        // Internal authenticated work retains the full queue capacity.
+        assert_ok!(EthBridge::add_request(&OffchainRequest::LoadIncoming(
+            LoadIncomingRequest::Transaction(LoadIncomingTransactionRequest::new(
+                alice.clone(),
+                sidechain_tx,
+                bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(1, 0),
+                IncomingTransactionRequestKind::Transfer,
+                net_id,
+            ))
+        )));
 
         assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), max);
 
@@ -1004,7 +1007,7 @@ fn request_from_sidechain_enforces_queue_limit() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let max = MaxRequestsPerQueueConst::get() as u64;
+        let max = (MaxRequestsPerQueueConst::get() / 4) as u64;
 
         for i in 0..max {
             assert_ok!(EthBridge::request_from_sidechain(
@@ -1017,12 +1020,47 @@ fn request_from_sidechain_enforces_queue_limit() {
 
         assert_noop!(
             EthBridge::request_from_sidechain(
-                RuntimeOrigin::signed(alice),
+                RuntimeOrigin::signed(alice.clone()),
                 H256::from_low_u64_be(1000 + max),
                 IncomingTransactionRequestKind::Transfer.into(),
                 net_id
             ),
             Error::RequestsQueueFull
+        );
+        // Authenticated protocol imports still progress after arbitrary public
+        // load hints exhaust their admission budget.
+        let load = LoadIncomingTransactionRequest::new(
+            alice.clone(),
+            H256::repeat_byte(0xb9),
+            bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(5, 0),
+            IncomingTransactionRequestKind::Transfer,
+            net_id,
+        );
+        let incoming = IncomingRequest::try_from_contract_event(
+            ContractEvent::Deposit(DepositEvent::new(
+                alice,
+                U256::one(),
+                crate::RegisteredSidechainToken::<Runtime>::get(net_id, AssetId32::from(XOR))
+                    .unwrap(),
+                H256::zero(),
+            )),
+            load.clone(),
+            5,
+        )
+        .unwrap();
+        let incoming_hash = OffchainRequest::incoming(incoming.clone()).hash();
+        assert_ok!(EthBridge::import_incoming_request(
+            RuntimeOrigin::signed(crate::BridgeAccount::<Runtime>::get(net_id).unwrap()),
+            LoadIncomingRequest::Transaction(load),
+            Ok(incoming)
+        ));
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, incoming_hash),
+            Some(RequestStatus::Done)
+        );
+        assert_eq!(
+            crate::RequestsQueue::<Runtime>::get(net_id).len(),
+            max as usize
         );
     });
 }
@@ -1863,5 +1901,378 @@ fn replay_keys_are_scoped_by_network() {
                 net_id, tx_hash
             ));
         }
+    });
+}
+
+/// Same attacker identities as the runtime's `PersistentAccountResolver`. The mock
+/// keeps the identity `()` resolver, so these tests pass this one to
+/// `finalize_with`; the pallet itself applies the halt and policy-key gates.
+struct AttackerRedirect;
+
+impl crate::recovery::IncomingAccountResolver<AccountId> for AttackerRedirect {
+    fn resolve(_: &AccountId) -> Result<Option<AccountId>, DispatchError> {
+        Ok(None)
+    }
+
+    fn redirect_transfer(from: &EthAddress, beneficiary: &AccountId) -> Option<AccountId> {
+        (from.as_fixed_bytes() == &common::recovery::ATTACKER_EVM
+            || beneficiary == &AccountId::from(common::recovery::ATTACKER_ACCOUNT))
+            .then(|| AccountId::from(common::recovery::ATTACKER_MIGRATION_ACCOUNT))
+    }
+}
+
+fn attacker_redirect_ext() -> (sp_io::TestExternalities, State) {
+    let mut builder = ExtBuilder::default();
+    builder.add_currency(
+        ETH_NETWORK_ID,
+        AssetConfig::Sidechain {
+            id: USDT.into(),
+            sidechain_id: sp_core::H160::from_slice(&[0x44; 20]),
+            owned: false,
+            precision: DEFAULT_BALANCE_PRECISION,
+        },
+    );
+    builder.build()
+}
+
+fn redirect_transfer_request(
+    from: EthAddress,
+    to: AccountId,
+    asset_id: AssetId,
+    asset_kind: AssetKind,
+    amount: Balance,
+    should_take_fee: bool,
+) -> crate::IncomingTransfer<Runtime> {
+    crate::IncomingTransfer {
+        from,
+        to,
+        asset_id,
+        asset_kind,
+        amount,
+        author: get_account_id_from_seed::<sr25519::Public>("Alice"),
+        tx_hash: H256::repeat_byte(0x5a),
+        at_height: 1,
+        timepoint: Default::default(),
+        network_id: ETH_NETWORK_ID,
+        should_take_fee,
+    }
+}
+
+fn migration_account() -> AccountId {
+    AccountId::from(common::recovery::ATTACKER_MIGRATION_ACCOUNT)
+}
+
+fn attacker_evm() -> EthAddress {
+    EthAddress::from(common::recovery::ATTACKER_EVM)
+}
+
+#[test]
+fn recovery_policy_credits_attacker_sender_deposit_to_migration_account() {
+    let (mut ext, state) = attacker_redirect_ext();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let bridge = state.networks[&ETH_NETWORK_ID]
+            .config
+            .bridge_account_id
+            .clone();
+        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        // Minted (Sidechain) asset.
+        let minted = redirect_transfer_request(
+            attacker_evm(),
+            alice.clone(),
+            USDT.into(),
+            AssetKind::Sidechain,
+            100u32.into(),
+            false,
+        );
+        let signed = minted.encode();
+        let issuance = Assets::total_issuance(&USDT.into()).unwrap();
+        assert_ok!(minted.prepare());
+        assert_eq!(
+            minted.finalize_with::<AttackerRedirect>(),
+            Ok(minted.tx_hash)
+        );
+        assert_eq!(
+            Assets::total_balance(&USDT.into(), &migration_account()).unwrap(),
+            100u32.into()
+        );
+        assert_eq!(Assets::total_balance(&USDT.into(), &alice).unwrap(), 0);
+        assert_eq!(
+            Assets::total_issuance(&USDT.into()).unwrap(),
+            issuance + Balance::from(100u32)
+        );
+        assert_eq!(minted.encode(), signed);
+        // Bridge-owned asset with the transfer fee: the same net amount and fee
+        // burn as an ordinary delivery, released from the same custody.
+        let owned = crate::IncomingTransfer {
+            asset_id: XOR.into(),
+            asset_kind: AssetKind::SidechainOwned,
+            amount: balance!(100),
+            tx_hash: H256::repeat_byte(0x5b),
+            should_take_fee: true,
+            ..minted
+        };
+        let fee = crate::IncomingTransfer::<Runtime>::fee_amount();
+        let custody = Assets::total_balance(&XOR.into(), &bridge).unwrap();
+        let alice_xor = Assets::total_balance(&XOR.into(), &alice).unwrap();
+        assert_ok!(owned.prepare());
+        assert_eq!(owned.finalize_with::<AttackerRedirect>(), Ok(owned.tx_hash));
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &migration_account()).unwrap(),
+            balance!(100) - fee
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &bridge).unwrap(),
+            custody - balance!(100)
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            alice_xor
+        );
+    });
+}
+
+#[test]
+fn recovery_policy_redirects_deposit_to_attacker_account() {
+    let (mut ext, state) = attacker_redirect_ext();
+    ext.execute_with(|| {
+        let attacker = AccountId::from(common::recovery::ATTACKER_ACCOUNT);
+        let bridge = state.networks[&ETH_NETWORK_ID]
+            .config
+            .bridge_account_id
+            .clone();
+        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        let transfer = redirect_transfer_request(
+            EthAddress::from([1; 20]),
+            attacker.clone(),
+            XOR.into(),
+            AssetKind::Thischain,
+            100u32.into(),
+            false,
+        );
+        let custody = Assets::total_balance(&XOR.into(), &bridge).unwrap();
+        assert_ok!(transfer.prepare());
+        assert_eq!(
+            transfer.finalize_with::<AttackerRedirect>(),
+            Ok(transfer.tx_hash)
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &migration_account()).unwrap(),
+            100u32.into()
+        );
+        assert_eq!(Assets::total_balance(&XOR.into(), &attacker).unwrap(), 0);
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &bridge).unwrap(),
+            custody - Balance::from(100u32)
+        );
+    });
+}
+
+#[test]
+fn recovery_policy_leaves_ordinary_sender_deposit_unaffected() {
+    let (mut ext, _) = attacker_redirect_ext();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        let transfer = redirect_transfer_request(
+            EthAddress::from([1; 20]),
+            alice.clone(),
+            USDT.into(),
+            AssetKind::Sidechain,
+            100u32.into(),
+            false,
+        );
+        assert_ok!(transfer.prepare());
+        assert_eq!(
+            transfer.finalize_with::<AttackerRedirect>(),
+            Ok(transfer.tx_hash)
+        );
+        assert_eq!(
+            Assets::total_balance(&USDT.into(), &alice).unwrap(),
+            100u32.into()
+        );
+        assert_eq!(
+            Assets::total_balance(&USDT.into(), &migration_account()).unwrap(),
+            0
+        );
+    });
+}
+
+#[test]
+fn attacker_deposit_is_not_redirected_without_policy_key_or_while_halted() {
+    let (mut ext, _) = attacker_redirect_ext();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let attacker = AccountId::from(common::recovery::ATTACKER_ACCOUNT);
+        assert!(!sp_io::storage::exists(
+            common::recovery::POLICY_STORAGE_KEY
+        ));
+        for (index, to) in [alice.clone(), attacker.clone()].into_iter().enumerate() {
+            let transfer = crate::IncomingTransfer {
+                tx_hash: H256::repeat_byte(0x60 + index as u8),
+                ..redirect_transfer_request(
+                    attacker_evm(),
+                    to.clone(),
+                    USDT.into(),
+                    AssetKind::Sidechain,
+                    100u32.into(),
+                    false,
+                )
+            };
+            assert_ok!(transfer.prepare());
+            assert_eq!(
+                transfer.finalize_with::<AttackerRedirect>(),
+                Ok(transfer.tx_hash)
+            );
+            assert_eq!(
+                Assets::total_balance(&USDT.into(), &to).unwrap(),
+                100u32.into()
+            );
+        }
+        assert_eq!(
+            Assets::total_balance(&USDT.into(), &migration_account()).unwrap(),
+            0
+        );
+        // Halted delivery belongs to the maintenance resolution, never this redirect.
+        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        assert_eq!(
+            crate::recovery::ordinary_transfer_beneficiary::<Runtime, AttackerRedirect>(
+                &attacker_evm(),
+                &alice
+            ),
+            Ok(alice)
+        );
+    });
+}
+
+#[test]
+fn default_resolver_never_redirects_even_with_recovery_policy() {
+    let (mut ext, state) = attacker_redirect_ext();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[0x61; 32]),
+            IncomingTransactionRequestKind::Transfer.into(),
+            ETH_NETWORK_ID,
+        )
+        .unwrap();
+        let transfer = crate::IncomingTransfer {
+            tx_hash,
+            ..redirect_transfer_request(
+                attacker_evm(),
+                alice.clone(),
+                USDT.into(),
+                AssetKind::Sidechain,
+                100u32.into(),
+                false,
+            )
+        };
+        // The mock's `()` resolver uses the default `redirect_transfer`.
+        assert_incoming_request_done(&state, IncomingRequest::Transfer(transfer)).unwrap();
+        assert_eq!(
+            Assets::total_balance(&USDT.into(), &alice).unwrap(),
+            100u32.into()
+        );
+        assert_eq!(
+            Assets::total_balance(&USDT.into(), &migration_account()).unwrap(),
+            0
+        );
+    });
+}
+
+#[test]
+fn recovery_policy_rejects_zero_source_import_before_any_bookkeeping() {
+    let (mut ext, state) = attacker_redirect_ext();
+    ext.execute_with(|| {
+        let transfer = redirect_transfer_request(
+            EthAddress::zero(),
+            migration_account(),
+            USDT.into(),
+            AssetKind::Sidechain,
+            100,
+            false,
+        );
+        let load = LoadIncomingTransactionRequest::new(
+            transfer.author.clone(),
+            transfer.tx_hash,
+            transfer.timepoint,
+            IncomingTransactionRequestKind::Transfer,
+            ETH_NETWORK_ID,
+        );
+        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        let bridge = state.networks[&ETH_NETWORK_ID]
+            .config
+            .bridge_account_id
+            .clone();
+        assert_noop!(
+            EthBridge::import_incoming_request(
+                RuntimeOrigin::signed(bridge),
+                LoadIncomingRequest::Transaction(load),
+                Ok(IncomingRequest::Transfer(transfer)),
+            ),
+            Error::InvalidAddress
+        );
+    });
+}
+
+#[test]
+fn recovery_policy_retains_ambiguous_pending_deposit_without_cancel_or_rewrite() {
+    let (mut ext, state) = attacker_redirect_ext();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let transfer = redirect_transfer_request(
+            EthAddress::zero(),
+            alice.clone(),
+            XOR.into(),
+            AssetKind::Thischain,
+            100,
+            false,
+        );
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(alice),
+            transfer.tx_hash,
+            IncomingTransactionRequestKind::Transfer.into(),
+            ETH_NETWORK_ID,
+        ));
+        let incoming = IncomingRequest::Transfer(transfer.clone());
+        let bridge = state.networks[&ETH_NETWORK_ID]
+            .config
+            .bridge_account_id
+            .clone();
+        assert_ok!(EthBridge::register_incoming_request(
+            RuntimeOrigin::signed(bridge.clone()),
+            incoming.clone(),
+        ));
+        let hash = OffchainRequest::incoming(incoming).hash();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(ETH_NETWORK_ID, hash),
+            Some(RequestStatus::Pending)
+        );
+        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        // No refund, reserve release, queue removal, signature or replay mutation.
+        assert_noop!(
+            EthBridge::finalize_incoming_request(
+                RuntimeOrigin::signed(bridge),
+                hash,
+                ETH_NETWORK_ID
+            ),
+            Error::InvalidAddress
+        );
+        assert_noop!(
+            transfer.finalize_with::<AttackerRedirect>(),
+            Error::InvalidAddress
+        );
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(ETH_NETWORK_ID, hash),
+            Some(RequestStatus::Pending)
+        );
+        // Authenticated maintenance retains the original zero-source request.
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        assert_ok!(crate::recovery::ensure_ordinary_transfer_source::<Runtime>(
+            &EthAddress::zero()
+        ));
     });
 }

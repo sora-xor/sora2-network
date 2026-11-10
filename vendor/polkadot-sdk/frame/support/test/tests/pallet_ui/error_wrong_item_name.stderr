@@ -1,0 +1,5 @@
+error: expected `Error`
+  --> tests/pallet_ui/error_wrong_item_name.rs:36:11
+   |
+36 |     pub enum Foo<T> {}
+   |              ^^^

@@ -1,0 +1,19 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -126,6 +126,7 @@
+ 
+ [dependencies.hex]
+ version = "0.4.3"
++features = ["alloc"]
+ default-features = false
+ 
+ [dependencies.itertools]
+@@ -139,7 +140,7 @@
+ default-features = false
+ 
+ [dependencies.lru]
+-version = "0.16.3"
++version = "0.19.0"
+ features = ["hashbrown"]
+ default-features = false
+ 

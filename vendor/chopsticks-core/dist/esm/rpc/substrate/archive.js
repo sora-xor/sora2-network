@@ -1,0 +1,35 @@
+import { ResponseError } from '../shared.js';
+import { chain_getBlockHash } from './chain.js';
+/**
+ * @param context
+ * @param params - [`blockhash`]
+ *
+ * @return Block extrinsics
+ */ export const archive_unstable_body = async (context, [hash])=>{
+    const block = await context.chain.getBlock(hash);
+    if (!block) {
+        throw new ResponseError(1, `Block ${hash} not found`);
+    }
+    return await block.extrinsics;
+};
+/**
+ * @param context
+ * @param params - [`blockhash`, `method`, `data` ]
+ *
+ * @return {Object} result The call result.
+ * @return {boolean} result.success Whether the call is successful.
+ * @return {string} result.value The call result.
+ */ export const archive_unstable_call = async (context, [hash, method, data])=>{
+    const block = await context.chain.getBlock(hash);
+    if (!block) {
+        throw new ResponseError(1, `Block ${hash} not found`);
+    }
+    const resp = await block.call(method, [
+        data
+    ]);
+    return {
+        success: true,
+        value: resp.result
+    };
+};
+export const archive_unstable_hashByHeight = chain_getBlockHash;

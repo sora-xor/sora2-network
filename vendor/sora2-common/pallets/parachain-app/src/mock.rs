@@ -46,9 +46,9 @@ use currencies::BasicCurrencyAdapter;
 use bridge_types::types::AssetKind;
 use bridge_types::SubNetworkId;
 use frame_support::construct_runtime;
-use frame_support::parameter_types;
 use frame_support::traits::Everything;
 use frame_support::Deserialize;
+use frame_support::{derive_impl, parameter_types};
 // use frame_support::Debug;
 use frame_support::Serialize;
 use frame_system as system;
@@ -74,6 +74,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
 #[derive(
     Encode,
     Decode,
+    codec::DecodeWithMemTracking,
     PartialEq,
     Eq,
     Debug,
@@ -91,6 +92,17 @@ pub enum AssetId {
     Eth,
     Dai,
     Custom(u8),
+}
+
+impl From<bridge_types::MainnetAssetId> for AssetId {
+    fn from(asset: bridge_types::MainnetAssetId) -> Self {
+        match asset.as_bytes()[0] {
+            0 => Self::Xor,
+            1 => Self::Eth,
+            2 => Self::Dai,
+            value => Self::Custom(value),
+        }
+    }
 }
 
 pub type Balance = u128;
@@ -118,6 +130,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
@@ -148,6 +161,7 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 1;
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
 impl pallet_balances::Config for Test {
     type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;
@@ -160,7 +174,6 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
     type RuntimeHoldReason = ();
     type FreezeIdentifier = ();
-    type MaxHolds = ();
     type MaxFreezes = ();
 }
 
@@ -171,7 +184,6 @@ parameter_type_with_key! {
 }
 
 impl tokens::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
@@ -349,7 +361,6 @@ impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionCo
 }
 
 impl parachain_app::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
     type MessageStatusNotifier = ();
     type CallOrigin =
         dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
@@ -372,6 +383,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .unwrap();
 
     pallet_balances::GenesisConfig::<Test> {
+        dev_accounts: Default::default(),
         balances: vec![
             (Keyring::Bob.into(), 1_000_000_000_000_000_000),
             (Keyring::Alice.into(), 1_000_000_000_000_000_000),
@@ -450,6 +462,7 @@ pub fn new_tester_no_registered_assets() -> sp_io::TestExternalities {
         .unwrap();
 
     pallet_balances::GenesisConfig::<Test> {
+        dev_accounts: Default::default(),
         balances: vec![
             (Keyring::Bob.into(), 1_000_000_000_000_000_000),
             (Keyring::Alice.into(), 1_000_000_000_000_000_000),

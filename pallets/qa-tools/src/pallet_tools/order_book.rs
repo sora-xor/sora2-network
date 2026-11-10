@@ -212,10 +212,22 @@ fn verify_fill_side_price_params<T: Config>(
         + 1;
 
     ensure!(
-        params.price_step % tick == 0
+        params
+            .price_step
+            .checked_rem(*tick)
+            .expect("attempt to calculate the remainder with a divisor of zero")
+            == 0
             && params.price_step != 0
-            && params.highest_price % tick == 0
-            && params.lowest_price % tick == 0
+            && params
+                .highest_price
+                .checked_rem(*tick)
+                .expect("attempt to calculate the remainder with a divisor of zero")
+                == 0
+            && params
+                .lowest_price
+                .checked_rem(*tick)
+                .expect("attempt to calculate the remainder with a divisor of zero")
+                == 0
             && params.highest_price != 0
             && params.lowest_price != 0
             && params.highest_price >= params.lowest_price

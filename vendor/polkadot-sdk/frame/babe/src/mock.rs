@@ -231,10 +231,10 @@ pub fn go_to_block(n: u64, s: u64) {
 /// Slots will grow accordingly to blocks
 pub fn progress_to_block(n: u64) {
 	let mut slot = u64::from(CurrentSlot::<Test>::get()) + 1;
-	for i in System::block_number() + 1..=n {
+	(System::block_number() + 1..=n).for_each(|i| {
 		go_to_block(i, slot);
 		slot += 1;
-	}
+	});
 }
 
 /// Progress to the first block at the given session

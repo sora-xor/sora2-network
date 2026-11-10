@@ -1,0 +1,276 @@
+name: Rust
+
+on:
+  push:
+    # Run jobs when commits are pushed to
+    # main:
+    branches:
+      - main
+  pull_request:
+    # Run jobs for any external PR that wants
+    # to merge to main, too:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Cargo check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.2
+
+      # Dev note: we don't use `--all-targets` because tests require all features
+      # and we don't want to have to gate different tests behind different features.
+      - name: Check all features
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: check
+          args: --all-features --workspace --lib --bins --examples
+
+      - name: Check no features
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: check
+          args: --no-default-features --workspace --lib --bins --examples
+        
+      - name: Check legacy + error-tracing + no-std
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: check
+          args: --no-default-features --features legacy,error-tracing --workspace --lib --bins --examples
+
+  wasm:
+    name: Check WASM compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.2
+
+      - name: Check all features
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: check
+          args: --no-default-features --features legacy,error-tracing --target wasm32-unknown-unknown
+
+  fmt:
+    name: Cargo fmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            profile: minimal
+            toolchain: stable
+            override: true
+            components: rustfmt
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.2
+
+      - name: Cargo fmt
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: fmt
+          args: --all -- --check
+
+  docs:
+    name: Check documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.2
+
+      - name: Check internal documentation links
+        run: RUSTDOCFLAGS="--deny rustdoc::broken_intra_doc_links" cargo doc -vv --workspace --no-deps --document-private-items
+
+  tests:
+    name: Cargo test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.2
+
+      - name: Cargo test
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: test
+          args: --all-targets --workspace --features legacy-types
+
+      - name: Cargo test docs
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: test
+          args: --doc --workspace
+
+      - name: Cargo test examples
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: test
+          args: --examples --workspace
+
+  decode-tester:
+    name: Check Block Decoding
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for paths-filter to compare commits
+
+      - name: Check which type files changed
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          # Make diffing deterministic and easy to reproduce with act tool
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          ref: ${{ github.sha }}
+          filters: |
+            kusama_assethub:
+              - 'types/kusama_assethub_types.yaml'
+              - 'frame-decode-tester/tests/kusama_assethub_*.rs'
+              - 'frame-decode-tester/src/**'
+              - 'frame-decode-tester/Cargo.toml'
+            kusama_relay:
+              - 'types/kusama_relay_types.yaml'
+              - 'frame-decode-tester/tests/kusama_relay_*.rs'
+            polkadot_relay:
+              - 'types/polkadot_relay_types.yaml'
+              - 'frame-decode-tester/tests/polkadot_relay_*.rs'
+
+      - name: Install Rust stable toolchain
+        if: steps.changes.outputs.kusama_assethub == 'true' || steps.changes.outputs.kusama_relay == 'true' || steps.changes.outputs.polkadot_relay == 'true'
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Rust Cache
+        if: steps.changes.outputs.kusama_assethub == 'true' || steps.changes.outputs.kusama_relay == 'true' || steps.changes.outputs.polkadot_relay == 'true'
+        uses: Swatinem/rust-cache@v1.3.0
+
+      - name: Run Kusama Relay storage decode tests (PR tier)
+        if: steps.changes.outputs.kusama_relay == 'true'
+        run: |
+          cargo test -p frame-decode-tester \
+            --features "kusama-relay" \
+            --test kusama_relay_historic_storage \
+            -- --nocapture
+        # Runs in PR tier (default) - faster for quick feedback
+
+      - name: Run decode tests (Deep tier)
+        if: steps.changes.outputs.kusama_assethub == 'true' || steps.changes.outputs.kusama_relay == 'true' || steps.changes.outputs.polkadot_relay == 'true'
+        run: |
+          cargo test -p frame-decode-tester \
+            --features "kusama-assethub kusama-relay polkadot-relay" \
+            --test kusama_assethub_historic_block \
+            --test kusama_assethub_historic_storage \
+            --test kusama_relay_historic_block \
+            --test polkadot_relay_historic_block \
+            --test polkadot_relay_historic_storage \
+            --no-fail-fast \
+            -- --nocapture
+        env:
+          FRAME_DECODE_TIER: deep
+
+      - name: Skip decode tests (no relevant changes)
+        if: steps.changes.outputs.kusama_assethub != 'true' && steps.changes.outputs.kusama_relay != 'true' && steps.changes.outputs.polkadot_relay != 'true'
+        run: echo "No relevant type files changed; skipping decode tester tests."
+
+  clippy:
+    name: Cargo clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            profile: minimal
+            toolchain: stable
+            components: clippy
+            override: true
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.2
+
+      - name: Run clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-targets -- -D warnings
+
+  no_std:
+    name: Check no_std build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: aarch64-unknown-none
+          override: true
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.2
+
+      - name: Check no_std build
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: check
+          # The aarch64-unknown-none doesn't support `std`, so this
+          # will fail if the crate is not fully no_std compatible.
+          args: --target aarch64-unknown-none --no-default-features --features legacy,error-tracing

@@ -30,8 +30,9 @@
 
 use codec::alloc::collections::HashSet;
 use common::{fixed, DataFeed, SymbolName};
-use frame_support::{assert_err, error::BadOrigin};
+use frame_support::assert_err;
 use sp_core::TryCollect;
+use sp_runtime::traits::BadOrigin;
 use sp_std::str::FromStr;
 
 use crate::{mock::*, Oracle, Rate};

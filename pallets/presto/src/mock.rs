@@ -43,7 +43,7 @@ use common::{
     SBT_PRCRDT, SBT_PRINVST, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{ConstU32, EitherOfDiverse, GenesisBuild};
+use frame_support::traits::{ConstU32, EitherOfDiverse};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::{EnsureRoot, EnsureSigned};
 use permissions::Scope;

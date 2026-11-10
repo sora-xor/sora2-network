@@ -1,0 +1,22 @@
+[package]
+name = "sp-core-fuzz"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata]
+cargo-fuzz = true
+
+[[bin]]
+name = "fuzz_address_uri"
+path = "fuzz_targets/fuzz_address_uri.rs"
+test = false
+doc = false
+
+[dependencies]
+libfuzzer-sys = { workspace = true }
+regex = { workspace = true }
+sp-core = { default-features = true, workspace = true }

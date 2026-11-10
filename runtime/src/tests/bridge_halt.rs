@@ -1,0 +1,485 @@
+// This file is part of the SORA network and Polkaswap app.
+// SPDX-License-Identifier: BSD-4-Clause
+
+//! The emergency halt through the real signed-transaction pipeline: guardians
+//! halt for free, other signers are rejected before inclusion, and a halt is a
+//! numbered signal for the bridge workers that needs no Root call afterwards.
+
+use crate::{
+    AccountId, Balances, BridgeHalt, BridgeProxy, Executive, Runtime, RuntimeCall, RuntimeEvent,
+    RuntimeOrigin, Signature, SignedExtra, System, UncheckedExtrinsic, XorFee,
+};
+use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId};
+use codec::Encode;
+use common::bridge_halt::{latest_guardian_halt, GuardianHalt};
+use common::{balance, recovery::BRIDGE_HALT_STORAGE_KEY, XOR};
+use frame_support::{
+    assert_noop, assert_ok,
+    dispatch::{DispatchClass, GetDispatchInfo},
+    traits::Currency,
+};
+use framenode_chain_spec::ext;
+use sp_core::{sr25519, Pair};
+use sp_runtime::{
+    generic::Era,
+    transaction_validity::{
+        InvalidTransaction, TransactionSource, TransactionValidity, TransactionValidityError,
+    },
+    DispatchError, FixedPointNumber, FixedU128,
+};
+
+fn guardian() -> sr25519::Pair {
+    sr25519::Pair::from_seed(&[61; 32])
+}
+
+fn stranger() -> sr25519::Pair {
+    sr25519::Pair::from_seed(&[62; 32])
+}
+
+fn account(pair: &sr25519::Pair) -> AccountId {
+    AccountId::from(pair.public())
+}
+
+fn halt(message: &[u8]) -> RuntimeCall {
+    RuntimeCall::BridgeHalt(bridge_halt::Call::halt {
+        reason: message.to_vec().try_into().unwrap(),
+    })
+}
+
+fn signed(call: RuntimeCall, pair: &sr25519::Pair) -> UncheckedExtrinsic {
+    let who = account(pair);
+    let extra: SignedExtra = (
+        frame_system::AuthorizeCall::new(),
+        frame_system::CheckSpecVersion::<Runtime>::new(),
+        frame_system::CheckTxVersion::<Runtime>::new(),
+        frame_system::CheckGenesis::<Runtime>::new(),
+        frame_system::CheckEra::<Runtime>::from(Era::Immortal),
+        frame_system::CheckNonce::<Runtime>::from(System::account_nonce(&who)),
+        frame_system::CheckWeight::<Runtime>::new(),
+        crate::charge_tx_payment_extension(),
+    );
+    let payload = crate::SignedPayload::new(call.clone(), extra.clone()).unwrap();
+    let signature = payload.using_encoded(|payload| pair.sign(payload));
+    UncheckedExtrinsic::new_signed(call, who, Signature::Sr25519(signature), extra)
+}
+
+/// Pool validation, discarding the validation block Executive initializes.
+fn validate(call: RuntimeCall, pair: &sr25519::Pair) -> TransactionValidity {
+    sp_io::storage::start_transaction();
+    let validity = Executive::validate_transaction(
+        TransactionSource::External,
+        signed(call, pair),
+        Default::default(),
+    );
+    sp_io::storage::rollback_transaction();
+    validity
+}
+
+fn fresh_block() {
+    frame_system::BlockSize::<Runtime>::kill();
+    frame_system::BlockWeight::<Runtime>::kill();
+    System::reset_events();
+}
+
+/// Both accounts exist and hold XOR, so a charged fee would show as a balance change.
+fn setup() {
+    System::set_block_number(1);
+    for pair in [guardian(), stranger()] {
+        let _ = Balances::make_free_balance_be(&account(&pair), balance!(10));
+    }
+    assert_ok!(XorFee::update_multiplier(
+        RuntimeOrigin::root(),
+        FixedU128::saturating_from_integer(1),
+    ));
+    assert_ok!(BridgeHalt::add_guardian(
+        RuntimeOrigin::root(),
+        account(&guardian())
+    ));
+    sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
+    fresh_block();
+}
+
+fn latch() -> Option<Vec<u8>> {
+    sp_io::storage::get(BRIDGE_HALT_STORAGE_KEY).map(|value| value.to_vec())
+}
+
+/// The halt the bridge workers read.
+fn signal() -> Option<GuardianHalt> {
+    latest_guardian_halt().unwrap()
+}
+
+fn cooldown() -> u32 {
+    crate::BridgeHaltCooldown::get()
+}
+
+/// A bridge entry point that checks the latch before anything else.
+fn burn_error() -> DispatchError {
+    BridgeProxy::burn(
+        RuntimeOrigin::signed(account(&stranger())),
+        GenericNetworkId::Sub(SubNetworkId::Liberland),
+        XOR,
+        GenericAccount::Sora(account(&stranger())),
+        balance!(1),
+    )
+    .unwrap_err()
+    .error
+}
+
+#[test]
+fn a_guardian_halt_is_free_and_signals_the_workers() {
+    ext().execute_with(|| {
+        setup();
+        let who = account(&guardian());
+        assert_eq!(
+            halt(b"x").get_dispatch_info().class,
+            DispatchClass::Operational
+        );
+
+        assert_ok!(validate(halt(b"HASHI peer keys leaked"), &guardian()));
+        let before = Balances::free_balance(&who);
+        let nonce = System::account_nonce(&who);
+        assert_ok!(Executive::apply_extrinsic(signed(
+            halt(b"HASHI peer keys leaked"),
+            &guardian()
+        ))
+        .unwrap());
+
+        assert_eq!(Balances::free_balance(&who), before);
+        assert_eq!(System::account_nonce(&who), nonce + 1);
+        assert_eq!(
+            signal(),
+            Some(GuardianHalt {
+                number: 1,
+                block: 1
+            })
+        );
+        assert!(System::events().iter().any(|record| matches!(
+            &record.event,
+            RuntimeEvent::TransactionPayment(pallet_transaction_payment::Event::TransactionFeePaid {
+                who: payer,
+                actual_fee: 0,
+                tip: 0,
+            }) if payer == &who
+        )));
+        assert!(System::events().iter().any(|record| matches!(
+            &record.event,
+            RuntimeEvent::BridgeHalt(bridge_halt::Event::BridgeHalted { number: 1, guardian, reason })
+                if guardian == &who && reason.as_slice() == b"HASHI peer keys leaked"
+        )));
+        // The workers stop; the bridge pallets keep their state, and Root's latch,
+        // which only a Root call clears, is not set.
+        assert_eq!(latch(), None);
+        assert_eq!(
+            burn_error(),
+            bridge_proxy::Error::<Runtime>::WrongAccountKind.into()
+        );
+    });
+}
+
+#[test]
+fn other_signers_are_rejected_before_inclusion() {
+    ext().execute_with(|| {
+        setup();
+        let who = account(&stranger());
+        assert_eq!(
+            validate(halt(b"x"), &stranger()),
+            Err(InvalidTransaction::BadSigner.into())
+        );
+        let before = Balances::free_balance(&who);
+        let nonce = System::account_nonce(&who);
+        // An Err here makes the block builder drop the extrinsic and roll back its
+        // overlay (which already holds System::ExtrinsicData), so it is never included.
+        assert_eq!(
+            Executive::apply_extrinsic(signed(halt(b"x"), &stranger())),
+            Err(TransactionValidityError::Invalid(
+                InvalidTransaction::BadSigner
+            ))
+        );
+        assert_eq!(Balances::free_balance(&who), before);
+        assert_eq!(System::account_nonce(&who), nonce);
+        assert_eq!(signal(), None);
+        assert_eq!(bridge_halt::LastHalt::<Runtime>::get(), None);
+        assert!(System::events().is_empty());
+    });
+}
+
+#[test]
+fn a_tip_is_refused_because_the_halt_is_free() {
+    ext().execute_with(|| {
+        setup();
+        let who = account(&guardian());
+        let call = halt(b"x");
+        let extra: SignedExtra = (
+            frame_system::AuthorizeCall::new(),
+            frame_system::CheckSpecVersion::<Runtime>::new(),
+            frame_system::CheckTxVersion::<Runtime>::new(),
+            frame_system::CheckGenesis::<Runtime>::new(),
+            frame_system::CheckEra::<Runtime>::from(Era::Immortal),
+            frame_system::CheckNonce::<Runtime>::from(System::account_nonce(&who)),
+            frame_system::CheckWeight::<Runtime>::new(),
+            crate::ChargeTxPaymentExtension::from(xor_fee::extension::ChargeTransactionPayment::<
+                Runtime,
+            >::from(1)),
+        );
+        let payload = crate::SignedPayload::new(call.clone(), extra.clone()).unwrap();
+        let signature = payload.using_encoded(|payload| guardian().sign(payload));
+        let tipped =
+            UncheckedExtrinsic::new_signed(call, who, Signature::Sr25519(signature), extra);
+        assert_eq!(
+            Executive::apply_extrinsic(tipped),
+            Err(TransactionValidityError::Invalid(
+                InvalidTransaction::Payment
+            ))
+        );
+        assert_eq!(signal(), None);
+    });
+}
+
+#[test]
+fn the_next_free_halt_waits_out_the_cooldown() {
+    ext().execute_with(|| {
+        setup();
+        let who = account(&guardian());
+        assert_ok!(Executive::apply_extrinsic(signed(halt(b"first"), &guardian())).unwrap());
+        fresh_block();
+        assert_eq!(
+            validate(halt(b"second"), &guardian()),
+            Err(InvalidTransaction::Stale.into())
+        );
+        let before = Balances::free_balance(&who);
+        assert_eq!(
+            Executive::apply_extrinsic(signed(halt(b"second"), &guardian())),
+            Err(TransactionValidityError::Invalid(InvalidTransaction::Stale))
+        );
+        assert_eq!(Balances::free_balance(&who), before);
+        assert_eq!(signal().map(|halt| halt.number), Some(1));
+
+        // Validation checks the next block, so one block before the end it passes.
+        System::set_block_number(cooldown());
+        assert_ok!(validate(halt(b"second"), &guardian()));
+        System::set_block_number(1 + cooldown());
+        fresh_block();
+        assert_ok!(Executive::apply_extrinsic(signed(halt(b"second"), &guardian())).unwrap());
+        assert_eq!(Balances::free_balance(&who), before);
+        assert_eq!(
+            signal(),
+            Some(GuardianHalt {
+                number: 2,
+                block: 1 + cooldown()
+            })
+        );
+        assert_eq!(
+            bridge_halt::LastHalt::<Runtime>::get()
+                .unwrap()
+                .reason
+                .as_slice(),
+            b"second"
+        );
+    });
+}
+
+#[test]
+fn a_wrapped_halt_pays_and_is_admitted_only_when_it_can_halt() {
+    ext().execute_with(|| {
+        setup();
+        let wrapped = || {
+            RuntimeCall::Utility(pallet_utility::Call::batch_all {
+                calls: vec![halt(b"x")],
+            })
+        };
+        assert_eq!(
+            crate::xor_fee_impls::validate_bridge_fee_exemption(&account(&guardian()), &wrapped()),
+            Ok(false)
+        );
+
+        // Another signer's wrapped halt can only fail, so it never reaches a block.
+        let who = account(&stranger());
+        assert_eq!(
+            validate(wrapped(), &stranger()),
+            Err(InvalidTransaction::BadSigner.into())
+        );
+        let before = Balances::free_balance(&who);
+        let nonce = System::account_nonce(&who);
+        assert_eq!(
+            Executive::apply_extrinsic(signed(wrapped(), &stranger())),
+            Err(TransactionValidityError::Invalid(
+                InvalidTransaction::BadSigner
+            ))
+        );
+        assert_eq!(Balances::free_balance(&who), before);
+        assert_eq!(System::account_nonce(&who), nonce);
+        assert_eq!(signal(), None);
+
+        // A guardian's wrapped halt is admitted and pays the ordinary fee.
+        let who = account(&guardian());
+        assert_ok!(validate(wrapped(), &guardian()));
+        let before = Balances::free_balance(&who);
+        assert_ok!(Executive::apply_extrinsic(signed(wrapped(), &guardian())).unwrap());
+        assert!(Balances::free_balance(&who) < before);
+        assert_eq!(signal().map(|halt| halt.number), Some(1));
+
+        // Within the cooldown, a wrapped halt is stale like a direct one.
+        fresh_block();
+        assert_eq!(
+            validate(wrapped(), &guardian()),
+            Err(InvalidTransaction::Stale.into())
+        );
+    });
+}
+
+#[test]
+fn roots_latch_stays_separate_from_guardian_halts() {
+    ext().execute_with(|| {
+        setup();
+        // Governance's hard stop: bridge pallets refuse calls while it is set.
+        sp_io::storage::set(BRIDGE_HALT_STORAGE_KEY, &[1]);
+        assert_eq!(
+            burn_error(),
+            bridge_proxy::Error::<Runtime>::RecoveryHalted.into()
+        );
+        // A guardian can still signal the workers, and the latch stays as Root set it.
+        assert_ok!(Executive::apply_extrinsic(signed(halt(b"x"), &guardian())).unwrap());
+        assert_eq!(signal().map(|halt| halt.number), Some(1));
+        assert_eq!(latch(), Some(vec![1]));
+        // The old Root-only resume call is gone: index 1 no longer decodes.
+        let mut bytes = halt(b"").encode();
+        bytes[1] = 1;
+        assert!(<RuntimeCall as codec::Decode>::decode(&mut &bytes[..]).is_err());
+    });
+}
+
+#[test]
+fn guardians_are_managed_by_the_bridge_manager_origin() {
+    ext().execute_with(|| {
+        setup();
+        let who = account(&stranger());
+        assert_noop!(
+            BridgeHalt::add_guardian(RuntimeOrigin::signed(who.clone()), who.clone()),
+            DispatchError::BadOrigin
+        );
+        assert_ok!(BridgeHalt::add_guardian(RuntimeOrigin::root(), who.clone()));
+        assert_eq!(BridgeHalt::validate_halt(&who), Ok(()));
+        assert_ok!(BridgeHalt::remove_guardian(
+            RuntimeOrigin::root(),
+            who.clone()
+        ));
+        assert_eq!(
+            validate(halt(b"x"), &stranger()),
+            Err(InvalidTransaction::BadSigner.into())
+        );
+    });
+}
+
+const INITIAL_GUARDIANS: [&str; 2] = [
+    "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY",
+    "cnU8UgdM4fs9iiCxkRDW8vp2bx4e68LbePkcuQPv1LERKH5oH",
+];
+
+fn initial_guardians() -> Vec<AccountId> {
+    crate::BridgeHaltInitialGuardians::get()
+}
+
+fn initial_guardian() -> AccountId {
+    initial_guardians()[0].clone()
+}
+
+#[test]
+fn the_initial_guardian_list_is_the_requested_sora_addresses() {
+    use sp_core::crypto::{Ss58AddressFormat, Ss58Codec};
+    let listed: Vec<String> = initial_guardians()
+        .iter()
+        .map(|account| account.to_ss58check_with_version(Ss58AddressFormat::custom(69)))
+        .collect();
+    assert_eq!(listed, INITIAL_GUARDIANS.map(String::from).to_vec());
+}
+
+#[test]
+fn the_upgrade_installs_the_initial_guardians_once() {
+    use frame_support::traits::OnRuntimeUpgrade;
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        for guardian in initial_guardians() {
+            assert!(!BridgeHalt::is_guardian(&guardian));
+        }
+        assert!(!crate::migrations::bridge_halt_guardians_seeded());
+
+        crate::migrations::SeedBridgeHaltGuardians::on_runtime_upgrade();
+        assert!(crate::migrations::bridge_halt_guardians_seeded());
+        for guardian in initial_guardians() {
+            assert!(BridgeHalt::is_guardian(&guardian));
+            System::assert_has_event(RuntimeEvent::BridgeHalt(
+                bridge_halt::Event::GuardianAdded { account: guardian },
+            ));
+        }
+        assert_eq!(
+            bridge_halt::Guardians::<Runtime>::get().len(),
+            INITIAL_GUARDIANS.len()
+        );
+
+        // Governance owns the list from then on: a later upgrade keeps a removal
+        // and leaves the other guardian in place.
+        assert_ok!(BridgeHalt::remove_guardian(
+            RuntimeOrigin::root(),
+            initial_guardian()
+        ));
+        crate::migrations::SeedBridgeHaltGuardians::on_runtime_upgrade();
+        assert!(!BridgeHalt::is_guardian(&initial_guardian()));
+        assert!(BridgeHalt::is_guardian(&initial_guardians()[1]));
+    });
+}
+
+#[test]
+fn every_initial_guardian_halts_without_a_fee() {
+    use frame_support::traits::OnRuntimeUpgrade;
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
+        crate::migrations::SeedBridgeHaltGuardians::on_runtime_upgrade();
+
+        // Each seeded account is fee-exempt, and each halt takes the next number
+        // once the cooldown since the previous halt has passed.
+        for (index, guardian) in initial_guardians().into_iter().enumerate() {
+            assert_eq!(
+                crate::xor_fee_impls::validate_bridge_fee_exemption(&guardian, &halt(b"x")),
+                Ok(true)
+            );
+            assert_ok!(BridgeHalt::halt(
+                RuntimeOrigin::signed(guardian),
+                b"x".to_vec().try_into().unwrap()
+            ));
+            assert_eq!(signal().map(|halt| halt.number), Some(index as u32 + 1));
+            System::set_block_number(System::block_number() + crate::BridgeHaltCooldown::get());
+        }
+    });
+}
+
+#[test]
+fn the_initial_guardian_halts_without_a_fee() {
+    use frame_support::traits::OnRuntimeUpgrade;
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
+        crate::migrations::SeedBridgeHaltGuardians::on_runtime_upgrade();
+
+        // The admission check the signed pipeline runs before charging a direct
+        // halt: fee-exempt for this account, refused for others and right after a halt.
+        assert_eq!(
+            crate::xor_fee_impls::validate_bridge_fee_exemption(&initial_guardian(), &halt(b"x")),
+            Ok(true)
+        );
+        assert_eq!(
+            crate::xor_fee_impls::validate_bridge_fee_exemption(&account(&stranger()), &halt(b"x")),
+            Err(InvalidTransaction::BadSigner.into())
+        );
+        assert_ok!(BridgeHalt::halt(
+            RuntimeOrigin::signed(initial_guardian()),
+            b"x".to_vec().try_into().unwrap()
+        ));
+        assert_eq!(signal().map(|halt| halt.number), Some(1));
+        assert_eq!(latch(), None);
+        assert_eq!(
+            crate::xor_fee_impls::validate_bridge_fee_exemption(&initial_guardian(), &halt(b"x")),
+            Err(InvalidTransaction::Stale.into())
+        );
+    });
+}

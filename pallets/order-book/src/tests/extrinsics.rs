@@ -34,7 +34,6 @@ use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, OrderBookId, PriceVariant,
     DEFAULT_BALANCE_PRECISION, ETH, KUSD, PSWAP, VAL, VXOR, XOR, XST, XSTUSD,
 };
-use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
@@ -45,6 +44,7 @@ use framenode_runtime::order_book::{
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use hex_literal::hex;
 use sp_core::Get;
+use sp_runtime::traits::BadOrigin;
 use sp_std::collections::btree_map::BTreeMap;
 
 type Assets = framenode_runtime::assets::Pallet<Runtime>;
@@ -784,7 +784,7 @@ fn should_delete_order_book() {
         assert!(OrderBookPallet::aggregated_bids(order_book_id).is_empty());
         assert!(OrderBookPallet::aggregated_asks(order_book_id).is_empty());
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&owner, &order_book_id),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id),
             None
         );
 
@@ -1968,7 +1968,7 @@ fn should_place_limit_order() {
         let agg_bids_before = OrderBookPallet::aggregated_bids(order_book_id);
         let price_volume_before = agg_bids_before.get(&price).cloned().unwrap_or_default();
         let user_orders_before =
-            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap_or_default();
+            OrderBookPallet::user_limit_orders(&caller, order_book_id).unwrap_or_default();
         let balance_before = free_balance::<Runtime>(&order_book_id.quote, &caller);
 
         assert_ok!(OrderBookPallet::place_limit_order(
@@ -2022,7 +2022,7 @@ fn should_place_limit_order() {
         let mut expected_user_orders = user_orders_before;
         assert_ok!(expected_user_orders.try_push(order_id));
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&caller, order_book_id).unwrap(),
             expected_user_orders
         );
 
@@ -2125,7 +2125,7 @@ fn should_place_limit_order_with_nft() {
             BTreeMap::from([(price, amount)])
         );
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&caller, order_book_id).unwrap(),
             vec![order_id]
         );
 
@@ -2798,7 +2798,7 @@ fn should_cancel_limit_order() {
             .cloned()
             .unwrap_or_default();
         let user_orders_before =
-            OrderBookPallet::user_limit_orders(&order.owner, &order_book_id).unwrap_or_default();
+            OrderBookPallet::user_limit_orders(&order.owner, order_book_id).unwrap_or_default();
         let balance_before = free_balance::<Runtime>(&order_book_id.quote, &order.owner);
 
         // cancel the limit order
@@ -2829,7 +2829,7 @@ fn should_cancel_limit_order() {
         let mut expected_user_orders = user_orders_before;
         expected_user_orders.retain(|&id| id != order.id);
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&order.owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&order.owner, order_book_id).unwrap(),
             expected_user_orders
         );
 

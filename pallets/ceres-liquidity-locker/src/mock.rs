@@ -12,7 +12,7 @@ use common::{
     DEXInfo, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild, Hooks};
+use frame_support::traits::Hooks;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;

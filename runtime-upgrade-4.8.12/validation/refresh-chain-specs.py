@@ -31,6 +31,8 @@ PROFILES = {
 CODE_KEY = "0x3a636f6465"
 CODE_VALUE = re.compile(rb'"0x3a636f6465"\s*:\s*"(0x[0-9a-fA-F]+)"')
 CAPACITY_STORAGE = {"PendingOperationsByProposer", "ProposerCountedOperations", "CancellationApprovals"}
+PAID_MIGRATION_BASE = "3b95216336fb4baf419ec4271f97c09e66f3579f"
+PRE_BATCH_BASE = "7fe885f651e682bde75f77f1ecbbc542d202a7b6"
 
 
 def require(condition, message):
@@ -156,8 +158,8 @@ def main():
     for name, expected in provenance["files"].items():
         require(digest((root / name).read_bytes()) == expected, "Source input changed: " + name)
     base_commit = provenance["baseCommit"]
-    chain_spec_base = run(["git", "-C", str(root), "rev-parse", "HEAD"]).decode().strip()
-    require(chain_spec_base == "3b95216336fb4baf419ec4271f97c09e66f3579f", "Chain specs must start at reviewed paid-migration commit")
+    chain_spec_base = PAID_MIGRATION_BASE
+    run(["git", "-C", str(root), "merge-base", "--is-ancestor", PRE_BATCH_BASE, "HEAD"])
     run(["git", "-C", str(root), "merge-base", "--is-ancestor", base_commit, chain_spec_base])
     comparator_path = output.parent / "compare-metadata.py"
     if not comparator_path.is_file():
@@ -172,6 +174,7 @@ def main():
         "sourceTree": source_tree,
         "sourceBaseCommit": base_commit,
         "chainSpecBaseCommit": chain_spec_base,
+        "preBatchBaseCommit": PRE_BATCH_BASE,
         "provenanceSha256": digest(provenance_bytes),
         "scriptSha256": digest(Path(__file__).read_bytes()),
         "subwasmVersion": run(["subwasm", "--version"]).decode().strip(),
@@ -218,7 +221,14 @@ def main():
             path = root / "node/chain_spec/src/bytes" / filename
             original = path.read_bytes()
             base_spec = run(["git", "-C", str(root), "show", chain_spec_base + ":" + str(path.relative_to(root))])
-            require(original == base_spec, "Chain spec differs from reviewed paid-migration baseline: " + filename)
+            pre_batch_spec = run(["git", "-C", str(root), "show", PRE_BATCH_BASE + ":" + str(path.relative_to(root))])
+            require(original == pre_batch_spec, "Chain spec differs from reviewed pre-batch candidate: " + filename)
+            historical_match = CODE_VALUE.search(base_spec)
+            original_match = CODE_VALUE.search(original)
+            require(historical_match is not None and original_match is not None, "Missing baseline runtime")
+            require(base_spec[:historical_match.start(1)] + b"<runtime>" + base_spec[historical_match.end(1):] ==
+                    original[:original_match.start(1)] + b"<runtime>" + original[original_match.end(1):],
+                    "Non-code bytes differ from paid-migration baseline: " + filename)
             document = parse_json(original)
             matches = list(CODE_VALUE.finditer(original))
             require(len(matches) == 1, "Expected one raw :code string in " + filename)
@@ -226,7 +236,11 @@ def main():
             old_hex = document["genesis"]["raw"]["top"][CODE_KEY]
             require(match.group(1).decode() == old_hex, "Code match is not genesis.raw.top :code")
             old_blob = bytes.fromhex(old_hex[2:])
-            previous = inspect_wasm(old_blob, cache)
+            pre_batch = inspect_wasm(old_blob, cache)
+            batch_comparison = comparison_module.Comparison(pre_batch["model"], runtime["model"]).run()
+            require(batch_comparison["compatibleExistingScaleEncoding"] and not batch_comparison["additions"] and
+                    not batch_comparison["constantValueChanges"], "Batch fee update changed feature ABI/constants: " + filename)
+            previous = inspect_wasm(bytes.fromhex(historical_match.group(1).decode()[2:]), cache)
             require(previous["palletIndices"] == runtime["palletIndices"],
                     "Feature pallet indices differ in " + filename)
             comparison = comparison_module.retirement_comparison(previous["model"], runtime["model"])
@@ -254,9 +268,14 @@ def main():
                 "sha256": digest(updated), "bytes": len(updated),
                 "previousSha256": digest(original), "previousCodeSha256": digest(old_blob),
                 "codeSha256": digest(blob), "codeBytes": len(blob),
-                "previousMetadataSha256": previous["metadataSha256"],
+                "previousMetadataSha256": pre_batch["metadataSha256"],
+                "historicalPaidMigrationMetadataSha256": previous["metadataSha256"],
+                "preBatchBaseCommit": PRE_BATCH_BASE,
+                "preBatchMetadataSha256": pre_batch["metadataSha256"],
+                "payoutBatchMetadataComparison": batch_comparison,
+                "payoutBatchPreservesAllEncodingsAndConstants": True,
                 "currentMetadataSha256": runtime["metadataSha256"],
-                "previousRuntimeVersion": {name: previous["version"][name] for name in
+                "previousRuntimeVersion": {name: pre_batch["version"][name] for name in
                                            ("specName", "implName", "specVersion", "transactionVersion")},
                 "nonCodeJsonSha256": digest(canonical(non_code)),
                 "nonCodeBytesSha256": digest(old_masked),

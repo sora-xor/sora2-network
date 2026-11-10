@@ -1,0 +1,77 @@
+{
+  "preparedAt": "2026-11-09T01:26:20.843Z",
+  "endpoint": "wss://mof2.sora.org",
+  "signed": false,
+  "submittedTransactions": 0,
+  "finalized": {
+    "number": 28296249,
+    "hash": "0xfc9a5681a90a0a70f25c218a755b144ed16dccde5f967639d4d4f82ef7110d7c"
+  },
+  "liveRuntime": {
+    "specVersion": 138,
+    "transactionVersion": 134
+  },
+  "wasm": {
+    "file": "framenode-runtime-4.8.14.compact.compressed.wasm",
+    "bytes": 2143899,
+    "sha256": "0d9c61bc3142318f595404cc7809128a11beaf80369660688d9b740d08517b7e",
+    "blake2_256": "0x4c6b2f37c6d98e4ee256e9c53dc85894033d2c2bbce83080306d705f83601852"
+  },
+  "setCode": {
+    "file": "set-code-call.scale",
+    "bytes": 2143905,
+    "proposalHash": "0x43db4b428b9b3e9295e35ee9dd2a8eb494bfd84e694772e581b6777cfec4c4c0"
+  },
+  "council": {
+    "members": 8,
+    "threshold": 4
+  },
+  "technicalCommittee": {
+    "members": 4,
+    "threshold": 3
+  },
+  "democracy": {
+    "fastTrackVotingPeriod": 1800,
+    "enactmentDelay": 0,
+    "nextExternal": null,
+    "proposalBlacklisted": false
+  },
+  "preimageRequestStatus": null,
+  "calls": {
+    "preimage-note-call": {
+      "file": "preimage-note-call.hex",
+      "bytes": 2143911,
+      "hash": "0xa7cf357574b20464a86588d5e9d8c596474ebf46f459f6572471ffb797e72082",
+      "section": "preimage",
+      "method": "notePreimage"
+    },
+    "utility-guarded-external-majority-call": {
+      "file": "utility-guarded-external-majority-call.hex",
+      "bytes": 81,
+      "hash": "0x310fab9a585f61a9f6559596e7e52182ca55c4fc97d06dd9eef3be50f771b6c0",
+      "section": "utility",
+      "method": "batchAll"
+    },
+    "council-propose-guarded-external-majority-threshold-4-call": {
+      "file": "council-propose-guarded-external-majority-threshold-4-call.hex",
+      "bytes": 86,
+      "hash": "0xe78e67c4b5ac3883cfd572454f636a6e4e59f1bbbfaf577556cc4b299423e022",
+      "section": "council",
+      "method": "propose"
+    },
+    "democracy-fast-track-call": {
+      "file": "democracy-fast-track-call.hex",
+      "bytes": 42,
+      "hash": "0x8f93cb3ec627188d73310e07c7542182c038d829694027b351187e5790ff2588",
+      "section": "democracy",
+      "method": "fastTrack"
+    },
+    "technical-committee-fast-track-threshold-3-call": {
+      "file": "technical-committee-fast-track-threshold-3-call.hex",
+      "bytes": 46,
+      "hash": "0xb5e3eae1ded34fd8210c0f46bae60f465f08b213364b876452dc077e265de8c4",
+      "section": "technicalCommittee",
+      "method": "propose"
+    }
+  }
+}

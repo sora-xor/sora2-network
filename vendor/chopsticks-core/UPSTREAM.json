@@ -1,0 +1,10 @@
+{
+  "package": "@acala-network/chopsticks-core",
+  "version": "1.5.2",
+  "integrity": "sha512-9cXE4BCFgHoq6ciBvofrYAfKNYv2SYEoZQn+6tQ8KGuCLlzAjF3hjZiXXmEhNsL2cVhq4PuBosY3wu3Nt/op7Q==",
+  "tarball": "https://registry.npmjs.org/@acala-network/chopsticks-core/-/chopsticks-core-1.5.2.tgz",
+  "gitHead": "f6eab24db852e24c2c66e459600c3b9d68e2aa7b",
+  "source_sha256": "e39927306867b0035c7d162bf19eac57ff27c531eed3bd05b8f39e401514296a",
+  "source_archive_url": "https://codeload.github.com/AcalaNetwork/chopsticks/tar.gz/f6eab24db852e24c2c66e459600c3b9d68e2aa7b",
+  "source_archive_sha256": "c0f40d85b4cf90b84bd75d196bf3034179971401a1704071d9751e1ab6fc9f3e"
+}

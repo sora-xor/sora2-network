@@ -1,26 +1,17 @@
-# Local staking changes
+# SORA Nexus staking customizations
 
-Upstream: `paritytech/polkadot-sdk`, tag `polkadot-stable2603-3`, commit
-`e3737178ec726cffe506c907263aaaa417893fd0`, path `substrate/frame/staking`,
-package `pallet-staking` version `46.0.0`. The upstream Apache-2.0 notices
-are retained in the source files.
+Current upstream: `paritytech/polkadot-sdk`, tag `polkadot-stable2609`, commit
+`7a8daa68e18718c18823c1109513fdc1c8aa71fe`, package `pallet-staking` 50.0.0.
 
-The repository root patches the SDK `pallet-staking` package to this directory.
-`Cargo.toml` expands upstream workspace package metadata and dependencies;
-all SDK dependencies retain the same pinned release tag and feature defaults.
-The manifest also expands the Rust and Clippy lint tables inherited from that
-SDK workspace, so vendoring preserves its lint policy without changing the
-SORA workspace policy.
-The local Rust sources are reproduced from that upstream directory by applying
-[`additional-payout.patch`](additional-payout.patch), followed by
-[`deferred-slashing.patch`](deferred-slashing.patch), formatting the resulting
-Rust files with this repository's `rustfmt` defaults, then applying
-[`native-reward-compatibility.patch`](native-reward-compatibility.patch).
-The first two patches preserve their existing reviewed changes; the compatibility
-patch applies to their formatted sources and is checked against this directory.
-All three layers, including that existing formatting step, reproduce the five
-changed Rust source files byte for byte. The manifest expansion described above
-is retained separately.
+The current complete source delta is [`stable2609-customizations.patch`](stable2609-customizations.patch),
+with a checked byte-for-byte replay and hashes in [`stable2609-customizations.json`](stable2609-customizations.json).
+The three older patch files are retained as historical review layers against their
+original stable2603 base, and should not be applied directly to stable2609.
+The normalized manifest expands this release’s workspace metadata/dependencies/lints.
+
+Stable2609 marks synchronous staking deprecated in favor of `pallet-staking-async`.
+This upgrade preserves the existing synchronous state machine and economic policy.
+Async staking requires its own explicit state and policy migration.
 
 ## Deferred slashing
 

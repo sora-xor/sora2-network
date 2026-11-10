@@ -233,12 +233,46 @@ parameter_types! {
 impl bridge_inbound_channel::Config for Test {
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
+    type ResponseCapacity = TestResponseCapacity;
     type UnsignedLongevity = ConstU64<100>;
     type UnsignedPriority = ConstU64<100>;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
+}
+
+pub struct TestResponseCapacity;
+impl frame_support::traits::Contains<(SubNetworkId, u32)> for TestResponseCapacity {
+    fn contains((_, required): &(SubNetworkId, u32)) -> bool {
+        let available = sp_io::storage::get(b"test/response-capacity")
+            .and_then(|bytes| u32::decode(&mut &bytes[..]).ok())
+            .unwrap_or(u32::MAX);
+        *required <= available
+    }
+}
+
+#[test]
+fn full_response_queue_preserves_nonce_and_batch_for_retry() {
+    new_tester().execute_with(|| {
+        let commitment = bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+            nonce: 1,
+            messages: vec![BridgeMessage { timepoint: Default::default(), payload: Default::default() }]
+                .try_into().unwrap(),
+        });
+        sp_io::storage::set(b"test/response-capacity", &0u32.encode());
+        assert_noop!(BridgeInboundChannel::submit(
+            RuntimeOrigin::signed(Keyring::Bob.into()), BASE_NETWORK_ID, commitment.clone(), vec![],
+        ), Error::<Test>::ResponseQueueFull);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        assert!(!sp_io::storage::exists(b"test/applied-messages"));
+        sp_io::storage::set(b"test/response-capacity", &1u32.encode());
+        assert_ok!(BridgeInboundChannel::submit(
+            RuntimeOrigin::signed(Keyring::Bob.into()), BASE_NETWORK_ID, commitment, vec![],
+        ));
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
+        assert_eq!(sp_io::storage::get(b"test/applied-messages").unwrap().as_ref(), &[1]);
+    });
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
@@ -260,6 +294,10 @@ pub fn new_tester() -> sp_io::TestExternalities {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn test_submit() {
     new_tester().execute_with(|| {
         let origin = RuntimeOrigin::signed(Keyring::Bob.into());
@@ -319,6 +357,10 @@ fn test_submit() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn test_submit_with_invalid_nonce() {
     new_tester().execute_with(|| {
         let origin = RuntimeOrigin::signed(Keyring::Bob.into());
@@ -362,6 +404,10 @@ fn test_submit_with_invalid_nonce() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn test_submit_with_invalid_network_id() {
     new_tester().execute_with(|| {
         let origin = RuntimeOrigin::signed(Keyring::Bob.into());
@@ -395,6 +441,10 @@ fn test_submit_with_invalid_network_id() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn authenticated_deliveries_stay_free_and_consume_failed_batch_nonces() {
     new_tester().execute_with(|| {
         use frame_support::dispatch::{GetDispatchInfo, Pays};
@@ -465,6 +515,10 @@ fn authenticated_deliveries_stay_free_and_consume_failed_batch_nonces() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn unauthenticated_or_wrong_type_submission_is_rejected_before_execution() {
     new_tester().execute_with(|| {
         let commitment =
@@ -512,5 +566,119 @@ fn unauthenticated_or_wrong_type_submission_is_rejected_before_execution() {
         );
         assert!(Pallet::<Test>::pre_dispatch(&wrong_type).is_err());
         assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+    });
+}
+
+#[test]
+fn recovery_halt_requires_exact_current_context_and_still_checks_authentication() {
+    new_tester().execute_with(|| {
+        let commitment =
+            bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: vec![BridgeMessage {
+                    timepoint: Default::default(),
+                    payload: vec![1].try_into().unwrap(),
+                }]
+                .try_into()
+                .unwrap(),
+            });
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        let validate =
+            || Pallet::<Test>::validate_submission(BASE_NETWORK_ID, &commitment, &vec![255]);
+        assert_noop!(validate(), Error::<Test>::RecoveryHalted);
+        let number: u32 = System::block_number().try_into().unwrap();
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &number.to_le_bytes());
+        assert_ok!(Pallet::<Test>::validate_submission(
+            BASE_NETWORK_ID,
+            &commitment,
+            &vec![]
+        ));
+        // A recovery context never supplies or replaces a valid counterpart proof.
+        assert!(validate().is_err());
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        let malformed = [number.to_le_bytes().as_slice(), &[0]].concat();
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &malformed);
+        assert_noop!(validate(), Error::<Test>::RecoveryHalted);
+    });
+}
+
+#[test]
+fn invalid_commitment_families_are_charged_conservatively_and_rejected() {
+    use bridge_types::{evm, ton, GenericCommitment};
+    use frame_support::dispatch::GetDispatchInfo;
+    new_tester().execute_with(|| {
+        for commitment in [
+            GenericCommitment::EVM(evm::Commitment::Outbound(evm::OutboundCommitment {
+                messages: Default::default(),
+                total_max_gas: Default::default(),
+                nonce: 1,
+            })),
+            GenericCommitment::TON(ton::Commitment::Inbound(ton::InboundCommitment {
+                channel: Default::default(),
+                source: Default::default(),
+                nonce: 1,
+                transaction_id: Default::default(),
+                payload: Default::default(),
+            })),
+        ] {
+            let call = Call::<Test>::submit {
+                network_id: BASE_NETWORK_ID,
+                commitment,
+                proof: vec![],
+            };
+            assert!(call.get_dispatch_info().call_weight.ref_time() > 0);
+            assert_noop!(
+                call.dispatch_bypass_filter(RuntimeOrigin::none()),
+                Error::<Test>::InvalidCommitment
+            );
+        }
+        let call = Call::<Test>::submit {
+            network_id: BASE_NETWORK_ID,
+            commitment: GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: Default::default(),
+            }),
+            proof: vec![],
+        };
+        assert_noop!(
+            call.dispatch_bypass_filter(RuntimeOrigin::root()),
+            sp_runtime::DispatchError::BadOrigin
+        );
+    });
+}
+
+#[test]
+fn quarantined_message_and_unrepresentable_context_cannot_pass_admission() {
+    new_tester().execute_with(|| {
+        let commitment =
+            bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: vec![BridgeMessage {
+                    timepoint: Default::default(),
+                    payload: vec![1].try_into().unwrap(),
+                }]
+                .try_into()
+                .unwrap(),
+            });
+        let id = MessageId::batched(BASE_NETWORK_ID.into(), ThisNetworkId::get(), 1, 0).hash();
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(BASE_NETWORK_ID.into(), id),
+            &[1],
+        );
+        assert_noop!(
+            Pallet::<Test>::validate_submission(BASE_NETWORK_ID, &commitment, &vec![]),
+            Error::<Test>::RecoveryHalted
+        );
+        sp_io::storage::clear(&bridge_types::recovery::message_key(
+            BASE_NETWORK_ID.into(),
+            id,
+        ));
+        System::set_block_number(u64::from(u32::MAX) + 1);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &0u32.to_le_bytes());
+        assert_noop!(
+            Pallet::<Test>::validate_submission(BASE_NETWORK_ID, &commitment, &vec![]),
+            Error::<Test>::RecoveryHalted
+        );
     });
 }

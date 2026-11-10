@@ -10,7 +10,7 @@ edition = "2021"
 [dependencies]
 parity-scale-codec = { workspace = true }
 log = { workspace = true }
-paste = "1.0.7"
+paste = { package = "pastey", version = "0.2.3" }
 scale-info = { workspace = true }
 serde = { workspace = true, optional = true }
 

@@ -44,17 +44,27 @@ use frame_support::traits::Randomness;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
+use sp_core::Get;
 use sp_core::H256;
-use sp_core::{Get};
 use sp_io::hashing::keccak_256;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
 use sp_std::collections::vec_deque::VecDeque;
+use weights::WeightInfo;
+
+pub mod weights;
 
 pub const MMR_ROOT_HISTORY_SIZE: usize = 30;
 pub const THRESHOLD_NUMERATOR: u32 = 22;
 pub const THRESHOLD_DENOMINATOR: u32 = 59;
 pub const RANDOMNESS_SUBJECT: &[u8] = b"beefy-light-client";
+/// Limit hashing/decoding work without changing SCALE encodings.
+pub const MAX_COMMITMENT_BYTES: usize = 64 * 1024;
+pub const MAX_DIGEST_LOGS: usize = 1024;
+/// A u32-indexed binary validator tree cannot need more than 32 siblings.
+pub const MAX_VALIDATOR_PROOF_ITEMS: usize = 32;
+pub const SAMPLING_ATTEMPTS_PER_VALIDATOR: u32 = 16;
+pub const SAMPLING_ATTEMPTS_BASE: u32 = 128;
 
 pub use bitfield::BitField;
 
@@ -119,6 +129,10 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config<RuntimeEvent: From<Event<Self>>> {
         type Randomness: frame_support::traits::Randomness<Self::Hash, BlockNumberFor<Self>>;
+        /// Explicit remote authority limit; it is not the local consensus limit.
+        #[pallet::constant]
+        type MaxValidators: Get<u32>;
+        type WeightInfo: weights::WeightInfo;
     }
 
     #[pallet::pallet]
@@ -189,6 +203,10 @@ pub mod pallet {
         CommitmentNotFoundInDigest,
         MMRPayloadNotFound,
         InvalidNetworkId,
+        InvalidValidatorClaimsBitfield,
+        InvalidValidatorSetLength,
+        ResourceLimitExceeded,
+        SamplingLimitExceeded,
     }
 
     #[pallet::hooks]
@@ -200,7 +218,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(Weight::from_parts(0, 0))]
+        #[pallet::weight(T::WeightInfo::initialize())]
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -209,6 +227,8 @@ pub mod pallet {
             next_validator_set: ValidatorSet,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
+            Self::check_validator_set_length(validator_set.len)?;
+            Self::check_validator_set_length(next_validator_set.len)?;
             LatestBeefyBlock::<T>::set(network_id, latest_beefy_block);
             CurrentValidatorSet::<T>::set(network_id, Some(validator_set));
             NextValidatorSet::<T>::set(network_id, Some(next_validator_set));
@@ -216,7 +236,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(Weight::from_parts(0, 0))]
+        #[pallet::weight(Pallet::<T>::submission_weight(commitment, validator_proof, proof))]
         #[frame_support::transactional]
         pub fn submit_signature_commitment(
             origin: OriginFor<T>,
@@ -227,6 +247,8 @@ pub mod pallet {
             proof: Proof<H256>,
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
+            Self::check_submission_resources(&commitment, &validator_proof, &proof)?;
+            Self::check_validator_set_length(latest_mmr_leaf.beefy_next_authority_set.len)?;
             log::debug!(
                 "BeefyLightClient: submit_signature_commitment: {:?}",
                 commitment
@@ -317,6 +339,10 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
         proof: &SubstrateBridgeMessageProof,
     ) -> DispatchResult {
         let network_id = network_id.sub().ok_or(Error::<T>::InvalidNetworkId)?;
+        ensure!(
+            proof.digest.logs.len() <= MAX_DIGEST_LOGS,
+            Error::<T>::ResourceLimitExceeded
+        );
         let this_network_id = ThisNetworkId::<T>::get();
         Self::verify_mmr_leaf(network_id, &proof.leaf, &proof.proof)?;
         let digest_hash = proof.digest.using_encoded(keccak_256);
@@ -342,8 +368,11 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
         Ok(())
     }
 
-    fn verify_weight(_proof: &Self::Proof) -> Weight {
-        Default::default()
+    fn verify_weight(proof: &Self::Proof) -> Weight {
+        T::WeightInfo::verify(
+            proof.proof.items.len().min(u32::MAX as usize) as u32,
+            proof.digest.logs.len().min(u32::MAX as usize) as u32,
+        )
     }
 
     #[cfg(feature = "runtime-benchmarks")]
@@ -353,6 +382,99 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
 }
 
 impl<T: Config> Pallet<T> {
+    pub fn submission_weight(
+        commitment: &Commitment,
+        proof: &ValidatorProof,
+        mmr_proof: &Proof<H256>,
+    ) -> Weight {
+        // Count input dimensions before dispatch, including rejected oversized
+        // inputs. Do not read validator-set storage during weight calculation.
+        let max_signatures =
+            Self::get_required_number_of_signatures(T::MaxValidators::get()) as usize;
+        if proof.validator_claims_bitfield.len()
+            > (T::MaxValidators::get() as usize).saturating_add(7)
+            || proof.signatures.len() > max_signatures
+            || proof.positions.len() > max_signatures
+            || proof.public_keys.len() > max_signatures
+            || proof.public_key_merkle_proofs.len() > max_signatures
+            || mmr_proof.items.len() >= 64
+        {
+            // Reject oversized outer dimensions in O(1), before traversing a
+            // potentially large vector of empty proof containers.
+            return Weight::MAX;
+        }
+        let commitment_bytes = commitment.encoded_size();
+        if commitment_bytes > MAX_COMMITMENT_BYTES {
+            return Weight::MAX;
+        }
+        let validators = proof.validator_claims_bitfield.len().min(u32::MAX as usize) as u32;
+        let proof_nodes = proof.public_key_merkle_proofs.iter().fold(
+            mmr_proof.items.len().min(u32::MAX as usize) as u32,
+            |count, items| count.saturating_add(items.len().min(u32::MAX as usize) as u32),
+        );
+        T::WeightInfo::submit_signature_commitment(
+            Self::sampling_attempts(validators),
+            proof.signatures.len().min(u32::MAX as usize) as u32,
+            proof_nodes,
+            commitment_bytes as u32,
+        )
+    }
+
+    fn sampling_attempts(validators: u32) -> u32 {
+        validators
+            .saturating_mul(SAMPLING_ATTEMPTS_PER_VALIDATOR)
+            .saturating_add(SAMPLING_ATTEMPTS_BASE)
+    }
+
+    fn check_validator_set_length(length: u32) -> Result<(), Error<T>> {
+        ensure!(
+            length > 0 && length <= T::MaxValidators::get(),
+            Error::<T>::InvalidValidatorSetLength
+        );
+        Ok(())
+    }
+
+    fn check_submission_resources(
+        commitment: &Commitment,
+        proof: &ValidatorProof,
+        mmr_proof: &Proof<H256>,
+    ) -> Result<(), Error<T>> {
+        let max_signatures =
+            Self::get_required_number_of_signatures(T::MaxValidators::get()) as usize;
+        ensure!(
+            proof.validator_claims_bitfield.len()
+                <= (T::MaxValidators::get() as usize).saturating_add(7),
+            Error::<T>::ResourceLimitExceeded
+        );
+        ensure!(
+            proof.signatures.len() <= max_signatures
+                && proof.positions.len() <= max_signatures
+                && proof.public_keys.len() <= max_signatures
+                && proof.public_key_merkle_proofs.len() <= max_signatures,
+            Error::<T>::ResourceLimitExceeded
+        );
+        ensure!(
+            proof
+                .signatures
+                .iter()
+                .all(|signature| signature.len() == 65),
+            Error::<T>::InvalidSignature
+        );
+        ensure!(
+            proof
+                .public_key_merkle_proofs
+                .iter()
+                .all(|items| items.len() <= MAX_VALIDATOR_PROOF_ITEMS),
+            Error::<T>::ResourceLimitExceeded
+        );
+        ensure!(mmr_proof.items.len() < 64, Error::<T>::InvalidMMRProof);
+        ensure!(
+            commitment.encoded_size() <= MAX_COMMITMENT_BYTES,
+            Error::<T>::ResourceLimitExceeded
+        );
+        Ok(())
+    }
+
     pub fn add_known_mmr_root(network_id: SubNetworkId, root: H256) {
         let mut mmr_roots = LatestMMRRoots::<T>::get(network_id);
         // Add new root to the front of the list to check it first
@@ -379,6 +501,11 @@ impl<T: Config> Pallet<T> {
         beefy_mmr_leaf: H256,
         proof: &Proof<H256>,
     ) -> bool {
+        // Proof order has only 64 bits; match the inclusion verifier's bound
+        // before computing a root from an untrusted proof.
+        if proof.items.len() >= 64 {
+            return false;
+        }
         let proof_root = proof.root(hasher, beefy_mmr_leaf);
         Self::is_known_root(network_id, proof_root)
     }
@@ -427,6 +554,7 @@ impl<T: Config> Pallet<T> {
         leaf: &BeefyMMRLeaf,
         proof: &Proof<H256>,
     ) -> DispatchResult {
+        ensure!(proof.items.len() < 64, Error::<T>::InvalidMMRProof);
         let hash_leaf = Keccak256::hash_of(&leaf);
         let root = proof.root(hasher, hash_leaf);
         ensure!(
@@ -455,6 +583,7 @@ impl<T: Config> Pallet<T> {
         network_id: SubNetworkId,
         new_vset: ValidatorSet,
     ) -> DispatchResultWithPostInfo {
+        Self::check_validator_set_length(new_vset.len)?;
         let next_validator_set = match Self::next_validator_set(network_id) {
             None => fail!(Error::<T>::PalletNotInitialized),
             Some(x) => x,
@@ -467,7 +596,10 @@ impl<T: Config> Pallet<T> {
     }
 
     fn get_required_number_of_signatures(num_validators: u32) -> u32 {
-        (num_validators * THRESHOLD_NUMERATOR + THRESHOLD_DENOMINATOR - 1) / THRESHOLD_DENOMINATOR
+        ((u64::from(num_validators) * u64::from(THRESHOLD_NUMERATOR)
+            + u64::from(THRESHOLD_DENOMINATOR)
+            - 1)
+            / u64::from(THRESHOLD_DENOMINATOR)) as u32
     }
 
     /*
@@ -477,6 +609,10 @@ impl<T: Config> Pallet<T> {
         num_of_validators: u32,
         validator_claims_bitfield: &BitField,
     ) -> DispatchResultWithPostInfo {
+        ensure!(num_of_validators > 0, Error::<T>::InvalidValidatorSetLength);
+        // Claims outside the authority set must not satisfy the threshold or
+        // send the sampler searching forever for nonexistent eligible validators.
+        Self::check_validator_claims_range(validator_claims_bitfield, num_of_validators)?;
         let threshold = num_of_validators - (num_of_validators - 1) / 3;
         let count = validator_claims_bitfield.count_set_bits() as u32;
         ensure!(count >= threshold, Error::<T>::NotEnoughValidatorSignatures);
@@ -496,6 +632,8 @@ impl<T: Config> Pallet<T> {
             number_of_validators,
             &proof.validator_claims_bitfield,
         )?;
+        // Reject malformed dimensions before running even the bounded sampler.
+        Self::verify_validator_proof_lengths(required_num_of_signatures, proof)?;
         let random_bitfield = Self::random_n_bits_with_prior_check(
             network_id,
             &proof.validator_claims_bitfield,
@@ -511,7 +649,6 @@ impl<T: Config> Pallet<T> {
             "BeefyLightClient verify_commitment random_bitfield: {:?}",
             random_bitfield
         );
-        Self::verify_validator_proof_lengths(required_num_of_signatures, proof)?;
         let commitment_hash = Keccak256::hash_of(&commitment);
         Self::verify_validator_proof_signatures(
             &vset,
@@ -578,6 +715,10 @@ impl<T: Config> Pallet<T> {
         commitment_hash: H256,
     ) -> DispatchResultWithPostInfo {
         ensure!(
+            position < u128::from(vset.len),
+            Error::<T>::MerklePositionTooHigh
+        );
+        ensure!(
             random_bitfield.is_set(position as usize),
             Error::<T>::ValidatorNotOnceInbitfield
         );
@@ -625,17 +766,39 @@ impl<T: Config> Pallet<T> {
         n: u32,
         length: u32,
     ) -> Result<BitField, Error<T>> {
+        Self::check_validator_claims_range(prior, length)?;
+        ensure!(
+            prior.count_set_bits() >= n as usize,
+            Error::<T>::NotEnoughValidatorSignatures
+        );
         let (raw_seed, _block) = T::Randomness::random(RANDOMNESS_SUBJECT);
         let latest_beefy_block = Self::latest_beefy_block(network_id);
         let seed = codec::Encode::using_encoded(
             &(raw_seed, latest_beefy_block),
             sp_io::hashing::blake2_128,
         );
-        Ok(BitField::create_random_bitfield(
+        BitField::create_random_bitfield_bounded(
             prior,
             n,
             length,
             u128::from_be_bytes(seed),
-        ))
+            Self::sampling_attempts(length),
+        )
+        .ok_or(Error::<T>::SamplingLimitExceeded)
+    }
+
+    fn check_validator_claims_range(prior: &BitField, length: u32) -> Result<(), Error<T>> {
+        Self::check_validator_set_length(length)?;
+        ensure!(
+            prior.len() >= length as usize
+                && prior.len() <= (T::MaxValidators::get() as usize).saturating_add(7),
+            Error::<T>::InvalidValidatorClaimsBitfield
+        );
+        // Preserve byte-padded bitfields, but never count padding as an authority.
+        ensure!(
+            !prior.0[length as usize..].any(),
+            Error::<T>::InvalidValidatorClaimsBitfield
+        );
+        Ok(())
     }
 }

@@ -28,7 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{to_balance, to_fixed_wrapper_256};
 use crate::{Config, Error, Pallet};
 use common::fixed::FixedU256;
 use common::fixed_wrapper_u256::FixedWrapper256;

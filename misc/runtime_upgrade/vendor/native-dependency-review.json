@@ -1,0 +1,312 @@
+{
+  "reviewed_at": "2026-10-24",
+  "removed_distribution": "smoldot-light",
+  "version": "0.1.0",
+  "sdist_url": "https://files.pythonhosted.org/packages/ef/fa/eb7715935762581fe3082ee215b38f82a5ace0a6e6bd414bde6a8a46c19a/smoldot_light-0.1.0.tar.gz",
+  "sdist_sha256": "b2e562e458d6e5ca5c1612115fb3729497480cfdd98ee7b98a39dc206b22ebde",
+  "upstream_manifest": "https://github.com/JAMdotTech/py-smoldot-light/blob/v0.1.0/Cargo.toml",
+  "bundled_rust_lock": {
+    "smoldot": "0.21.0",
+    "smoldot-light": "0.19.0",
+    "lru": "0.12.5",
+    "ruzstd": "0.8.2",
+    "wasmtime": "36.0.3"
+  },
+  "installed_macos_binary_version_strings": [
+    "lru-0.12.5",
+    "ruzstd-0.8.2"
+  ],
+  "binary_inspection_limit": "Wasmtime version was present in the source lock, but not found in the macOS extension strings; the native JIT backend is platform conditional.",
+  "remediation": "Remove unused Python native light-client package and reject SmoldotTransport construction without importing its backend. HTTP and WebSocket governance RPC retain upstream behavior.",
+  "audit_scope": "pip-audit scans Python distribution advisories, not Rust dependencies bundled into native wheels.",
+  "additional_native_review": {
+    "evidence": "Installed native extension source-version strings, corroborated by verified published sdists and their Cargo.lock files. This is not a proof that binary strings enumerate every linked crate.",
+    "affected_distributions": {
+      "py-bip39-bindings==0.3.0": [
+        "pyo3 0.26.0",
+        "rand 0.8.5"
+      ],
+      "py-ed25519-zebra-bindings==1.3.0": [
+        "pyo3 0.26.0"
+      ],
+      "py-sr25519-bindings==0.2.4": [
+        "keccak 0.1.5",
+        "rand 0.8.5"
+      ],
+      "pydantic-core==2.50.1": [
+        "lru 0.18.5"
+      ]
+    },
+    "advisories": [
+      "RUSTSEC-2026-0176",
+      "RUSTSEC-2026-0177",
+      "RUSTSEC-2026-0012",
+      "RUSTSEC-2026-0097"
+    ],
+    "upstream_fix_without_advisory": "lru 0.19.0 (2026-10-18): require Sync for sendable shared iterators",
+    "remediation": "Build four verified local native source snapshots with pinned build backends and audited Cargo.lock graphs; preserve package API/version identity, without advisory exclusions.",
+    "inspection_scope": "Native Rust components of the three Substrate crypto bindings and pydantic-core; C-native package versions retain their Python distribution audit scope."
+  },
+  "docker_validation": {
+    "checked_at": "2026-10-24",
+    "python_image": "python:3.13.17-slim-trixie@sha256:d98cc29d3266e535dd9da1099688d9cb3ca4753813571e071763d17725460962",
+    "rust_builder_image": "rust:1.99.1-slim-trixie@sha256:aab42391a986424e22d6a3ec14f37bc6dd3dacff4d457ca7cccd781e02297cc6",
+    "build_status": "wheel-builder and complete runtime image built successfully",
+    "platform": "linux/arm64",
+    "final_image_tag": "sora-runtime-upgrade:security-20261024",
+    "final_image_digest": "sha256:09a16962d2de598592fa65ba59e7d20405c784ba14319b216105a1e247019765",
+    "runtime_wasm_source": "target/debug/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm",
+    "runtime_wasm_provenance": "Generated from the current source by the runtime build, then copied into a temporary Docker context; no archived or placeholder Wasm used.",
+    "container_checks": {
+      "wasm_sha256": "82b5e49cc810af6a44d9f640a9a81872dfe103190f9544aef52728fa95e9d237",
+      "uid": 1000,
+      "build_tools_absent": true,
+      "binaries": {
+        "bip39": {
+          "sha256": "b616ae8eef7dfbeb2eb31f495d2fb796628dcf4ef74dc45d95d880a3e349b9c8",
+          "detected_versions": {
+            "pyo3": "0.29.3",
+            "rand": "0.8.8"
+          }
+        },
+        "ed25519_zebra": {
+          "sha256": "278b440fb9799151c8596a574d823ef18a6eadb330aac13a61e2e58c3ee8fb01",
+          "detected_versions": {
+            "pyo3": "0.29.3",
+            "curve25519-dalek": "4.1.3"
+          }
+        },
+        "sr25519": {
+          "sha256": "234f9e3ab1f1b8eb515f271223eda64f7473f1ae1ed3aa9cc4103b320e706b3c",
+          "detected_versions": {
+            "pyo3": "0.29.3",
+            "curve25519-dalek": "4.1.3",
+            "keccak": "0.1.6",
+            "rand": "0.8.8"
+          }
+        },
+        "pydantic_core": {
+          "sha256": "99d404d4e218f9187b1c8c46567877b433526800dba0f227dcfe4e18eefff8d0",
+          "detected_versions": {
+            "pyo3": "0.29.3",
+            "lru": "0.19.0"
+          }
+        }
+      }
+    },
+    "cli_help": "passed",
+    "pip_check": "passed",
+    "installed_distribution_audit": {
+      "tool": "pip-audit2.10.1",
+      "command": "pip-audit --strict --path /usr/local/lib/python3.13/site-packages --format=json",
+      "runtime_distributions": 29,
+      "total_including_pip": 30,
+      "vulnerabilities": 0,
+      "audit_environment": "Separate temporary virtual environment inside the disposable final-image container"
+    },
+    "offline_tests": {
+      "network": "disabled",
+      "compatibility_and_governance": 12,
+      "upstream_cryptographic_bindings": 27,
+      "pydantic_string_and_regex": 110,
+      "total": 149,
+      "final_runtime_image_repeat": {
+        "compatibility_and_governance": 12,
+        "upstream_cryptographic_bindings": 27,
+        "packaged_main_and_vendor_imports_verified": true
+      }
+    },
+    "native_wheel_sha256": {
+      "py_bip39_bindings-0.3.0-cp313-cp313-linux_aarch64.whl": "c02bd26b1916277b66651bc1186863c06848a3b92427b5c13f74f063b183b85f",
+      "py_ed25519_zebra_bindings-1.3.0-cp313-cp313-linux_aarch64.whl": "66ae2762e12288dd78a3c94af65b13dd634eecf68e550009d43421bfb36c9a63",
+      "py_sr25519_bindings-0.2.4-cp313-cp313-linux_aarch64.whl": "6014aecca5b39a2e7bc135d9c64d5fc326baa6f445b0e6fec3d2c07c74696f66",
+      "pydantic_core-2.50.1-cp313-cp313-linux_aarch64.whl": "e9dc72fe161a3e8c0e832132bad09e2682b4bece1dc619552d09dc96e3f4b352"
+    },
+    "native_cargo_locks_unchanged": {
+      "misc/runtime_upgrade/vendor/native/py-ed25519-zebra-bindings/Cargo.lock": "65d84a5a23dddf54019fdca8f8245431752dd01fda976b056d314efc5869f8a6",
+      "misc/runtime_upgrade/vendor/native/pydantic-core/Cargo.lock": "e9f18888c4ab4e38bbfcceb7760c58786bd966fda9964d3f10af654f4e685777",
+      "misc/runtime_upgrade/vendor/native/py-bip39-bindings/Cargo.lock": "e426344ea7809223cccf32dfafc18543c5b9b897372f47ba591e3b598a01978b",
+      "misc/runtime_upgrade/vendor/native/py-sr25519-bindings/Cargo.lock": "f1e7837d57a582717c1418af1bd1ca450eaf1121aeaf7b28054c77a81ded85bf"
+    },
+    "dns_repair": {
+      "profile": "sora-release-verify",
+      "docker_context": "colima-sora-release-verify",
+      "global_docker_context": "default (unchanged)",
+      "colima_version": "0.10.3",
+      "upstream_issue": "https://github.com/abiosoft/colima/issues/1611",
+      "repair": "Persisted profile DNS and an idempotent after-boot hook restoring dnsmasq from current systemd-networkd DNS/address state; fixes both skipped setup with pending dnsmasq updates and stale listen address. Reboot validation passed.",
+      "configured_upstreams": [
+        "192.168.5.2",
+        "1.1.1.1"
+      ]
+    },
+    "logs": {
+      "wheel-builder": "/tmp/sora2-maintenance-wheel-builder.log",
+      "runtime-image": "/tmp/sora2-maintenance-runtime-image-refresh.log",
+      "linux-tests": "/tmp/sora2-maintenance-linux-tests.log",
+      "final-offline-tests": "/tmp/sora2-maintenance-final-offline-tests-refresh.log",
+      "final-container-check": "/tmp/sora2-maintenance-final-container-check-refresh.log",
+      "container-audit": "/tmp/sora2-maintenance-container-audit-refresh.log",
+      "dns-after-reboot": "/tmp/sora2-maintenance-dns-after-reboot.log",
+      "dns-persistence": "/tmp/sora2-maintenance-dns-persistence.log",
+      "dns_refresh": "/tmp/sora2-maintenance-dns-refresh.log"
+    },
+    "scope": "No signing, governance submission, deployment or release publication was performed.",
+    "lifecycle": {
+      "profile_state": "stopped after successful verification",
+      "preserved": [
+        "built Docker images",
+        "profile DNS settings",
+        "after-boot DNS repair hook"
+      ],
+      "global_docker_context": "default (unchanged)",
+      "stop_log": "/tmp/sora2-maintenance-docker-refresh-stop.log"
+    },
+    "runtime_wasm_size": 1901085,
+    "refresh_validation": "Refreshed final image with the latest current-source Wasm. Python/Rust native source, manifests and requirements match the previously tested build context, and installed native binary hashes are identical; the 149-test Linux suite remains applicable. Repeated39 final-image offline tests, CLIhelp, pipcheck, nonroot/no-buildtool checks and30-package installed-path audit all pass."
+  },
+  "source_build_validation": {
+    "python": "CPython 3.12.15 on macOS arm64",
+    "installer_working_directory": "/tmp (outside the repository)",
+    "installer": "install_dependencies.py with MATURIN_PEP517_ARGS=--locked passed to all build backends",
+    "runtime_distribution_count": 29,
+    "installed_distribution_audit_count_including_pip": 30,
+    "pip_audit_vulnerabilities": 0,
+    "pip_check": "passed",
+    "offline_governance_crypto_tests": {
+      "passed": 12,
+      "failed": 0
+    },
+    "upstream_binding_tests": {
+      "passed": 27,
+      "failed": 0
+    },
+    "pydantic_string_regex_tests": {
+      "passed": 110,
+      "failed": 0
+    },
+    "locked_metadata_negative_probe": "A stale copied lockfile failed during PEP517 metadata generation and retained its original SHA-256.",
+    "source_locks_after_install": {
+      "misc/runtime_upgrade/vendor/native/py-bip39-bindings/Cargo.lock": "e426344ea7809223cccf32dfafc18543c5b9b897372f47ba591e3b598a01978b",
+      "misc/runtime_upgrade/vendor/native/py-ed25519-zebra-bindings/Cargo.lock": "65d84a5a23dddf54019fdca8f8245431752dd01fda976b056d314efc5869f8a6",
+      "misc/runtime_upgrade/vendor/native/py-sr25519-bindings/Cargo.lock": "f1e7837d57a582717c1418af1bd1ca450eaf1121aeaf7b28054c77a81ded85bf",
+      "misc/runtime_upgrade/vendor/native/pydantic-core/Cargo.lock": "e9f18888c4ab4e38bbfcceb7760c58786bd966fda9964d3f10af654f4e685777"
+    },
+    "installed_native_binaries": [
+      {
+        "module": "bip39",
+        "binary_sha256": "29b5103908e5925865930d8db5d9a13c0bba149a5160fdc8ba0e6e77b2f621ab",
+        "detected_security_versions": {
+          "pyo3": "0.29.3",
+          "rand": "0.8.8"
+        }
+      },
+      {
+        "module": "ed25519_zebra",
+        "binary_sha256": "f6fe8263272e16710145443fe3cd0178ccb12385afd024e7cdc4c5f3f0013004",
+        "detected_security_versions": {
+          "pyo3": "0.29.3",
+          "curve25519-dalek": "4.1.3"
+        }
+      },
+      {
+        "module": "sr25519",
+        "binary_sha256": "376c32d66b8cad584f044d81b4188fa0665a9d2a491e1f1e6e951fe7911f4bc2",
+        "detected_security_versions": {
+          "pyo3": "0.29.3",
+          "curve25519-dalek": "4.1.3",
+          "rand": "0.8.8",
+          "keccak": "0.1.6"
+        }
+      },
+      {
+        "module": "pydantic_core",
+        "binary_sha256": "75452185a504e34096fc3c8a485ac468f4c3da91dcdac3d533bf38771fba3cfd",
+        "detected_security_versions": {
+          "pyo3": "0.29.3",
+          "lru": "0.19.0"
+        }
+      }
+    ],
+    "native_binary_version_crosscheck": {
+      "vulnerabilities": 0,
+      "warnings": 0,
+      "scope": "Supporting evidence from embedded crate-version paths; authoritative full native graphs are audited separately via the four Cargo.lock files."
+    },
+    "native_cargo_audits": {
+      "lockfiles": 4,
+      "vulnerabilities": 0,
+      "warnings": 0
+    },
+    "additional_interpreter_builds": {
+      "python": "CPython 3.13.17 on macOS arm64",
+      "native_wheels_built": 4,
+      "upstream_binding_tests": 27,
+      "pydantic_string_regex_tests": 110,
+      "offline_governance_crypto_tests": {
+        "passed": 12,
+        "failed": 0
+      },
+      "pip_check": "passed",
+      "cli_help": "passed",
+      "exact_runtime_distribution_count": 29,
+      "environment": "Fresh CPython3.13.17 venv,25pinned registry distributions and the4verified rebuilt313wheels"
+    },
+    "total_upstream_tests_on_both_interpreters": 274,
+    "native_build_artifacts": {
+      "py-ed25519-zebra-bindings": {
+        "cargo_lock_sha256": "65d84a5a23dddf54019fdca8f8245431752dd01fda976b056d314efc5869f8a6",
+        "wheels": {
+          "py_ed25519_zebra_bindings-1.3.0-cp312-cp312-macosx_11_0_arm64.whl": {
+            "path": "/tmp/sora2-python-native-build/wheels/py_ed25519_zebra_bindings-1.3.0-cp312-cp312-macosx_11_0_arm64.whl",
+            "sha256": "74de7f9f93bc869bdd9256f253136b5b31d7f5908eee1afe05239a9f7607a973"
+          },
+          "py_ed25519_zebra_bindings-1.3.0-cp313-cp313-macosx_11_0_arm64.whl": {
+            "path": "/tmp/sora2-python-native-build/wheels313/py_ed25519_zebra_bindings-1.3.0-cp313-cp313-macosx_11_0_arm64.whl",
+            "sha256": "3a9c7729830306f3d7d61a29aa76663c288eb123de93b07001b6806f65e09386"
+          }
+        }
+      },
+      "pydantic-core": {
+        "cargo_lock_sha256": "e9f18888c4ab4e38bbfcceb7760c58786bd966fda9964d3f10af654f4e685777",
+        "wheels": {
+          "pydantic_core-2.50.1-cp312-cp312-macosx_11_0_arm64.whl": {
+            "path": "/tmp/sora2-python-native-build/wheels/pydantic_core-2.50.1-cp312-cp312-macosx_11_0_arm64.whl",
+            "sha256": "4eee569b9d2cb1496d19a817a20afe95ccb9980080c267db5f6dc8acec0c64b9"
+          },
+          "pydantic_core-2.50.1-cp313-cp313-macosx_11_0_arm64.whl": {
+            "path": "/tmp/sora2-python-native-build/wheels313/pydantic_core-2.50.1-cp313-cp313-macosx_11_0_arm64.whl",
+            "sha256": "828f1535c1b7fdd40de1f791c93b3e3a2957a25f6034e8c161dce5aca9f921a1"
+          }
+        }
+      },
+      "py-bip39-bindings": {
+        "cargo_lock_sha256": "e426344ea7809223cccf32dfafc18543c5b9b897372f47ba591e3b598a01978b",
+        "wheels": {
+          "py_bip39_bindings-0.3.0-cp312-cp312-macosx_11_0_arm64.whl": {
+            "path": "/tmp/sora2-python-native-build/wheels/py_bip39_bindings-0.3.0-cp312-cp312-macosx_11_0_arm64.whl",
+            "sha256": "529f7e8160bd50287277cff82e1b7ed0d5d52928b60c68b73d295633d18e9aab"
+          },
+          "py_bip39_bindings-0.3.0-cp313-cp313-macosx_11_0_arm64.whl": {
+            "path": "/tmp/sora2-python-native-build/wheels313/py_bip39_bindings-0.3.0-cp313-cp313-macosx_11_0_arm64.whl",
+            "sha256": "336f1be290a2d8ae0fd1b69b9b4ca9c84b28a2af3a3e3416de06697cecd40b3f"
+          }
+        }
+      },
+      "py-sr25519-bindings": {
+        "cargo_lock_sha256": "f1e7837d57a582717c1418af1bd1ca450eaf1121aeaf7b28054c77a81ded85bf",
+        "wheels": {
+          "py_sr25519_bindings-0.2.4-cp312-cp312-macosx_11_0_arm64.whl": {
+            "path": "/tmp/sora2-python-native-build/wheels/py_sr25519_bindings-0.2.4-cp312-cp312-macosx_11_0_arm64.whl",
+            "sha256": "15d091edc388d3925279b864b5068e9bceca7bb4c66a2d3d58de1fd6ad3ffc19"
+          },
+          "py_sr25519_bindings-0.2.4-cp313-cp313-macosx_11_0_arm64.whl": {
+            "path": "/tmp/sora2-python-native-build/wheels313/py_sr25519_bindings-0.2.4-cp313-cp313-macosx_11_0_arm64.whl",
+            "sha256": "98ed2744c6ae32bfd22a4232da8b57165e9fab342bb15b40f2b022e99ffc2600"
+          }
+        }
+      }
+    },
+    "total_offline_governance_crypto_tests_on_both_interpreters": 24
+  }
+}

@@ -1,0 +1,877 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -40,7 +40,7 @@
+ ]
+ legacy-types = [
+     "legacy",
+-    "dep:serde_yaml",
++    "dep:serde-saphyr",
+ ]
+ std = [
+     "frame-metadata/std",
+@@ -87,8 +87,8 @@
+ optional = true
+ default-features = false
+ 
+-[dependencies.serde_yaml]
+-version = "0.9"
++[dependencies.serde-saphyr]
++version = "2.0.0"
+ optional = true
+ 
+ [dependencies.sp-crypto-hashing]
+@@ -115,5 +115,5 @@
+ [dev-dependencies.serde_json]
+ version = "1"
+ 
+-[dev-dependencies.serde_yaml]
+-version = "0.9"
++[dev-dependencies.serde-saphyr]
++version = "2.0.0"
+--- a/Cargo.toml.orig
++++ b/Cargo.toml.orig
+@@ -34,7 +34,7 @@
+ # Provide legacy types.
+ legacy-types = [
+     "legacy",
+-    "dep:serde_yaml"
++    "dep:serde-saphyr"
+ ]
+ 
+ [dependencies]
+@@ -47,12 +47,12 @@
+ scale-type-resolver = "0.2.0"
+ scale-value = { version = "0.18.0", default-features = false, optional = true }
+ sp-crypto-hashing = { version = "0.1.0", default-features = false }
+-serde_yaml = { version = "0.9", optional = true }
++serde-saphyr = { version = "2.0.0", optional = true }
+ thiserror = { version = "2", default-features = false }
+ 
+ [dev-dependencies]
+ hex = "0.4.3"
+-serde_yaml = "0.9"
++serde-saphyr = "2.0.0"
+ serde_json = "1"
+ scale-value = "0.18.0"
+ scale-info-legacy = "0.4.0"
+--- a/README.md
++++ b/README.md
+@@ -25,7 +25,7 @@
+ // metadata. We use scale-info-legacy to do this, and have already defined types for the
+ // Polkadot relay chain, so let's load those in:
+ let historic_type_bytes = std::fs::read("types/polkadot_types.yaml").unwrap();
+-let historic_types: ChainTypeRegistry = serde_yaml::from_slice(&historic_type_bytes).unwrap();
++let historic_types: ChainTypeRegistry = serde_saphyr::from_slice(&historic_type_bytes).unwrap();
+ 
+ // We configure the loaded types for the spec version of the extrinsics we want to decode,
+ // because types can vary between different spec versions.
+@@ -108,7 +108,7 @@
+ // metadata. We use scale-info-legacy to do this, and have already defined types for the
+ // Polkadot relay chain, so let's load those in:
+ let historic_type_bytes = std::fs::read("types/polkadot_types.yaml").unwrap();
+-let historic_types: ChainTypeRegistry = serde_yaml::from_slice(&historic_type_bytes).unwrap();
++let historic_types: ChainTypeRegistry = serde_saphyr::from_slice(&historic_type_bytes).unwrap();
+ 
+ // We configure the loaded types for the spec version of the extrinsics we want to decode,
+ // because types can vary between different spec versions.
+@@ -170,7 +170,7 @@
+ // metadata. We use scale-info-legacy to do this, and have already defined types for the
+ // Polkadot relay chain, so let's load those in:
+ let historic_type_bytes = std::fs::read("types/polkadot_types.yaml").unwrap();
+-let historic_types: ChainTypeRegistry = serde_yaml::from_slice(&historic_type_bytes).unwrap();
++let historic_types: ChainTypeRegistry = serde_saphyr::from_slice(&historic_type_bytes).unwrap();
+ 
+ // We configure the loaded types for the spec version of the extrinsics we want to decode,
+ // because types can vary between different spec versions.
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -182,7 +182,7 @@
+ 
+     /// Deserialize bytes into a [`scale_info_legacy::ChainTypeRegistry`].
+     pub fn from_bytes(bytes: &[u8]) -> Result<scale_info_legacy::ChainTypeRegistry, GenericError> {
+-        let types = serde_yaml::from_slice(bytes)?;
++        let types = serde_saphyr::from_slice(bytes)?;
+         Ok(types)
+     }
+ 
+@@ -194,7 +194,7 @@
+             // This is a convenience function to load the Polkadot relay chain types.
+             // It is used in the examples in this crate.
+             let bytes = include_bytes!("../types/polkadot_relay_types.yaml");
+-            serde_yaml::from_slice(bytes).expect("Polkadot RC types are valid YAML")
++            serde_saphyr::from_slice(bytes).expect("Polkadot RC types are valid YAML")
+         }
+     }
+ 
+@@ -206,7 +206,7 @@
+             // This is a convenience function to load the Polkadot relay chain types.
+             // It is used in the examples in this crate.
+             let bytes = include_bytes!("../types/kusama_relay_types.yaml");
+-            serde_yaml::from_slice(bytes).expect("Kusama RC types are valid YAML")
++            serde_saphyr::from_slice(bytes).expect("Kusama RC types are valid YAML")
+         }
+ 
+         /// Legacy types for the Kusama Asset Hub.
+@@ -214,7 +214,7 @@
+             // This is a convenience function to load the Polkadot relay chain types.
+             // It is used in the examples in this crate.
+             let bytes = include_bytes!("../types/kusama_assethub_types.yaml");
+-            serde_yaml::from_slice(bytes).expect("Kusama AssetHub types are valid YAML")
++            serde_saphyr::from_slice(bytes).expect("Kusama AssetHub types are valid YAML")
+         }
+     }
+ }
+@@ -265,6 +265,216 @@
+         let _ = crate::legacy_types::polkadot::relay_chain();
+         let _ = crate::legacy_types::kusama::relay_chain();
+         let _ = crate::legacy_types::kusama::asset_hub();
++    }
++
++    #[test]
++    fn test_legacy_yaml_rejects_duplicate_definitions() {
++        for second in ["u16", "u32"] {
++            let yaml = format!("global:\n  types:\n    Example: u16\n    Example: {second}\n");
++            let error = crate::legacy_types::from_bytes(yaml.as_bytes()).unwrap_err();
++            assert!(error.to_string().contains("duplicate mapping key"));
++        }
++    }
++
++    #[test]
++    fn test_embedded_legacy_yaml_preserves_final_duplicate_definitions() {
++        use serde_json::json;
++
++        let polkadot: serde_json::Value =
++            serde_saphyr::from_slice(include_bytes!("../types/polkadot_relay_types.yaml")).unwrap();
++        let kusama: serde_json::Value =
++            serde_saphyr::from_slice(include_bytes!("../types/kusama_relay_types.yaml")).unwrap();
++        let asset_hub: serde_json::Value =
++            serde_saphyr::from_slice(include_bytes!("../types/kusama_assethub_types.yaml"))
++                .unwrap();
++        // The former HashMap deserializer retained each final definition, even
++        // when an earlier definition disagreed. Keep those resolved meanings.
++        for chain in [&polkadot, &kusama, &asset_hub] {
++            assert_eq!(chain["global"]["types"]["ValidatorIndex"], "u16");
++        }
++        let kusama = &kusama["global"]["types"];
++        assert_eq!(
++            kusama["OpaqueNetworkState"],
++            json!({"peer_id": "OpaquePeerId", "external_addresses": "Vec<OpaqueMultiaddr>"})
++        );
++        assert_eq!(
++            kusama["BitVec"],
++            "bitvec::vec::BitVec<u8, bitvec::order::Msb0>"
++        );
++        assert_eq!(
++            kusama["VestingSchedule<T::Balance, T::BlockNumber>"],
++            json!({"locked": "T::Balance", "per_block": "T::Balance", "starting_block": "T::BlockNumber"})
++        );
++        assert_eq!(
++            kusama["VestingSchedule<Balance, BlockNumber>"],
++            json!({"locked": "Balance", "per_block": "Balance", "starting_block": "BlockNumber"})
++        );
++        let asset_hub = &asset_hub["global"]["types"];
++        for (name, expected) in [
++            (
++                "<T::Lookup as StaticLookup>::Source",
++                "MultiAddress<AccountId32,u32>",
++            ),
++            ("RefCount", "u32"),
++            ("T::ClassId", "u32"),
++            ("T::InstanceId", "u32"),
++        ] {
++            assert_eq!(asset_hub[name], expected);
++        }
++        assert_eq!(
++            asset_hub["AccountInfo<Index, AccountData>"],
++            json!({"nonce": "Index", "consumers": "RefCount", "providers": "RefCount", "sufficients": "RefCount", "data": "AccountData"})
++        );
++        assert_eq!(
++            asset_hub["Outcome"],
++            json!({"_enum": {"Complete": "Weight", "Incomplete": "(Weight, XcmError)", "Error": "XcmError"}})
++        );
++        assert_eq!(asset_hub["XcmError"]["_enum"]["Trap"], "u64");
++    }
++
++    #[test]
++    fn test_embedded_legacy_duplicate_winners_preserve_field_and_variant_order() {
++        let registry = crate::legacy_types::kusama::asset_hub();
++        let types = registry.for_spec_version(0);
++        let fields = types
++            .resolve_type_str(
++                "AccountInfo<u32, u128>",
++                scale_type_resolver::visitor::new((), |_, _| Vec::<String>::new()).visit_composite(
++                    |_, _, fields| fields.map(|field| field.name.unwrap().to_owned()).collect(),
++                ),
++            )
++            .unwrap();
++        assert_eq!(
++            fields,
++            ["nonce", "consumers", "providers", "sufficients", "data"]
++        );
++        for (name, expected) in [
++            ("Outcome", vec!["Complete", "Incomplete", "Error"]),
++            (
++                "XcmError",
++                vec![
++                    "Undefined",
++                    "Unimplemented",
++                    "UnhandledXcmMessage",
++                    "UnhandledEffect",
++                    "EscalationOfPrivilege",
++                    "UntrustedReserveLocation",
++                    "UntrustedTeleportLocation",
++                    "DestinationNotInvertible",
++                    "MultiLocationFull",
++                    "MultiLocationNotInvertible",
++                    "BadOrigin",
++                    "InvalidLocation",
++                    "AssetNotFound",
++                    "FailedToTransactAsset",
++                    "NotWithdrawable",
++                    "LocationCannotHold",
++                    "ExceedsMaxMessageSize",
++                    "DestinationUnsupported",
++                    "Locked",
++                    "OrdersNotEmpty",
++                    "DuplicateOrder",
++                    "NotDepositable",
++                    "Unwitnessed",
++                    "UnknownClaim",
++                    "Trap",
++                    "Overflow",
++                    "UnimplementedXcmVersion",
++                    "Incomplete",
++                    "NetworkNotSupported",
++                    "BadXcm",
++                    "WeightLimitReached",
++                    "WeightNotComputable",
++                    "Barrier",
++                    "SendFailed",
++                    "Transport",
++                    "Unroutable",
++                    "UnknownError",
++                ],
++            ),
++        ] {
++            let variants = types
++                .resolve_type_str(
++                    name,
++                    scale_type_resolver::visitor::new((), |_, _| Vec::<(u8, String)>::new())
++                        .visit_variant(|_, _, variants| {
++                            variants
++                                .map(|variant| (variant.index, variant.name.to_owned()))
++                                .collect()
++                        }),
++                )
++                .unwrap();
++            let expected: Vec<_> = expected
++                .into_iter()
++                .enumerate()
++                .map(|(index, name)| (index as u8, name.to_owned()))
++                .collect();
++            assert_eq!(variants, expected, "{name}");
++        }
++    }
++
++    #[test]
++    fn test_embedded_legacy_reserved_variant_names_keep_indices_and_payloads() {
++        fn variants(
++            types: &scale_info_legacy::TypeRegistrySet<'_>,
++            name: &str,
++        ) -> Vec<(u8, String, usize)> {
++            types
++                .resolve_type_str(
++                    name,
++                    scale_type_resolver::visitor::new((), |_, _| Vec::new()).visit_variant(
++                        |_, _, variants| {
++                            variants
++                                .map(|variant| {
++                                    (
++                                        variant.index,
++                                        variant.name.to_owned(),
++                                        variant.fields.count(),
++                                    )
++                                })
++                                .collect()
++                        },
++                    ),
++                )
++                .unwrap()
++        }
++        for (chain, registry) in legacy_types() {
++            let types = registry.for_spec_version(0);
++            assert_eq!(
++                variants(&types, "Phase<u32>")[0],
++                (0, "Off".into(), 0),
++                "{chain}"
++            );
++            if chain == "Polkadot RC" {
++                continue;
++            }
++            let location = variants(&types, "MultiLocation");
++            assert_eq!(location[0], (0, "Null".into(), 0), "{chain}");
++            assert_eq!(
++                location
++                    .into_iter()
++                    .map(|(index, name, _)| (index, name))
++                    .collect::<Vec<_>>(),
++                ["Null", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8"]
++                    .into_iter()
++                    .enumerate()
++                    .map(|(index, name)| (index as u8, name.to_owned()))
++                    .collect::<Vec<_>>(),
++                "{chain}"
++            );
++            assert_eq!(
++                variants(&types, "Order<()>")[0],
++                (0, "Null".into(), 0),
++                "{chain}"
++            );
++            if chain == "Kusama AH" {
++                assert_eq!(variants(&types, "ResponseV1")[0], (0, "Null".into(), 0));
++                let junctions = variants(&types, "JunctionV1");
++                // A Null *value* denotes a unit payload and must not become a
++                // quoted alias while normalizing the String-valued enum keys.
++                assert_eq!(junctions[7], (7, "OnlyChild".into(), 0));
++            }
++        }
+     }
+ 
+     fn legacy_types() -> [(&'static str, ChainTypeRegistry); 3] {
+--- a/src/methods/storage_encoder.rs
++++ b/src/methods/storage_encoder.rs
+@@ -496,7 +496,7 @@
+         encode_storage_key(
+             "System",
+             "Account",
+-            &[account_id],
++            [account_id],
+             &metadata,
+             &metadata.types,
+         )
+@@ -504,14 +504,14 @@
+         encode_storage_key(
+             "System",
+             "Account",
+-            &(account_id,),
++            (account_id,),
+             &metadata,
+             &metadata.types,
+         )
+         .expect("Encoding should work");
+ 
+         // We provide no additional keys, so we should get the prefix only.
+-        let out = encode_storage_key("System", "Account", &(), &metadata, &metadata.types)
++        let out = encode_storage_key("System", "Account", (), &metadata, &metadata.types)
+             .expect("Encoding should work");
+         assert_eq!(&out, &encode_storage_key_prefix("System", "Account"));
+ 
+@@ -519,7 +519,7 @@
+         let err = encode_storage_key(
+             "System",
+             "Account",
+-            &(account_id, 123u16),
++            (account_id, 123u16),
+             &metadata,
+             &metadata.types,
+         );
+--- a/types/kusama_assethub_types.yaml
++++ b/types/kusama_assethub_types.yaml
+@@ -21,18 +21,10 @@
+ 
+     # System
+     Perbill: u32
+-    ChangesTrieConfiguration:
+-      digest_interval: u32
+-      digest_levels: u32
+     KeyValue: '(StorageKey, StorageData)'
+     Key: Bytes
+     StorageKey: Bytes # Unsure about this: storage keys can vary in shape based on hashers etc.
+     StorageData: Bytes
+-    RefCount: u8
+-    AccountInfo<Index, AccountData>:
+-      nonce: Index
+-      refcount: RefCount
+-      data: AccountData
+     T::Index: Index
+     T::AccountData:
+       free: Balance
+@@ -149,7 +141,6 @@
+     AccountIndex: u32
+ 
+     # Balances
+-    <T::Lookup as StaticLookup>::Source: AccountId
+     T::Balance: Balance
+     Releases: 
+       _enum: ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10']
+@@ -171,7 +162,6 @@
+       digest: Digest
+     Digest:
+       logs: Vec<DigestItem>
+-    Hash: H256
+     DigestItem:
+       _enum:
+         Other: Bytes
+@@ -214,8 +204,6 @@
+         None: []
+     ValidatorPrefs:
+       commission: Compact<Perbill>
+-    EraIndex: u32
+-    ValidatorIndex: u32
+     CompactAssignments:
+       votes1: 'Vec<(NominatorIndex, [CompactScore; 0], ValidatorIndex)>'
+       votes2: 'Vec<(NominatorIndex, [CompactScore; 1], ValidatorIndex)>'
+@@ -271,10 +259,6 @@
+       elected_stashes: Vec<AccountId>
+       exposures: Vec<(AccountId, Exposure<AccountId, Balance>)>
+       compute: ElectionCompute
+-    ElectionCompute:
+-      # in previous versions the last entry was "AuthorityId"
+-      # (since no data attached, and it is via SCALE can rename)
+-      _enum: ['OnChain', 'Signed', 'Unsigned']
+     Exposure<AccountId, Balance>:
+       total: Compact<Balance>
+       own: Compact<Balance>
+@@ -286,11 +270,6 @@
+       _enum:
+         Close: []
+         Open: BlockNumber
+-    slashing::SlashingSpans:
+-      span_index: slashing::SpanIndex
+-      last_start: EraIndex
+-      last_nonzero_slash: EraIndex
+-      prior: Vec<EraIndex>
+     slashing::SpanIndex: u32
+     UnappliedSlash<AccountId, Balance>:
+       validator: AccountId
+@@ -330,7 +309,7 @@
+       targets: Compact<u32>
+     Phase<BlockNumber>:
+       _enum:
+-        Off: []
++        'Off': []
+         Signed: []
+         Unsigned: (bool, BlockNumber)
+         Emergency: []
+@@ -485,7 +464,6 @@
+       who: Source,
+       vote_count: Compact<u32>
+       candidate_count: Compact<u32>
+-    <T::Lookup as StaticLookup>::Source: AccountId
+     Renouncing:
+       _enum:
+         Member: []
+@@ -594,7 +572,7 @@
+         Plurality: { id: BodyId, part: BodyPart }
+     MultiLocation:
+       _enum:
+-        Null: []
++        'Null': []
+         X1: Junction
+         X2: (Junction, Junction)
+         X3: (Junction, Junction, Junction)
+@@ -676,7 +654,7 @@
+     # xcm::v0::Order (full order to ensure indices match v0)
+     Order<Call>:
+       _enum:
+-        Null: []
++        'Null': []
+         DepositAsset:
+           assets: MultiAssets
+           dest: MultiLocation
+@@ -723,68 +701,6 @@
+     relay_chain::Hash: H256
+ 
+     # xcm::v0::Outcome used by events (e.g., PolkadotXcm, XcmpQueue, DmpQueue)
+-    Outcome:
+-      _enum:
+-        Complete: u64
+-        Incomplete: (u64, XcmError)
+-        Error: XcmError
+-
+-    # xcm::v0::XcmError in v0 ordering
+-    XcmError:
+-      _enum:
+-        - Undefined
+-        - Unimplemented
+-        - UntrustedReserveLocation
+-        - UntrustedTeleportLocation
+-        - MultiLocationFull
+-        - MultiLocationNotInvertible
+-        - BadOrigin
+-        - InvalidLocation
+-        - BadXcmOrigin
+-        - NoPermission
+-        - UnhandledXcmVersion
+-        - UnhandledXcmMessage
+-        - UnhandledEffect
+-        - EscalationOfPrivilege
+-        - UntrustedReserve
+-        - DestinationNotInvertible
+-        - Transport
+-        - Unroutable
+-        - UnknownClaim
+-        - FailedToDecode
+-        - FailedToTransactAsset
+-        - NotWithdrawable
+-        - LocationCannotHold
+-        - ExceedsMaxMessageSize
+-        - DestinationUnsupported
+-        - RecursionLimitReached
+-        - SubscriptionsUnsupported
+-        - TooExpensive
+-        - Trap
+-        - ExpectationFalse
+-        - PalletNotFound
+-        - NameMismatch
+-        - VersionIncompatible
+-        - HoldingWouldOverflow
+-        - ExportError
+-        - ReanchorFailed
+-        - NoHoldingBody
+-        - NotDepositable
+-        - Unbalanced
+-        - NameInvalid
+-        - ParamsInvalid
+-        - Overweight
+-        - NotExported
+-        - LockError
+-        - AccountNotFound
+-        - AccountIdConversionFailed
+-        - SovereignAccountNotFound
+-        - ModuleNotFound
+-        - ModuleError
+-        - ExpectationNotMet
+-        - BadOriginKind
+-
+-    # XCM v1-style location and assets (used by Versioned* V1/V2)
+     JunctionV1:
+       _enum:
+         Parachain: Compact<u32>
+@@ -928,7 +844,7 @@
+ 
+     ResponseV1:
+       _enum:
+-        Null: []
++        'Null': []
+         Assets: MultiAssetsV1
+         ExecutionResult: u64
+         Version: u32
+@@ -1007,7 +923,6 @@
+     CollatorId: H256
+ 
+     # Claims
+-    EcdsaSignature: '[u8; 65]'
+     EthereumAddress: '[u8; 20]'
+     StatementKind:
+       _enum: ['Regular', 'Saft']
+@@ -1019,11 +934,6 @@
+       starting_block: BlockNumber
+ 
+     # Utility
+-    Timepoint<BlockNumber>:
+-      height: BlockNumber
+-      index: u32
+-
+-    # Identity
+     IdentityInfo:
+       additional: Vec<IdentityInfoAdditional>
+       display: Data
+@@ -1036,7 +946,6 @@
+       twitter: Data
+     IdentityInfo<MaxAdditionalFields>: IdentityInfo
+     IdentityInfoAdditional: (Data, Data)
+-    RegistrarIndex: u32
+     Judgement<Balance>:
+       _enum:
+         Unknown: []
+@@ -1126,14 +1035,6 @@
+         - IdentityJudgement
+         - CancelProxy
+         - Auction
+-    AccountValidity:
+-      _enum:
+-        - Invalid
+-        - Initiated
+-        - Pending
+-        - ValidLow
+-        - ValidHigh
+-        - Completed
+     Permill: u32
+     CallHashOf<T>: Hash
+     ProxyDefinition<AccountId, ProxyType, BlockNumber>:
+@@ -1223,14 +1124,10 @@
+     Balance: u128
+     BalanceOf<T>: Balance
+     BalanceOf<T, I>: Balance
+-    AssetId: u32
+-    T::AssetId: AssetId
+ 
+     # Uniques
+     ClassId: u32
+     InstanceId: u32
+-    T::ClassId: ClassId
+-    T::InstanceId: InstanceId
+ 
+     # Assets pallet (witness for destroy)
+     DestroyWitness:
+--- a/types/kusama_relay_types.yaml
++++ b/types/kusama_relay_types.yaml
+@@ -22,9 +22,6 @@
+ 
+     # System
+     Perbill: u32
+-    ChangesTrieConfiguration:
+-      digest_interval: u32
+-      digest_levels: u32
+     KeyValue: '(StorageKey, StorageData)'
+     Key: Bytes
+     StorageKey: Bytes # Unsure about this: storage keys can vary in shape based on hashers etc.
+@@ -155,7 +152,6 @@
+     AccountIndex: u32
+ 
+     # Balances
+-    <T::Lookup as StaticLookup>::Source: Address
+     T::Balance: Balance
+     Releases: 
+       _enum: ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10']
+@@ -186,7 +182,6 @@
+       digest: Digest
+     Digest:
+       logs: Vec<DigestItem>
+-    Hash: H256
+     DigestItem:
+       _enum:
+         Other: Bytes
+@@ -229,8 +224,6 @@
+         None: []
+     ValidatorPrefs:
+       commission: Compact<Perbill>
+-    EraIndex: u32
+-    ValidatorIndex: u32
+     CompactAssignments:
+       votes1: 'Vec<(NominatorIndex, [CompactScore; 0], ValidatorIndex)>'
+       votes2: 'Vec<(NominatorIndex, [CompactScore; 1], ValidatorIndex)>'
+@@ -289,10 +282,6 @@
+       elected_stashes: Vec<AccountId>
+       exposures: Vec<(AccountId, Exposure<AccountId, Balance>)>
+       compute: ElectionCompute
+-    ElectionCompute:
+-      # in previous versions the last entry was "AuthorityId"
+-      # (since no data attached, and it is via SCALE can rename)
+-      _enum: ['OnChain', 'Signed', 'Unsigned']
+     Exposure<AccountId, Balance>:
+       total: Compact<Balance>
+       own: Compact<Balance>
+@@ -343,7 +332,7 @@
+       targets: Compact<u32>
+     Phase<BlockNumber>:
+       _enum:
+-        Off: []
++        'Off': []
+         Signed: []
+         Unsigned: (bool, BlockNumber)
+         Emergency: []
+@@ -397,11 +386,6 @@
+     SetId: u64
+ 
+     # ImOnline
+-    OpaqueNetworkState:
+-      peer_id: Bytes
+-      external_addresses: Vec<Bytes>
+-    AuthIndex: u32
+-    SessionIndex: u32
+ 
+     Heartbeat<BN>:
+       block_number: BN
+@@ -582,7 +566,6 @@
+     CollatorId: H256
+ 
+     # Claims
+-    EcdsaSignature: '[u8; 65]'
+     EthereumAddress: '[u8; 20]'
+     StatementKind:
+       _enum: ['Regular', 'Saft']
+@@ -592,9 +575,7 @@
+       locked: Balance
+       per_block: Balance
+       starting_block: BlockNumber
+-    VestingSchedule<Balance, BlockNumber>: VestingInfo<Balance, BlockNumber>
+     VestingSchedule: VestingInfo<Balance, BlockNumber>
+-    VestingSchedule<T::Balance, T::BlockNumber>: VestingInfo<Balance, BlockNumber>
+ 
+     # Auctions
+     WinningData<T>: '[Option<(AccountId, ParaId, Balance)>; 36]'
+@@ -694,7 +675,6 @@
+     AvailabilityBitfieldRecord<T::BlockNumber>:
+       bitfield: BitVec
+       submitted_at: T::BlockNumber
+-    BitVec: Vec<u8>
+     CandidatePendingAvailability<T::Hash, T::BlockNumber>:
+       core: CoreIndex
+       hash: CandidateHash
+@@ -768,11 +748,6 @@
+     TrieIndex: u32
+ 
+     # Utility
+-    Timepoint<BlockNumber>:
+-      height: BlockNumber
+-      index: u32
+-
+-    # Identity
+     IdentityInfo:
+       additional: Vec<IdentityInfoAdditional>
+       display: Data
+@@ -785,7 +760,6 @@
+       twitter: Data
+     IdentityInfo<MaxAdditionalFields>: IdentityInfo
+     IdentityInfoAdditional: (Data, Data)
+-    RegistrarIndex: u32
+     Judgement<Balance>:
+       _enum:
+         Unknown: []
+@@ -875,14 +849,6 @@
+         - IdentityJudgement
+         - CancelProxy
+         - Auction
+-    AccountValidity:
+-      _enum:
+-        - Invalid
+-        - Initiated
+-        - Pending
+-        - ValidLow
+-        - ValidHigh
+-        - Completed
+     Permill: u32
+     CallHashOf<T>: Hash
+     ProxyDefinition<AccountId, ProxyType, BlockNumber>:
+@@ -1077,7 +1043,7 @@
+         Plurality: { id: BodyId, part: BodyPart }
+     MultiLocation:
+       _enum:
+-        Null: []
++        'Null': []
+         X1: Junction
+         X2: (Junction, Junction)
+         X3: (Junction, Junction, Junction)
+@@ -1154,7 +1120,7 @@
+           call: OpaqueCall
+     Order<Call>:
+       _enum:
+-        Null: []
++        'Null': []
+         DepositAsset:
+           assets: MultiAssets
+           dest: MultiLocation
+--- a/types/polkadot_relay_types.yaml
++++ b/types/polkadot_relay_types.yaml
+@@ -21,9 +21,6 @@
+ 
+     # System
+     Perbill: u32
+-    ChangesTrieConfiguration:
+-      digest_interval: u32
+-      digest_levels: u32
+     KeyValue: '(StorageKey, StorageData)'
+     Key: Bytes
+     StorageKey: Bytes # Unsure about this: storage keys can vary in shape based on hashers etc.
+@@ -149,7 +146,6 @@
+     AccountIndex: u32
+ 
+     # Balances
+-    <T::Lookup as StaticLookup>::Source: AccountId
+     T::Balance: Balance
+     Releases: 
+       _enum: ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10']
+@@ -171,7 +167,6 @@
+       digest: Digest
+     Digest:
+       logs: Vec<DigestItem>
+-    Hash: H256
+     DigestItem:
+       _enum:
+         Other: Bytes
+@@ -214,8 +209,6 @@
+         None: []
+     ValidatorPrefs:
+       commission: Compact<Perbill>
+-    EraIndex: u32
+-    ValidatorIndex: u32
+     CompactAssignments:
+       votes1: 'Vec<(NominatorIndex, [CompactScore; 0], ValidatorIndex)>'
+       votes2: 'Vec<(NominatorIndex, [CompactScore; 1], ValidatorIndex)>'
+@@ -271,10 +264,6 @@
+       elected_stashes: Vec<AccountId>
+       exposures: Vec<(AccountId, Exposure<AccountId, Balance>)>
+       compute: ElectionCompute
+-    ElectionCompute:
+-      # in previous versions the last entry was "AuthorityId"
+-      # (since no data attached, and it is via SCALE can rename)
+-      _enum: ['OnChain', 'Signed', 'Unsigned']
+     Exposure<AccountId, Balance>:
+       total: Compact<Balance>
+       own: Compact<Balance>
+@@ -286,11 +275,6 @@
+       _enum:
+         Close: []
+         Open: BlockNumber
+-    slashing::SlashingSpans:
+-      span_index: slashing::SpanIndex
+-      last_start: EraIndex
+-      last_nonzero_slash: EraIndex
+-      prior: Vec<EraIndex>
+     slashing::SpanIndex: u32
+     UnappliedSlash<AccountId, Balance>:
+       validator: AccountId
+@@ -330,7 +314,7 @@
+       targets: Compact<u32>
+     Phase<BlockNumber>:
+       _enum:
+-        Off: []
++        'Off': []
+         Signed: []
+         Unsigned: (bool, BlockNumber)
+         Emergency: []
+@@ -544,7 +528,6 @@
+     CollatorId: H256
+ 
+     # Claims
+-    EcdsaSignature: '[u8; 65]'
+     EthereumAddress: '[u8; 20]'
+     StatementKind:
+       _enum: ['Regular', 'Saft']
+@@ -556,11 +539,6 @@
+       starting_block: BlockNumber
+ 
+     # Utility
+-    Timepoint<BlockNumber>:
+-      height: BlockNumber
+-      index: u32
+-
+-    # Identity
+     IdentityInfo:
+       additional: Vec<IdentityInfoAdditional>
+       display: Data
+@@ -573,7 +551,6 @@
+       twitter: Data
+     IdentityInfo<MaxAdditionalFields>: IdentityInfo
+     IdentityInfoAdditional: (Data, Data)
+-    RegistrarIndex: u32
+     Judgement<Balance>:
+       _enum:
+         Unknown: []
+@@ -663,14 +640,6 @@
+         - IdentityJudgement
+         - CancelProxy
+         - Auction
+-    AccountValidity:
+-      _enum:
+-        - Invalid
+-        - Initiated
+-        - Pending
+-        - ValidLow
+-        - ValidHigh
+-        - Completed
+     Permill: u32
+     CallHashOf<T>: Hash
+     ProxyDefinition<AccountId, ProxyType, BlockNumber>:

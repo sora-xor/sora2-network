@@ -1,0 +1,50 @@
+{
+  "provenance": {
+    "captureManifestSha256": "24d0ea108f2adfbed6e543b7ce6bdb8146ce0e1ecf2b733af35ee9b9a315cc0b",
+    "checkpoint": {
+      "number": 28191817,
+      "hash": "0x7f7c253fa72f32e7b03f32bdc9ae456fd7174fb131b689be6d876006124129f0",
+      "parentHash": "0x60b63e40ce4de9b9c1408bf7455a6f5ced796825f2437a0ee8496476d80c56d6",
+      "stateRoot": "0x79bda41a1db53470463653f358890f2d1fca8ad622c33a1d7095294b0b140452",
+      "extrinsicsRoot": "0x4a24fdf92274ca78ef10c57956d642b664287780b241a06fe45b68d2d11faa7d",
+      "runtimeCodeSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221"
+    },
+    "source": "sora-recovery-rehearsal-v5/checkpoint/pages/top/00000324.jsonl.gz",
+    "pageSha256": "1eab0c4e2792bf5bd41c51991561e5bcdc7126091d7f89262f1d659bae73bc14",
+    "scope": "Exact retained public account rows; no private keys or controller ownership assumptions."
+  },
+  "accounts": [
+    {
+      "account": "0xe0f54b9ee063b49d1080c68e678c1d4399442a72e110eab133de89371c6e1f10",
+      "key": "0x3da7ce6fe5eefe72f8748ad4944424a08ee7418a6531173d60d1f6a82d8f4d5110b63f6f4d6d24a5e0f54b9ee063b49d1080c68e678c1d4399442a72e110eab133de89371c6e1f10",
+      "value": "0x04fa00badb62e150ae0e1c08740ecbc9a0b2b92aa9897fa131419ee304b9451f1743",
+      "signatories": [
+        "0xfa00badb62e150ae0e1c08740ecbc9a0b2b92aa9897fa131419ee304b9451f17"
+      ],
+      "storedThresholdPercent": 67,
+      "threshold": 1
+    },
+    {
+      "account": "0x4a600ee23d7b0092632d19087c1d171159ca4aa00677679ff5efb9fdb8c0f1c1",
+      "key": "0x3da7ce6fe5eefe72f8748ad4944424a08ee7418a6531173d60d1f6a82d8f4d51a2c14c781404803a4a600ee23d7b0092632d19087c1d171159ca4aa00677679ff5efb9fdb8c0f1c1",
+      "value": "0x04dcf69e126058dbc19d56cb9c1fafde1b3c664dbd0faefd9e26d2fedd90717f7f43",
+      "signatories": [
+        "0xdcf69e126058dbc19d56cb9c1fafde1b3c664dbd0faefd9e26d2fedd90717f7f"
+      ],
+      "storedThresholdPercent": 67,
+      "threshold": 1
+    },
+    {
+      "account": "0x54734f90f971a02c609b2d684e61b557cb8494021fd01de35d3cae2f0670cb9c",
+      "key": "0x3da7ce6fe5eefe72f8748ad4944424a08ee7418a6531173d60d1f6a82d8f4d51f24b687e42abbd9054734f90f971a02c609b2d684e61b557cb8494021fd01de35d3cae2f0670cb9c",
+      "value": "0x0c297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cca3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae5543",
+      "signatories": [
+        "0x297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa",
+        "0x614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cc",
+        "0xa3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae55"
+      ],
+      "storedThresholdPercent": 67,
+      "threshold": 3
+    }
+  ]
+}

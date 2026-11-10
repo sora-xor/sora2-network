@@ -1,0 +1,35 @@
+{
+  "upstreamTag": "polkadot-stable2609",
+  "upstreamCommit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "upstreamPath": "substrate/frame/multisig",
+  "upstreamPackage": "pallet-multisig",
+  "upstreamVersion": "50.0.0",
+  "localPackageAlias": "pallet-multisig-upstream",
+  "sourcePatch": "stable2609-customizations.patch",
+  "sourcePatchSha256": "8a6a57f948b28873cb2214d920782bf5c2c801782d448093037e3ecb21c70539",
+  "upstreamManifestSha256": "463381d7314e24d99e981f89c903315af4d23b3026e779abf90cfd1636ae7b02",
+  "sourcePatchReplay": "passed",
+  "changedFiles": [
+    {
+      "path": ".rustfmt.toml",
+      "upstreamSha256": null,
+      "localSha256": "52daa45ebb3ade0902ca998779031184d6e780f8a1181bf00ee448b7819b8872"
+    },
+    {
+      "path": "Cargo.toml",
+      "upstreamSha256": "463381d7314e24d99e981f89c903315af4d23b3026e779abf90cfd1636ae7b02",
+      "localSha256": "6511af444a09939eb12b7a0d0c0585537a86ccd2102cafdc1198dbb712c9da48"
+    },
+    {
+      "path": "src/lib.rs",
+      "upstreamSha256": "49592bbe65613e34580e04ffc27f454eb8f8e8133837dfc18d35d79b340d47b9",
+      "localSha256": "1b36b4208ec7a9d613ecdcd7792b95d11c76d1da93ee5c1cd7de6bc849c1a4e3"
+    }
+  ],
+  "storageReview": {
+    "beforeVersion": 1,
+    "afterVersion": 1,
+    "storageMigrationsChanged": false,
+    "callErrorEventLayoutsChanged": false
+  }
+}

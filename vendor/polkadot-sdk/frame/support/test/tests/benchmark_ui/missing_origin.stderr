@@ -1,0 +1,5 @@
+error: Single-item extrinsic calls must specify their origin as the first argument.
+  --> tests/benchmark_ui/missing_origin.rs:29:3
+   |
+29 |         thing();
+   |         ^^^^^

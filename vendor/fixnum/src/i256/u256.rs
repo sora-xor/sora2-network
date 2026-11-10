@@ -287,11 +287,11 @@ macro_rules! uint {
             ///
             /// # Panics
             ///
-            /// Panics if the number is larger than usize::max_value().
+            /// Panics if the number is larger than usize::MAX.
             #[inline]
             fn as_usize(&self) -> usize {
                 let &$name(ref arr) = self;
-                if !self.fits_word() || arr[0] > usize::max_value() as u64 {
+                if !self.fits_word() || arr[0] > usize::MAX as u64 {
                     panic!("Integer overflow when casting to usize")
                 }
                 arr[0] as usize
@@ -413,7 +413,7 @@ macro_rules! uint {
                         q_hat
                     } else {
                         // here q_hat >= q_j >= q_hat - 1
-                        u64::max_value()
+                        u64::MAX
                     };
 
                     // ex. 20:

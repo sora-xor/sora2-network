@@ -36,9 +36,9 @@ use common::{
     balance, AccountIdOf, Balance, DexIdOf, LiquidityRegistry, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, DOT, XOR,
 };
-use frame_support::error::BadOrigin;
 use frame_support::weights::Weight;
 use frame_support::{assert_err, assert_ok};
+use sp_runtime::traits::BadOrigin;
 use sp_runtime::DispatchError;
 use strum::IntoEnumIterator;
 

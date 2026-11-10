@@ -41,6 +41,77 @@ pub struct Cli {
     /// Disable BEEFY gadget. Enabled by default
     #[clap(long)]
     pub disable_beefy: bool,
+
+    /// Directory of public recovery inherent payloads named by parent hash.
+    #[clap(long)]
+    pub recovery_inherent_dir: Option<std::path::PathBuf>,
+
+    /// Fresh evidence directory for a passive recovery verification node.
+    #[clap(long)]
+    pub recovery_evidence_dir: Option<std::path::PathBuf>,
+
+    /// Public local HASHI witness requests/results; never signs or submits transactions.
+    #[clap(long, requires = "recovery_hashi_release_sha256")]
+    pub recovery_hashi_witness_dir: Option<std::path::PathBuf>,
+
+    /// Independently admitted outer release-manifest SHA-256 (0x-prefixed).
+    #[clap(long, requires = "recovery_hashi_witness_dir")]
+    pub recovery_hashi_release_sha256: Option<sp_core::H256>,
+
+    /// Restart this node's HASHI bridge workers after guardian halt NUMBER.
+    ///
+    /// A guardian halt stops the workers on every bridge node. Once it is safe to
+    /// bridge again, restart the node with the halt's number, as the halt page and
+    /// this node's log show it. The node accepts only the newest halt in its
+    /// finalized chain, and the next halt stops the workers again.
+    #[clap(long, value_name = "NUMBER")]
+    pub bridge_resume_after_halt: Option<u32>,
+}
+
+impl Cli {
+    /// Retained validator keys alone must not opt a recovery node into bridge bootstrap.
+    pub(crate) fn bridge_worker_options(
+        &self,
+    ) -> crate::bridge_bootstrap_policy::BridgeWorkerOptions {
+        crate::bridge_bootstrap_policy::BridgeWorkerOptions {
+            recovery_bootstrap: matches!(
+                self.run.offchain_worker_params.enabled,
+                sc_cli::OffchainWorkerEnabled::Always
+            ),
+            resume_after_halt: self.bridge_resume_after_halt,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::Parser;
+
+    #[test]
+    fn recovery_bridge_bootstrap_requires_explicit_always() {
+        for arguments in [
+            vec!["framenode"],
+            vec!["framenode", "--validator"],
+            vec![
+                "framenode",
+                "--validator",
+                "--offchain-worker",
+                "when-authority",
+            ],
+            vec!["framenode", "--validator", "--offchain-worker", "never"],
+        ] {
+            let cli = Cli::try_parse_from(arguments).expect("valid node arguments");
+            assert!(!cli.bridge_worker_options().recovery_bootstrap);
+        }
+        for arguments in [
+            vec!["framenode", "--offchain-worker", "always"],
+            vec!["framenode", "--validator", "--offchain-worker=always"],
+        ] {
+            let cli = Cli::try_parse_from(arguments).expect("valid bridge peer arguments");
+            assert!(cli.bridge_worker_options().recovery_bootstrap);
+        }
+    }
 }
 
 #[derive(Debug, clap::Subcommand)]
@@ -50,6 +121,12 @@ pub enum Subcommand {
     Key(sc_cli::KeySubcommand),
     /// Build a chain specification.
     BuildSpec(sc_cli::BuildSpecCmd),
+
+    /// Prepare a separate, manifest-bound recovery specification offline.
+    PrepareRecoverySpec(crate::recovery::PrepareRecoverySpecCmd),
+
+    /// Verify persisted recovery state and finality in a stopped owned database copy.
+    VerifyRecoveryDatabase(crate::recovery_evidence::VerifyRecoveryDatabaseCmd),
 
     /// Validate blocks.
     CheckBlock(sc_cli::CheckBlockCmd),

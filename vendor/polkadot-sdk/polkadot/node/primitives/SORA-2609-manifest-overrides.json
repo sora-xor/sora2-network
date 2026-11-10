@@ -1,0 +1,19 @@
+{
+  "upstream_commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "source_path": "polkadot/node/primitives",
+  "differences": [
+    {
+      "path": [
+        "target",
+        "cfg(not(target_os = \"unknown\"))",
+        "dependencies",
+        "zstd"
+      ],
+      "upstream": {
+        "version": "0.12.4",
+        "default-features": false
+      },
+      "local": null
+    }
+  ]
+}

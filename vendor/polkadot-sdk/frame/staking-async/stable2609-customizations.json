@@ -1,0 +1,108 @@
+{
+  "upstreamTag": "polkadot-stable2609",
+  "upstreamCommit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "upstreamPath": "substrate/frame/staking-async",
+  "sourcePatch": "stable2609-customizations.patch",
+  "sourcePatchSha256": "213a815e516dd8b9f2eae380718732e44608fe729ece3e33be80d50e8e264f8c",
+  "upstreamManifestSha256": "3c32cc3146fa541c986da06ca966c97478bf8087fcc61164369546cad351d6a4",
+  "materializedManifestSha256": "448aa30681cc7021fd2a8b63993252823c6abf77572296c68822dd408167441f",
+  "rustfmtConfigSha256": "52daa45ebb3ade0902ca998779031184d6e780f8a1181bf00ee448b7819b8872",
+  "sourcePatchReplay": "passed",
+  "changedSourceFiles": [
+    {
+      "path": "src/benchmarking.rs",
+      "upstreamSha256": "fdcd123f7de290552d7c239e8bbda8ec17862c6abd4c8b4b376fce2291daf420",
+      "localSha256": "7c61f6869d3886ddebce84d64cedcbb1296284081cc2b1b5602e7cbd417e2145"
+    },
+    {
+      "path": "src/ledger.rs",
+      "upstreamSha256": "27dad5a11b485f37be8e7004fd2a4e12c4ba6c5250798e9140bb805ae841ce8d",
+      "localSha256": "20fd721ac51bd5130e95dd6aecfb1438cd835ca4b881a68194b53821e33f9098"
+    },
+    {
+      "path": "src/legacy.rs",
+      "upstreamSha256": null,
+      "localSha256": "1c45b40a4212c9066d4f77a4278580f42a480c499cfcba1b0ccdfc655cd4c303"
+    },
+    {
+      "path": "src/lib.rs",
+      "upstreamSha256": "8d814e84c2b9e6829b12bcdfebf7b5a76dcc404d501414f93cff88a36e79a904",
+      "localSha256": "e0b73d8a370114f9475e962dc0caf5cbe5322448c23d7db1402e06ff0427c1dd"
+    },
+    {
+      "path": "src/mock.rs",
+      "upstreamSha256": "302112ff10f024a95130f9316ddcc06a75b4ab0c626268f82be87a13d0b336ed",
+      "localSha256": "7079c486c668bc5e0ba5ae483f013dcda59db3431d62ff334c9a2532f95a1bc2"
+    },
+    {
+      "path": "src/pallet/impls.rs",
+      "upstreamSha256": "4727fc28699f1ee8978f5ce7f9f3f609fa12880a190d6b637db085cd753462c7",
+      "localSha256": "c50e61ed1e2cc9873748ccebff614fca6e2bb80864258bc3c417755aca68b5e8"
+    },
+    {
+      "path": "src/pallet/mod.rs",
+      "upstreamSha256": "c6ad64d0e63c4c54d052598c4fd9cd6b99d0bcbf4271aa9741fc6cdf1dae70e2",
+      "localSha256": "0a66702984abe27070c00d3e0a8168c02a9782e96d8543d9e5998d9c2ac850aa"
+    },
+    {
+      "path": "src/session_rotation.rs",
+      "upstreamSha256": "6bf404dfee7eb03b478746ab0c3dda3d6d1edca874bf278f02f71165e6f4a1d2",
+      "localSha256": "3e9690fd9cebae81377418c68897b6d7c071d2f1280a82ba5391cfae8e88c84a"
+    },
+    {
+      "path": "src/slashing.rs",
+      "upstreamSha256": "4a172b44955d4bdec4637a5a3b46ac1d482daf35c9e89e29ccd8a02975c2e6d0",
+      "localSha256": "bbed11eeebc370aa7d1ba0288fd115b1c35bad5fd1b8c0872aa82c659bf44bb2"
+    },
+    {
+      "path": "src/tests/bonding.rs",
+      "upstreamSha256": "6ab918f7714640a3db5cfa4e66069de7e5aeb67be05beef61eedd7645e02c034",
+      "localSha256": "8e44288cb8599fe66b14cc743711abc9b9ff73cce011013ee8feb2525e3f7746"
+    },
+    {
+      "path": "src/tests/configs.rs",
+      "upstreamSha256": "9800971acba76315ced67364b258972ae00d5d33be72a2654d9ddb5338c5aa56",
+      "localSha256": "3a206153a07dbb525e2ac1a5fb4ba45386ec255c9a13414f08036f4a4e741e8e"
+    },
+    {
+      "path": "src/tests/force_unstake_kill_stash.rs",
+      "upstreamSha256": "bae96ca00a7e84a3e71eb09a4951fda91c37c15505da53d2bcdf02f7663b69d4",
+      "localSha256": "4f31f0dd2616daa503bd0ed16fc56a1dd7b6b22e76a6bf7cd737fb0385d31c30"
+    },
+    {
+      "path": "src/tests/ledger.rs",
+      "upstreamSha256": "d9ce91365ca5823e39997b39e1d5f2984d6b89eeab3e5bbe30cbc64ef6c9fbc9",
+      "localSha256": "4cf5bd6672233a58d0a55def9415299d376223fe6334d7dd4cb8c71a2df29717"
+    },
+    {
+      "path": "src/tests/mod.rs",
+      "upstreamSha256": "351780f56ec8ce21ac0cc6f8a0e49e58c59ed37a6dbedcb242277a2a2400bffa",
+      "localSha256": "7008163726679acfd403e90253ba5a832ad46988721dc8452ac58b8ff64f3397"
+    },
+    {
+      "path": "src/tests/nominators_no_slashing.rs",
+      "upstreamSha256": "74d7c4d9b4b985126eb7121f629cde82a0646930cd7fb8418073265e3e76c30e",
+      "localSha256": "a6882ee4972fab98c5eb88bd320387ca5f1ce5c967121b2e702d07eafa62de3f"
+    },
+    {
+      "path": "src/tests/payout_stakers.rs",
+      "upstreamSha256": "67f30f043b2318a7b88eb2e019ac99f3810f4b07d6c3ae162e7115e39fe56850",
+      "localSha256": "4a0767374fd3cd475319289c5460a9a2bf1a5c0edeb26dc171edd51b0fb69005"
+    },
+    {
+      "path": "src/tests/slashing.rs",
+      "upstreamSha256": "b13838d4656b74e8d3bd1c38668db4787ead5a95740a1c32292728b942a936f5",
+      "localSha256": "a0ab06bd79fddf9155d09ded3c7373e8b358da2b390812cc6afe467ebd439414"
+    },
+    {
+      "path": "src/tests/sora_customizations.rs",
+      "upstreamSha256": null,
+      "localSha256": "40fa3e0e1ad4e9420bf7498cd24eafa3221bc09bee372dcb2bbdb15fa091d8b1"
+    },
+    {
+      "path": "src/weights.rs",
+      "upstreamSha256": "e45e0b30e2fd57a0d591fc08b8b2ce74993d89053ff9ad539402d7b71e0f191d",
+      "localSha256": "04014e0078d6d74e5e15168aabaf185f8bef23959b2355f1ac59bb27a56d65bd"
+    }
+  ]
+}

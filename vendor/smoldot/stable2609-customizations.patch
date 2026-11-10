@@ -1,0 +1,76 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -206,11 +206,8 @@
+ default-features = false
+ 
+ [dependencies.libsecp256k1]
+-version = "0.7.1"
+-features = [
+-    "static-context",
+-    "hmac",
+-]
++package = "sora-secp256k1-compat"
++path = "../sora-secp256k1-compat"
+ default-features = false
+ 
+ [dependencies.merlin]
+@@ -267,7 +264,7 @@
+ default-features = false
+ 
+ [dependencies.ruzstd]
+-version = "0.8.0"
++version = "0.9.1"
+ default-features = false
+ 
+ [dependencies.schnorrkel]
+--- a/src/executor/host/zstd/tests.rs
++++ b/src/executor/host/zstd/tests.rs
+@@ -55,3 +55,34 @@
+     )
+     .unwrap();
+ }
++
++#[test]
++fn excessive_window_is_rejected_before_allocation() {
++    // A valid Zstandard frame header can advertise a multi-terabyte window even
++    // when the frame contains only an empty last block. The decoder must reject
++    // the declared window before allocating its history buffer.
++    let frame = [0x28, 0xb5, 0x2f, 0xfd, 0x00, 0xff, 0x01, 0x00, 0x00];
++    let mut runtime = super::ZSTD_PREFIX.to_vec();
++    runtime.extend_from_slice(&frame);
++    assert!(matches!(
++        super::zstd_decode_if_necessary(&runtime, 1024),
++        Err(super::Error::InvalidZstd)
++    ));
++}
++
++#[test]
++fn final_block_must_respect_output_limit() {
++    // Single-segment frame with one final raw block containing ten bytes.
++    // UptoBytes is a block-level stopping hint, not a hard output-size cap.
++    let frame = [
++        0x28, 0xb5, 0x2f, 0xfd, 0x20, 10, 0x51, 0x00, 0x00, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
++    ];
++    assert_eq!(
++        super::zstd_decode(&frame, 10).unwrap(),
++        (0..10).collect::<Vec<_>>()
++    );
++    assert!(matches!(
++        super::zstd_decode(&frame, 4),
++        Err(super::Error::TooLarge)
++    ));
++}
+--- a/src/executor/host/zstd.rs
++++ b/src/executor/host/zstd.rs
+@@ -63,7 +63,10 @@
+ 
+     // When the decoding is finished, `Some` is always guaranteed to be returned.
+     let out_buf = decoder.collect().unwrap();
+-    debug_assert!(out_buf.len() <= max_allowed);
++    // UptoBytes stops between blocks; the final block may exceed the limit.
++    if out_buf.len() > max_allowed {
++        return Err(Error::TooLarge);
++    }
+     Ok(out_buf)
+ }
+ 

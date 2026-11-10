@@ -418,7 +418,7 @@ fn umi_nft_receiver_update_only_refunds_after_root_authorization() {
         assert_eq!(call.get_dispatch_info().pays_fee, Pays::Yes);
         for receivers in [Vec::new(), receivers.clone()] {
             let err = Pallet::add_umi_nft_receivers(origin(), receivers).unwrap_err();
-            assert_eq!(err.error, frame_support::error::BadOrigin.into());
+            assert_eq!(err.error, sp_runtime::traits::BadOrigin.into());
             assert_eq!(err.post_info.pays_fee, Pays::Yes);
         }
         let success = Pallet::add_umi_nft_receivers(RuntimeOrigin::root(), receivers).unwrap();

@@ -1,0 +1,367 @@
+# Vendored from polkadot-stable2609; see SORA-PATCH.md.
+"bench" = [{ "name" = "notifications_protocol", "harness" = false }, { "name" = "request_response_protocol", "harness" = false }]
+
+["package"]
+"description" = "Substrate network protocol"
+"name" = "sc-network"
+"version" = "0.60.0"
+"license" = "GPL-3.0-or-later WITH Classpath-exception-2.0"
+"authors" = ["Parity Technologies <admin@parity.io>"]
+"edition" = "2021"
+"homepage" = "https://paritytech.github.io/polkadot-sdk/"
+"repository" = "https://github.com/paritytech/polkadot-sdk.git"
+"documentation" = "https://docs.rs/sc-network"
+"readme" = "README.md"
+
+["package"."metadata"]
+
+["package"."metadata"."docs"]
+
+["package"."metadata"."docs"."rs"]
+"targets" = ["x86_64-unknown-linux-gnu"]
+
+["lints"]
+
+["lints"."rust"]
+
+["lints"."rust"."suspicious_double_ref_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."rust"."unexpected_cfgs"]
+"level" = "warn"
+"check-cfg" = ["cfg(build_opt_level, values(\"3\"))", "cfg(build_profile, values(\"debug\", \"release\"))", "cfg(enable_alloc_error_handler)", "cfg(fuzzing)", "cfg(ignore_flaky_test)", "cfg(revive_debug)", "cfg(substrate_runtime)"]
+
+["lints"."clippy"]
+
+["lints"."clippy"."all"]
+"level" = "allow"
+"priority" = 0
+
+["lints"."clippy"."bind_instead_of_map"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."borrowed-box"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."complexity"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."correctness"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."default_constructed_unit_structs"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."derivable_impls"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."eq_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."erasing_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."extra-unused-type-parameters"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."identity-op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."if-same-then-else"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless-lifetimes"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless_option_as_deref"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."nonminimal-bool"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."option-map-unit-fn"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."stable_sort_primitive"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."too-many-arguments"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."type_complexity"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unit_arg"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unnecessary_cast"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."useless_conversion"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."while_immutable_condition"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."zero-prefixed-literal"]
+"level" = "allow"
+"priority" = 2
+
+["dependencies"]
+
+["dependencies"."array-bytes"]
+"version" = "6.2.2"
+"default-features" = true
+
+["dependencies"."async-channel"]
+"version" = "1.8.0"
+
+["dependencies"."async-trait"]
+"version" = "0.1.88"
+
+["dependencies"."asynchronous-codec"]
+"version" = "0.6"
+
+["dependencies"."bytes"]
+"version" = "1.4.0"
+"default-features" = true
+
+["dependencies"."cid"]
+"version" = "0.11.1"
+
+["dependencies"."codec"]
+"version" = "3.7.5"
+"default-features" = true
+"package" = "parity-scale-codec"
+"features" = ["derive"]
+
+["dependencies"."either"]
+"version" = "1.8.1"
+"default-features" = true
+
+["dependencies"."fnv"]
+"version" = "1.0.6"
+
+["dependencies"."futures"]
+"version" = "0.3.31"
+
+["dependencies"."futures-timer"]
+"version" = "3.0.2"
+
+["dependencies"."hmac"]
+"version" = "0.12.1"
+
+["dependencies"."ip_network"]
+"version" = "0.4.1"
+
+["dependencies"."libp2p"]
+"version" = "0.54.1"
+"features" = ["dns", "identify", "kad", "macros", "mdns", "noise", "ping", "request-response", "tcp", "tokio", "websocket", "yamux"]
+
+["dependencies"."linked_hash_set"]
+"version" = "0.1.4"
+
+["dependencies"."litep2p"]
+"version" = "0.15.3"
+"features" = ["rsa", "webrtc", "websocket"]
+
+["dependencies"."log"]
+"version" = "0.4.22"
+"default-features" = true
+
+["dependencies"."mockall"]
+"version" = "0.13.1"
+
+["dependencies"."p256"]
+"version" = "0.14.0"
+"default-features" = true
+
+["dependencies"."parking_lot"]
+"version" = "0.12.1"
+"default-features" = true
+
+["dependencies"."partial_sort"]
+"version" = "0.2.0"
+
+["dependencies"."pin-project"]
+"version" = "1.1.3"
+
+["dependencies"."prometheus-endpoint"]
+"default-features" = true
+"package" = "substrate-prometheus-endpoint"
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."rand"]
+"version" = "0.8.5"
+"default-features" = true
+
+["dependencies"."rustls"]
+"version" = "0.23.18"
+"default-features" = false
+"features" = ["logging", "ring", "std", "tls12"]
+
+["dependencies"."sc-client-api"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-network-common"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-network-types"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-utils"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."schnellru"]
+"version" = "0.2.3"
+
+["dependencies"."serde"]
+"version" = "1.0.214"
+"default-features" = true
+"features" = ["derive"]
+
+["dependencies"."serde_json"]
+"version" = "1.0.132"
+"default-features" = true
+
+["dependencies"."sha2"]
+"version" = "0.10.7"
+"default-features" = true
+"features" = ["oid"]
+
+["dependencies"."smallvec"]
+"version" = "1.11.0"
+"default-features" = true
+
+["dependencies"."sp-arithmetic"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-blockchain"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-core"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-runtime"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."thiserror"]
+"version" = "1.0.64"
+
+["dependencies"."tokio"]
+"version" = "1.45.0"
+"default-features" = true
+"features" = ["macros", "sync"]
+
+["dependencies"."tokio-stream"]
+"version" = "0.1.14"
+
+["dependencies"."unsigned-varint"]
+"version" = "0.7.2"
+"features" = ["asynchronous_codec", "futures"]
+
+["dependencies"."void"]
+"version" = "1.0.2"
+
+["dependencies"."wasm-timer"]
+"version" = "0.2.5"
+
+["dependencies"."x509-cert"]
+"version" = "0.2.5"
+"default-features" = false
+"features" = ["std"]
+
+["dependencies"."zeroize"]
+"version" = "1.7.0"
+"default-features" = true
+
+["dev-dependencies"]
+
+["dev-dependencies"."assert_matches"]
+"version" = "1.5.0"
+
+["dev-dependencies"."multistream-select"]
+"version" = "0.13.0"
+
+["dev-dependencies"."sc-block-builder"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."sp-consensus"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."sp-tracing"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."substrate-test-runtime"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."substrate-test-runtime-client"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dev-dependencies"."tempfile"]
+"version" = "3.8.1"
+
+["dev-dependencies"."tokio"]
+"version" = "1.45.0"
+"default-features" = true
+"features" = ["macros", "rt-multi-thread"]
+
+["dev-dependencies"."tokio-util"]
+"version" = "0.7.8"
+"features" = ["compat"]
+
+["dev-dependencies"."criterion"]
+"version" = "0.5.1"
+"default-features" = true
+"features" = ["async_tokio"]
+
+["features"]
+"default" = []

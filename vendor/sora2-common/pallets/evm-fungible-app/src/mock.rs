@@ -39,8 +39,8 @@ use bridge_types::H160;
 use bridge_types::H256;
 use bridge_types::{EVMChainId, GenericNetworkId, U256};
 use frame_support::dispatch::DispatchResult;
-use frame_support::parameter_types;
 use frame_support::traits::Everything;
+use frame_support::{derive_impl, parameter_types};
 use frame_system as system;
 use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
@@ -81,6 +81,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
@@ -111,6 +112,7 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 1;
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
 impl pallet_balances::Config for Test {
     type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;
@@ -123,7 +125,6 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
     type RuntimeHoldReason = ();
     type FreezeIdentifier = ();
-    type MaxHolds = ();
     type MaxFreezes = ();
 }
 
@@ -134,7 +135,6 @@ parameter_type_with_key! {
 }
 
 impl tokens::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
@@ -278,7 +278,6 @@ impl EVMOutboundChannel for OutboundChannelImpl {
 }
 
 impl fungible_app::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = OutboundChannelImpl;
     type CallOrigin = dispatch::EnsureAccount<
         bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
@@ -303,6 +302,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bob, 1_000_000_000_000_000_000u128)],
+        ..Default::default()
     }
     .assimilate_storage(&mut storage)
     .unwrap();

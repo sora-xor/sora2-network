@@ -77,3 +77,4 @@
  - 116: Soratopia
  - 117: MultiBlockMigrations
  - 118: EthereumBeaconClient
+ - 122: BridgeHalt

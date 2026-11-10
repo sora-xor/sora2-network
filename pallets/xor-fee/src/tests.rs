@@ -54,11 +54,11 @@ use frame_support::assert_err;
 use frame_support::dispatch::GetDispatchInfo;
 #[cfg(feature = "wip")] // Dynamic fee
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays};
-use frame_support::error::BadOrigin;
 use frame_support::traits::{Currency, OnRuntimeUpgrade, StorageVersion};
 use frame_support::weights::{Weight, WeightToFee};
 use frame_support::{assert_noop, assert_ok};
 use sp_arithmetic::traits::Zero;
+use sp_runtime::traits::BadOrigin;
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidityError};
 use sp_runtime::{DispatchError, FixedPointNumber, FixedU128};
@@ -1631,6 +1631,36 @@ fn test_xorless_call_failed_inner_call() {
         let err = result.unwrap_err();
         assert_eq!(err.error, tokens::Error::<Runtime>::BalanceTooLow.into());
         assert_eq!(err.post_info.actual_weight.unwrap(), expected_weight);
+    });
+}
+
+#[cfg(not(feature = "wip"))] // Xorless fee
+#[test]
+fn unavailable_xorless_call_keeps_only_its_own_weight() {
+    use frame_support::dispatch::{extract_actual_weight, DispatchClass, GetDispatchInfo, Pays};
+    use sp_runtime::traits::Dispatchable;
+    ExtBuilder::build().execute_with(|| {
+        let inner = RuntimeCall::Assets(assets::Call::transfer {
+            asset_id: common::XOR.into(),
+            to: alice(),
+            amount: balance!(1),
+        });
+        let call = RuntimeCall::XorFee(crate::Call::xorless_call {
+            call: Box::new(inner.clone()),
+            asset_id: None,
+        });
+        let own = <<Runtime as crate::Config>::WeightInfo as crate::WeightInfo>::xorless_call();
+        let info = call.get_dispatch_info();
+        assert_eq!(info.call_weight, own);
+        assert_eq!(info.class, DispatchClass::Normal);
+        assert_eq!(info.pays_fee, Pays::Yes);
+        let result = call.dispatch(RuntimeOrigin::signed(bob()));
+        // CheckWeight retains only this call's weight, not the wrapped declaration.
+        assert_eq!(extract_actual_weight(&result, &info), own);
+        let err = result.unwrap_err();
+        assert_eq!(err.error, DispatchError::Unavailable);
+        assert_eq!(err.post_info.actual_weight, Some(own));
+        assert_eq!(err.post_info.pays_fee, Pays::Yes);
     });
 }
 

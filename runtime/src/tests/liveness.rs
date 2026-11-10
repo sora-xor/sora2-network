@@ -9,14 +9,13 @@ use crate::{
 use codec::Encode;
 use frame_support::{
     assert_ok,
-    traits::{Currency, OneSessionHandler},
+    traits::{Authorize, Currency, OneSessionHandler},
 };
 use framenode_chain_spec::ext;
 use pallet_im_online::{sr25519::AuthorityPair, Heartbeat, UnresponsivenessOffence};
 use pallet_staking::{ActiveEraInfo, EraInfo, Exposure, IndividualExposure, RewardDestination};
 use sp_core::Pair;
 use sp_runtime::{
-    traits::ValidateUnsigned,
     transaction_validity::{InvalidTransaction, TransactionSource},
     Perbill,
 };
@@ -62,16 +61,25 @@ impl Validators {
             start: Some(0),
         });
         pallet_staking::CurrentEra::<Runtime>::put(ERA);
-        pallet_staking::ErasStartSessionIndex::<Runtime>::insert(ERA, FIRST_SESSION);
-        pallet_staking::BondedEras::<Runtime>::put(vec![(ERA, FIRST_SESSION)]);
-        pallet_staking::Invulnerables::<Runtime>::put(Vec::<AccountId>::new());
+        // These fixtures model obligations created under synchronous staking.
+        pallet_staking::legacy::CutoffEra::<Runtime>::put(ERA);
+        pallet_staking::legacy::FirstExecutionEra::<Runtime>::put(ERA);
+        crate::staking_async::State::<Runtime>::kill();
+        pallet_staking::legacy::ErasStartSessionIndex::<Runtime>::insert(ERA, FIRST_SESSION);
+        pallet_staking::BondedEras::<Runtime>::put(
+            frame_support::BoundedVec::<_, pallet_staking::BondedErasBound<Runtime>>::try_from(
+                vec![(ERA, FIRST_SESSION)],
+            )
+            .unwrap(),
+        );
+        pallet_staking::legacy::Invulnerables::<Runtime>::put(Vec::<AccountId>::new());
 
         for account in &accounts {
             fund_and_bond(account, OWN_STAKE);
         }
         fund_and_bond(&nominator, NOMINATED_STAKE * Balance::from(count));
         for account in &accounts {
-            EraInfo::<Runtime>::set_exposure(
+            set_exposure(
                 ERA,
                 account,
                 Exposure {
@@ -172,7 +180,7 @@ fn fund_and_bond(account: &AccountId, stake: Balance) {
 fn assert_no_offence_or_slash() {
     assert_eq!(pallet_offences::Reports::<Runtime>::iter().count(), 0);
     assert_eq!(
-        pallet_staking::UnappliedSlashes::<Runtime>::iter().count(),
+        pallet_staking::legacy::UnappliedSlashes::<Runtime>::iter().count(),
         0
     );
     assert_eq!(
@@ -226,9 +234,71 @@ fn repeated_missing_liveness_is_observed_without_disabling_or_slashing() {
     });
 }
 
+/// Install immutable fixture exposure using the actual async page encoder.
+fn set_exposure(era: u32, validator: &AccountId, exposure: Exposure<AccountId, Balance>) {
+    if let Some(old) = pallet_staking::ErasStakersOverview::<Runtime>::take(era, validator) {
+        for page in 0..old.page_count {
+            pallet_staking::ErasStakersPaged::<Runtime>::remove((era, validator, page));
+        }
+    }
+    EraInfo::<Runtime>::upsert_exposure(era, validator, exposure);
+}
+
+/// Activate an elected fixture through the production local consensus bridge,
+/// then execute block hooks until the bounded legacy queue has drained.
+fn activate_fixture_era(era: u32, session: u32) {
+    use frame_support::traits::Hooks;
+    crate::staking_async::State::<Runtime>::mutate(|state| {
+        state.queued_era = Some((session, era));
+    });
+    <crate::staking_async::LocalSession as pallet_session::SessionManager<AccountId>>::start_session(session);
+    for _ in 0..=queued_slash_count() {
+        <Staking as Hooks<crate::BlockNumber>>::on_initialize(System::block_number());
+        if !pallet_staking::legacy::has_pending_due_slashes::<Runtime>(era) {
+            break;
+        }
+        System::set_block_number(System::block_number() + 1);
+    }
+    assert!(!pallet_staking::legacy::has_pending_due_slashes::<Runtime>(
+        era
+    ));
+}
+
+fn queued_slashes(
+    era: u32,
+) -> Vec<pallet_staking::legacy::LegacyUnappliedSlash<AccountId, Balance>> {
+    let cursor = pallet_staking::legacy::LegacySlashCursor::<Runtime>::get(era) as usize;
+    let mut records = pallet_staking::legacy::UnappliedSlashes::<Runtime>::get(era)
+        .into_iter()
+        .skip(cursor)
+        .collect::<Vec<_>>();
+    records.extend(
+        pallet_staking::legacy::HistoricalSlashes::<Runtime>::iter_prefix(era)
+            .map(|(_, record)| record.slash),
+    );
+    records
+}
+
 fn queued_slash_count() -> usize {
-    pallet_staking::UnappliedSlashes::<Runtime>::iter()
-        .map(|(_, slashes)| slashes.len())
+    pallet_staking::legacy::UnappliedSlashes::<Runtime>::iter()
+        .map(|(era, records)| {
+            records
+                .len()
+                .saturating_sub(
+                    pallet_staking::legacy::LegacySlashCursor::<Runtime>::get(era) as usize,
+                )
+        })
+        .sum::<usize>()
+        + pallet_staking::legacy::HistoricalSlashes::<Runtime>::iter().count()
+}
+
+#[cfg(not(feature = "private-net"))]
+fn historical_queue_bytes(era: u32) -> usize {
+    pallet_staking::legacy::HistoricalSlashes::<Runtime>::iter_prefix(era)
+        .map(|(id, record)| {
+            pallet_staking::legacy::HistoricalSlashes::<Runtime>::hashed_key_for(era, id).len()
+                + record.encoded_size()
+        })
         .sum()
 }
 
@@ -270,7 +340,7 @@ fn assert_majority_slashes(validators: &Validators, penalized: &[usize]) {
     }
     let defer = <Runtime as pallet_staking::Config>::SlashDeferDuration::get();
     if defer > 0 {
-        let queued = pallet_staking::UnappliedSlashes::<Runtime>::get(ERA + defer + 1);
+        let queued = queued_slashes(ERA + defer + 1);
         assert_eq!(queued.len(), penalized.len());
         assert_eq!(queued_slash_count(), penalized.len());
         for slash in queued {
@@ -479,10 +549,10 @@ fn disabled_validator_can_prove_liveness_with_a_signed_heartbeat_next_session() 
             signature: authority_pair(1).sign(&heartbeat.encode()),
         };
         assert_eq!(
-            <ImOnline as ValidateUnsigned>::validate_unsigned(
-                TransactionSource::External,
-                &invalid_call
-            ),
+            invalid_call
+                .authorize(TransactionSource::External)
+                .unwrap()
+                .map(|(validity, _)| validity),
             InvalidTransaction::BadProof.into(),
         );
 
@@ -491,18 +561,40 @@ fn disabled_validator_can_prove_liveness_with_a_signed_heartbeat_next_session() 
             heartbeat: heartbeat.clone(),
             signature: signature.clone(),
         };
-        assert_ok!(<ImOnline as ValidateUnsigned>::validate_unsigned(
+        assert_ok!(call.authorize(TransactionSource::External).unwrap());
+        let runtime_call = crate::RuntimeCall::ImOnline(call.clone());
+        let bare = crate::UncheckedExtrinsic::new_bare(runtime_call.clone());
+        assert!(
+            crate::Executive::validate_transaction(
+                TransactionSource::External,
+                bare,
+                Default::default()
+            )
+            .is_err(),
+            "heartbeats must use the upstream authorized transaction path"
+        );
+        let authorized = <Runtime as frame_system::offchain::CreateAuthorizedTransaction<
+            pallet_im_online::Call<Runtime>,
+        >>::create_authorized_transaction(runtime_call);
+        assert_ok!(crate::Executive::validate_transaction(
             TransactionSource::External,
-            &call,
+            authorized.clone(),
+            Default::default()
         ));
-        assert_ok!(ImOnline::heartbeat(
-            RuntimeOrigin::none(),
-            heartbeat,
-            signature
-        ));
+        let funds_before = validators.balances_and_stakes();
+        assert_ok!(crate::Executive::apply_extrinsic(authorized).unwrap());
+        assert_eq!(validators.balances_and_stakes(), funds_before);
+        assert!(!System::events().iter().any(|event| matches!(
+            event.event,
+            RuntimeEvent::TransactionPayment(
+                pallet_transaction_payment::Event::TransactionFeePaid { .. }
+            )
+        )));
         assert!(ImOnline::is_online(0));
         assert_eq!(
-            <ImOnline as ValidateUnsigned>::validate_unsigned(TransactionSource::External, &call),
+            call.authorize(TransactionSource::External)
+                .unwrap()
+                .map(|(validity, _)| validity),
             InvalidTransaction::Stale.into(),
         );
 
@@ -651,7 +743,7 @@ fn assert_equivocation_slashes<O: Offence<Identification>>(validators: &Validato
 
     let defer = <Runtime as pallet_staking::Config>::SlashDeferDuration::get();
     if defer > 0 {
-        let slashes = pallet_staking::UnappliedSlashes::<Runtime>::get(ERA + defer + 1);
+        let slashes = queued_slashes(ERA + defer + 1);
         assert_eq!(slashes.len(), 1);
         assert_eq!(slashes[0].validator, validators.accounts[0]);
         assert_eq!(slashes[0].own, expected_validator_slash);
@@ -666,12 +758,15 @@ fn assert_equivocation_slashes<O: Offence<Identification>>(validators: &Validato
             let era = ERA + step;
             let session = FIRST_SESSION + step * crate::SessionsPerEra::get();
             pallet_staking::CurrentEra::<Runtime>::put(era);
-            pallet_staking::ErasStartSessionIndex::<Runtime>::insert(era, session);
+            pallet_staking::legacy::ErasStartSessionIndex::<Runtime>::insert(era, session);
             pallet_session::CurrentIndex::<Runtime>::put(session);
-            <Staking as pallet_session::SessionManager<AccountId>>::start_session(session);
-            assert_eq!(Staking::active_era().unwrap().index, era);
+            activate_fixture_era(era, session);
+            assert_eq!(
+                pallet_staking::ActiveEra::<Runtime>::get().unwrap().index,
+                era
+            );
         }
-        assert!(pallet_staking::UnappliedSlashes::<Runtime>::get(ERA + defer + 1).is_empty());
+        assert!(queued_slashes(ERA + defer + 1).is_empty());
     }
 
     let after = validators.balances_and_stakes();
@@ -760,7 +855,7 @@ fn concurrent_equivocations_update_existing_disable_severity_and_reject_duplicat
 fn invulnerable_equivocation_does_not_disable_or_slash() {
     ext().execute_with(|| {
         let validators = Validators::new();
-        pallet_staking::Invulnerables::<Runtime>::put(vec![validators.accounts[0].clone()]);
+        pallet_staking::legacy::Invulnerables::<Runtime>::put(vec![validators.accounts[0].clone()]);
         let offence = pallet_babe::EquivocationOffence {
             slot: 42u64.into(),
             session_index: FIRST_SESSION,
@@ -789,11 +884,13 @@ fn historical_equivocation_slashes_without_disabling_current_era() {
             start: Some(0),
         });
         pallet_staking::CurrentEra::<Runtime>::put(next_era);
-        pallet_staking::ErasStartSessionIndex::<Runtime>::insert(next_era, next_session);
-        pallet_staking::BondedEras::<Runtime>::put(vec![
-            (ERA, FIRST_SESSION),
-            (next_era, next_session),
-        ]);
+        pallet_staking::legacy::ErasStartSessionIndex::<Runtime>::insert(next_era, next_session);
+        pallet_staking::BondedEras::<Runtime>::put(
+            frame_support::BoundedVec::<_, pallet_staking::BondedErasBound<Runtime>>::try_from(
+                vec![(ERA, FIRST_SESSION), (next_era, next_session)],
+            )
+            .unwrap(),
+        );
         validators.start_session(next_session);
         let offence = pallet_babe::EquivocationOffence {
             slot: 42u64.into(),
@@ -839,7 +936,7 @@ fn exposure_budget_retains_the_largest_historical_aggregate() {
         let current_weight = liveness_babe_report_weight();
         let previous_era = ERA - 1;
         let historical_rows = 100u32;
-        EraInfo::<Runtime>::set_exposure(
+        set_exposure(
             previous_era,
             &validators.accounts[0],
             Exposure {
@@ -853,10 +950,15 @@ fn exposure_budget_retains_the_largest_historical_aggregate() {
                     .collect(),
             },
         );
-        pallet_staking::BondedEras::<Runtime>::put(vec![
-            (previous_era, FIRST_SESSION - crate::SessionsPerEra::get()),
-            (ERA, FIRST_SESSION),
-        ]);
+        pallet_staking::BondedEras::<Runtime>::put(
+            frame_support::BoundedVec::<_, pallet_staking::BondedErasBound<Runtime>>::try_from(
+                vec![
+                    (previous_era, FIRST_SESSION - crate::SessionsPerEra::get()),
+                    (ERA, FIRST_SESSION),
+                ],
+            )
+            .unwrap(),
+        );
         crate::liveness::refresh_exposure_work();
         let budget = crate::liveness::ExposureWork::<Runtime>::get().unwrap();
         assert_eq!(budget.max_nomination_edges, historical_rows);
@@ -890,7 +992,7 @@ fn missing_or_stale_exposure_budget_keeps_the_full_static_fallback() {
 fn any_legacy_exposure_prevents_a_partial_paged_weight_estimate() {
     ext().execute_with(|| {
         let validators = Validators::new();
-        pallet_staking::ErasStakers::<Runtime>::insert(
+        pallet_staking::legacy::ErasStakers::<Runtime>::insert(
             ERA,
             &validators.accounts[0],
             Exposure::<AccountId, Balance>::default(),
@@ -934,7 +1036,7 @@ fn equivocation_weight_tracks_growing_future_queues_without_a_session_refresh() 
     ext().execute_with(|| {
         let validators = Validators::new();
         let before = liveness_babe_report_weight();
-        let slash = pallet_staking::UnappliedSlash {
+        let slash = pallet_staking::legacy::LegacyUnappliedSlash {
             validator: validators.accounts[0].clone(),
             own: UNIT,
             others: vec![(validators.nominator.clone(), UNIT); 100],
@@ -942,11 +1044,11 @@ fn equivocation_weight_tracks_growing_future_queues_without_a_session_refresh() 
             payout: 0,
         };
         // An overdue queue is not read by late immediate application.
-        pallet_staking::UnappliedSlashes::<Runtime>::insert(ERA, vec![slash.clone(); 20]);
+        pallet_staking::legacy::UnappliedSlashes::<Runtime>::insert(ERA, vec![slash.clone(); 20]);
         assert_eq!(liveness_babe_report_weight(), before);
 
         let future_era = ERA + <Runtime as pallet_staking::Config>::SlashDeferDuration::get() + 1;
-        pallet_staking::UnappliedSlashes::<Runtime>::insert(future_era, vec![slash; 20]);
+        pallet_staking::legacy::UnappliedSlashes::<Runtime>::insert(future_era, vec![slash; 20]);
         let after = liveness_babe_report_weight();
         assert!(after.ref_time() > before.ref_time());
         assert!(after.proof_size() > before.proof_size());
@@ -970,9 +1072,7 @@ fn queue_growth_envelope_covers_reports_priced_before_earlier_wrapped_calls() {
             budget.max_nomination_edges,
         );
         let due = ERA + <Runtime as pallet_staking::Config>::SlashDeferDuration::get() + 1;
-        let before_bytes = pallet_staking::UnappliedSlashes::<Runtime>::get(due)
-            .encode()
-            .len();
+        let before_bytes = historical_queue_bytes(due);
         // Increasing concurrent severity causes earlier offenders to queue new
         // financial deltas, reproducing the state growth inside wrapped reports.
         for index in 0..7 {
@@ -984,9 +1084,7 @@ fn queue_growth_envelope_covers_reports_priced_before_earlier_wrapped_calls() {
             };
             assert_ok!(EquivocationReports::report_offence(vec![], offence));
         }
-        let after_bytes = pallet_staking::UnappliedSlashes::<Runtime>::get(due)
-            .encode()
-            .len();
+        let after_bytes = historical_queue_bytes(due);
         assert!(after_bytes > before_bytes);
         assert!((after_bytes - before_bytes) as u64 <= growth);
     });
@@ -1014,5 +1112,8 @@ mod equivocation_fees;
 mod feeless_success;
 mod funded_keepers;
 mod migration_fees;
+mod payout_batch_fees;
 mod retired_lending;
 mod session_boundaries;
+
+mod authorized_heartbeats;

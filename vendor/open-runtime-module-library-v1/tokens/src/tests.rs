@@ -196,19 +196,19 @@ fn set_balance_should_work() {
 
 			// total balance overflow
 			assert_noop!(
-				Tokens::set_balance(RawOrigin::Root.into(), ALICE, DOT, Balance::max_value(), 1),
+				Tokens::set_balance(RawOrigin::Root.into(), ALICE, DOT, Balance::MAX, 1),
 				ArithmeticError::Overflow
 			);
 
 			// total issurance overflow
 			assert_noop!(
-				Tokens::set_balance(RawOrigin::Root.into(), ALICE, DOT, Balance::max_value(), 0),
+				Tokens::set_balance(RawOrigin::Root.into(), ALICE, DOT, Balance::MAX, 0),
 				ArithmeticError::Overflow
 			);
 
 			// total issurance overflow
 			assert_noop!(
-				Tokens::set_balance(RawOrigin::Root.into(), ALICE, DOT, Balance::max_value(), 0),
+				Tokens::set_balance(RawOrigin::Root.into(), ALICE, DOT, Balance::MAX, 0),
 				ArithmeticError::Overflow
 			);
 
@@ -291,7 +291,7 @@ fn deposit_consequence_should_work() {
 			Tokens::deposit_consequence(
 				&CHARLIE,
 				DOT,
-				Balance::max_value(),
+				Balance::MAX,
 				&AccountData {
 					free: 1,
 					reserved: 0,
@@ -309,7 +309,7 @@ fn deposit_consequence_should_work() {
 				DOT,
 				1,
 				&AccountData {
-					free: Balance::max_value(),
+					free: Balance::MAX,
 					reserved: 0,
 					frozen: 0
 				}
@@ -949,7 +949,7 @@ fn do_deposit_should_work() {
 			assert_eq!(Tokens::total_issuance(DOT), 120);
 
 			assert_noop!(
-				Tokens::do_deposit(DOT, &ALICE, Balance::max_value(), false, true),
+				Tokens::do_deposit(DOT, &ALICE, Balance::MAX, false, true),
 				ArithmeticError::Overflow
 			);
 

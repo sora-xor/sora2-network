@@ -245,6 +245,7 @@ pub fn hasher(a: H256, b: H256) -> H256 {
     H256::from_slice(Keccak256::hash(&res).as_bytes())
 }
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
     use bridge_types::H256;
