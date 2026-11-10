@@ -12,7 +12,7 @@ const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 function candidateSpec(input) {
   const packageName = path.basename(path.dirname(__dirname));
-  const spec = input ?? { 'runtime-upgrade-4.8.14': '140', 'runtime-upgrade-4.8.15': '141' }[packageName];
+  const spec = input ?? { 'runtime-upgrade-4.8.14': '141' }[packageName];
   assert(spec === '140' || spec === '141', '--candidate-spec must be 140 or 141');
   return Number(spec);
 }

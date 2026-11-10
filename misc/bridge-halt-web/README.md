@@ -21,7 +21,7 @@ unavailable.
 | Signal | raw key `:sora-nexus:bridge-halt:latest:v1` = `0x3a736f72612d6e657875733a6272696467652d68616c743a6c61746573743a7631`, holding the newest halt as SCALE `(number: u32, block: u32)` |
 | Record | `bridgeHalt.lastHalt` (number, guardian, block, message) and the `bridgeHalt.BridgeHalted` event |
 | Cooldown | `bridgeHalt.haltCooldown`: 10 blocks (one minute) from one halt to the next |
-| Guardian list | `bridgeHalt.guardians`, changed by the technical committee (more than 2/3) or Root; the upgrade that adds the pallet installs `cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY` |
+| Guardian list | `bridgeHalt.guardians`, changed by the technical committee (more than 2/3) or Root; the upgrade that adds the pallet installs `cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY` and `cnU8UgdM4fs9iiCxkRDW8vp2bx4e68LbePkcuQPv1LERKH5oH` |
 
 Halts are numbered from 1. Each HASHI bridge node compares the signal with the halt its
 operator last confirmed, which the node keeps in its offchain database. While the two
@@ -141,7 +141,7 @@ When a trustworthy pre-outage cursor is unavailable, set
 Use a sidechain RPC serving historical logs for the replay. Once the guardian halt
 is finalized, acknowledge it with the restart flags above.
 
-`Confirmed guardian halt #3` acknowledges that halt on this peer. Check the peer's
+The log line `Acknowledged guardian halt #3` confirms that halt on this peer. Check the peer's
 bootstrap, signing-key, and guardian-halt gauges. Root's recovery latch and peer
 membership still govern whether the worker can process requests. An old or future
 halt number is refused and the node logs the reason. The next halt requires its own
@@ -158,10 +158,11 @@ Never use `killPrefix` on `:sora-nexus:recovery:`; it deletes recovery state the
 still reads. Before reopening after an incident, finish the bridge reconciliation
 (counterparty nonces, HASHI scan height, peer key rotation).
 
-The upgrade that adds BridgeHalt installs one guardian,
-`cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY`: the runtime lists it in
-`BridgeHaltInitialGuardians`, and `migrations::SeedBridgeHaltGuardians` adds it once, so a
-later upgrade does not re-add it if governance removes it. Add any other guardians with
+The upgrade that adds BridgeHalt installs two guardians,
+`cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY` and
+`cnU8UgdM4fs9iiCxkRDW8vp2bx4e68LbePkcuQPv1LERKH5oH`: the runtime lists them in
+`BridgeHaltInitialGuardians`, and `migrations::SeedBridgeHaltGuardians` adds them once, so
+a later upgrade does not re-add one that governance removes. Add any other guardians with
 the motion above, and fund every guardian before the bridges reopen.
 
 ## Hosting

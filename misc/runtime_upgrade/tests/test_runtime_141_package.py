@@ -8,8 +8,8 @@ from zipfile import ZipFile
 
 
 ROOT = Path(__file__).resolve().parents[3]
-PACKAGE = ROOT / "runtime-upgrade-4.8.15"
-ZIP = ROOT / "council-runtime-4.8.15.zip"
+PACKAGE = ROOT / "runtime-upgrade-4.8.14"
+ZIP = ROOT / "council-runtime-4.8.14.zip"
 MAINNET_GENESIS = "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5"
 
 
@@ -85,7 +85,7 @@ class Runtime141PackageTests(unittest.TestCase):
         self.assertEqual(diagnostic["genesisHash"], MAINNET_GENESIS)
         self.assertEqual(diagnostic["base"], direct["base"])
         self.assertEqual(diagnostic["candidate"]["sha256"], direct["candidate"]["sha256"])
-        previous = ROOT / "runtime-upgrade-4.8.14/framenode-runtime-4.8.14.compact.compressed.wasm"
+        previous = ROOT / "runtime-upgrade-4.8.14-spec-140/framenode-runtime-4.8.14.compact.compressed.wasm"
         self.assertEqual(diagnostic["intermediate"]["codeSha256"], hashlib.sha256(previous.read_bytes()).hexdigest())
         transition = diagnostic["guardianTransition"]
         self.assertEqual(transition["priorSpec"], 140)

@@ -3041,6 +3041,8 @@ parameter_types! {
     pub BridgeHaltInitialGuardians: Vec<AccountId> = vec![
         // cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY
         AccountId::new(hex!("20bc37a28e010164d91ab08cd4b985db5ea4c83f93dca42f8c87c247d8c8a137")),
+        // cnU8UgdM4fs9iiCxkRDW8vp2bx4e68LbePkcuQPv1LERKH5oH
+        AccountId::new(hex!("74d646f43308987f4daaeed492f5394a2edf1f390be883c908602b7809f0f608")),
     ];
 }
 

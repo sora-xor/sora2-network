@@ -54,7 +54,7 @@ function fixture(t, spec) {
   fs.writeFileSync(wasmPath, wasm);
   const rehearsalPath = path.join(dir, 'rehearsal.json');
   const out = path.join(dir, 'out');
-  const rehearsal = JSON.parse(fs.readFileSync(path.join(root, 'runtime-upgrade-4.8.14/live-fork-rehearsal.json')));
+  const rehearsal = JSON.parse(fs.readFileSync(path.join(root, 'runtime-upgrade-4.8.14-spec-140/live-fork-rehearsal.json')));
   rehearsal.checks.forEach((check) => { check.name = check.name.replace(/140/g, String(spec)); });
   rehearsal.genesisHash = MAINNET_GENESIS;
   const labels = {

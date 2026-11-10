@@ -1,9 +1,14 @@
-# SORA Nexus 4.8.14 runtime upgrade
+# SORA Nexus 4.8.14, superseded spec-140 cut
 
-This directory records the published 4.8.14 release. For the corrected runtime and
-bridge node, use [4.8.15](../runtime-upgrade-4.8.15/README.md). The validation entry
-points here use the current rehearsal and digest checks for this historical candidate.
-The published 4.8.14 ZIP and its checksum identify the original release at its signed tag.
+**Do not submit anything from this directory.** It records the first cut of 4.8.14
+(runtime spec 140), which was never enacted. The 4.8.14 release is runtime spec 141, in
+[`runtime-upgrade-4.8.14`](../runtime-upgrade-4.8.14/README.md); use that package and
+its node build. The files here are kept because the current validation tools replay this
+Wasm as the intermediate step of the successor rehearsal. The council ZIP of this cut is
+in the repository history at commit `2323cf42f8a26c5545a301f89090c7e11d70d314`.
+
+The rest of this file is the original description of that cut. Its commands use the
+directory's earlier name, `runtime-upgrade-4.8.14`.
 
 Runtime spec **140**, transaction version **134**. It upgrades the live runtime 138.
 
