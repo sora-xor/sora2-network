@@ -32,7 +32,6 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::manual_repeat_n, clippy::uninlined_format_args)]
-#![feature(int_roundings)]
 
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
@@ -1326,11 +1325,11 @@ impl<T: Config> Pallet<T> {
 
         // min & max must be a multiple of `step_lot_size`
         ensure!(
-            min_lot_size % step_lot_size == 0,
+            min_lot_size.is_multiple_of(step_lot_size),
             Error::<T>::InvalidMinLotSize
         );
         ensure!(
-            max_lot_size % step_lot_size == 0,
+            max_lot_size.is_multiple_of(step_lot_size),
             Error::<T>::InvalidMaxLotSize
         );
 

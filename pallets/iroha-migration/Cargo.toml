@@ -15,21 +15,19 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false, optional = true }
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", default-features = false }
 hex = { version = "0.4.2", default-features = false }
 hex-literal = { version = "0.4.1", optional = true }
 pallet-multisig = { path = "../../vendor/pallet-multisig-upstream", package = "pallet-multisig-upstream", default-features = false }
 serde = { version = "1.0.101", default-features = false, optional = true, features = [
     "derive",
 ] }
-sha3 = { version = "0.9.1", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+sha3 = { version = "0.10.9", default-features = false }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", default-features = false }
 
-ed25519-dalek-iroha = { git = "https://github.com/soramitsu/sora2-ed25519-dalek-iroha.git", branch = "develop", default-features = false, features = [
-    "u64_backend",
-] }
+ed25519-dalek = { version = "2.2.0", default-features = false, features = ["hazmat", "zeroize"] }
 
 common = { path = "../../common", default-features = false }
 referrals = { path = "../referrals", default-features = false }
@@ -38,15 +36,12 @@ eth-bridge = { path = "../eth-bridge", default-features = false }
 
 [dev-dependencies]
 currencies = { workspace = true }
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
-parity-util-mem = { version = "0.12.0", default-features = false, features = [
-    "primitive-types",
-] }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false, features = [
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", default-features = false, features = [
     "full_crypto",
 ] }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", default-features = false }
 tokens = { workspace = true }
 
 assets = { path = "../assets" }

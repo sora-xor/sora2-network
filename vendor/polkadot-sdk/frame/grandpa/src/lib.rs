@@ -57,6 +57,7 @@ use sp_staking::{offence::OffenceReportSystem, SessionIndex};
 mod default_weights;
 mod equivocation;
 pub mod migrations;
+pub mod recovery;
 
 #[cfg(any(feature = "runtime-benchmarks", test))]
 mod benchmarking;
@@ -356,6 +357,7 @@ pub mod pallet {
 		}
 	}
 
+	#[allow(deprecated)]
 	#[pallet::validate_unsigned]
 	impl<T: Config> ValidateUnsigned for Pallet<T> {
 		type Call = Call<T>;

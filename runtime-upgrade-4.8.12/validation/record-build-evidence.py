@@ -48,8 +48,21 @@ for line in log.splitlines():
 assert len(suites) == 13, suites
 assert {row["crate"] for row in suites} >= {"kensetsu", "apollo_platform"}, suites
 assert all(row['failed'] == 0 for row in suites)
-new_tests = re.findall(r'^test tests::liveness::(?:equivocation_fees|equivocation_bridge|feeless_success|funded_keepers|migration_fees|bridge_fees|retired_lending)::.* \.\.\. ok$', log, re.M)
-assert len(new_tests) >= 39, len(new_tests)
+new_tests = re.findall(r'^test tests::liveness::(?:equivocation_fees|equivocation_bridge|feeless_success|funded_keepers|migration_fees|bridge_fees|retired_lending|payout_batch_fees)::.* \.\.\. ok$', log, re.M)
+assert len(new_tests) >= 48, len(new_tests)
+required_payout_batch_tests = [
+    'tests::liveness::payout_batch_fees::signed_payout_batches_pay_val_once_and_charge_replays_for_all_variants',
+    'tests::liveness::payout_batch_fees::invalid_and_interrupted_payout_batches_pay_for_every_submitted_call',
+    'tests::liveness::payout_batch_fees::failed_atomic_payout_batch_rolls_back_rewards_and_claims_but_keeps_xor_fee',
+    'tests::liveness::payout_batch_fees::force_payout_batch_continues_after_invalid_page_and_still_charges_all_items',
+    'tests::liveness::payout_batch_fees::payout_batches_require_xor_before_validation_and_execution',
+    'tests::liveness::payout_batch_fees::payout_discount_excludes_empty_mixed_nested_and_other_wrapped_calls',
+    'tests::liveness::payout_batch_fees::payout_batch_fee_quotes_preserve_length_tips_multipliers_and_extension_weight',
+    'tests::liveness::payout_batch_fees::payout_batch_must_fund_full_quote_even_when_execution_would_refund',
+    'tests::liveness::payout_batch_fees::payout_batch_discount_preserves_extrinsic_and_block_weight_admission_limits',
+]
+for name in required_payout_batch_tests:
+    assert re.search(r'^test ' + re.escape(name) + r' \.\.\. ok$', log, re.M), 'Missing payout-batch regression: ' + name
 required_followup_tests = [
     'tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum',
     'tests::liveness::migration_fees::migration_success_delivers_val_and_keeps_xor_fee',
@@ -86,6 +99,8 @@ native = {'status': 'passed', 'sourceTreeAfterPatch': provenance['sourceTreeAfte
           'capacityExecutiveRegressionsPassed': len(capacity_tests),
           'followupRegressionsPassed': len(required_followup_tests),
           'requiredFollowupRegressions': required_followup_tests,
+          'payoutBatchRegressionsPassed': len(required_payout_batch_tests),
+          'requiredPayoutBatchRegressions': required_payout_batch_tests,
           'retirementRegressionsPassed': len(required_retirement_tests),
           'requiredRetirementRegressions': required_retirement_tests,
           'requiredKensetsuInterestRegression': interest_test,

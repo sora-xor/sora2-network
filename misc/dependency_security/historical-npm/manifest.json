@@ -1,0 +1,42 @@
+[
+  {
+    "source": "runtime-upgrade-4.8.9/validation/rehearsal-package.json",
+    "evidence": "misc/dependency_security/historical-npm/4.8.9/rehearsal-package.json.historical",
+    "sha256": "a93ac117f20d97e833307aa562a6bd23f4377dbf08631e40e8b90b8a09c43e16"
+  },
+  {
+    "source": "runtime-upgrade-4.8.9/validation/rehearsal-package-lock.json",
+    "evidence": "misc/dependency_security/historical-npm/4.8.9/rehearsal-package-lock.json.historical",
+    "sha256": "057f6a2a94730932ee934e25e7b309443b9889d6a0ad908deba54b5668d34425"
+  },
+  {
+    "source": "runtime-upgrade-4.8.10/validation/package.json",
+    "evidence": "misc/dependency_security/historical-npm/4.8.10/package.json.historical",
+    "sha256": "fd7d8409b97191bc05aa53827748879de978bfd510de5434ed84878442f098bc"
+  },
+  {
+    "source": "runtime-upgrade-4.8.10/validation/package-lock.json",
+    "evidence": "misc/dependency_security/historical-npm/4.8.10/package-lock.json.historical",
+    "sha256": "f70deee0e5f07cfacc7319e4c377f6918021ca5b74c7060ae8cd153daaa291b8"
+  },
+  {
+    "source": "runtime-upgrade-4.8.11/validation/package.json",
+    "evidence": "misc/dependency_security/historical-npm/4.8.11/package.json.historical",
+    "sha256": "6ff078aa9c31423b9d35a3188a462fe58d500f15f0979f85294fbd08dab0e0e0"
+  },
+  {
+    "source": "runtime-upgrade-4.8.11/validation/package-lock.json",
+    "evidence": "misc/dependency_security/historical-npm/4.8.11/package-lock.json.historical",
+    "sha256": "9b8aa6f93ba09fe455c03f9ccd92080c0d89309d8ae59b59f6c16fdf1ab85fae"
+  },
+  {
+    "source": "runtime-upgrade-4.8.12/validation/package.json",
+    "evidence": "misc/dependency_security/historical-npm/4.8.12/package.json.historical",
+    "sha256": "fbad95b4d01570fa4a92ddff1bccc45ce5e0f4e3a26fa96ace3c347b052fbbfd"
+  },
+  {
+    "source": "runtime-upgrade-4.8.12/validation/package-lock.json",
+    "evidence": "misc/dependency_security/historical-npm/4.8.12/package-lock.json.historical",
+    "sha256": "d3e676fd0ef61c0ce9c54df8541c0b5d26c92196e32ac5d541230be3b7bba6f7"
+  }
+]

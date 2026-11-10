@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-24",
+  "status": "passed",
+  "scope": "Byte-exact rebuild verification of the reviewed SORA Nexus executor and Polkadot crypto npm Wasm packages.",
+  "canonical_environment": {
+    "os": "Ubuntu 24.04.5 LTS",
+    "architecture": "x86_64",
+    "rust_host": "x86_64-unknown-linux-gnu",
+    "execution": "Linux amd64 container under Rosetta in the existing aarch64 Colima VM",
+    "base_image": "ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac",
+    "builder_image": "sora-reviewed-wasm-rebuild:2026-10-24",
+    "builder_image_id": "sha256:fceacd3afe5c56ceafbb42312502c1152a05bce91638b788ddccff06d75c4c1d",
+    "rustup": "1.29.2",
+    "rust_toolchain": "nightly-2026-10-23",
+    "rustc": "1.101.0-nightly",
+    "rustc_commit": "7189d39d9ce936881b8132c6addeaf3e295cd455",
+    "cargo": "1.101.0-nightly (15be64aa0 2026-10-20)",
+    "llvm": "23.1.4",
+    "node": "24.22.1",
+    "wasm_bindgen": "0.2.129",
+    "swc": "1.16.20",
+    "fflate": "0.8.2",
+    "tools_log": "/tmp/sora2-chopsticks-native-review/linux-canonical-tools.log"
+  },
+  "recipe": {
+    "dockerfile": "misc/dependency_security/Dockerfile.wasm-rebuild",
+    "dockerfile_sha256": "6061be08a5f240031f2367de831f00668cf175b8377a1cb15a5432c77a869290",
+    "helper": "misc/dependency_security/rebuild_wasm_in_container.sh",
+    "helper_sha256": "d7a29e10410928085a651d73562ebe09827295c1556d87a64a55c4a68fbf4eaa",
+    "instructions": "misc/dependency_security/WASM-REBUILDS.md"
+  },
+  "canonical_build": {
+    "command": "SORA_WASM_DOCKER_CONTEXT=colima-sora-release-verify SORA_WASM_BUILD_VOLUME=sora-reviewed-wasm-linux-parity misc/dependency_security/rebuild_wasm_in_container.sh --write",
+    "source_root": "/repo",
+    "cargo_home": "/cache/cargo",
+    "cargo_target_dir": "/cache/target",
+    "result": "passed",
+    "log": "/tmp/sora2-chopsticks-native-review/linux-canonical-recipe-build.log"
+  },
+  "independent_linux_rebuild": {
+    "command": "docker --context colima-sora-release-verify run --rm -i --name sora-reviewed-wasm-independent-check --platform linux/amd64 --mount type=volume,source=sora-reviewed-wasm-linux-parity,target=/cache --mount type=bind,source=/Users/takemiyamakoto/dev/sora2-network,target=/repo,readonly sora-reviewed-wasm-rebuild:2026-10-24 bash -s < /tmp/sora2-chopsticks-native-review/linux-independent-check.sh",
+    "setup_script": "/tmp/sora2-chopsticks-native-review/linux-independent-check.sh",
+    "setup_script_sha256": "7f5b7938d135694b736c183a18818bcf15a66448e92deed132eb7496aeea0d0a",
+    "setup_script_contents": "#!/usr/bin/env bash\nset -euo pipefail\nmkdir -p /cache/repro-source/vendor /cache/repro-source/misc/dependency_security /cache/repro-target\nfor package in chopsticks-executor polkadot-wasm-crypto polkadot-wasm-crypto-wasm sora-secp256k1-compat; do\n  cp -a \"/repo/vendor/$package\" /cache/repro-source/vendor/\ndone\ncp /repo/rust-toolchain.toml /cache/repro-source/\ncp /repo/misc/dependency_security/{Dockerfile.wasm-rebuild,rebuild_wasm_in_container.sh} /cache/repro-source/misc/dependency_security/\nif [ ! -d /cache/repro-cargo ]; then cp -al /cache/cargo /cache/repro-cargo; fi\nexport CARGO_HOME=/cache/repro-cargo\nexport CARGO_TARGET_DIR=/cache/repro-target\ncd /cache/repro-source\nnode vendor/chopsticks-executor/scripts/build-reviewed.mjs --check --build-tools-dir /opt/build-tools\nnode vendor/polkadot-wasm-crypto/scripts/build-reviewed.mjs --check --build-tools-dir /opt/build-tools\npython3 vendor/chopsticks-executor/scripts/verify-artifacts.py\npython3 vendor/polkadot-wasm-crypto/scripts/verify-artifacts.py\n",
+    "source_root": "/cache/repro-source",
+    "cargo_home": "/cache/repro-cargo",
+    "cargo_target_dir": "/cache/repro-target",
+    "result": "all 32 generated assets byte-identical",
+    "log": "/tmp/sora2-chopsticks-native-review/linux-independent-check.log"
+  },
+  "container_check_mode": {
+    "command": "SORA_WASM_DOCKER_CONTEXT=colima-sora-release-verify SORA_WASM_BUILD_VOLUME=sora-reviewed-wasm-linux-parity misc/dependency_security/rebuild_wasm_in_container.sh --check",
+    "source_mount": "read-only",
+    "result": "all 32 generated assets byte-identical; both provenance verifiers passed",
+    "log": "/tmp/sora2-chopsticks-native-review/linux-container-helper-check.log"
+  },
+  "packages": [
+    {
+      "package": "chopsticks-executor",
+      "canonical_host": "x86_64-unknown-linux-gnu",
+      "wasm_bytes": 2723362,
+      "wasm_sha256": "e58f725beeb705f1b79234046ea2f12b5b6a73f9b8851980b0d7895252c41966",
+      "source_inputs_verified": 161,
+      "generated_assets_matched": 14,
+      "provenance_file": "vendor/chopsticks-executor/build-provenance.json",
+      "provenance_sha256": "22bc3445aa13b338500246218d55b8785217b48957def2f6cd31cf051af475b2"
+    },
+    {
+      "package": "polkadot-wasm-crypto-wasm",
+      "canonical_host": "x86_64-unknown-linux-gnu",
+      "wasm_bytes": 676030,
+      "wasm_sha256": "7f08ea9227b0d72df0953194994c54a56a34a7135a43690eb6c3f4867a4c316f",
+      "source_inputs_verified": 17,
+      "generated_assets_matched": 18,
+      "provenance_file": "vendor/polkadot-wasm-crypto-wasm/build-provenance.json",
+      "provenance_sha256": "300b5b6ecb33d4d3df736edadc5b4585101f7bbb41c10682fcafb849c3d1388c"
+    }
+  ],
+  "binary_path_inspection": {
+    "result": "passed",
+    "unexpected_prefixes": [
+      "/cache/",
+      "/repo/",
+      "/opt/",
+      "/Users/",
+      "/rust-toolchain",
+      "OUT_DIR"
+    ],
+    "matches_found": 0,
+    "log": "/tmp/sora2-chopsticks-native-review/linux-binary-path-inspection.json"
+  },
+  "format_checks": [
+    {
+      "command": "cargo fmt --manifest-path vendor/polkadot-wasm-crypto/Cargo.toml --all -- --check",
+      "result": "passed",
+      "log": "/tmp/sora2-chopsticks-native-review/crypto-fmt-check.log"
+    },
+    {
+      "command": "cargo fmt --manifest-path vendor/chopsticks-executor/Cargo.toml --all -- --check",
+      "result": "passed",
+      "log": "/tmp/sora2-chopsticks-native-review/executor-fmt-check.log"
+    }
+  ],
+  "historical_macos_checks": {
+    "status": "passed for earlier macOS-built assets only",
+    "final_linux_byte_parity_claimed": false,
+    "executor_wasm_sha256": "a66d3633931ebb1d9936d4654af7222bfb9ac8811602e3ae692618cef3f552a6",
+    "crypto_wasm_sha256": "db00bcb9c502b5e32775f9f8a066bc83bceece693efea167b9ad1303e066cbb5",
+    "matched_assets": 32,
+    "logs": [
+      "/tmp/sora2-chopsticks-native-review/executor-repro-path.log",
+      "/tmp/sora2-chopsticks-native-review/polkadot-repro-path.log"
+    ]
+  },
+  "initial_linux_diagnosis": {
+    "result": "macOS-produced executor assets differed on the Linux CI host",
+    "first_difference": "Generated declaration closure names contain different Rust crate disambiguator hashes; public types were unchanged.",
+    "additional_difference": "rust-src availability changes translated standard-library source paths.",
+    "resolution": "Use canonical Linux x86_64 host and exact compiler commit, enforce host guards, and remap rust sources to /rustc/<commit>. No generated-symbol normalization or weaker check was introduced.",
+    "log": "/tmp/sora2-chopsticks-native-review/linux-parity-build.log"
+  },
+  "crypto_compatibility_evidence": {
+    "path": "vendor/polkadot-wasm-crypto/tests/compatibility-evidence.json",
+    "sha256": "02b7049c0aa0a547b74c45500cdc46fedc5daa81c0ab7a259cbae059f8fd9e12",
+    "execution_host": "Node 24 on macOS arm64 executing canonical Linux-built Wasm",
+    "full_reference_assertions": 2928,
+    "offline_assertions": 2619,
+    "failures": 0
+  },
+  "vm_restoration": {
+    "profile": "sora-release-verify",
+    "initial_state": "stopped",
+    "final_state": "stopped",
+    "docker_context_before": "default",
+    "docker_context_after": "default",
+    "default_context_unchanged": true,
+    "persistent_cache_volume": "sora-reviewed-wasm-linux-parity",
+    "cache_policy": "Both fixed build lanes were retained; no cargo clean was run.",
+    "stop_log": "/tmp/sora2-chopsticks-native-review/linux-parity-colima-stop.log",
+    "status_log": "/tmp/sora2-chopsticks-native-review/linux-parity-vms-after.txt",
+    "context_log": "/tmp/sora2-chopsticks-native-review/linux-parity-context-after.txt"
+  },
+  "installed_runtime_validation": {
+    "result": "passed",
+    "execution_host": "Node 24 on macOS arm64 executing canonical Linux-built Wasm",
+    "generated_assets_matched": 32,
+    "integration_tests": 7,
+    "schema_tests": 6,
+    "fetch_blob_tests": 3,
+    "frontend_reproduction_tests": 3,
+    "executor_smoke": "CJS/ESM roots, proof round trips, malformed input, decompression bomb, callbacks and actual Wasm execution passed.",
+    "current_runtime": "Compressed and uncompressed current runtime Core_version passed: spec 134, transaction 131.",
+    "current_runtime_evidence": "misc/dependency_security/current-runtime-executor-smoke-2026-10-24.json",
+    "logs": [
+      "/tmp/sora2-js-native-linux-final-integration.log",
+      "/tmp/sora2-js-native-linux-final-schema.log",
+      "/tmp/sora2-js-native-linux-final-fetch-blob.log",
+      "/tmp/sora2-js-native-linux-final-executor.log",
+      "/tmp/sora2-js-native-linux-final-current-runtime.log",
+      "/tmp/sora2-js-frontend-linux-canonical-final.log"
+    ]
+  }
+}

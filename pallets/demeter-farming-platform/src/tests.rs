@@ -298,7 +298,7 @@ mod tests {
                     BOB
                 ),
                 demeter_farming_platform::Error::<Runtime>::Unauthorized
-            )
+            );
         });
     }
 
@@ -337,7 +337,7 @@ mod tests {
                     BOB
                 ),
                 demeter_farming_platform::Error::<Runtime>::TokenAlreadyRegistered
-            )
+            );
         });
     }
 
@@ -364,7 +364,7 @@ mod tests {
                     BOB
                 ),
                 demeter_farming_platform::Error::<Runtime>::TokenPerBlockCantBeZero
-            )
+            );
         });
     }
 
@@ -391,7 +391,7 @@ mod tests {
                     BOB
                 ),
                 demeter_farming_platform::Error::<Runtime>::InvalidAllocationParameters
-            )
+            );
         });
     }
 
@@ -448,7 +448,7 @@ mod tests {
                     is_core,
                 ),
                 demeter_farming_platform::Error::<Runtime>::Unauthorized
-            )
+            );
         });
     }
 
@@ -477,7 +477,7 @@ mod tests {
                     is_core,
                 ),
                 demeter_farming_platform::Error::<Runtime>::InvalidMultiplier
-            )
+            );
         });
     }
 
@@ -506,7 +506,7 @@ mod tests {
                     is_core,
                 ),
                 demeter_farming_platform::Error::<Runtime>::InvalidDepositFee
-            )
+            );
         });
     }
 
@@ -535,7 +535,7 @@ mod tests {
                     is_core,
                 ),
                 demeter_farming_platform::Error::<Runtime>::RewardTokenIsNotRegistered
-            )
+            );
         });
     }
 
@@ -597,7 +597,7 @@ mod tests {
                     is_core,
                 ),
                 demeter_farming_platform::Error::<Runtime>::PoolAlreadyExists
-            )
+            );
         });
     }
 
@@ -2143,7 +2143,7 @@ mod tests {
                     new_multiplier,
                 ),
                 demeter_farming_platform::Error::<Runtime>::Unauthorized
-            )
+            );
         });
     }
 
@@ -2180,7 +2180,7 @@ mod tests {
                     new_multiplier,
                 ),
                 demeter_farming_platform::Error::<Runtime>::PoolDoesNotExist
-            )
+            );
         });
     }
 
@@ -2204,7 +2204,7 @@ mod tests {
                     0,
                 ),
                 demeter_farming_platform::Error::<Runtime>::InvalidMultiplier
-            )
+            );
         });
     }
 
@@ -2433,7 +2433,7 @@ mod tests {
                     deposit_fee,
                 ),
                 demeter_farming_platform::Error::<Runtime>::Unauthorized
-            )
+            );
         });
     }
 
@@ -2458,7 +2458,7 @@ mod tests {
                     deposit_fee,
                 ),
                 demeter_farming_platform::Error::<Runtime>::PoolDoesNotExist
-            )
+            );
         });
     }
 
@@ -2504,7 +2504,7 @@ mod tests {
                     deposit_fee,
                 ),
                 demeter_farming_platform::Error::<Runtime>::InvalidDepositFee
-            )
+            );
         });
     }
 
@@ -2651,7 +2651,7 @@ mod tests {
                     BOB
                 ),
                 demeter_farming_platform::Error::<Runtime>::Unauthorized
-            )
+            );
         });
     }
 
@@ -2678,7 +2678,7 @@ mod tests {
                     BOB
                 ),
                 demeter_farming_platform::Error::<Runtime>::RewardTokenIsNotRegistered
-            )
+            );
         });
     }
 
@@ -2717,7 +2717,7 @@ mod tests {
                     BOB
                 ),
                 demeter_farming_platform::Error::<Runtime>::TokenPerBlockCantBeZero
-            )
+            );
         });
     }
 
@@ -2756,7 +2756,7 @@ mod tests {
                     BOB
                 ),
                 demeter_farming_platform::Error::<Runtime>::InvalidAllocationParameters
-            )
+            );
         });
     }
 

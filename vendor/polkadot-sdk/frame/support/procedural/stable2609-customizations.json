@@ -1,0 +1,36 @@
+{
+  "upstreamTag": "polkadot-stable2609",
+  "upstreamCommit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "upstreamPath": "substrate/frame/support/procedural",
+  "sourcePatch": "stable2609-customizations.patch",
+  "sourcePatchSha256": "a66e720b80e5449a43053656fdad3d53e63de01ab4e2ea775fbe0dd7b7295028",
+  "upstreamManifestSha256": "ed21453054e5ab7c5fefebf934726466aa41ff4c19e7962531e6924cd963ea44",
+  "sourcePatchReplay": "passed",
+  "changedSourceFiles": [
+    {
+      "path": "src/construct_runtime/expand/call.rs",
+      "upstreamSha256": "e138f1e423a233a635f127f7f35b2275a530e4a9c8381f9c4cc62a634ef2d3a0",
+      "localSha256": "63ba0718a25b7166e50f868d3a4b409a0497d893d1471815f01fc37f80ae371d"
+    },
+    {
+      "path": "src/construct_runtime/mod.rs",
+      "upstreamSha256": "64205e5ec8c13e44849dfe63e6f3db7a4daddca9b7529d7e9397f98689ee617b",
+      "localSha256": "b940e8d7fd5b00502315f32dde2922fb827babc913cee9590513454351955c64"
+    },
+    {
+      "path": "src/construct_runtime/parse.rs",
+      "upstreamSha256": "26424c8f228fe7ed4e317e852d7068585f13acf5737acd6a5ab2e17b56e57812",
+      "localSha256": "0b2c8365783dcbb920c8e0d5742dbe2f578fa5951dd7dd80d363c7db23fad608"
+    },
+    {
+      "path": "src/no_bound/clone.rs",
+      "upstreamSha256": "5d096c3d3c90145159911cb132e8a9b989d9ae92d4f3d961b1daeb4310904171",
+      "localSha256": "ec804085b9f6dd67dcc8b19e24f4c3cd5f64423db1fc561f43a3faa6df0d719d"
+    },
+    {
+      "path": "src/runtime/expand/mod.rs",
+      "upstreamSha256": "75a259872a4cd28bbb50253d8af4e836183e0235ea801b63ad841a8bd59f16ba",
+      "localSha256": "8ede12f9491a6d0f2f4a26159a90d5280dc6decd02b0e736f36ac40de94a21cb"
+    }
+  ]
+}

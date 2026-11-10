@@ -67,7 +67,9 @@ mod benchmarking;
 mod tests;
 pub mod weights;
 
-use codec::{Decode, DecodeLimit, DecodeWithMemTracking, Encode};
+use codec::{
+    Compact, Decode, DecodeLimit, DecodeWithMemTracking, Encode, MaxEncodedLen, MemTrackingInput,
+};
 use frame_support::{
     dispatch::{DispatchResultWithPostInfo, GetDispatchInfo, Pays, PostDispatchInfo},
     traits::{Contains, Currency, Get, ReservableCurrency},
@@ -83,11 +85,11 @@ use scale_info::prelude::vec;
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_io::hashing::blake2_256;
-use sp_runtime::DispatchError;
 use sp_runtime::{
     traits::{Dispatchable, Zero},
     Percent,
 };
+use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::fmt::Debug;
 use sp_std::prelude::*;
 
@@ -101,6 +103,26 @@ pub use pallet::*;
 const WEIGHT_PER_MICROS: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_MICROS, 0);
 const WEIGHT_PER_NANOS: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_NANOS, 0);
 const MAX_CALL_DECODE_DEPTH: u32 = 32;
+
+/// Runtime-specific admission for a multisig operation, including its preimage
+/// and deterministic timepoint. `()` preserves general-purpose multisig behavior.
+pub trait OperationFilter<AccountId, Call, BlockNumber> {
+    fn validate(
+        id: &AccountId,
+        timepoint: Option<BridgeTimepoint<BlockNumber>>,
+        call: Option<&Call>,
+    ) -> DispatchResult;
+}
+
+impl<AccountId, Call, BlockNumber> OperationFilter<AccountId, Call, BlockNumber> for () {
+    fn validate(
+        _id: &AccountId,
+        _timepoint: Option<BridgeTimepoint<BlockNumber>>,
+        _call: Option<&Call>,
+    ) -> DispatchResult {
+        Ok(())
+    }
+}
 
 /// Adapt the existing u16 membership limit to the bounded cancellation vote vector.
 pub struct CancellationVoteBound<T>(core::marker::PhantomData<T>);
@@ -140,6 +162,11 @@ pub mod pallet {
         /// Restrict calls executed through this pallet's fee-exempt dispatch route.
         /// This is checked again at execution, including stored approved calls.
         type CallFilter: Contains<<Self as Config>::RuntimeCall>;
+        type OperationFilter: OperationFilter<
+            Self::AccountId,
+            <Self as Config>::RuntimeCall,
+            BlockNumberFor<Self>,
+        >;
 
         /// The currency mechanism.
         type Currency: ReservableCurrency<Self::AccountId>;
@@ -494,7 +521,7 @@ pub mod pallet {
             let threshold = multisig.threshold_num();
             ensure!(threshold > 1, Error::<T>::MinimumThreshold);
             ensure!(
-                !DispatchedCalls::<T>::contains_key(&call_hash, timepoint),
+                !Self::was_dispatched(&id, &call_hash, timepoint),
                 Error::<T>::AlreadyDispatched
             );
 
@@ -669,6 +696,19 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// New dispatches are scoped to their multisig account. Keep `DispatchedCalls`
+    /// unchanged: legacy markers carry no account and must remain replay barriers.
+    #[pallet::storage]
+    pub type AccountDispatchedCalls<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        ([u8; 32], BridgeTimepoint<BlockNumberFor<T>>),
+        (),
+        ValueQuery,
+    >;
+
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub accounts: Vec<(T::AccountId, MultisigAccount<T::AccountId>)>,
@@ -682,19 +722,11 @@ pub mod pallet {
         }
     }
 
-    // Keep this as a compile-time guard: runtime genesis generation requires
-    // `GenesisConfig<T>: Default` in both `std` and `no_std` builds.
-    const _: fn() = || {
-        fn assert_default<T: Config>()
-        where
-            GenesisConfig<T>: Default,
-        {
-        }
-    };
-
     #[pallet::genesis_build]
     impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
+            // Type-check the Default contract without constructing a second genesis value.
+            let _: fn() -> GenesisConfig<T> = Default::default;
             self.accounts
                 .iter()
                 .for_each(|(account_id, multisig)| Accounts::<T>::insert(account_id, multisig));
@@ -835,12 +867,23 @@ enum CallOrHash {
 }
 
 impl<T: Config> Pallet<T> {
+    /// Historical global markers fail closed; new markers isolate unrelated accounts.
+    /// No legacy marker can be safely attributed to an account from its stored value.
+    pub fn was_dispatched(
+        id: &T::AccountId,
+        hash: &[u8; 32],
+        timepoint: BridgeTimepoint<BlockNumberFor<T>>,
+    ) -> bool {
+        DispatchedCalls::<T>::contains_key(hash, timepoint)
+            || AccountDispatchedCalls::<T>::contains_key(id, (*hash, timepoint))
+    }
+
     pub fn protocol_validation_weight() -> Weight {
         T::DbWeight::get()
-            .reads_writes(40, 5)
+            .reads_writes(84, 5)
             .saturating_add(Weight::from_parts(
-                5_000_000_000,
-                T::MaxCallBytes::get() as u64 + 262_144,
+                10_000_000_000,
+                2 * T::MaxCallBytes::get() as u64 + 532_480,
             ))
     }
 
@@ -915,13 +958,18 @@ impl<T: Config> Pallet<T> {
             CallOrHash::Hash(h) => (h, 0, None, false),
         };
 
+        // Validate before recording any approval, including hash-only proposals.
+        // Runtime policy may require a known preimage and a canonical timepoint.
+        let admission_call = Self::get_call(&call_hash, maybe_call.as_deref());
+        T::OperationFilter::validate(&id, maybe_timepoint, admission_call.as_ref())?;
+
         // Branch on whether the operation has already started or not.
         if let Some(mut m) = <Multisigs<T>>::get(&id, call_hash) {
             // Yes; ensure that the timepoint exists and agrees.
             let timepoint = maybe_timepoint.ok_or(Error::<T>::NoTimepoint)?;
             ensure!(m.when == timepoint, Error::<T>::WrongTimepoint);
             ensure!(
-                !DispatchedCalls::<T>::contains_key(&call_hash, timepoint),
+                !Self::was_dispatched(&id, &call_hash, timepoint),
                 Error::<T>::AlreadyDispatched
             );
 
@@ -1024,7 +1072,7 @@ impl<T: Config> Pallet<T> {
             Self::ensure_proposer_capacity(&id, &who, signatories_len)?;
             let timepoint = maybe_timepoint.unwrap_or_else(|| Self::thischain_timepoint());
             ensure!(
-                !DispatchedCalls::<T>::contains_key(&call_hash, timepoint),
+                !Self::was_dispatched(&id, &call_hash, timepoint),
                 Error::<T>::AlreadyDispatched
             );
             // Just start the operation by recording it in storage.
@@ -1039,7 +1087,7 @@ impl<T: Config> Pallet<T> {
 
             let timepoint = maybe_timepoint.unwrap_or_else(|| Self::thischain_timepoint());
             ensure!(
-                !DispatchedCalls::<T>::contains_key(&call_hash, timepoint),
+                !Self::was_dispatched(&id, &call_hash, timepoint),
                 Error::<T>::AlreadyDispatched
             );
 
@@ -1093,8 +1141,9 @@ impl<T: Config> Pallet<T> {
             call_len <= T::MaxCallBytes::get() as usize,
             Error::<T>::CallTooLarge
         );
+        T::OperationFilter::validate(&id, Some(timepoint), Some(call.as_ref()))?;
         ensure!(
-            !DispatchedCalls::<T>::contains_key(&call_hash, timepoint),
+            !Self::was_dispatched(&id, &call_hash, timepoint),
             Error::<T>::AlreadyDispatched
         );
         Self::dispatch_call(&who, &id, 1, call_hash, call_len, timepoint, *call)
@@ -1118,7 +1167,7 @@ impl<T: Config> Pallet<T> {
         } else {
             Err(frame_system::Error::<T>::CallFiltered.into())
         };
-        DispatchedCalls::<T>::insert(&call_hash, timepoint, ());
+        AccountDispatchedCalls::<T>::insert(id, (call_hash, timepoint), ());
         Self::deposit_event(Event::MultisigExecuted(
             who.clone(),
             timepoint,
@@ -1249,8 +1298,8 @@ impl<T: Config> Pallet<T> {
         );
         let operation = Multisigs::<T>::get(id, hash).ok_or(Error::<T>::NotFound)?;
         ensure!(operation.when == timepoint, Error::<T>::WrongTimepoint);
-        // Dispatch markers are shared across multisig accounts. Another account
-        // may have dispatched this hash while this account's proposal remains
+        // Legacy dispatch markers are shared across multisig accounts. Another
+        // account may have dispatched this hash while this proposal remains
         // pending. Cleanup must still work; it never executes the call or clears
         // the marker. A completed target itself is already rejected as NotFound.
         let mut votes = CancellationApprovals::<T>::get(id, hash)
@@ -1336,12 +1385,13 @@ impl<T: Config> Pallet<T> {
             T::CallFilter::contains(call),
             frame_system::Error::<T>::CallFiltered
         );
+        T::OperationFilter::validate(id, timepoint, Some(call))?;
         let threshold = account.threshold_num();
         if threshold_one {
             ensure!(threshold == 1, Error::<T>::TooManySignatories);
             let timepoint = timepoint.ok_or(Error::<T>::NoTimepoint)?;
             ensure!(
-                !DispatchedCalls::<T>::contains_key(hash, timepoint),
+                !Self::was_dispatched(id, hash, timepoint),
                 Error::<T>::AlreadyDispatched
             );
             return Ok(());
@@ -1351,7 +1401,7 @@ impl<T: Config> Pallet<T> {
             let timepoint = timepoint.ok_or(Error::<T>::NoTimepoint)?;
             ensure!(operation.when == timepoint, Error::<T>::WrongTimepoint);
             ensure!(
-                !DispatchedCalls::<T>::contains_key(hash, timepoint),
+                !Self::was_dispatched(id, hash, timepoint),
                 Error::<T>::AlreadyDispatched
             );
             operation
@@ -1378,11 +1428,60 @@ impl<T: Config> Pallet<T> {
             Self::ensure_proposer_capacity(id, who, account.signatories.len())?;
             let timepoint = timepoint.unwrap_or_else(Self::thischain_timepoint);
             ensure!(
-                !DispatchedCalls::<T>::contains_key(hash, timepoint),
+                !Self::was_dispatched(id, hash, timepoint),
                 Error::<T>::AlreadyDispatched
             );
         }
         Ok(())
+    }
+
+    /// Load the historical tuple without copying or decoding an unbounded value into the runtime.
+    /// The storage key and `(Vec<u8>, AccountId, Balance)` encoding remain unchanged.
+    ///
+    /// `storage::read` still fetches the backend value and records its trie proof. This bounds
+    /// runtime allocation/decoding, not the host read or proof of an oversized legacy value.
+    fn read_stored_call(hash: &[u8; 32]) -> Option<OpaqueCall> {
+        let key = Calls::<T>::hashed_key_for(hash);
+        let mut prefix = [0u8; 5]; // Maximum SCALE Compact<u32> length.
+        let total = sp_io::storage::read(&key, &mut prefix, 0)? as usize;
+        let max_total = Compact::<u32>::max_encoded_len()
+            .checked_add(T::MaxCallBytes::get() as usize)?
+            .checked_add(T::AccountId::max_encoded_len())?
+            .checked_add(BalanceOf::<T>::max_encoded_len())?;
+        if total > max_total {
+            return None;
+        }
+        let prefix_bytes = total.min(prefix.len());
+        let mut input = &prefix[..prefix_bytes];
+        let Compact(call_len) = Compact::<u32>::decode(&mut input).ok()?;
+        let prefix_len = prefix_bytes - input.len();
+        if call_len > T::MaxCallBytes::get() || prefix_len.checked_add(call_len as usize)? > total {
+            return None;
+        }
+
+        let mut encoded = vec![0u8; total];
+        if sp_io::storage::read(&key, &mut encoded, 0)? as usize != total {
+            return None;
+        }
+        // Both suffix types already require MaxEncodedLen and DecodeWithMemTracking. Reject
+        // malformed allocating suffixes as well as a forged Vec length or trailing bytes.
+        let memory_limit = max_total
+            .checked_add(core::mem::size_of::<T::AccountId>())?
+            .checked_add(core::mem::size_of::<BalanceOf<T>>())?
+            .checked_add(1)?;
+        let mut input = encoded.as_slice();
+        let (call, _, _) = {
+            let mut tracked = MemTrackingInput::new(&mut input, memory_limit);
+            <(OpaqueCall, T::AccountId, BalanceOf<T>)>::decode_with_depth_limit(
+                MAX_CALL_DECODE_DEPTH,
+                &mut tracked,
+            )
+            .ok()?
+        };
+        if !input.is_empty() || call.len() > T::MaxCallBytes::get() as usize {
+            return None;
+        }
+        Some(call)
     }
 
     /// Attempt to decode and return the call, provided by the user or from storage.
@@ -1398,7 +1497,7 @@ impl<T: Config> Pallet<T> {
             .ok()
         };
         maybe_known.map_or_else(
-            || Calls::<T>::get(hash).and_then(|(data, ..)| decode(&data)),
+            || Self::read_stored_call(hash).and_then(|data| decode(&data)),
             decode,
         )
     }

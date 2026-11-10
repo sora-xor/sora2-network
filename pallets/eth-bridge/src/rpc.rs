@@ -32,7 +32,7 @@ use crate::offchain::SignatureParams;
 use crate::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use crate::util::iter_storage;
 use crate::{
-    AssetIdOf, Config, Error, LoadToIncomingRequestHash, Pallet, RegisteredAsset,
+    AssetIdOf, BridgeAccount, Config, Error, LoadToIncomingRequestHash, Pallet, RegisteredAsset,
     RegisteredSidechainToken, RequestApprovals, RequestStatuses, Requests, SidechainAssetPrecision,
 };
 use common::{AssetInfoProvider, BalancePrecision};
@@ -94,12 +94,14 @@ impl<T: Config> Pallet<T> {
         redirect_finished_load_requests: bool,
         hash: &H256,
     ) -> Vec<(OffchainRequest<T>, RequestStatus)> {
-        Requests::<T>::iter()
-            .filter(|(_, h, _)| h == hash)
-            .map(|(net_id, hash, request)| {
-                let status: RequestStatus =
-                    Self::visible_request_status(net_id, &hash).unwrap_or(RequestStatus::Pending);
-                (net_id, request, status)
+        // Public hash lookups must not scan every historical transfer. Networks can only
+        // be registered by root, so point lookups keep work independent of request history.
+        BridgeAccount::<T>::iter_keys()
+            .filter_map(|net_id| {
+                let request = Requests::<T>::get(net_id, hash)?;
+                let status =
+                    Self::visible_request_status(net_id, hash).unwrap_or(RequestStatus::Pending);
+                Some((net_id, request, status))
             })
             .filter_map(|(net_id, req, status)| {
                 let redirect_to_incoming = redirect_finished_load_requests
@@ -183,13 +185,14 @@ impl<T: Config> Pallet<T> {
                     }
                 } else {
                     Some(
-                        RequestStatuses::<T>::iter()
-                            .filter(|(_, status_hash, v)| {
-                                status_hash == hash && v == &RequestStatus::ApprovalsReady
+                        BridgeAccount::<T>::iter_keys()
+                            .filter(|net_id| {
+                                RequestStatuses::<T>::get(net_id, hash)
+                                    == Some(RequestStatus::ApprovalsReady)
                             })
-                            .filter_map(|(net_id, hash, _v)| {
+                            .filter_map(|net_id| {
                                 if Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
-                                    net_id, &hash,
+                                    net_id, hash,
                                 ) {
                                     return None;
                                 }
@@ -231,18 +234,27 @@ impl<T: Config> Pallet<T> {
                     } else {
                         vec![RequestApprovals::<T>::get(net_id, hash)
                             .into_iter()
+                            .filter_map(SignatureParams::canonical_recovery_id)
+                            .collect::<sp_std::collections::btree_set::BTreeSet<_>>()
+                            .into_iter()
                             .collect()]
                     }
                 } else {
-                    RequestApprovals::<T>::iter()
-                        .filter(|(_, h, _)| h == hash)
-                        .filter_map(|(net_id, hash, v)| {
+                    BridgeAccount::<T>::iter_keys()
+                        .filter_map(|net_id| {
+                            // Preserve the distinction between missing and stored-empty approvals.
+                            let approvals = RequestApprovals::<T>::try_get(net_id, hash).ok()?;
                             if Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
-                                net_id, &hash,
+                                net_id, hash,
                             ) {
                                 None
                             } else {
-                                Some(v.into_iter().collect::<Vec<_>>())
+                                // Normalize retained approvals without rewriting history.
+                                // Dedupe raw and Ethereum-style spellings of the same proof.
+                                Some(approvals.into_iter()
+                                    .filter_map(SignatureParams::canonical_recovery_id)
+                                    .collect::<sp_std::collections::btree_set::BTreeSet<_>>()
+                                    .into_iter().collect::<Vec<_>>())
                             }
                         })
                         .collect()

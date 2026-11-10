@@ -109,7 +109,8 @@ impl ValidatorSet {
     pub fn validator_pubkey_proof(&self, pos: usize) -> Vec<H256> {
         let proof = binary_merkle_tree::merkle_proof::<sp_runtime::traits::Keccak256, _, _>(
             self.addresses.clone(),
-            pos,
+            pos.try_into()
+                .expect("fixture validator position fits in u32"),
         )
         .proof;
         debug!("Validator {} proof: {}", pos, proof.len());
@@ -167,9 +168,11 @@ impl FakeMMR {
 
     fn add_leaf(&mut self, leaf: MMRLeaf) -> AnyResult<u64> {
         let mut mmr = mmr_lib::MMR::<MMRNode, MMRNode, _>::new(self.size, &self.mem);
-        let pos = mmr.push(MMRNode::Leaf(leaf))?;
+        let pos = mmr
+            .push(MMRNode::Leaf(leaf))
+            .map_err(|error| anyhow::anyhow!("{error:?}"))?;
         self.size = mmr.mmr_size();
-        mmr.commit()?;
+        mmr.commit().map_err(|error| anyhow::anyhow!("{error:?}"))?;
         Ok(pos)
     }
 
@@ -207,7 +210,10 @@ impl FakeMMR {
     fn root(&self, at: u64) -> AnyResult<H256> {
         let size = Self::size(at);
         let mmr = mmr_lib::MMR::<MMRNode, MMRNode, _>::new(size, &self.mem);
-        let root = mmr.get_root()?.hash();
+        let root = mmr
+            .get_root()
+            .map_err(|error| anyhow::anyhow!("{error:?}"))?
+            .hash();
         Ok(root)
     }
 }

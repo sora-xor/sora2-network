@@ -1,0 +1,76 @@
+{
+  "upstreamTag": "polkadot-stable2609",
+  "upstreamCommit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "upstreamPath": "substrate/frame/staking",
+  "sourcePatch": "stable2609-customizations.patch",
+  "sourcePatchSha256": "629a0eebb2e1b6aae5f33c400701e801869c3265ceef0b126aef868e1a4af827",
+  "upstreamManifestSha256": "cfeffb80b36d20e44950f0693a67af3ff15d93b0002b7221aaf1216abca19e4e",
+  "sourcePatchReplay": "passed",
+  "changedSourceFiles": [
+    {
+      "path": "src/asset.rs",
+      "upstreamSha256": "8596e574ed91b208828c9766298daf3d30107685a9b81ce1bee1bdf1cea7ecf7",
+      "localSha256": "b7fcc3ebb1493e9021b19de8682ac6aa15de5677e4847285755c790af23ec70a"
+    },
+    {
+      "path": "src/benchmarking.rs",
+      "upstreamSha256": "d0456516c7550cca90c45338af9dd006057d3dea56411ebb6c82260225e4cb57",
+      "localSha256": "9b50e6bde06ed9079cf84217829ff016fb5abe79e5b5bf3c3d25c9a3f15eb5f3"
+    },
+    {
+      "path": "src/election_size_tracker.rs",
+      "upstreamSha256": "cae814636cdf15e4bb0e7b555682b2be36e547d2945edd31dad41c95256b3709",
+      "localSha256": "46c46b9ca4310e71a646d7158b9f128ca82fe1fb5d88abf42d3b014337f987cb"
+    },
+    {
+      "path": "src/inflation.rs",
+      "upstreamSha256": "980f138a4b96589ed5bb78a8ec291c9df2329ea1cea08d292bdf5906e8e71b3a",
+      "localSha256": "b76ef16a85cdc4223d95534f4c08fff57ea6953d75fd52ddd9c1f9d57ad6a4a0"
+    },
+    {
+      "path": "src/ledger.rs",
+      "upstreamSha256": "ba4f24c7d3ecd9b77c47ccd085d5502616963af804af087a91083c15d97714d2",
+      "localSha256": "462138cd413086825bc1fd6dee10951483f0db761a773bfb90074033743e6b41"
+    },
+    {
+      "path": "src/lib.rs",
+      "upstreamSha256": "7dbfde871d3134f1bb5a7d6d98450573cb6b2f1c3c606d7cbf142368fe325bfc",
+      "localSha256": "1877d118b8d494de21b5156648956de525bb2bd0dcd87a082102c0477b92986a"
+    },
+    {
+      "path": "src/migrations.rs",
+      "upstreamSha256": "41589407483ee1183f57831a0ecf5cf413e57c0049c50d5c483de8cd029f67ce",
+      "localSha256": "572ae81ae7a508e59bedaece8cee3b127f89116cb19dfcbd91f681a03cc1d6ed"
+    },
+    {
+      "path": "src/mock.rs",
+      "upstreamSha256": "fe03ea1b08c618151a26bc0c678cecb68135e49026a14dad9e6c65a12b758315",
+      "localSha256": "662b336ced89823c14514150f1cbf63d49405cfbf1238d1dc136374fcc201ba7"
+    },
+    {
+      "path": "src/pallet/impls.rs",
+      "upstreamSha256": "328013ab46fd0c3759c4958f310cee3df4ae625fb58ff50e513202f83289ebb2",
+      "localSha256": "5cfc25d034e1ab1bfabf3dfd80b89c49c226789feaa799e641402ff1ef0bd5a8"
+    },
+    {
+      "path": "src/pallet/mod.rs",
+      "upstreamSha256": "4b1ea9190350e6721f6eb7d566e526ca1523e4d7d45f67a0781d90053d411b28",
+      "localSha256": "67e712a92331dd7a2cff2cb55c70a997992838f0cfc7d77454660c95572624a2"
+    },
+    {
+      "path": "src/slashing.rs",
+      "upstreamSha256": "dc4fff5c9765b99e8d862f0885e1206f751f1bbbfe76d4a495eeed6790ea320a",
+      "localSha256": "6f8cd053fe96ba49720475f2365a06113e04f9e390daf16f0d19e06d2db622c8"
+    },
+    {
+      "path": "src/testing_utils.rs",
+      "upstreamSha256": "14b7b2d7e0d27a2380b0f2f74c31c136be10a78a15ec273fd7c2eb5238a8ec49",
+      "localSha256": "aa69f7741d61e274fe38dd87dd76400972185130f3cd20cb53b2b37779210ba5"
+    },
+    {
+      "path": "src/tests.rs",
+      "upstreamSha256": "add11eea01835d81a6fbe08297ea923de73bbeec4a2d2e5fca32d00ee75a71e6",
+      "localSha256": "507e7253a9e90a88543a3aea3bee7f6d1aca5f1ba5986752d0fe40af2a957932"
+    }
+  ]
+}

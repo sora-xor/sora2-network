@@ -29,9 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 pub mod beefy_types;
 pub mod bitfield;
+#[cfg(test)]
+mod tests;
 pub mod simplified_proof;
 
 use frame_support::weights::Weight;

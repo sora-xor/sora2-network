@@ -11,6 +11,7 @@ const { blake2AsHex, cryptoWaitReady, sr25519PairFromSeed, xxhashAsU8a } = requi
 const { setup, BuildBlockMode, Block, destroyWorker } = require('@acala-network/chopsticks-core');
 const { fullOverrideBundle } = require('@sora-substrate/type-definitions');
 const { retiredLendingFixture } = require('./retired-lending-fixture.cjs');
+const { payoutBatchFixture } = require('./payout-batch-fixture.cjs');
 const args = process.argv.slice(2);
 const option = (name, fallback) => args.includes(name) ? args[args.indexOf(name) + 1] : fallback;
 const opts = {
@@ -27,7 +28,7 @@ const fakeSignature = new Uint8Array(64).fill(0xcd); fakeSignature.set([0xde, 0x
 const report = { status: 'running', startedAt: new Date().toISOString(), localOnly: true,
   syntheticFixturesEnabled: opts.syntheticFixtures,
   endpoint: opts.endpoint, pinnedBlockHash: snapshot.blockHash, pinnedBlockNumber: snapshot.blockNumber,
-  executor: '@acala-network/chopsticks-core@1.5.1', mockSignatureHost: true, allowUnresolvedImports: true,
+  executor: '@acala-network/chopsticks-core@1.5.2', mockSignatureHost: true, allowUnresolvedImports: true,
   offchainWorker: false, submittedTransactions: 0, privateKeysRead: 0, realSignatures: 0, remoteRpcMethods: {},
   unsignedChecks: [], signedChecks: [], fixtureOverrides: [], fixtureLimitations: [], localOnlySyntheticEvidence: true,
   constraints: [
@@ -832,6 +833,10 @@ async function main() {
     meta.tx.kensetsu.liquidate('18446744073709551615'),
     meta.tx.apolloPlatform.liquidate('0x' + 'ff'.repeat(32),
       '0x0200040000000000000000000000000000000000000000000000000000000000')]);
+  const payoutBatchFeeDiscount = await payoutBatchFixture(initialized, {
+    chain, Block, report, rawQuery, storageKey, signedCheck, signedExtrinsic, progress, save,
+    syntheticFixtures: opts.syntheticFixtures,
+  });
   const id = { dexId: 0, base: '0x0200040000000000000000000000000000000000000000000000000000000000',
     quote: '0x0200000000000000000000000000000000000000000000000000000000000000' };
   for (const [label, groups] of [
@@ -879,12 +884,14 @@ async function main() {
   report.inputs = { candidateSha256: report.candidate.sha256,
     scriptSha256: sha256(readFileSync(__filename)),
     retirementHelperSha256: sha256(readFileSync(resolve(__dirname, 'retired-lending-fixture.cjs'))),
+    payoutBatchHelperSha256: sha256(readFileSync(resolve(__dirname, 'payout-batch-fixture.cjs'))),
     snapshotSha256: sha256(readFileSync(opts.snapshot)),
     packageLockSha256: sha256(readFileSync(resolve(__dirname, 'package-lock.json'))) };
   report.checks = { exactCandidateWasmUpgradeExecuted: true,
     allEmptyCancellationShapesRetainFees: true, unauthorizedRewardsRetainsFees: true,
     signedInvalidKensetsuAndApolloRetainFees: true, bareKensetsuAndApolloReject: true,
     retiredLendingExitsAndGuards,
+    payoutBatchFeeDiscount,
     invalidInboundProofsReject: true, allCheckedFeeEventsMatchBalances: true,
     requestedPreimageFirstAndReplay: preimageFirstAndReplay,
     paidMigrationSuccessAndFailure,

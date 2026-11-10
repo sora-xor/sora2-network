@@ -29,6 +29,9 @@
 // // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod tests;
+
 use bridge_types::traits::TimepointProvider;
 use bridge_types::types::MessageDirection;
 use bridge_types::types::MessageStatus;
@@ -158,12 +161,14 @@ pub mod pallet {
         NoTechAccFound,
         WrongAccount,
         WrongSidechainAsset,
+        PathIsNotAvailable,
     }
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     impl<T: Config> Pallet<T> {
+        #[frame_support::transactional]
         pub fn refund(
             network_id: GenericNetworkId,
             message_id: H256,
@@ -177,6 +182,8 @@ pub mod pallet {
             let beneficiary = T::AccountIdConverter::convert(beneficiary_liberland);
             if T::SoraApp::is_asset_supported(network_id, asset_id) {
                 T::SoraApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else {
+                frame_support::fail!(Error::<T>::PathIsNotAvailable);
             }
             Self::deposit_event(Event::<T>::RefundInvoked(message_id, amount));
             Ok(())
@@ -324,6 +331,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                             (*asset).into(),
                             who,
                             *amount,
+                            Preservation::Expendable,
                             Precision::Exact,
                             Fortitude::Polite,
                         )?;
@@ -422,6 +430,13 @@ impl<T: Config>
         };
         Transactions::<T>::mutate((network_id, sender), message_id, |req| {
             if let Some(req) = req {
+                // Distinct authenticated reports can refer to the same transfer.
+                // A settled liability must not regress or release custody again.
+                if req.direction == MessageDirection::Outbound
+                    && matches!(req.status, MessageStatus::Done | MessageStatus::Refunded)
+                {
+                    return;
+                }
                 if new_status == MessageStatus::Failed
                     && req.direction == MessageDirection::Outbound
                 {

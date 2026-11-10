@@ -45,12 +45,21 @@ use secp256k1::{PublicKey, SecretKey};
 use sp_core::{ecdsa, H256};
 use std::collections::BTreeSet;
 
+mod approval_admission;
+mod approval_recovery;
+mod approval_terminal;
+mod approval_weight;
 mod asset;
 mod cancel;
+mod coverage_requests;
+mod coverage_rpc;
+mod coverage_types;
 mod ethabi;
 mod genesis;
+mod guardian_halt;
 mod http_status;
 mod incoming_transfer;
+mod migration_encoding;
 pub mod mock;
 mod ocw;
 mod outgoing_tranfser;
@@ -87,8 +96,8 @@ fn get_signature_params(
     signature: &(secp256k1::Signature, secp256k1::RecoveryId),
 ) -> SignatureParams {
     let mut params = SignatureParams {
-        r: signature.0.r.b32(),
-        s: signature.0.s.b32(),
+        r: signature.0.serialize()[..32].try_into().unwrap(),
+        s: signature.0.serialize()[32..].try_into().unwrap(),
         v: signature.1.into(),
     };
     params.v += 27;
@@ -120,6 +129,13 @@ pub fn approve_request(
     let mut approvals = BTreeSet::new();
     let keypairs = &state.networks[&net_id].ocw_keypairs;
     for (i, (_signer, account_id, seed)) in keypairs.iter().enumerate() {
+        // ApprovalsReady is immutable settlement evidence. Stop at quorum;
+        // submitting the remaining peers would now correctly be rejected.
+        if crate::RequestStatuses::<Runtime>::get(net_id, request_hash)
+            == Some(RequestStatus::ApprovalsReady)
+        {
+            break;
+        }
         let secret = SecretKey::parse_slice(seed).unwrap();
         let public = PublicKey::from_secret_key(&secret);
         let msg = eth::prepare_message(encoded.as_raw());

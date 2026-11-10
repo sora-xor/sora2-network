@@ -35,7 +35,7 @@ use crate::substrate::SubAssetInfo;
 use crate::ton::{AdditionalTONInboundData, TonAppInfo, TonAssetInfo};
 use crate::{GenericTimepoint, H256};
 use codec::{Decode, Encode};
-use derivative::Derivative;
+use derive_where::derive_where;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_consensus_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
@@ -328,14 +328,12 @@ pub struct RawAssetInfo {
     pub precision: u8,
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = "BlockNumber: core::fmt::Debug"),
-    Clone(bound = "BlockNumber: Clone"),
-    PartialEq(bound = "BlockNumber: PartialEq"),
-    Eq(bound = "BlockNumber: Eq")
-)]
+#[derive_where(Debug; BlockNumber: core::fmt::Debug)]
+#[derive_where(Clone; BlockNumber: Clone)]
+#[derive_where(PartialEq; BlockNumber: PartialEq)]
+#[derive_where(Eq; BlockNumber: Eq)]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
 #[cfg_attr(
     feature = "std",

@@ -583,6 +583,16 @@ pub trait ApplyCustomFees<Call: Dispatchable, AccountId> {
     /// `None` if default transaction payment pallet fees should be used
     fn compute_fee(call: &Call) -> Option<(Balance, Self::FeeDetails)>;
 
+    /// Compute custom fees using the complete extrinsic dispatch information,
+    /// including transaction-extension weight. Flat-fee implementations can
+    /// keep using `compute_fee`; weight-derived policies must use this input.
+    fn compute_fee_with_dispatch_info(
+        call: &Call,
+        _info: &DispatchInfoOf<Call>,
+    ) -> Option<(Balance, Self::FeeDetails)> {
+        Self::compute_fee(call)
+    }
+
     /// Compute actual fees for this call
     ///
     /// Parameters:
@@ -719,7 +729,7 @@ where
                 None,
             );
         }
-        let maybe_custom_fee = T::CustomFees::compute_fee(call);
+        let maybe_custom_fee = T::CustomFees::compute_fee_with_dispatch_info(call, info);
         let (fee, kind) = match maybe_custom_fee {
             Some((0, custom_details)) => (
                 FeeDetails {
@@ -1391,12 +1401,22 @@ pub mod pallet {
         #[allow(clippy::boxed_local)]
         #[pallet::call_index(3)]
         #[pallet::weight({
-            let dispatch_info = call.get_dispatch_info();
-            (
-				<T as Config>::WeightInfo::xorless_call()
-					.saturating_add(dispatch_info.total_weight()),
-				dispatch_info.class,
-			)
+            #[cfg(feature = "wip")]
+            {
+                let dispatch_info = call.get_dispatch_info();
+                (
+                    <T as Config>::WeightInfo::xorless_call()
+                        .saturating_add(dispatch_info.total_weight()),
+                    dispatch_info.class,
+                )
+            }
+            #[cfg(not(feature = "wip"))]
+            {
+                // This path never dispatches the inner call. Inheriting its
+                // weight lets a flat-fee wrapper reserve an entire bridge
+                // approval allowance while doing only a cheap rejection.
+                <T as Config>::WeightInfo::xorless_call()
+            }
         })]
         pub fn xorless_call(
             origin: OriginFor<T>,
@@ -1418,8 +1438,14 @@ pub mod pallet {
                     })
                     .map(|_| Some(whole_weight).into())
             }
+            // The wrapped call never runs here. Report only this call's weight so
+            // CheckWeight reclaims the wrapped declaration: retaining it would let
+            // flat-fee failures fill blocks.
             #[cfg(not(feature = "wip"))] // Xorless fee
-            Err(DispatchError::Unavailable.into())
+            Err(sp_runtime::DispatchErrorWithPostInfo {
+                post_info: Some(<T as Config>::WeightInfo::xorless_call()).into(),
+                error: DispatchError::Unavailable,
+            })
         }
 
         #[allow(unused_variables)] // Used in extension

@@ -1,0 +1,31 @@
+{
+  "upstreamTag": "polkadot-stable2609",
+  "upstreamCommit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "upstreamPath": "substrate/frame/identity",
+  "sourcePatch": "stable2609-customizations.patch",
+  "sourcePatchSha256": "651721d076c5adc7012e35c2af3ac0a46c93815d2eb46907e2ae79d368afc391",
+  "upstreamManifestSha256": "0dfa5d13fee76fa75faef06b3fb46a5c233eb7d643d9237cd27d5c47e4132093",
+  "sourcePatchReplay": "passed",
+  "changedSourceFiles": [
+    {
+      "path": ".rustfmt.toml",
+      "upstreamSha256": null,
+      "localSha256": "52daa45ebb3ade0902ca998779031184d6e780f8a1181bf00ee448b7819b8872"
+    },
+    {
+      "path": "src/lib.rs",
+      "upstreamSha256": "915dd84012989d98bea16537570a34f9c93418f4ba3cacb3ba202ed10692f878",
+      "localSha256": "6d7daf84a78b5e55cbc430ff172fe7bb4bce6406f22662ec5fa699f16ea909ff"
+    },
+    {
+      "path": "src/migration.rs",
+      "upstreamSha256": "7159f3777106f516840721f631a9f4f26cc2f9ed650d73c96978c583033a073e",
+      "localSha256": "c2b97bee877af73f98016e4f90da2841de9d0ca8bc2cc54ca62892a4f76c505b"
+    },
+    {
+      "path": "src/tests.rs",
+      "upstreamSha256": "052983ade259a6e6c27ce78108c1e3e37a23a707c62165ce1229448c7df158ea",
+      "localSha256": "3c9d8944e0ad68a621ffc0e641b3a943e231720bf311d1fa65a2fc6852f033d6"
+    }
+  ]
+}

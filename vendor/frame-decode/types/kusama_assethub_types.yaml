@@ -1,0 +1,1366 @@
+# This file provides the type information necessary to decode storage and historic blocks on the 
+# Kusama Asset Hub chain. See https://docs.rs/scale-info-legacy/0.2.0/scale_info_legacy/chain_types/struct.ChainTypeRegistry.html
+# for more information, or check out the documentation for this crate to see example usage.
+global:
+  types:
+    # Babe
+    EquivocationProof<Header>:
+      offender: AuthorityId
+      slot_number: u64
+      first_header: Header
+      second_header: Header
+    BabeAuthorityWeight: u64
+    schnorrkel::Randomness: Hash
+    Slot: u64
+    BabeEpochConfiguration:
+      c: (u64, u64)
+      allowed_slots: AllowedSlots
+    AllowedSlots:
+      _enum: ['PrimarySlots', 'PrimaryAndSecondaryPlainSlots', 'PrimaryAndSecondaryVRFSlots']
+    MaybeRandomness: Option<schnorrkel::Randomness>
+
+    # System
+    Perbill: u32
+    KeyValue: '(StorageKey, StorageData)'
+    Key: Bytes
+    StorageKey: Bytes # Unsure about this: storage keys can vary in shape based on hashers etc.
+    StorageData: Bytes
+    T::Index: Index
+    T::AccountData:
+      free: Balance
+      reserved: Balance
+      misc_frozen: Balance
+      fee_frozen: Balance
+    LastRuntimeUpgradeInfo:
+      spec_version: Compact<u32>
+      spec_name: Text
+    Text: String
+    ExtrinsicsWeight:
+      normal: Weight
+      operational: Weight
+    EventRecord<Event, Hash>:
+      phase: Phase
+      event: Event
+      topics: Vec<Hash>
+    Phase:
+      _enum:
+        ApplyExtrinsic: u32
+        Finalization: []
+        Initialization: []
+    T::Event: builtin::Event
+    DispatchInfo:
+      weight: Weight
+      class: DispatchClass
+      pays_fee: Pays
+    DispatchClass:
+      _enum: ['Normal', 'Operational', 'Mandatory']
+    Pays:
+      _enum: ['Yes', 'No']
+    DispatchResult: Result<(), DispatchError>
+    DispatchError:
+      _enum:
+        Other: []
+        CannotLookup: []
+        BadOrigin: []
+        Module: DispatchErrorModule
+        ConsumerRemaining: []
+        NoProviders: []
+        TooManyConsumers: []
+        Token: TokenError
+        Arithmetic: ArithmeticError
+        Transactional: TransactionalError
+        Exhausted: []
+        Corruption: []
+        Unavailable: []
+    DispatchErrorModule:
+      index: u8
+      error: u8
+    TokenError:
+      _enum:
+        - NoFunds
+        - WouldDie
+        - BelowMinimum
+        - CannotCreate
+        - UnknownAsset
+        - Frozen
+        - Unsupported
+        # these are dropped, but still in older versions
+        # (if this adjusts, will need to take a re-look)
+        - Underflow
+        - Overflow
+    ArithmeticError:
+      _enum: ['Underflow', 'Overflow', 'DivisionByZero']
+    TransactionError:
+      _enum: ['LimitReached', 'NoLayer']
+    EventIndex: u32
+    weights::ExtrinsicsWeight:
+      normal: Weight
+      operational: Weight
+    ConsumedWeight:
+      normal: Weight
+      operational: Weight
+      mandatory: Weight
+    DigestOf<T>: Digest
+
+    # Scheduler
+    T::BlockNumber: u32
+    BlockNumber: u32
+    schedule::Period<BlockNumber>: (BlockNumber, u32)
+    schedule::Priority: u8
+    <T as Trait>::Call: builtin::Call
+    <T as Config>::Call: builtin::Call
+    Scheduled<Call, BlockNumber>:
+      maybe_id: Option<Bytes>
+      priority: schedule::Priority
+      call: Call
+      maybe_periodic: Option<schedule::Period<BlockNumber>>
+      # origin: T::PalletsOrigin
+    TaskAddress<BlockNumber>: (BlockNumber, u32)
+    Scheduled<Call, BlockNumber, PalletsOrigin, UnusedAccountId>:
+      maybe_id: Option<Bytes>
+      priority: schedule::Priority
+      call: Call
+      maybe_periodic: Option<(BlockNumber, u32)>
+      origin: PalletsOrigin
+    T::PalletsOrigin:
+      # This should be built from metadata in an ideal world.
+      _enum:
+        System: SystemOrigin
+    SystemOrigin:
+      _enum:
+        Root: []
+        Signed: AccountId
+        None: []
+
+    # Timestamp
+    T::Moment: u64
+
+    # Indices
+    T::AccountIndex: u32
+    T::AccountId: AccountId32
+    AccountIndex: u32
+
+    # Balances
+    T::Balance: Balance
+    Releases: 
+      _enum: ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10']
+    BalanceLock<Balance>:
+      id: LockIdentifier
+      amount: Balance
+      reasons: Reasons
+    LockIdentifier: '[u8; 8]'
+    Reasons:
+      _enum: ['Fee', 'Misc', 'All']
+    Multiplier: u128
+
+    # Authorship
+    T::Header:
+      parent_hash: Hash
+      number: Compact<T::BlockNumber>
+      state_root: Hash
+      extrinsics_root: Hash
+      digest: Digest
+    Digest:
+      logs: Vec<DigestItem>
+    DigestItem:
+      _enum:
+        Other: Bytes
+        AuthoritiesChange: Vec<AuthorityId>
+        ChangesTrieRoot: Hash
+        SealV0: SealV0
+        Consensus: Consensus
+        Seal: Seal
+        PreRuntime: PreRuntime
+        ChangesTrieSignal: ChangesTrieSignal
+        RuntimeEnvironmentUpdated: []
+    AuthorityId: AccountId32
+    SealV0: (u64, Signature)
+    Consensus: (ConsensusEngineId, Bytes)
+    Seal: Consensus
+    PreRuntime: Consensus
+    ChangesTrieSignal:
+      _enum:
+        NewConfiguration: Option<ChangesTrieConfiguration>
+    ChangesTrieConfiguration:
+      digest_interval: u32
+      digest_levels: u32
+    Signature: H512
+    ConsensusEngineId: '[u8; 4]'
+
+    # Staking
+    RewardDestination:
+      _enum:
+        Staked: []
+        Stash: []
+        Controller: []
+        Account: AccountId
+        None: []
+    RewardDestination<AccountId>:
+      _enum:
+        Staked: []
+        Stash: []
+        Controller: []
+        Account: AccountId
+        None: []
+    ValidatorPrefs:
+      commission: Compact<Perbill>
+    CompactAssignments:
+      votes1: 'Vec<(NominatorIndex, [CompactScore; 0], ValidatorIndex)>'
+      votes2: 'Vec<(NominatorIndex, [CompactScore; 1], ValidatorIndex)>'
+      votes3: 'Vec<(NominatorIndex, [CompactScore; 2], ValidatorIndex)>'
+      votes4: 'Vec<(NominatorIndex, [CompactScore; 3], ValidatorIndex)>'
+      votes5: 'Vec<(NominatorIndex, [CompactScore; 4], ValidatorIndex)>'
+      votes6: 'Vec<(NominatorIndex, [CompactScore; 5], ValidatorIndex)>'
+      votes7: 'Vec<(NominatorIndex, [CompactScore; 6], ValidatorIndex)>'
+      votes8: 'Vec<(NominatorIndex, [CompactScore; 7], ValidatorIndex)>'
+      votes9: 'Vec<(NominatorIndex, [CompactScore; 8], ValidatorIndex)>'
+      votes10: 'Vec<(NominatorIndex, [CompactScore; 9], ValidatorIndex)>'
+      votes11: 'Vec<(NominatorIndex, [CompactScore; 10], ValidatorIndex)>'
+      votes12: 'Vec<(NominatorIndex, [CompactScore; 11], ValidatorIndex)>'
+      votes13: 'Vec<(NominatorIndex, [CompactScore; 12], ValidatorIndex)>'
+      votes14: 'Vec<(NominatorIndex, [CompactScore; 13], ValidatorIndex)>'
+      votes15: 'Vec<(NominatorIndex, [CompactScore; 14], ValidatorIndex)>'
+      votes16: 'Vec<(NominatorIndex, [CompactScore; 15], ValidatorIndex)>'
+    PhragmenScore: '[u128; 3]'
+    ElectionSize:
+      validators: Compact<ValidatorIndex>
+      nominators: Compact<NominatorIndex>
+    NominatorIndex: u32
+    CompactScore: (ValidatorIndex, OffchainAccuracy)
+    ValidatorIndex: u16
+    OffchainAccuracy: PerU16
+    PerU16: u16
+    ElectionScore: '[u128; 3]'
+    Percent: u8
+    ActiveEraInfo:
+      index: EraIndex
+      start: Option<Moment>
+    Forcing:       
+      _enum: ['NotForcing', 'ForceNew', 'ForceNone', 'ForceAlways']
+    StakingLedger<AccountId, Balance>:
+      stash: AccountId
+      total: Compact<Balance>
+      active: Compact<Balance>
+      unlocking: Vec<UnlockChunk<Balance>>
+      claimed_rewards: Vec<EraIndex>
+    UnlockChunk<Balance>:
+      value: Compact<Balance>
+      era: Compact<BlockNumber>
+    EraIndex: u32
+    Nominations<AccountId>:
+      targets: Vec<AccountId>
+      submitted_in: EraIndex
+      suppressed: bool
+    Moment: u64
+    EraRewardPoints<AccountId>:
+      total: u32
+      individual: BTreeMap<AccountId, u32>
+    ElectionResult<AccountId, Balance>:
+      elected_stashes: Vec<AccountId>
+      exposures: Vec<(AccountId, Exposure<AccountId, Balance>)>
+      compute: ElectionCompute
+    Exposure<AccountId, Balance>:
+      total: Compact<Balance>
+      own: Compact<Balance>
+      others: Vec<IndividualExposure<AccountId, Balance>>
+    IndividualExposure<AccountId, Balance>:
+      who: AccountId
+      value: Compact<Balance>
+    ElectionStatus<BlockNumber>:
+      _enum:
+        Close: []
+        Open: BlockNumber
+    slashing::SpanIndex: u32
+    UnappliedSlash<AccountId, Balance>:
+      validator: AccountId
+      own: Balance
+      others: Vec<(AccountId, Balance)>
+      reporters: Vec<AccountId>
+      payout: Balance
+    slashing::SlashingSpans:
+      span_index: slashing::SpanIndex
+      last_start: EraIndex
+      last_nonzero_slash: EraIndex
+      prior: Vec<EraIndex>
+    slashing::SpanRecord<Balance>:
+      slashed: Balance
+      paid_out: Balance
+
+    # Offences
+    ReportIdOf<T>: Hash
+    OffenceDetails<Reporter, IdentificationTuple>:
+      offender: IdentificationTuple
+      reporters: Vec<Reporter>
+    T::IdentificationTuple: (ValidatorId, FullIdentification<AccountId, Balance>)
+    FullIdentification<AccountId, Balance>:
+      total: Compact<Balance>
+      own: Compact<Balance>
+      others: Vec<IndividualExposure<AccountId, Balance>>
+    Kind: '[u8; 16]'
+    OpaqueTimeSlot: Bytes
+
+    # ElectionProviderMultiPhase
+    RawSolution<T>:
+      compact: CompactAssignments
+      score: ElectionScore
+      round: u32
+    SolutionOrSnapshotSize:
+      voters: Compact<u32>
+      targets: Compact<u32>
+    Phase<BlockNumber>:
+      _enum:
+        'Off': []
+        Signed: []
+        Unsigned: (bool, BlockNumber)
+        Emergency: []
+    ReadySolution<AccountId>:
+      supports: Vec<(AccountId, SolutionSupport<AccountId>)>
+      score: ElectionScore
+      compute: ElectionCompute
+    ElectionCompute:
+      # in previous versions the last entry was "AuthorityId"
+      # (since no data attached, and it is via SCALE can rename)
+      _enum: ['OnChain', 'Signed', 'Unsigned']
+    SolutionSupport<AccountId>:
+      total: ExtendedBalance
+      voters: Vec<(AccountId, ExtendedBalance)>
+    ExtendedBalance: u128
+    SubmissionIndicesOf<T>: BTreeMap<ElectionScore, u32>
+    SignedSubmissionOf<T>: 
+      who: AccountId
+      deposit: Balance
+      solution: RawSolution<T>
+      reward: Balance
+
+    # Session
+    T::Keys: AccountId
+    T::ValidatorId: AccountId
+    KeyTypeId: u32
+
+    # Grandpa
+    T::Hash: H256
+    T::KeyOwnerProof: MembershipProof
+    MembershipProof:
+      session: SessionIndex
+      trie_nodes: Vec<Bytes>
+      validator_count: ValidatorCount
+    ValidatorCount: u32
+    EquivocationProof<Hash, BlockNumber>:
+      set_id: u64
+      equivocation: GrandpaEquivocation<Hash, BlockNumber>
+    GrandpaEquivocation<Hash, BlockNumber>:
+      _enum:
+        Prevote: GrandpaEquivocationValue<Hash, BlockNumber>
+        Precommit: GrandpaEquivocationValue<Hash, BlockNumber>
+    GrandpaEquivocationValue<Hash, BlockNumber>:
+      round_number: u64
+      identity: AuthorityId
+      first: '(GrandpaPrevote<Hash, BlockNumber>, AuthoritySignature)'
+      second: '(GrandpaPrevote<Hash, BlockNumber>, AuthoritySignature)'
+    GrandpaPrevote<Hash, BlockNumber>:
+      target_hash: Hash,
+      target_number: BlockNumber
+    SetId: u64
+
+    # ImOnline
+    Heartbeat<BN>:
+      block_number: BN
+      network_state: OpaqueNetworkState
+      session_index: SessionIndex
+      authority_index: AuthIndex
+      validators_len: u32
+    <T::AuthorityId as RuntimeAppPublic>::Signature: Sr25519Signature
+    T::AuthorityId: AccountId
+    ValidatorId<T>: AccountId
+
+
+    # Democracy
+    PropIndex: u32
+    ReferendumIndex: u32
+    AccountVote<Balance>:
+      _enum:
+        Standard:
+          vote: Vote
+          balance: Balance
+        Split:
+          aye: Balance
+          nay: Balance
+    Vote: u8 # most significant bit for "aye", conviction 0001-0101
+    Conviction:
+      _enum:
+        # 0.1x votes, unlocked.
+        - None
+        # 1x votes, locked for an enactment period following a successful vote.
+        - Locked1x
+        # 2x votes, locked for 2x enactment periods following a successful vote.
+        - Locked2x
+        # 3x votes, locked for 4x...
+        - Locked3x
+        # 4x votes, locked for 8x...
+        - Locked4x
+        # 5x votes, locked for 16x...
+        - Locked5x
+        # 6x votes, locked for 32x...
+        - Locked6x
+    ReferendumInfo<BlockNumber, Hash, Balance>:
+      _enum:
+        Ongoing: ReferendumStatus<BlockNumber, Hash, Balance>
+        Finished: ReferendumInfoFinished<BlockNumber>
+    ReferendumStatus<BlockNumber, Hash, Balance>:
+      end: BlockNumber
+      proposal_hash: Hash
+      threshold: VoteThreshold
+      delay: BlockNumber
+      tally: Tally<Balance>
+    Tally<Balance>:
+      ayes: Balance
+      nays: Balance
+      turnout: Balance
+    VoteThreshold:
+      _enum:
+        - SuperMajorityApprove
+        - SuperMajorityAgainst
+        - SimpleMajority
+    ReferendumInfoFinished<BlockNumber>:
+      approved: bool
+      end: BlockNumber
+    Voting<Balance, AccountId, BlockNumber>:
+      _enum:
+        Direct: VotingDirect<Balance, BlockNumber>
+        Delegating: VotingDelegating<Balance, AccountId, BlockNumber>
+    VotingDirect<Balance, BlockNumber>:
+      votes: Vec<(ReferendumIndex, AccountVote<Balance>)>
+      delegations: Delegations<Balance>
+      prior: (BlockNumber, Balance)
+    VotingDelegating<Balance, AccountId, BlockNumber>:
+      balance: Balance
+      target: AccountId
+      conviction: Conviction
+      delegations: Delegations<Balance>
+      prior: (BlockNumber, Balance)
+    Delegations<Balance>:
+      votes: Balance
+      capital: Balance
+    PreimageStatus<AccountId, Balance, BlockNumber>:
+      _enum:
+        Missing: BlockNumber
+        Available: PreimageStatusAvailable<AccountId, Balance, BlockNumber>
+    PreimageStatusAvailable<AccountId, Balance, BlockNumber>:
+      data: Bytes
+      provider: AccountId
+      deposit: Balance
+      since: BlockNumber
+      expiry: Option<BlockNumber>
+
+    # Council
+    MemberCount: u32
+    <T as Trait<I>>::Proposal: builtin::Call
+    <T as Config<I>>::Proposal: builtin::Call
+    ProposalIndex: u32
+    Weight: u64 # v1 = u32? but we seem to need u64 on block 29231. v2 = u64, v3 = { refTime: Compact<u64>, proofSize: Compact<u64> }
+
+    # ElectionsPhragmen
+    DefunctVoter<Source>:
+      who: Source,
+      vote_count: Compact<u32>
+      candidate_count: Compact<u32>
+    Renouncing:
+      _enum:
+        Member: []
+        RunnerUp: []
+        Candidate: Compact<u32>
+    SeatHolder<AccountId, Balance>:
+      who: AccountId
+      stake: Balance
+      deposit: Balance
+    Voter<AccountId, Balance>:
+      votes: Vec<AccountId>
+      stake: Balance
+      deposit: Balance
+
+    # Parachains
+    AttestedCandidate:
+      candidate: AbridgedCandidateReceipt
+      validity_votes: Vec<ValidityAttestation>
+      validator_indices: BitVec
+    DoubleVoteReport<Proof>:
+      identity: ValidatorId
+      first: (Statement, ValidatorSignature)
+      second: (Statement, ValidatorSignature)
+      proof: Proof
+      signing_context: SigningContext
+    <T::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, ValidatorId)>>::Proof: MembershipProof
+    ValidatorId: AccountId
+    ValidatorSignature: Signature
+    Statement:
+      _enum:
+        Never: [] # index starts at 1
+        Candidate: Hash
+        Valid: Hash
+        Invalid: Hash
+    SigningContext:
+      session_index: SessionIndex
+      parent_hash: Hash
+
+    # Attestations
+    MoreAttestations: {}
+
+    # Slots
+    LeasePeriodOf<T>: T::BlockNumber
+    SubId: u32
+    AuctionIndex: u32
+    ParaId: u32
+    HeadData: Bytes
+    ValidationCode: Bytes
+    relay_chain::BlockNumber: BlockNumber
+    relay_chain::v1::BlockNumber: BlockNumber
+    RelayChainBlockNumber: u32
+
+    # Storage proof used in parachain inherent
+    StorageProof:
+      trie_nodes: Vec<Bytes>
+    # Inbound message types
+    InboundDownwardMessage:
+      sent_at: BlockNumber
+      msg: Bytes
+    InboundHrmpMessage:
+      sent_at: BlockNumber
+      data: Bytes
+    InboundHrmpMessages: Vec<InboundHrmpMessage>
+    # Persisted validation data from relay chain
+    PersistedValidationData:
+      parent_head: HeadData
+      relay_parent_number: BlockNumber
+      relay_parent_storage_root: Hash
+      max_pov_size: u32
+    # Inherent data passed to parachains each block
+    ParachainInherentData:
+      validation_data: PersistedValidationData
+      relay_chain_state: StorageProof
+      downward_messages: Vec<InboundDownwardMessage>
+      horizontal_messages: BTreeMap<ParaId, Vec<InboundHrmpMessage>>
+
+    # XCM v0 types (Statemine early runtime)
+    NetworkId:
+      _enum:
+        Any: []
+        Named: Bytes
+        Polkadot: []
+        Kusama: []
+    BodyId:
+      _enum: ['Unit', 'Named', 'Index', 'Executive', 'Technical', 'Legislative', 'Judicial', 'Defense', 'Administration', 'Treasury']
+    BodyPart:
+      _enum:
+        Voice: []
+        Members: u32
+        Fraction: (u32, u32)
+        AtLeastProportion: (u32, u32)
+        MoreThanProportion: (u32, u32)
+    # XCM v0 types for early AssetHub
+    # Note: early teleport_assets has fee_asset_item: u32 parameter
+    Junction:
+      _enum:
+        Parent: []
+        Parachain: Compact<u32>
+        AccountId32: { network: NetworkId, id: AccountId32 }
+        AccountIndex64: { network: NetworkId, index: u64 }
+        AccountKey20: { network: NetworkId, key: H160 }
+        PalletInstance: u8
+        GeneralIndex: Compact<u128>
+        GeneralKey: Bytes
+        OnlyChild: []
+        Plurality: { id: BodyId, part: BodyPart }
+    MultiLocation:
+      _enum:
+        'Null': []
+        X1: Junction
+        X2: (Junction, Junction)
+        X3: (Junction, Junction, Junction)
+        X4: (Junction, Junction, Junction, Junction)
+        X5: (Junction, Junction, Junction, Junction, Junction)
+        X6: (Junction, Junction, Junction, Junction, Junction, Junction)
+        X7: (Junction, Junction, Junction, Junction, Junction, Junction, Junction)
+        X8: (Junction, Junction, Junction, Junction, Junction, Junction, Junction, Junction)
+    AssetInstance:
+      _enum:
+        Undefined: []
+        Index: u128
+        Array4: '[u8; 4]'
+        Array8: '[u8; 8]'
+        Array16: '[u8; 16]'
+        Array32: '[u8; 32]'
+        Blob: Bytes
+        Instance: Compact<u128>
+    Fungibility:
+      _enum:
+        Fungible: u128
+        NonFungible: AssetInstance
+    MultiAsset:
+      _enum:
+        None: []
+        All: []
+        AllFungible: []
+        AllNonFungible: []
+        AllAbstractFungible: Bytes
+        AllAbstractNonFungible: Bytes
+        AllConcreteFungible: MultiLocation
+        AllConcreteNonFungible: MultiLocation
+        AbstractFungible:
+          id: Bytes, 
+          instance: Compact<u128>
+        AbstractNonFungible:
+          class: Bytes, 
+          instance: AssetInstance
+        ConcreteFungible: 
+          id: MultiLocation 
+          amount: Compact<u128>
+        ConcreteNonFungible: 
+          class: MultiLocation
+          instance: AssetInstance
+    MultiAssets: Vec<MultiAsset>
+
+    # XCM v0 message and error enums needed to decode polkadotXcm.execute and events
+    OriginKind:
+      _enum: ['Native', 'SovereignAccount', 'Superuser', 'Xcm']
+
+    # xcm::v0::Xcm (include variants in correct order so indices match v0)
+    Xcm<Call>:
+      _enum:
+        WithdrawAsset:
+          assets: MultiAssets
+          effects: Vec<Order<Call>>
+        ReserveAssetDeposited:
+          assets: MultiAssets
+          effects: Vec<Order<Call>>
+        ReceiveTeleportedAsset:
+          assets: MultiAssets
+          effects: Vec<Order<Call>>
+        QueryResponse:
+          query_id: u64
+          response: Bytes
+          max_weight: u64
+        TransferAsset:
+          assets: MultiAssets
+          dest: MultiLocation
+        TransferReserveAsset:
+          assets: MultiAssets
+          dest: MultiLocation
+          effects: Vec<Order<Call>>
+        Transact:
+          origin_type: OriginKind
+          require_weight_at_most: u64
+          call: OpaqueCall
+
+    # xcm::v0::Order (full order to ensure indices match v0)
+    Order<Call>:
+      _enum:
+        'Null': []
+        DepositAsset:
+          assets: MultiAssets
+          dest: MultiLocation
+        DepositReserveAsset:
+          assets: MultiAssets
+          dest: MultiLocation
+        ExchangeAsset:
+          give: MultiAssets
+          want: MultiAssets
+          maximal: bool
+        InitiateReserveWithdraw:
+          assets: MultiAssets
+          reserve: MultiLocation
+          effects: Vec<Order<Call>>
+        InitiateTeleport:
+          assets: MultiAssets
+          dest: MultiLocation
+          effects: Vec<Order<Call>>
+        QueryHolding:
+          query_id: u64
+          dest: MultiLocation
+          assets: MultiAssets
+        BuyExecution:
+          fees: MultiAsset
+          weight: u64
+          debt: u64
+          halt_on_error: bool
+          xcm: Vec<Xcm<Call>>
+        RefundSurplus: []
+        SetErrorHandler:
+          xcm: Vec<Xcm<Call>>
+        SetAppendix:
+          xcm: Vec<Xcm<Call>>
+        ClearError: []
+        DescendOrigin:
+          interior: MultiLocation
+        ReportError:
+          dest: MultiLocation
+          query_id: u64
+        ClearOrigin: []
+
+    # DmpQueue types
+    MessageId: '[u8; 32]'
+    relay_chain::Hash: H256
+
+    # xcm::v0::Outcome used by events (e.g., PolkadotXcm, XcmpQueue, DmpQueue)
+    JunctionV1:
+      _enum:
+        Parachain: Compact<u32>
+        AccountId32:
+          network: NetworkId
+          id: AccountId
+        AccountIndex64:
+          network: NetworkId
+          index: Compact<u64>
+        AccountKey20:
+          network: NetworkId
+          key: '[u8; 20]'
+        PalletInstance: u8
+        GeneralIndex: Compact<u128>
+        GeneralKey: Vec<u8>
+        OnlyChild: Null
+        Plurality:
+          id: BodyId
+          part: BodyPart
+    JunctionsV1:
+      _enum:
+        Here: []
+        X1: JunctionV1
+        X2: (JunctionV1, JunctionV1)
+        X3: (JunctionV1, JunctionV1, JunctionV1)
+        X4: (JunctionV1, JunctionV1, JunctionV1, JunctionV1)
+        X5: (JunctionV1, JunctionV1, JunctionV1, JunctionV1, JunctionV1)
+        X6: (JunctionV1, JunctionV1, JunctionV1, JunctionV1, JunctionV1, JunctionV1)
+        X7: (JunctionV1, JunctionV1, JunctionV1, JunctionV1, JunctionV1, JunctionV1, JunctionV1)
+        X8: (JunctionV1, JunctionV1, JunctionV1, JunctionV1, JunctionV1, JunctionV1, JunctionV1, JunctionV1)
+    MultiLocationV1:
+      parents: u8
+      interior: JunctionsV1
+
+    AssetIdV1:
+      _enum:
+        Concrete: MultiLocationV1
+        Abstract: Bytes
+    FungibilityV1:
+      _enum:
+        Fungible: Compact<u128>
+        NonFungible: AssetInstance
+    MultiAssetV1:
+      id: AssetIdV1
+      fungibility: FungibilityV1
+    MultiAssetsV1: Vec<MultiAssetV1>
+
+    MultiAssetFilterV1:
+      _enum:
+        Definite: MultiAssetsV1
+        Wild: WildMultiAssetV1
+
+    # XCM v1 error enum
+    XcmErrorV1:
+      _enum:
+        Undefined: []
+        Overflow: []
+        Unimplemented: []
+        UnhandledXcmVersion: []
+        UnhandledXcmMessage: []
+        UnhandledEffect: []
+        EscalationOfPrivilege: []
+        UntrustedReserveLocation: []
+        UntrustedTeleportLocation: []
+        DestinationBufferOverflow: []
+        SendFailed: []
+        CannotReachDestination: (MultiLocationV1, XcmV1<Call>)
+        MultiLocationFull: []
+        FailedToDecode: []
+        BadOrigin: []
+        ExceedsMaxMessageSize: []
+        FailedToTransactAsset: []
+        WeightLimitReached: Weight
+        Wildcard: []
+        TooMuchWeightRequired: []
+        NotHoldingFees: []
+        WeightNotComputable: []
+        Barrier: []
+        NotWithdrawable: []
+        LocationCannotHold: []
+        TooExpensive: []
+        AssetNotFound: []
+        DestinationUnsupported: []
+        RecursionLimitReached: []
+
+    # XCM v1 order list (legacy order-style structure used by some chains)
+    XcmOrderV1:
+      _enum:
+        Noop: []
+        DepositAsset:
+          assets: MultiAssetFilterV1
+          max_assets: u32
+          beneficiary: MultiLocationV1
+        DepositReserveAsset:
+          assets: MultiAssetFilterV1
+          max_assets: u32
+          dest: MultiLocationV1
+          effects: Vec<XcmOrderV1>
+        ExchangeAsset:
+          give: MultiAssetFilterV1
+          receive: MultiAssetsV1
+        InitiateReserveWithdraw:
+          assets: MultiAssetFilterV1
+          reserve: MultiLocationV1
+          effects: Vec<XcmOrderV1>
+        InitiateTeleport:
+          assets: MultiAssetFilterV1
+          dest: MultiLocationV1
+          effects: Vec<XcmOrderV1>
+        QueryHolding:
+          query_id: Compact<u64>
+          dest: MultiLocationV1
+          assets: MultiAssetFilterV1
+        BuyExecution:
+          fees: MultiAssetV1
+          weight: u64
+          debt: u64
+          halt_on_error: bool
+          instructions: Vec<XcmV1<Call>>
+
+    # Versioned wrappers used by PolkadotXcm calls (send/teleport_assets/reserve_transfer_assets/execute)
+    VersionedMultiLocation:
+      _enum:
+        V0: MultiLocation
+        V1: MultiLocationV1
+        V2: MultiLocationV1
+    VersionedMultiAssets:
+      _enum:
+        V0: MultiAssets
+        V1: MultiAssetsV1
+        V2: MultiAssetsV1
+    VersionedXcm<Call>:
+      _enum:
+        V0: Xcm<Call>
+        V1: XcmV1<Call>
+        V2: Xcm<Call>
+
+    # XCM v1 helpers
+    DoubleEncoded<Call>:
+      encoded: Bytes
+
+    ResponseV1:
+      _enum:
+        'Null': []
+        Assets: MultiAssetsV1
+        ExecutionResult: u64
+        Version: u32
+        PalletVersion: u32
+        DispatchResult: Bytes
+        Error: u32
+        SubscribeResult: u64
+
+    WeightLimit:
+      _enum: ['Unlimited', 'Limited']
+
+    # Aliases for v1
+    XcmOriginKind: OriginKind
+
+    WildFungibilityV1:
+      _enum: ['Fungible', 'NonFungible']
+    WildMultiAssetV1:
+      _enum:
+        All: []
+        AllOf:
+          id: AssetIdV1
+          fun: WildFungibilityV1
+
+    # XCM v1 (message/instruction) using order-style effects per your spec
+    XcmV1<Call>:
+      _enum:
+        WithdrawAsset:
+          assets: MultiAssetsV1
+          effects: Vec<XcmOrderV1>
+        ReserveAssetDeposit:
+          assets: MultiAssetsV1
+          effects: Vec<XcmOrderV1>
+        ReceiveTeleportedAsset:
+          assets: MultiAssetsV1
+          effects: Vec<XcmOrderV1>
+        QueryResponse:
+          query_id: Compact<u64>
+          response: ResponseV1
+        TransferAsset:
+          assets: MultiAssetsV1
+          dest: MultiLocationV1
+        TransferReserveAsset:
+          assets: MultiAssetsV1
+          dest: MultiLocationV1
+          effects: Vec<XcmOrderV1>
+        Transact:
+          origin_type: XcmOriginKind
+          require_weight_at_most: u64
+          call: DoubleEncoded<Call>
+        HrmpNewChannelOpenRequest:
+          sender: Compact<u32>
+          max_message_size: Compact<u32>
+          max_capacity: Compact<u32>
+        HrmpChannelAccepted:
+          recipient: Compact<u32>
+        HrmpChannelClosing:
+          initiator: Compact<u32>
+          sender: Compact<u32>
+          recipient: Compact<u32>
+        RelayedFrom:
+          who: MultiLocationV1
+          message: XcmV1<Call>
+
+    # Box<> aliases commonly used in metadata
+    Box<VersionedMultiLocation>: VersionedMultiLocation
+    Box<VersionedMultiAssets>: VersionedMultiAssets
+    Box<VersionedXcm<()>>: VersionedXcm<()>
+    Box<VersionedXcm<T::Call>>: VersionedXcm<T::Call>
+    Box<<T as Config>::Call>: <T as Config>::Call
+
+    # Registrar
+    ParaInfo:
+      manager: AccountId
+      deposit: Balance
+      locked: bool
+    CollatorId: H256
+
+    # Claims
+    EthereumAddress: '[u8; 20]'
+    StatementKind:
+      _enum: ['Regular', 'Saft']
+
+    # Vesting
+    VestingInfo<Balance, BlockNumber>:
+      locked: Balance
+      per_block: Balance
+      starting_block: BlockNumber
+
+    # Utility
+    IdentityInfo:
+      additional: Vec<IdentityInfoAdditional>
+      display: Data
+      legal: Data
+      web: Data
+      riot: Data
+      email: Data
+      pgp_fingerprint: Option<H160>
+      image: Data
+      twitter: Data
+    IdentityInfo<MaxAdditionalFields>: IdentityInfo
+    IdentityInfoAdditional: (Data, Data)
+    Judgement<Balance>:
+      _enum:
+        Unknown: []
+        FeePaid: Balance
+        Reasonable: []
+        KnownGood: []
+        OutOfDate: []
+        LowQuality: []
+        Erroneous: []
+    IdentityFields: u64 # from least significant bit to most, 1 bit enabled for Display, Legal, Web, Riot, Email, PgpFingerprint, Image, Twitter
+    Registration<Balance>:
+      judgements: Vec<RegistrationJudgement>
+      deposit: Balance
+      info: IdentityInfo
+    Registration<Balance, MaxRegistrars, MaxAdditionalFields>: Registration<Balance>
+    RegistrationJudgement: (RegistrarIndex, IdentityJudgement)
+    IdentityJudgement:
+      _enum:
+        Unknown: []
+        FeePaid: Balance
+        Reasonable: []
+        KnownGood: []
+        OutOfDate: []
+        LowQuality: []
+        Erroneous: []
+    RegistrarIndex: u32
+    RegistrarInfo<Balance, AccountId>:
+      account: AccountId
+      fee: Balance
+      fields: IdentityFields
+      
+
+    # Poll
+    Approvals: "[bool; 4]"
+    Data:
+      _enum:
+        None: [] # 0
+        # Custom encode/decode means that conceptually
+        # there is a variant for each size of raw data
+        # from 0-32 bytes:
+        Raw0: "[u8; 0]" # 1
+        Raw1: "[u8; 1]" # 2
+        Raw2: "[u8; 2]" # 3
+        Raw3: "[u8; 3]" # 4
+        Raw4: "[u8; 4]" # 5
+        Raw5: "[u8; 5]" # 6
+        Raw6: "[u8; 6]" # 7
+        Raw7: "[u8; 7]" # 8
+        Raw8: "[u8; 8]" # 9
+        Raw9: "[u8; 9]" # 10
+        Raw10: "[u8; 10]" # 11
+        Raw11: "[u8; 11]" # 12
+        Raw12: "[u8; 12]" # 13
+        Raw13: "[u8; 13]" # 14
+        Raw14: "[u8; 14]" # 15
+        Raw15: "[u8; 15]" # 16
+        Raw16: "[u8; 16]" # 17
+        Raw17: "[u8; 17]" # 18
+        Raw18: "[u8; 18]" # 19
+        Raw19: "[u8; 19]" # 20
+        Raw20: "[u8; 20]" # 21
+        Raw21: "[u8; 21]" # 22
+        Raw22: "[u8; 22]" # 23
+        Raw23: "[u8; 23]" # 24
+        Raw24: "[u8; 24]" # 25
+        Raw25: "[u8; 25]" # 26
+        Raw26: "[u8; 26]" # 27
+        Raw27: "[u8; 27]" # 28
+        Raw28: "[u8; 28]" # 29
+        Raw29: "[u8; 29]" # 30
+        Raw30: "[u8; 30]" # 31
+        Raw31: "[u8; 31]" # 32
+        Raw32: "[u8; 32]" # 33
+        BlakeTwo256: H256 # 34
+        Sha256: H256 # 35
+        Keccak256: H256 # 36
+        ShaThree256: H256 # 37
+
+    # Proxy
+    T::ProxyType:
+      _enum:
+        - Any
+        - NonTransfer
+        - Governance
+        - Staking
+        - UnusedSudoBalances
+        - IdentityJudgement
+        - CancelProxy
+        - Auction
+    Permill: u32
+    CallHashOf<T>: Hash
+    ProxyDefinition<AccountId, ProxyType, BlockNumber>:
+      delegate: AccountId
+      proxy_type: ProxyType
+      delay: BlockNumber
+    Announcement<AccountId, CallHash, BlockNumber>:
+      real: AccountId
+      call_hash: CallHash
+      height: BlockNumber
+
+    # MultiSig
+    OpaqueCall: Vec<u8>
+    Multisig<BlockNumber, Balance, AccountId>:
+      when: Timepoint<BlockNumber>
+      deposit: Balance
+      depositor: AccountId
+      approvals: Vec<AccountId>
+    Timepoint<BlockNumber>:
+      height: BlockNumber
+      index: u32
+
+    # Treasury
+    BountyIndex: u32
+    Proposal<AccountId, Balance>:
+      proposer: AccountId
+      value: Balance
+      beneficiary: AccountId
+      bond: Balance
+    OpenTip<AccountId, Balance, BlockNumber, Hash>:
+      reason: Hash
+      who: AccountId
+      finder: AccountId
+      deposit: Balance
+      closes: Option<BlockNumber>
+      tips: Vec<(AccountId, Balance)>
+      finders_fee: bool
+    Bounty<AccountId, Balance, BlockNumber>:
+      proposer: AccountId
+      value: Balance
+      fee: Balance
+      curator_deposit: Balance
+      bond: Balance
+      status: BountyStatus<AccountId, BlockNumber>
+    BountyStatus<AccountId, BlockNumber>:
+      _enum:
+        Proposed: []
+        Approved: []
+        Funded: []
+        CuratorProposed: BountyStatusCuratorProposed<AccountId>
+        Active: BountyStatusActive<AccountId, BlockNumber>
+        PendingPayout: BountyStatusPendingPayout<AccountId, BlockNumber>
+    BountyStatusActive<AccountId, BlockNumber>:
+      curator: AccountId
+      update_due: BlockNumber
+    BountyStatusCuratorProposed<AccountId>:
+      curator: AccountId
+    BountyStatusPendingPayout<AccountId, BlockNumber>:
+      curator: AccountId
+      beneficiary: AccountId
+      unlock_at: BlockNumber
+
+    # Purchase
+    AccountStatus<Balance>:
+      validity: AccountValidity
+      free_balance: Balance
+      locked_balance: Balance
+      signature: Vec<u8>
+      vat: Permill
+    AccountValidity:
+      _enum: ['Invalid', 'Initiated', 'Pending', 'ValidLow', 'ValidHigh', 'Completed']
+
+    # imOnline
+    OpaqueNetworkState:
+      peer_id: OpaquePeerId
+      external_addresses: Vec<OpaqueMultiaddr>
+    OpaquePeerId: Bytes
+    OpaqueMultiaddr: Bytes
+    AuthIndex: u32
+    AuthoritySignature: Signature
+
+    # Manually defined types below:
+
+    WeakBoundedVec<Item, N>: Vec<Item>
+    BoundedVec<Item, N>: Vec<Item>
+
+    Balance: u128
+    BalanceOf<T>: Balance
+    BalanceOf<T, I>: Balance
+
+    # Uniques
+    ClassId: u32
+    InstanceId: u32
+
+    # Assets pallet (witness for destroy)
+    DestroyWitness:
+      accounts: Compact<u32>
+      sufficients: Compact<u32>
+      approvals: Compact<u32>
+
+    Index: u32
+    AccountId32: [ "[u8; 32]" ]
+    AccountId: AccountId32
+    SessionIndex: u32
+    Bytes: Vec<u8>
+    EcdsaSignature: '[u8; 65]'
+    Ed25519Signature: '[u8; 64]'
+    Sr25519Signature: '[u8; 64]'
+    BitVec: bitvec::vec::BitVec<u8, bitvec::order::Msb0>
+
+    H32: '[u8; 4]'
+    H64: '[u8; 8]'
+    H128: '[u8; 16]'
+    H160: '[u8; 20]'
+    H256: '[u8; 32]'
+    H512: '[u8; 64]'
+    H1024: '[u8; 128]'
+    H2048: '[u8; 256]'
+    Hash: H256
+    Era:
+      # This has a dumb representation because it's encoded in a custom way.
+      # This representation matches the TypeInfo generated for it in newer metadatas.
+      _enum: {"Immortal":[],"Mortal1":"u8","Mortal2":"u8","Mortal3":"u8","Mortal4":"u8","Mortal5":"u8","Mortal6":"u8","Mortal7":"u8","Mortal8":"u8","Mortal9":"u8","Mortal10":"u8","Mortal11":"u8","Mortal12":"u8","Mortal13":"u8","Mortal14":"u8","Mortal15":"u8","Mortal16":"u8","Mortal17":"u8","Mortal18":"u8","Mortal19":"u8","Mortal20":"u8","Mortal21":"u8","Mortal22":"u8","Mortal23":"u8","Mortal24":"u8","Mortal25":"u8","Mortal26":"u8","Mortal27":"u8","Mortal28":"u8","Mortal29":"u8","Mortal30":"u8","Mortal31":"u8","Mortal32":"u8","Mortal33":"u8","Mortal34":"u8","Mortal35":"u8","Mortal36":"u8","Mortal37":"u8","Mortal38":"u8","Mortal39":"u8","Mortal40":"u8","Mortal41":"u8","Mortal42":"u8","Mortal43":"u8","Mortal44":"u8","Mortal45":"u8","Mortal46":"u8","Mortal47":"u8","Mortal48":"u8","Mortal49":"u8","Mortal50":"u8","Mortal51":"u8","Mortal52":"u8","Mortal53":"u8","Mortal54":"u8","Mortal55":"u8","Mortal56":"u8","Mortal57":"u8","Mortal58":"u8","Mortal59":"u8","Mortal60":"u8","Mortal61":"u8","Mortal62":"u8","Mortal63":"u8","Mortal64":"u8","Mortal65":"u8","Mortal66":"u8","Mortal67":"u8","Mortal68":"u8","Mortal69":"u8","Mortal70":"u8","Mortal71":"u8","Mortal72":"u8","Mortal73":"u8","Mortal74":"u8","Mortal75":"u8","Mortal76":"u8","Mortal77":"u8","Mortal78":"u8","Mortal79":"u8","Mortal80":"u8","Mortal81":"u8","Mortal82":"u8","Mortal83":"u8","Mortal84":"u8","Mortal85":"u8","Mortal86":"u8","Mortal87":"u8","Mortal88":"u8","Mortal89":"u8","Mortal90":"u8","Mortal91":"u8","Mortal92":"u8","Mortal93":"u8","Mortal94":"u8","Mortal95":"u8","Mortal96":"u8","Mortal97":"u8","Mortal98":"u8","Mortal99":"u8","Mortal100":"u8","Mortal101":"u8","Mortal102":"u8","Mortal103":"u8","Mortal104":"u8","Mortal105":"u8","Mortal106":"u8","Mortal107":"u8","Mortal108":"u8","Mortal109":"u8","Mortal110":"u8","Mortal111":"u8","Mortal112":"u8","Mortal113":"u8","Mortal114":"u8","Mortal115":"u8","Mortal116":"u8","Mortal117":"u8","Mortal118":"u8","Mortal119":"u8","Mortal120":"u8","Mortal121":"u8","Mortal122":"u8","Mortal123":"u8","Mortal124":"u8","Mortal125":"u8","Mortal126":"u8","Mortal127":"u8","Mortal128":"u8","Mortal129":"u8","Mortal130":"u8","Mortal131":"u8","Mortal132":"u8","Mortal133":"u8","Mortal134":"u8","Mortal135":"u8","Mortal136":"u8","Mortal137":"u8","Mortal138":"u8","Mortal139":"u8","Mortal140":"u8","Mortal141":"u8","Mortal142":"u8","Mortal143":"u8","Mortal144":"u8","Mortal145":"u8","Mortal146":"u8","Mortal147":"u8","Mortal148":"u8","Mortal149":"u8","Mortal150":"u8","Mortal151":"u8","Mortal152":"u8","Mortal153":"u8","Mortal154":"u8","Mortal155":"u8","Mortal156":"u8","Mortal157":"u8","Mortal158":"u8","Mortal159":"u8","Mortal160":"u8","Mortal161":"u8","Mortal162":"u8","Mortal163":"u8","Mortal164":"u8","Mortal165":"u8","Mortal166":"u8","Mortal167":"u8","Mortal168":"u8","Mortal169":"u8","Mortal170":"u8","Mortal171":"u8","Mortal172":"u8","Mortal173":"u8","Mortal174":"u8","Mortal175":"u8","Mortal176":"u8","Mortal177":"u8","Mortal178":"u8","Mortal179":"u8","Mortal180":"u8","Mortal181":"u8","Mortal182":"u8","Mortal183":"u8","Mortal184":"u8","Mortal185":"u8","Mortal186":"u8","Mortal187":"u8","Mortal188":"u8","Mortal189":"u8","Mortal190":"u8","Mortal191":"u8","Mortal192":"u8","Mortal193":"u8","Mortal194":"u8","Mortal195":"u8","Mortal196":"u8","Mortal197":"u8","Mortal198":"u8","Mortal199":"u8","Mortal200":"u8","Mortal201":"u8","Mortal202":"u8","Mortal203":"u8","Mortal204":"u8","Mortal205":"u8","Mortal206":"u8","Mortal207":"u8","Mortal208":"u8","Mortal209":"u8","Mortal210":"u8","Mortal211":"u8","Mortal212":"u8","Mortal213":"u8","Mortal214":"u8","Mortal215":"u8","Mortal216":"u8","Mortal217":"u8","Mortal218":"u8","Mortal219":"u8","Mortal220":"u8","Mortal221":"u8","Mortal222":"u8","Mortal223":"u8","Mortal224":"u8","Mortal225":"u8","Mortal226":"u8","Mortal227":"u8","Mortal228":"u8","Mortal229":"u8","Mortal230":"u8","Mortal231":"u8","Mortal232":"u8","Mortal233":"u8","Mortal234":"u8","Mortal235":"u8","Mortal236":"u8","Mortal237":"u8","Mortal238":"u8","Mortal239":"u8","Mortal240":"u8","Mortal241":"u8","Mortal242":"u8","Mortal243":"u8","Mortal244":"u8","Mortal245":"u8","Mortal246":"u8","Mortal247":"u8","Mortal248":"u8","Mortal249":"u8","Mortal250":"u8","Mortal251":"u8","Mortal252":"u8","Mortal253":"u8","Mortal254":"u8","Mortal255":"u8"}
+
+    MultiAddress<AccountId, AccountIndex>:
+      _enum:
+        Id: AccountId
+        Index: AccountIndex
+        Raw: Bytes
+        Address32: H256
+        Address20: H160
+
+    MultiSignature:
+      _enum:
+        Ed25519: Ed25519Signature
+        Sr25519: Sr25519Signature
+        Ecdsa: EcdsaSignature
+
+    # Hardcoded types for old metadatas that don't know about them.
+    hardcoded::ExtrinsicSignature: MultiSignature
+    hardcoded::ExtrinsicAddress: MultiAddress<AccountId32,u32>
+    <T::Lookup as StaticLookup>::Source: MultiAddress<AccountId32,u32>
+
+    # signed exts
+    ChargeAssetTxPayment:
+      tip: Compact<Balance>
+      asset_id: Option<AssetId>
+    ChargeTransactionPayment:
+      tip: Compact<Balance>
+    CheckBlockGasLimit: []
+    CheckEra: CheckMortality
+    CheckGenesis: []
+    CheckMortality:
+      era: Era
+    CheckNonZeroSender: []
+    CheckNonce:
+      nonce: Compact<Index>
+    CheckSpecVersion: []
+    CheckTxVersion: []
+    CheckVersion: []
+    CheckWeight: []
+    LockStakingStatus: []
+    ValidateEquivocationReport: []
+    TransactionCallFilter: []
+    LimitParathreadCommits: []
+    OnlyStakingAndClaims: []
+    PrevalidateAttests: []
+    RestrictFunctionality: []
+    ValidateDoubleVoteReports: []
+    DisallowSigned: []
+
+    # Additional ParachainSystem storage-related types
+    MessageQueueChain: Hash
+    AbridgedHostConfiguration:
+      max_code_size: Compact<u32>
+      max_head_data_size: Compact<u32>
+      max_upward_queue_count: Compact<u32>
+      max_upward_queue_size: Compact<u32>
+      max_upward_message_size: Compact<u32>
+      max_upward_message_num_per_candidate: Compact<u32>
+      hrmp_max_message_num_per_candidate: Compact<u32>
+      ump_service_total_weight: Weight
+      hrmp_max_parachain_outbound_channels: Compact<u32>
+      hrmp_max_parathread_outbound_channels: Compact<u32>
+      hrmp_open_request_ttl: Compact<u32>
+      hrmp_channel_max_capacity: Compact<u32>
+      hrmp_channel_max_total_size: Compact<u32>
+      hrmp_max_parachain_inbound_channels: u32
+      hrmp_max_parathread_inbound_channels: u32
+      hrmp_channel_max_message_size: u32
+      code_retention_period: u32
+    UpwardMessage: Bytes
+    OutboundHrmpMessage:
+      recipient: ParaId
+      data: Bytes
+
+    AssetId: u32
+    T::AssetId: AssetId
+
+    RefCount: u32
+    AccountInfo<Index, AccountData>:
+      nonce: Index
+      consumers: RefCount
+      providers: RefCount
+      sufficients: RefCount
+      data: AccountData
+    AbridgedHrmpChannel:
+      max_capacity: u32
+      max_total_size: u32
+      max_message_size: u32
+      mqc_head: Option<Hash>
+    MessagingStateSnapshotEgressEntry: (ParaId, AbridgedHrmpChannel)
+    MessagingStateSnapshot:
+      relay_dispatch_queue_size: (u32, u32)
+      relay_dispatch_queue_mqc_head: Hash
+      dm_mqc_head: Option<Hash>
+      egress_channels: Vec<MessagingStateSnapshotEgressEntry>
+    PageIndexData:
+      begin_used: u32
+      end_used: u32
+      first_index: u32
+      last_index: u32
+
+    DepositBalanceOf<T, I>: BalanceOf<T, I>
+    T::Extra: ()
+    AssetDetails<Balance, AccountId, DepositBalance>:
+      owner: AccountId
+      issuer: AccountId
+      admin: AccountId
+      freezer: AccountId
+      supply: Balance
+      deposit: DepositBalance
+      min_balance: Balance
+      is_sufficient: bool
+      accounts: u32
+      sufficients: u32
+      approvals: u32
+      is_frozen: bool
+    AssetBalance<Balance, Extra>:
+      balance: Balance
+      is_frozen: bool
+      is_sufficient: bool
+      extra: Extra
+    Approval<Balance, DepositBalance>:
+      amount: Balance
+      deposit: DepositBalance
+    AssetMetadata<DepositBalance, BVec>:
+      deposit: DepositBalance
+      name: BVec
+      symbol: BVec
+      decimals: u8
+      is_frozen: bool
+    # Uniques pallet (FRAME V13 era)
+    T::ClassId: u32
+    T::InstanceId: u32
+    ClassDetails<AccountId, DepositBalance>:
+      owner: AccountId
+      issuer: AccountId
+      admin: AccountId
+      freezer: AccountId
+      total_deposit: DepositBalance
+      free_holding: bool
+      instances: u32
+      instance_metadatas: u32
+      attributes: u32
+      is_frozen: bool
+    InstanceDetails<AccountId, DepositBalance>:
+      owner: AccountId
+      approved: Option<AccountId>
+      is_frozen: bool
+      deposit: DepositBalance
+    ClassMetadata<DepositBalance, N>:
+      deposit: DepositBalance
+      data: BoundedVec<u8, N>
+      is_frozen: bool
+    InstanceMetadata<DepositBalance, N>:
+      deposit: DepositBalance
+      data: BoundedVec<u8, N>
+      is_frozen: bool
+    T::StringLimit: u32
+    T::KeyLimit: u32
+    T::ValueLimit: u32
+    # XCM v0 Outcome used in older PolkadotXcm events
+    xcm::v0::Outcome: Outcome
+    Outcome:
+      _enum:
+        Complete: Weight
+        Incomplete: (Weight, XcmError)
+        Error: XcmError
+    # Minimal XCM error enum (v0). Order matches older runtimes sufficiently to decode common cases.
+    XcmError:
+      _enum:
+        Undefined: []
+        Unimplemented: []
+        UnhandledXcmMessage: []
+        UnhandledEffect: []
+        EscalationOfPrivilege: []
+        UntrustedReserveLocation: []
+        UntrustedTeleportLocation: []
+        DestinationNotInvertible: []
+        MultiLocationFull: []
+        MultiLocationNotInvertible: []
+        BadOrigin: []
+        InvalidLocation: []
+        AssetNotFound: []
+        FailedToTransactAsset: []
+        NotWithdrawable: []
+        LocationCannotHold: []
+        ExceedsMaxMessageSize: []
+        DestinationUnsupported: []
+        Locked: []
+        OrdersNotEmpty: []
+        DuplicateOrder: []
+        NotDepositable: []
+        Unwitnessed: []
+        UnknownClaim: []
+        Trap: u64
+        Overflow: []
+        UnimplementedXcmVersion: []
+        Incomplete: []
+        NetworkNotSupported: []
+        BadXcm: []
+        WeightLimitReached: []
+        WeightNotComputable: []
+        Barrier: []
+        SendFailed: []
+        Transport: []
+        Unroutable: []
+        UnknownError: []

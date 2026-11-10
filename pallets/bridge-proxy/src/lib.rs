@@ -8,6 +8,11 @@ mod mock;
 #[cfg(test)]
 mod test;
 
+#[cfg(test)]
+mod price_limit_tests;
+#[cfg(test)]
+mod refund_retry_tests;
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 pub mod migrations;
@@ -38,6 +43,22 @@ pub use weights::WeightInfo;
 pub const BRIDGE_TECH_ACC_PREFIX: &[u8] = b"bridge";
 pub const BRIDGE_FEE_TECH_ACC_PREFIX: &[u8] = b"bridge-fee";
 
+/// Resolves the current owner of a refund from its authenticated local source.
+pub trait RefundAccountResolver<AccountId> {
+    fn resolve(account: AccountId) -> Result<AccountId, DispatchError>;
+    fn weight() -> frame_support::weights::Weight;
+}
+
+impl<AccountId> RefundAccountResolver<AccountId> for () {
+    fn resolve(account: AccountId) -> Result<AccountId, DispatchError> {
+        Ok(account)
+    }
+
+    fn weight() -> frame_support::weights::Weight {
+        frame_support::weights::Weight::zero()
+    }
+}
+
 #[derive(Clone, Debug, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct BridgeRequest<AssetId> {
@@ -51,6 +72,24 @@ pub struct BridgeRequest<AssetId> {
     direction: MessageDirection,
 }
 
+impl<AssetId> BridgeRequest<AssetId> {
+    pub fn source(&self) -> &GenericAccount {
+        &self.source
+    }
+    pub fn asset_id(&self) -> &AssetId {
+        &self.asset_id
+    }
+    pub fn amount(&self) -> Balance {
+        self.amount
+    }
+    pub fn direction(&self) -> MessageDirection {
+        self.direction
+    }
+    pub fn status(&self) -> MessageStatus {
+        self.status
+    }
+}
+
 #[derive(Clone, Debug, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo)]
 pub struct TransferLimitSettings<BlockNumber> {
     max_amount: Balance,
@@ -58,6 +97,21 @@ pub struct TransferLimitSettings<BlockNumber> {
 }
 
 pub use pallet::*;
+
+fn recovery_halted() -> bool {
+    sp_io::storage::exists(common::recovery::BRIDGE_HALT_STORAGE_KEY)
+}
+
+fn recovery_inbound_allowed<T: frame_system::Config>() -> bool {
+    if !recovery_halted() {
+        return true;
+    }
+    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
+    number.ok().is_some_and(|number| {
+        sp_io::storage::get(common::recovery::BRIDGE_INBOUND_CONTEXT_STORAGE_KEY)
+            .is_some_and(|bytes| bytes.as_ref() == number.to_le_bytes().as_slice())
+    })
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -77,7 +131,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + pallet_timestamp::Config + technical::Config + permissions::Config
+        frame_system::Config
+        + pallet_timestamp::Config
+        + technical::Config
+        + permissions::Config
+        + assets::Config
     {
         #[allow(deprecated)]
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -100,6 +158,8 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
 
         type AccountIdConverter: Convert<MainnetAccountId, Self::AccountId>;
+
+        type RefundAccountResolver: RefundAccountResolver<Self::AccountId>;
     }
 
     #[pallet::storage]
@@ -215,6 +275,12 @@ pub mod pallet {
         AssetAlreadyLimited,
         AssetNotLimited,
         WrongLimitSettings,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
+        /// A limited asset requires a nonzero reference price.
+        InvalidReferencePrice,
+        UnknownRequest,
+        RefundNotAvailable,
     }
 
     #[pallet::call]
@@ -228,6 +294,7 @@ pub mod pallet {
             recipient: GenericAccount,
             amount: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
             let sender = ensure_signed(origin)?;
             match recipient {
                 GenericAccount::EVM(recipient) => {
@@ -305,6 +372,48 @@ pub mod pallet {
             TransferLimit::<T>::set(settings);
             Ok(().into())
         }
+
+        /// Any fee-paying account may retry a failed outbound refund. Its owner,
+        /// asset and amount come exclusively from the retained request.
+        #[pallet::call_index(4)]
+        #[pallet::weight(Pallet::<T>::retry_refund_weight())]
+        #[frame_support::transactional]
+        pub fn retry_refund(
+            origin: OriginFor<T>,
+            network_id: GenericNetworkId,
+            message_id: H256,
+        ) -> DispatchResult {
+            ensure_signed(origin)?;
+            ensure!(
+                !recovery_halted()
+                    && !bridge_types::recovery::message_quarantined(network_id, message_id),
+                Error::<T>::RecoveryHalted
+            );
+            let sender =
+                Senders::<T>::get(network_id, message_id).ok_or(Error::<T>::UnknownRequest)?;
+            Transactions::<T>::try_mutate((network_id, sender), message_id, |request| {
+                let request = request.as_mut().ok_or(Error::<T>::UnknownRequest)?;
+                ensure!(
+                    request.direction == MessageDirection::Outbound
+                        && request.status == MessageStatus::Failed,
+                    Error::<T>::RefundNotAvailable
+                );
+                Self::refund(
+                    network_id,
+                    message_id,
+                    request.source.clone(),
+                    request.asset_id,
+                    request.amount,
+                )?;
+                request.status = MessageStatus::Refunded;
+                request.end_timepoint = T::TimepointProvider::get_timepoint();
+                Self::deposit_event(Event::RequestStatusUpdate(
+                    message_id,
+                    MessageStatus::Refunded,
+                ));
+                Ok(())
+            })
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -326,6 +435,9 @@ pub mod pallet {
             res
         }
 
+        // Status notifications retain refund errors for retry. Roll back asset
+        // accounting together with the transfer/mint when the app rejects it.
+        #[frame_support::transactional]
         pub fn refund(
             network_id: GenericNetworkId,
             message_id: H256,
@@ -333,10 +445,16 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             amount: Balance,
         ) -> DispatchResult {
+            ensure!(
+                !recovery_halted()
+                    && !bridge_types::recovery::message_quarantined(network_id, message_id),
+                Error::<T>::RecoveryHalted
+            );
             let GenericAccount::Sora(beneficiary) = beneficiary else {
                 return Err(Error::<T>::WrongAccountKind.into());
             };
             let beneficiary = T::AccountIdConverter::convert(beneficiary);
+            let beneficiary = T::RefundAccountResolver::resolve(beneficiary)?;
             if T::HashiBridge::is_asset_supported(network_id, asset_id) {
                 T::HashiBridge::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::ParachainApp::is_asset_supported(network_id, asset_id) {
@@ -345,6 +463,8 @@ pub mod pallet {
                 T::LiberlandApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             } else if T::FAApp::is_asset_supported(network_id, asset_id) {
                 T::FAApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
+            } else {
+                return Err(Error::<T>::PathIsNotAvailable.into());
             }
             Ok(())
         }
@@ -358,6 +478,25 @@ pub mod pallet {
                 .saturating_add(T::HashiBridge::is_asset_supported_weight())
                 .saturating_add(T::FAApp::is_asset_supported_weight())
         }
+
+        pub fn retry_refund_weight() -> Weight {
+            T::HashiBridge::refund_weight()
+                .max(T::FAApp::refund_weight())
+                .max(T::ParachainApp::refund_weight())
+                .max(T::LiberlandApp::refund_weight())
+                // Some app adapters retain placeholder refund weights. Cover
+                // the underlying custody transfer or sidechain mint as well,
+                // including the asset regulator's large storage proof.
+                .max(<<T as assets::Config>::WeightInfo as assets::WeightInfo>::mint())
+                .max(<<T as assets::Config>::WeightInfo as assets::WeightInfo>::transfer())
+                .saturating_add(T::HashiBridge::is_asset_supported_weight())
+                .saturating_add(T::FAApp::is_asset_supported_weight())
+                .saturating_add(T::ParachainApp::is_asset_supported_weight())
+                .saturating_add(T::LiberlandApp::is_asset_supported_weight())
+                .saturating_add(T::RefundAccountResolver::weight())
+                .saturating_add(T::DbWeight::get().reads_writes(12, 3))
+                .saturating_add(Weight::from_parts(50_000_000, 32_768))
+        }
     }
 }
 
@@ -365,12 +504,22 @@ impl<T: Config> MessageStatusNotifier<AssetIdOf<T>, T::AccountId, Balance> for P
 where
     MainnetAccountId: From<T::AccountId>,
 {
+    fn update_status_weight() -> frame_support::weights::Weight {
+        Self::retry_refund_weight()
+    }
+
     fn update_status(
         network_id: GenericNetworkId,
         message_id: H256,
         mut new_status: MessageStatus,
         end_timepoint: GenericTimepoint,
     ) {
+        // A legacy record may decode with an incorrect direction. A committed
+        // quarantine protects its identity and evidence independently of that
+        // untrusted field, including after the separate global halt is removed.
+        if bridge_types::recovery::message_quarantined(network_id, message_id) {
+            return;
+        }
         let sender = match Senders::<T>::get(network_id, message_id) {
             Some(sender) => sender,
             None => {
@@ -384,6 +533,17 @@ where
         };
         Transactions::<T>::mutate((network_id, sender), message_id, |req| {
             if let Some(req) = req {
+                if recovery_halted() && req.direction == MessageDirection::Outbound {
+                    return;
+                }
+                // Authenticated reports can arrive in distinct messages for the
+                // same transfer. Settled liabilities must never pay out twice
+                // or regress to a state that makes another refund possible.
+                if req.direction == MessageDirection::Outbound
+                    && matches!(req.status, MessageStatus::Done | MessageStatus::Refunded)
+                {
+                    return;
+                }
                 if new_status == MessageStatus::Failed
                     && req.direction == MessageDirection::Outbound
                 {
@@ -420,6 +580,9 @@ where
         start_timepoint: GenericTimepoint,
         status: MessageStatus,
     ) {
+        if bridge_types::recovery::message_quarantined(network_id, message_id) {
+            return;
+        }
         Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
         Senders::<T>::insert(&network_id, &message_id, &dest);
         Transactions::<T>::insert(
@@ -447,6 +610,9 @@ where
         amount: Balance,
         status: MessageStatus,
     ) {
+        if bridge_types::recovery::message_quarantined(network_id, message_id) {
+            return;
+        }
         Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
         Senders::<T>::insert(&network_id, &message_id, &source);
         Transactions::<T>::insert(
@@ -534,6 +700,46 @@ impl<T: Config> Pallet<T> {
         LockedAssets::<T>::remove(network_id, asset_id);
         Ok(())
     }
+
+    /// Restore only the lock accounting of an authenticated owned HASHI claim
+    /// extinguished by recovery. Native finalization has already unreserved the
+    /// same amount into shared custody; no token issuance or user balance changes.
+    /// This is not a new outbound lock: do not charge limits or schedule unlocks.
+    pub fn recovery_restore_extinguished_hashi_owned(
+        network_id: GenericNetworkId,
+        asset_id: AssetIdOf<T>,
+        amount: Balance,
+    ) -> DispatchResult {
+        ensure!(
+            recovery_halted()
+                && recovery_inbound_allowed::<T>()
+                && matches!(network_id, GenericNetworkId::EVMLegacy(_)),
+            Error::<T>::RecoveryHalted
+        );
+        LockedAssets::<T>::try_mutate(network_id, asset_id, |value| {
+            *value = value.checked_add(amount).ok_or(Error::<T>::Overflow)?;
+            DispatchResult::Ok(())
+        })
+    }
+
+    /// Reverse only the preparation accounting of a proven, already prepared
+    /// HASHI sidechain claim extinguished by the recovery executive. No mint/refund.
+    pub fn recovery_extinguish_prepared_sidechain(
+        network_id: GenericNetworkId,
+        asset_id: AssetIdOf<T>,
+        amount: Balance,
+    ) -> DispatchResult {
+        ensure!(
+            recovery_halted() && recovery_inbound_allowed::<T>(),
+            Error::<T>::RecoveryHalted
+        );
+        LockedAssets::<T>::try_mutate(network_id, asset_id, |value| {
+            *value = value
+                .checked_sub(amount)
+                .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
+            DispatchResult::Ok(())
+        })
+    }
 }
 
 impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
@@ -590,6 +796,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
+        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
         let bridge_account = Self::bridge_fee_tech_account(network_id);
         technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
         Ok(())
@@ -601,6 +808,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
+        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
         let bridge_account = Self::bridge_fee_tech_account(network_id);
         technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
         Ok(())
@@ -608,12 +816,16 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> BridgeAssetLockChecker<AssetIdOf<T>, Balance> for Pallet<T> {
+    // Legacy callers may invoke this hook directly. Price, quota, and schedule
+    // failures must roll back its earlier locked-liquidity accounting too.
+    #[frame_support::transactional]
     fn before_asset_lock(
         network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
         asset_id: &AssetIdOf<T>,
         amount: &Balance,
     ) -> DispatchResult {
+        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
         LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
             network_id,
             asset_id,
@@ -633,36 +845,60 @@ impl<T: Config> BridgeAssetLockChecker<AssetIdOf<T>, Balance> for Pallet<T> {
             },
         )?;
         if Self::is_asset_limited(&asset_id) {
-            if let Ok(reference_price) = T::ReferencePriceProvider::get_reference_price(asset_id) {
-                let reference_amount =
-                    FixedWrapper::from(reference_price) * FixedWrapper::from(*amount);
-                let reference_amount = reference_amount
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::Overflow)?;
-                let transfer_limit = TransferLimit::<T>::get();
-                ConsumedTransferLimit::<T>::try_mutate(|value| {
+            // Limited assets pause when pricing is unavailable or warming up;
+            // bypassing the quota on an error would make the limit ineffective.
+            let reference_price = T::ReferencePriceProvider::get_reference_price(asset_id)?;
+            ensure!(reference_price > 0, Error::<T>::InvalidReferencePrice);
+            let reference_amount =
+                FixedWrapper::from(reference_price) * FixedWrapper::from(*amount);
+            let reference_amount = reference_amount
+                .try_into_balance()
+                .map_err(|_| Error::<T>::Overflow)?;
+            let transfer_limit = TransferLimit::<T>::get();
+            ConsumedTransferLimit::<T>::try_mutate(|value| {
+                *value = value
+                    .checked_add(reference_amount)
+                    .ok_or(Error::<T>::Overflow)?;
+                ensure!(
+                    *value < transfer_limit.max_amount,
+                    Error::<T>::TransferLimitReached
+                );
+                DispatchResult::Ok(())
+            })?;
+            TransferLimitUnlockSchedule::<T>::try_mutate(
+                frame_system::Pallet::<T>::block_number()
+                    .saturating_add(transfer_limit.period_blocks),
+                |value| {
                     *value = value
                         .checked_add(reference_amount)
                         .ok_or(Error::<T>::Overflow)?;
-                    ensure!(
-                        *value < transfer_limit.max_amount,
-                        Error::<T>::TransferLimitReached
-                    );
                     DispatchResult::Ok(())
-                })?;
-                TransferLimitUnlockSchedule::<T>::try_mutate(
-                    frame_system::Pallet::<T>::block_number()
-                        .saturating_add(transfer_limit.period_blocks),
-                    |value| {
-                        *value = value
-                            .checked_add(reference_amount)
-                            .ok_or(Error::<T>::Overflow)?;
-                        DispatchResult::Ok(())
-                    },
-                )?;
-            }
+                },
+            )?;
         }
         Ok(())
+    }
+
+    fn cancel_asset_unlock(
+        network_id: GenericNetworkId,
+        asset_kind: AssetKind,
+        asset_id: &AssetIdOf<T>,
+        amount: &Balance,
+    ) -> DispatchResult {
+        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
+        // Cancellation reverses an incoming reservation. It neither consumes
+        // outbound quota nor depends on a current reference-price quote.
+        LockedAssets::<T>::try_mutate(network_id, asset_id, |locked_amount| {
+            *locked_amount = match asset_kind {
+                AssetKind::Thischain => locked_amount
+                    .checked_add(*amount)
+                    .ok_or(Error::<T>::Overflow)?,
+                AssetKind::Sidechain => locked_amount
+                    .checked_sub(*amount)
+                    .ok_or(Error::<T>::NotEnoughLockedLiquidity)?,
+            };
+            DispatchResult::Ok(())
+        })
     }
 
     fn before_asset_unlock(
@@ -671,6 +907,7 @@ impl<T: Config> BridgeAssetLockChecker<AssetIdOf<T>, Balance> for Pallet<T> {
         asset_id: &AssetIdOf<T>,
         amount: &Balance,
     ) -> DispatchResult {
+        ensure!(recovery_inbound_allowed::<T>(), Error::<T>::RecoveryHalted);
         LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
             network_id,
             asset_id,

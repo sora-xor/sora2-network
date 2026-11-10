@@ -50,11 +50,33 @@ mod babe_config;
 mod bags_thresholds;
 mod bridge_multisig_filter;
 pub use bridge_multisig_filter::BridgeMultisigCallFilter;
+mod authorized_heartbeat_payment;
 /// Constant values used within the runtime.
 pub mod constants;
 mod impls;
+pub mod incident_recovery;
+pub mod incident_recovery_babe_reports;
+#[cfg(test)]
+mod incident_recovery_bridge_history_tests;
+#[cfg(test)]
+mod incident_recovery_bridge_preview_tests;
+pub mod incident_recovery_consensus;
+#[cfg(test)]
+mod incident_recovery_elections_tests;
+pub mod incident_recovery_evm_source;
+pub mod incident_recovery_incoming;
+mod incident_recovery_origin;
+pub mod incident_recovery_outgoing;
+#[cfg(test)]
+mod incident_recovery_preview_audits;
+#[cfg(test)]
+mod incident_recovery_staking_tests;
 mod liveness;
 pub mod migrations;
+mod operational_admission;
+mod pool_priority;
+pub mod staking_async;
+pub mod staking_async_migration;
 mod xor_fee_impls;
 
 #[cfg(test)]
@@ -285,8 +307,6 @@ use sp_core::{ConstU64, Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
 #[cfg(feature = "std")]
 use sp_runtime::serde::{Serialize, Serializer};
-#[allow(deprecated)]
-use sp_runtime::traits::transaction_extension::AsTransactionExtension;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, Header as HeaderT, IdentifyAccount, IdentityLookup,
     NumberFor, OpaqueKeys, SaturatedConversion, Verify,
@@ -304,8 +324,6 @@ use sp_staking::currency_to_vote::U128CurrencyToVote;
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
-#[cfg(feature = "std")]
-use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::assert_eq_size;
 use traits::{parameter_type_with_key, MultiCurrency};
@@ -451,21 +469,12 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 134,
+    spec_version: 139,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 131,
+    transaction_version: 134,
     system_version: 0,
 };
-
-/// The version infromation used to identify this runtime when compiled natively.
-#[cfg(feature = "std")]
-pub fn native_version() -> NativeVersion {
-    NativeVersion {
-        runtime_version: VERSION,
-        can_author_with: Default::default(),
-    }
-}
 
 pub const FARMING_PSWAP_PER_DAY: Balance = balance!(2500000);
 pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 2 * HOURS;
@@ -540,7 +549,8 @@ parameter_types! {
     pub MigrationMaxServiceWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
     pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
-    pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    // Below a guardian's bridge halt, like every other transaction; see `pool_priority`.
+    pub const ImOnlineUnsignedPriority: TransactionPriority = pool_priority::BELOW_GUARDIAN_HALT;
     pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
     pub const ElectionsCandidacyBond: Balance = balance!(1);
     // 1 storage item created, key size is 32 bytes, value size is 16+16.
@@ -575,6 +585,10 @@ impl Contains<RuntimeCall> for BaseCallFilter {
         if matches!(
             call,
             RuntimeCall::BridgeMultisig(bridge_multisig::Call::register_multisig { .. })
+                // Retain the beacon client's storage and call metadata, but do
+                // not expose an unused bridge verification surface to dispatch.
+                | RuntimeCall::EthereumBeaconClient(_)
+                | RuntimeCall::JettonApp(_)
         ) {
             return false;
         }
@@ -624,7 +638,7 @@ impl frame_system::Config for Runtime {
     type ExtensionsWeightInfo = ();
     type SingleBlockMigrations = migrations::Migrations;
     type MultiBlockMigrator = MultiBlockMigrations;
-    type PreInherents = ();
+    type PreInherents = incident_recovery::RecoveryLineage;
     type PostInherents = ();
     type PostTransactions = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
@@ -634,18 +648,13 @@ impl pallet_babe::Config for Runtime {
     type EpochDuration = EpochDuration;
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
-    type DisabledValidators = Session;
+    type DisabledValidators = incident_recovery_consensus::RecoveryDisabledValidators;
     type WeightInfo = liveness::EquivocationWeights;
     type MaxAuthorities = MaxAuthorities;
     type MaxNominators = MaxNominators;
     type KeyOwnerProof =
         <Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
-    type EquivocationReportSystem = pallet_babe::EquivocationReportSystem<
-        Self,
-        liveness::EquivocationReports,
-        Historical,
-        ReportLongevity,
-    >;
+    type EquivocationReportSystem = incident_recovery_babe_reports::RecoveryBabeReports;
 }
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
@@ -773,12 +782,7 @@ impl pallet_grandpa::Config for Runtime {
     type MaxNominators = MaxNominators;
     type MaxSetIdSessionEntries = MaxSetIdSessionEntries;
     type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
-    type EquivocationReportSystem = pallet_grandpa::EquivocationReportSystem<
-        Self,
-        liveness::EquivocationReports,
-        Historical,
-        ReportLongevity,
-    >;
+    type EquivocationReportSystem = incident_recovery_consensus::RecoveryGrandpaReports;
 }
 
 parameter_types! {
@@ -794,9 +798,10 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+    type SessionManager =
+        pallet_session::historical::NoteHistoricalRoot<Self, staking_async::LocalSession>;
     type Keys = opaque::SessionKeys;
-    type ShouldEndSession = Babe;
+    type ShouldEndSession = incident_recovery::RecoverySessionBoundary;
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
     type RuntimeEvent = RuntimeEvent;
     type ValidatorId = AccountId;
@@ -811,7 +816,7 @@ impl pallet_session::Config for Runtime {
 impl pallet_session::historical::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
-    type FullIdentificationOf = pallet_staking::DefaultExposureOf<Runtime>;
+    type FullIdentificationOf = staking_async::DefaultExposureOf;
 }
 
 impl pallet_authorship::Config for Runtime {
@@ -819,14 +824,8 @@ impl pallet_authorship::Config for Runtime {
     type EventHandler = (impls::StakingRewardPoints, ImOnline);
 }
 
-/// A reasonable benchmarking config for staking pallet.
-pub struct StakingBenchmarkingConfig;
-impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
-    type MaxValidators = ConstU32<1000>;
-    type MaxNominators = ConstU32<1000>;
-}
-
 parameter_types! {
+    pub const StakingRewardPotId: PalletId = PalletId(*b"sora/stk");
     pub const MaxExposurePageSize: u32 = 256;
     pub const MaxControllersInDeprecationBatch: u32 = 5900;
 }
@@ -839,36 +838,43 @@ type StakingAdminOrigin = EitherOfDiverse<
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 >;
 
+impl staking_async::Config for Runtime {}
+
 impl pallet_staking::Config for Runtime {
     type OldCurrency = Balances;
     type Currency = Balances;
     type RuntimeHoldReason = RuntimeHoldReason;
     type CurrencyBalance = Balance;
-    type UnixTime = Timestamp;
     type CurrencyToVote = U128CurrencyToVote;
     type RewardRemainder = ();
-    type RuntimeEvent = RuntimeEvent;
     type Slash = ();
     type Reward = ();
     type SessionsPerEra = SessionsPerEra;
+    type PlanningEraOffset = ConstU32<1>;
+    type NominatorFastUnbondDuration = BondingDuration;
     type BondingDuration = BondingDuration;
     type SlashDeferDuration = SlashDeferDuration;
+    type SlashDeferOffset = ConstU32<1>;
     type AdminOrigin = StakingAdminOrigin;
-    type SessionInterface = liveness::SlashOnlySessionInterface;
     type EraPayout = xor_fee_impls::ValEraPayout;
     type AdditionalPayout = xor_fee_impls::StakingValPayout;
-    type NextNewSession = Session;
     type MaxValidatorSet = MaxActiveValidators;
     type VoterList = BagsList;
-    type ElectionProvider = ElectionProviderMultiPhase;
-    type BenchmarkingConfig = StakingBenchmarkingConfig;
+    type ElectionProvider = staking_async::LocalElection;
     type MaxUnlockingChunks = ConstU32<32>;
     type NominationsQuota = pallet_staking::FixedNominationsQuota<MAX_QUOTA_NOMINATIONS>;
     type MaxExposurePageSize = MaxExposurePageSize;
     type MaxControllersInDeprecationBatch = MaxControllersInDeprecationBatch;
-    type GenesisElectionProvider = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type HistoryDepth = frame_support::traits::ConstU32<84>;
     type EventListeners = ();
+    type DisableMinting = ConstBool<false>;
+    type UnclaimedRewardHandler = ();
+    type RewardPots = pallet_staking::Seed<StakingRewardPotId>;
+    type StakerRewardCalculator = pallet_staking::reward::DefaultStakerRewardCalculator<Self>;
+    type MaxEraDuration = frame_support::traits::ConstU64<{ u64::MAX }>;
+    type MaxPruningItems = ConstU32<100>;
+    type RcClientInterface = staking_async::LocalSession;
+    type IsValidatorInactive = ();
     type Filter = Nothing;
     type TargetList = pallet_staking::UseValidatorsMap<Self>;
     type WeightInfo = ();
@@ -925,7 +931,7 @@ parameter_types! {
         .targets_count((MaxElectableTargets::get() as u32).into())
         .build();
     pub NposSolutionPriority: TransactionPriority =
-        Perbill::from_percent(90) * TransactionPriority::max_value();
+        Perbill::from_percent(90) * TransactionPriority::MAX;
 }
 
 generate_solution_type!(
@@ -946,7 +952,7 @@ impl onchain::Config for OnChainSeqPhragmen {
     type Sort = ConstBool<true>;
     type System = Runtime;
     type Solver = SequentialPhragmen<AccountId, OnChainAccuracy>;
-    type DataProvider = Staking;
+    type DataProvider = staking_async::LocalElectionData;
     type WeightInfo = ();
     type Bounds = ElectionBoundsOnChain;
     type MaxBackersPerWinner = MaxBackersPerWinner;
@@ -1001,7 +1007,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type BetterSignedThreshold = ();
     type OffchainRepeat = OffchainRepeat;
     type MinerTxPriority = NposSolutionPriority;
-    type DataProvider = Staking;
+    type DataProvider = staking_async::LocalElectionData;
     type Fallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type GovernanceFallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type Solver = SequentialPhragmen<
@@ -1109,7 +1115,7 @@ impl pallet_balances::Config for Runtime {
     /// The ubiquitous event type.
     type RuntimeEvent = RuntimeEvent;
     type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
+    type AccountStore = incident_recovery::RecoveryNativeAccounts;
     type WeightInfo = ();
     type FreezeIdentifier = ();
     type MaxLocks = MaxLocks;
@@ -1149,7 +1155,7 @@ impl tokens::Config for Runtime {
     type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
+    type CurrencyHooks = incident_recovery::RecoveryCurrencyHooks;
     type MaxLocks = MaxLocksTokens;
     type MaxReserves = ();
     type ReserveIdentifier = ();
@@ -1602,6 +1608,7 @@ where
             .saturating_sub(1);
         let charge_tx_payment = charge_tx_payment_extension();
         let extra: SignedExtra = (
+            frame_system::AuthorizeCall::new(),
             frame_system::CheckSpecVersion::<Runtime>::new(),
             frame_system::CheckTxVersion::<Runtime>::new(),
             frame_system::CheckGenesis::<Runtime>::new(),
@@ -1633,6 +1640,35 @@ where
 {
     fn create_bare(call: RuntimeCall) -> UncheckedExtrinsic {
         UncheckedExtrinsic::new_bare(call)
+    }
+}
+
+impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    type Extension = SignedExtra;
+
+    fn create_transaction(call: RuntimeCall, extension: Self::Extension) -> Self::Extrinsic {
+        UncheckedExtrinsic::new_transaction(call, extension)
+    }
+}
+
+impl<LocalCall> frame_system::offchain::CreateAuthorizedTransaction<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_extension() -> Self::Extension {
+        (
+            frame_system::AuthorizeCall::new(),
+            frame_system::CheckSpecVersion::new(),
+            frame_system::CheckTxVersion::new(),
+            frame_system::CheckGenesis::new(),
+            frame_system::CheckEra::from(generic::Era::Immortal),
+            frame_system::CheckNonce::from(0),
+            frame_system::CheckWeight::new(),
+            charge_tx_payment_extension(),
+        )
     }
 }
 
@@ -1836,6 +1872,7 @@ parameter_types! {
 
 impl bridge_multisig::Config for Runtime {
     type CallFilter = BridgeMultisigCallFilter;
+    type OperationFilter = bridge_multisig_filter::BridgeMultisigOperationFilter;
     type RuntimeCall = RuntimeCall;
     type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
@@ -1961,6 +1998,7 @@ impl eth_bridge::Config for Runtime {
     type WeightToFee = XorFee;
     type MessageStatusNotifier = BridgeProxy;
     type BridgeAssetLockChecker = BridgeProxy;
+    type IncomingAccountResolver = incident_recovery_incoming::PersistentAccountResolver;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type Denominator = Denomination;
     type MaxRequestsPerQueue = MaxEthBridgeRequestsPerQueue;
@@ -2268,7 +2306,7 @@ impl liveness::Config for Runtime {
 impl pallet_offences::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
-    type OnOffenceHandler = Staking;
+    type OnOffenceHandler = staking_async::LocalOffences;
 }
 
 parameter_types! {
@@ -2552,7 +2590,7 @@ parameter_types! {
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
-        Perbill::from_percent(10) * TransactionPriority::max_value();
+        Perbill::from_percent(10) * TransactionPriority::MAX;
     // 10 blocks, if tx spoils, worker will resend it
     pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 10;
     pub const KensetsuMaxAccruesPerBlock: u32 = 10;
@@ -2585,7 +2623,7 @@ impl kensetsu::Config for Runtime {
 
 parameter_types! {
     pub ApolloOffchainWorkerTxPriority: TransactionPriority =
-        Perbill::from_percent(10) * TransactionPriority::max_value();
+        Perbill::from_percent(10) * TransactionPriority::MAX;
     pub ApolloOffchainWorkerTxLongevity: TransactionLongevity = 100;
     pub const ApolloMaxLiquidationsPerBlock: u32 = 1;
 }
@@ -2819,8 +2857,8 @@ parameter_types! {
 }
 
 impl bridge_channel::inbound::Config for Runtime {
-    type Verifier = MultiVerifier;
-    type MessageDispatch = Dispatch;
+    type Verifier = GenericChannelVerifier;
+    type MessageDispatch = incident_recovery_incoming::RecoveryGenericMessageDispatch;
     type WeightInfo = ();
     type ThisNetworkId = ThisNetworkId;
     type UnsignedPriority = DataSignerPriority;
@@ -2860,7 +2898,7 @@ parameter_types! {
     pub const DescendantsUntilFinalized: u8 = 30;
     pub const VerifyPoW: bool = true;
     // Not as important as some essential transactions (e.g. im_online or similar ones)
-    pub EthereumLightClientPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    pub EthereumLightClientPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::MAX;
     // We don't want to have not relevant imports be stuck in transaction pool
     // for too long
     pub EthereumLightClientLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
@@ -2899,6 +2937,7 @@ impl evm_fungible_app::Config for Runtime {
 }
 
 impl jetton_app::Config for Runtime {
+    type Enabled = frame_support::traits::ConstBool<false>;
     type CallOrigin = dispatch::EnsureAccount<
         bridge_types::types::CallOriginOutput<
             GenericNetworkId,
@@ -2963,6 +3002,7 @@ impl snowbridge_pallet_ethereum_client::Config for Runtime {
 
 impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type RefundAccountResolver = incident_recovery_incoming::PersistentAccountResolver;
 
     #[cfg(feature = "wip")] // EVM bridge
     type FAApp = EVMFungibleApp;
@@ -2975,8 +3015,7 @@ impl bridge_proxy::Config for Runtime {
     type LiberlandApp = SubstrateBridgeApp;
 
     type TimepointProvider = GenericTimepointProvider;
-    type ReferencePriceProvider =
-        liquidity_proxy::ReferencePriceProvider<Runtime, GetReferenceDexId, GetReferenceAssetId>;
+    type ReferencePriceProvider = bridge_reference_price::AveragedBridgeReferencePrice;
     type ManagerOrigin = EitherOfDiverse<
         pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 2, 3>,
         EnsureRoot<AccountId>,
@@ -2985,9 +3024,47 @@ impl bridge_proxy::Config for Runtime {
     type AccountIdConverter = sp_runtime::traits::Identity;
 }
 
+parameter_types! {
+    pub const BridgeHaltMaxGuardians: u32 = 32;
+    pub const BridgeHaltMaxReasonLength: u32 = 256;
+    /// One minute between halts. Guardians who react to the same incident send
+    /// one halt, and a guardian key cannot fill blocks with free calls. Devops
+    /// cannot restart the workers that fast, so it never holds back a needed halt.
+    pub const BridgeHaltCooldown: BlockNumber = 10;
+    /// Guardians that `migrations::SeedBridgeHaltGuardians` installs once, in the
+    /// upgrade that adds BridgeHalt, so a halt works as soon as it is enacted.
+    /// Governance manages the list after that.
+    pub BridgeHaltInitialGuardians: Vec<AccountId> = vec![
+        // cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY
+        AccountId::new(hex!("20bc37a28e010164d91ab08cd4b985db5ea4c83f93dca42f8c87c247d8c8a137")),
+    ];
+}
+
+/// Emergency stop for the bridge workers. Guardians halt fee-free and ahead of
+/// every other transaction; see `xor_fee_impls::validate_bridge_fee_exemption`
+/// for transaction admission, `operational_admission` for wrapped halts and
+/// `pool_priority` for the ordering. The HASHI offchain workers stop on a halt
+/// until devops restart each node with `--bridge-resume-after-halt`.
+impl bridge_halt::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    /// The same authority that manages BridgeProxy.
+    type GuardianOrigin = EitherOfDiverse<
+        pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCollective, 2, 3>,
+        EnsureRoot<AccountId>,
+    >;
+    type MaxGuardians = BridgeHaltMaxGuardians;
+    type MaxReasonLength = BridgeHaltMaxReasonLength;
+    type HaltCooldown = BridgeHaltCooldown;
+    type WeightInfo = bridge_halt::weights::SubstrateWeight<Runtime>;
+}
+
 #[cfg(feature = "wip")] // Trustless substrate bridge
 impl beefy_light_client::Config for Runtime {
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
+    // Remote BEEFY sets have their own explicit limit; do not infer it from
+    // this chain's local staking or authority limits. This pallet remains WIP.
+    type MaxValidators = ConstU32<1024>;
+    type WeightInfo = beefy_light_client::weights::SubstrateWeight<Self>;
 }
 
 impl dispatch::Config<dispatch::Instance2> for Runtime {
@@ -3002,9 +3079,18 @@ impl dispatch::Config<dispatch::Instance2> for Runtime {
     type BenchmarkHelper = SubstrateDispatchBenchmarkHelper;
 }
 
+pub struct SubstrateResponseCapacity;
+
+impl frame_support::traits::Contains<(SubNetworkId, u32)> for SubstrateResponseCapacity {
+    fn contains((network, responses): &(SubNetworkId, u32)) -> bool {
+        SubstrateBridgeOutboundChannel::can_queue_messages(*network, *responses)
+    }
+}
+
 impl substrate_bridge_channel::inbound::Config for Runtime {
     type Verifier = MultiVerifier;
-    type MessageDispatch = SubstrateDispatch;
+    type MessageDispatch = incident_recovery_incoming::RecoverySubstrateMessageDispatch;
+    type ResponseCapacity = SubstrateResponseCapacity;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
@@ -3014,6 +3100,202 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
 }
 
 pub struct MultiVerifier;
+
+/// Substrate commitments belong to the dedicated Substrate channel. Sharing
+/// their verifier with the generic channel must not create another nonce domain
+/// in which the same authenticated commitment can be consumed.
+pub struct GenericChannelVerifier;
+
+impl Verifier for GenericChannelVerifier {
+    type Proof = MultiProof;
+
+    fn verify(
+        network_id: GenericNetworkId,
+        message: H256,
+        proof: &Self::Proof,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        // The shared pallet's synthetic benchmark uses an empty Substrate
+        // batch. This proof variant is absent from non-benchmark runtimes.
+        #[cfg(feature = "runtime-benchmarks")]
+        if matches!(proof, MultiProof::Empty) && matches!(network_id, GenericNetworkId::Sub(_)) {
+            return Ok(());
+        }
+        frame_support::ensure!(
+            matches!(
+                network_id,
+                GenericNetworkId::EVM(_) | GenericNetworkId::TON(_)
+            ),
+            multisig_verifier::Error::<Runtime>::InvalidNetworkId
+        );
+        MultiVerifier::verify(network_id, message, proof)
+    }
+
+    fn verify_weight(proof: &Self::Proof) -> Weight {
+        MultiVerifier::verify_weight(proof)
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof> {
+        MultiVerifier::valid_proof()
+    }
+}
+
+#[cfg(test)]
+mod bridge_surface_tests {
+    use super::*;
+    use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem};
+    use bridge_types::U256;
+    use codec::Decode;
+    use frame_support::{assert_noop, assert_ok};
+    use sp_core::{ecdsa, Pair};
+    use sp_runtime::traits::{Dispatchable, Hash};
+
+    #[test]
+    fn substrate_proof_cannot_consume_a_generic_channel_nonce() {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let network = GenericNetworkId::Sub(SubNetworkId::Polkadot);
+            let signer = ecdsa::Pair::from_seed(&[47; 32]);
+            assert_ok!(MultisigVerifier::force_set_peers(
+                RuntimeOrigin::root(),
+                network,
+                vec![signer.public()].try_into().unwrap(),
+            ));
+            let commitment = bridge_types::GenericCommitment::<
+                BridgeMaxMessagesPerCommit,
+                BridgeMaxMessagePayloadSize,
+            >::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: Default::default(),
+            });
+            let hash = commitment.hash();
+            let digest = AuxiliaryDigest {
+                logs: vec![AuxiliaryDigestItem::Commitment(ThisNetworkId::get(), hash)],
+            };
+            let proof = MultiProof::Multisig(multisig_verifier::Proof {
+                proof: vec![signer.sign_prehashed(Keccak256::hash_of(&digest).as_fixed_bytes())],
+                digest,
+            });
+            assert_ok!(SubstrateBridgeInboundChannel::validate_submission(
+                SubNetworkId::Polkadot,
+                &commitment,
+                &proof,
+            ));
+            assert_noop!(
+                BridgeInboundChannel::submit(
+                    RuntimeOrigin::signed(AccountId::new([48; 32])),
+                    network,
+                    commitment,
+                    proof,
+                ),
+                multisig_verifier::Error::<Runtime>::InvalidNetworkId
+            );
+            assert_eq!(
+                bridge_channel::inbound::ChannelNonces::<Runtime>::get(network),
+                0
+            );
+        });
+    }
+
+    #[test]
+    fn unused_beacon_calls_keep_their_encoding_but_cannot_dispatch() {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let call = RuntimeCall::EthereumBeaconClient(
+                snowbridge_pallet_ethereum_client::Call::set_operating_mode {
+                    mode: Default::default(),
+                },
+            );
+            assert_eq!(call.encode(), vec![118, 3, 0]);
+            assert_eq!(RuntimeCall::decode(&mut &call.encode()[..]).unwrap(), call);
+            assert!(!BaseCallFilter::contains(&call));
+            assert_noop!(
+                call.clone()
+                    .dispatch(RuntimeOrigin::signed(AccountId::new([49; 32]))),
+                frame_system::Error::<Runtime>::CallFiltered
+            );
+            let nested =
+                RuntimeCall::Utility(pallet_utility::Call::batch_all { calls: vec![call] });
+            assert_noop!(
+                nested
+                    .dispatch(RuntimeOrigin::signed(AccountId::new([49; 32])))
+                    .map_err(|error| error.error),
+                frame_system::Error::<Runtime>::CallFiltered
+            );
+        });
+    }
+
+    #[test]
+    fn bridge_status_weights_cover_refunds_and_each_report_result() {
+        use bridge_types::traits::MessageStatusNotifier;
+        use frame_support::dispatch::GetDispatchInfo;
+        sp_io::TestExternalities::default().execute_with(|| {
+            let refund = <BridgeProxy as MessageStatusNotifier<AssetId, AccountId, Balance>>::
+                update_status_weight();
+            assert!(refund.ref_time() > 0 && refund.proof_size() > 0);
+            for asset_weight in [
+                <<Runtime as assets::Config>::WeightInfo as assets::WeightInfo>::mint(),
+                <<Runtime as assets::Config>::WeightInfo as assets::WeightInfo>::transfer(),
+            ] {
+                assert!(asset_weight.all_lte(refund));
+            }
+            let substrate = substrate_bridge_app::Call::<Runtime>::update_transaction_status {
+                message_id: H256::zero(),
+                message_status: bridge_types::types::MessageStatus::Failed,
+            }
+            .get_dispatch_info()
+            .call_weight;
+            let parachain = parachain_bridge_app::Call::<Runtime>::update_transaction_status {
+                message_id: H256::zero(),
+                transfer_status: bridge_types::substrate::XCMAppTransferStatus::XCMTransferError,
+            }
+            .get_dispatch_info()
+            .call_weight;
+            for weight in [substrate, parachain] {
+                assert!(weight.ref_time() >= refund.ref_time());
+                assert!(weight.proof_size() >= refund.proof_size());
+            }
+            let report_weight = |count| {
+                let commitment = bridge_types::GenericCommitment::EVM(
+                    bridge_types::evm::Commitment::StatusReport(bridge_types::evm::StatusReport {
+                        channel: H160::zero(),
+                        block_number: 1,
+                        relayer: H160::zero(),
+                        nonce: 1,
+                        results: vec![false; count].try_into().unwrap(),
+                        gas_spent: U256::zero(),
+                        base_fee: U256::zero(),
+                    }),
+                );
+                bridge_channel::inbound::Call::<Runtime>::submit {
+                    network_id: GenericNetworkId::EVM(H256::repeat_byte(1)),
+                    commitment,
+                    proof: MultiProof::EVMMultisig(multisig_verifier::MultiEVMProof {
+                        proof: vec![
+                            sp_core::ecdsa::Signature::from_raw([0; 65]);
+                            BridgeMaxPeers::get() as usize
+                        ],
+                    }),
+                }
+                .get_dispatch_info()
+                .call_weight
+            };
+            // The channel conservatively accounts for three admission/dispatch
+            // passes; its notifier component must grow for every bounded result.
+            for count in [1, 20, BridgeMaxMessagePayloadSize::get() as usize] {
+                assert_eq!(
+                    report_weight(count).saturating_sub(report_weight(0)),
+                    refund.saturating_mul(3 * count as u64)
+                );
+                // Count the largest peer proof too: existing legitimate report
+                // batches must remain admissible after charging full refunds.
+                let normal_limit = BlockWeights::get()
+                    .get(frame_support::dispatch::DispatchClass::Normal)
+                    .max_extrinsic
+                    .unwrap();
+                assert!(report_weight(count).all_lte(normal_limit));
+            }
+        });
+    }
+}
 
 #[derive(
     Clone,
@@ -3046,6 +3328,12 @@ impl Verifier for MultiVerifier {
         message: H256,
         proof: &Self::Proof,
     ) -> frame_support::pallet_prelude::DispatchResult {
+        // TON is disabled at the verifier boundary, before nonce consumption or
+        // dispatch. Keep its historical storage and proof encoding untouched.
+        frame_support::ensure!(
+            !matches!(network_id, GenericNetworkId::TON(_)),
+            jetton_app::Error::<Runtime>::BridgeDisabled
+        );
         match proof {
             #[cfg(feature = "wip")] // Trustless substrate bridge
             MultiProof::Beefy(proof) => BeefyLightClient::verify(network_id, message, proof),
@@ -3127,7 +3415,7 @@ parameter_types! {
     pub const BridgeMaxPeers: u32 = 50;
     pub const BridgeMinPeers: u32 = 4;
     // Not as important as some essential transactions (e.g. im_online or similar ones)
-    pub DataSignerPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    pub DataSignerPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::MAX;
     // We don't want to have not relevant imports be stuck in transaction pool
     // for too long
     pub DataSignerLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
@@ -3266,6 +3554,7 @@ impl denomination::Config for Runtime {
 }
 
 construct_runtime! {
+    #[dispatch_origin_guard(crate::incident_recovery_origin::check, crate::incident_recovery_origin::weight)]
     pub enum Runtime {
         System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>} = 0,
 
@@ -3292,8 +3581,9 @@ construct_runtime! {
         // Resolve the boundary block's author against the incoming session and era.
         Authorship: pallet_authorship::{Pallet, Storage} = 16,
         Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config<T>, Event, ValidateUnsigned} = 15,
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, Config<T>} = 36,
         Liveness: liveness::{Pallet, Storage} = 120,
+        StakingAsyncBridge: staking_async::{Pallet, Storage} = 121,
 
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
@@ -3347,6 +3637,8 @@ construct_runtime! {
 
         // Generic bridges pallets
         BridgeProxy: bridge_proxy::{Pallet, Call, Storage, Event} = 103,
+        // Guardian-operated emergency halt for every bridge.
+        BridgeHalt: bridge_halt::{Pallet, Call, Storage, Event<T>} = 122,
 
         // Trustless EVM bridge
         BridgeInboundChannel: bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 96,
@@ -3759,20 +4051,16 @@ pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 pub type SignedBlock = generic::SignedBlock<Block>;
 /// BlockId type as expected by this runtime.
 pub type BlockId = generic::BlockId<Block>;
-#[allow(deprecated)]
-pub type ChargeTxPaymentInnerExtension = AsTransactionExtension<ChargeTransactionPayment<Runtime>>;
-pub type ChargeTxPaymentExtension =
-    pallet_skip_feeless_payment::SkipCheckIfFeeless<Runtime, ChargeTxPaymentInnerExtension>;
+// The adapter contains SkipCheckIfFeeless so its bare-heartbeat guard remains outermost.
+pub type ChargeTxPaymentExtension = authorized_heartbeat_payment::AuthorizedHeartbeatPayment;
 
-#[allow(deprecated)]
 pub fn charge_tx_payment_extension() -> ChargeTxPaymentExtension {
-    ChargeTxPaymentExtension::from(AsTransactionExtension(
-        ChargeTransactionPayment::<Runtime>::new(),
-    ))
+    ChargeTxPaymentExtension::from(ChargeTransactionPayment::<Runtime>::new())
 }
 
-/// The SignedExtension to the basic transaction logic.
+/// The transaction extension pipeline for signed and authorized transactions.
 pub type SignedExtra = (
+    frame_system::AuthorizeCall<Runtime>,
     frame_system::CheckSpecVersion<Runtime>,
     frame_system::CheckTxVersion<Runtime>,
     frame_system::CheckGenesis<Runtime>,
@@ -3786,12 +4074,13 @@ pub type UncheckedExtrinsic =
     generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, RuntimeCall, SignedExtra>;
-/// Executive: handles dispatch to the various modules.
+/// Executive: handles dispatch to the various modules. Unsigned validation is
+/// the runtime's own, capped below a guardian's bridge halt (`pool_priority`).
 pub type Executive = frame_executive::Executive<
     Runtime,
     Block,
     frame_system::ChainContext<Runtime>,
-    Runtime,
+    pool_priority::UnsignedBelowGuardianHalt,
     AllPalletsWithSystem,
     (),
 >;
@@ -3839,12 +4128,14 @@ impl_runtime_apis! {
         }
 
         fn execute_block(block: <Block as BlockT>::LazyBlock) {
+            incident_recovery::assert_final_runtime_admission(&block.header);
             Executive::execute_block(block)
         }
 
         fn initialize_block(
             header: &<Block as BlockT>::Header,
         ) -> sp_runtime::ExtrinsicInclusionMode {
+            incident_recovery::assert_final_runtime_admission(header);
             Executive::initialize_block(header)
         }
     }
@@ -4242,6 +4533,24 @@ impl_runtime_apis! {
         >)>, DispatchError> {
             EthBridge::get_registered_assets(network_id)
         }
+
+        fn recovery_hashi_prepare(
+            parent_header: Vec<u8>, operation: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiPreparation, DispatchError> {
+            incident_recovery_incoming::witness::prepare(parent_header, operation)
+        }
+
+        fn recovery_hashi_admit(
+            parent_header: Vec<u8>, operation: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiAdmission, DispatchError> {
+            incident_recovery_incoming::witness::admit(parent_header, operation)
+        }
+
+        fn recovery_hashi_prepare_source(
+            parent_header: Vec<u8>, operation: Vec<u8>, source: Vec<u8>,
+        ) -> Result<eth_bridge_runtime_api::recovery::RecoveryHashiSourcePreparation, DispatchError> {
+            incident_recovery_incoming::witness::source::prepare_source(parent_header, operation, source)
+        }
     }
 
     impl iroha_migration_runtime_api::IrohaMigrationAPI<Block> for Runtime {
@@ -4253,8 +4562,7 @@ impl_runtime_apis! {
     #[cfg(feature = "wip")] // Trustless substrate bridge
     impl beefy_light_client_runtime_api::BeefyLightClientAPI<Block, beefy_light_client::BitField> for Runtime {
         fn get_random_bitfield(network_id: SubNetworkId, prior: beefy_light_client::BitField, num_of_validators: u32) -> beefy_light_client::BitField {
-            let len = prior.len() as usize;
-            BeefyLightClient::create_random_bit_field(network_id, prior, num_of_validators).unwrap_or(beefy_light_client::BitField::with_capacity(len))
+            BeefyLightClient::create_random_bit_field(network_id, prior, num_of_validators).unwrap_or_else(|_| beefy_light_client::BitField::with_zeroes(0))
         }
     }
 
@@ -4381,11 +4689,11 @@ impl_runtime_apis! {
             }
 
             fn generate_key_ownership_proof(
-                    _slot_number: sp_consensus_babe::Slot,
+                    slot_number: sp_consensus_babe::Slot,
                     authority_id: sp_consensus_babe::AuthorityId,
             ) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
                     use codec::Encode;
-                    Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
+                    incident_recovery_consensus::prove_babe(slot_number, authority_id)
                             .map(|p| p.encode())
                             .map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
             }
@@ -4600,11 +4908,11 @@ impl_runtime_apis! {
         }
 
         fn generate_key_ownership_proof(
-            _set_id: fg_primitives::SetId,
+            set_id: fg_primitives::SetId,
             authority_id: GrandpaId,
         ) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
             use codec::Encode;
-            Historical::prove((fg_primitives::KEY_TYPE, authority_id))
+            incident_recovery_consensus::prove_grandpa(set_id, authority_id)
                 .map(|p| p.encode())
                 .map(fg_primitives::OpaqueKeyOwnershipProof::new)
         }
@@ -4685,6 +4993,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             list_benchmark!(list, extra, evm_fungible_app, EVMFungibleApp);
+            #[cfg(feature = "wip")]
+            list_benchmark!(list, extra, beefy_light_client, BeefyLightClient);
             list_benchmark!(list, extra, jetton_app, JettonApp);
 
             list_benchmark!(list, extra, evm_bridge_proxy, BridgeProxy);
@@ -4700,6 +5010,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, extended_assets, ExtendedAssets);
 
             list_benchmark!(list, extra, soratopia, Soratopia);
+            list_benchmark!(list, extra, bridge_halt, BridgeHalt);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -4777,6 +5088,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, bridge_outbound_channel, BridgeOutboundChannel);
             #[cfg(feature = "wip")] // EVM bridge
             add_benchmark!(params, batches, evm_fungible_app, EVMFungibleApp);
+            #[cfg(feature = "wip")]
+            add_benchmark!(params, batches, beefy_light_client, BeefyLightClient);
             add_benchmark!(params, batches, jetton_app, JettonApp);
 
             add_benchmark!(params, batches, evm_bridge_proxy, BridgeProxy);
@@ -4792,6 +5105,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, extended_assets, ExtendedAssets);
 
             add_benchmark!(params, batches, soratopia, Soratopia);
+            add_benchmark!(params, batches, bridge_halt, BridgeHalt);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
@@ -4859,3 +5173,15 @@ impl_runtime_apis! {
         }
     }
 }
+
+// Native-only fixture exporter; appended to preserve existing production source positions.
+#[cfg(test)]
+mod incident_recovery_hashi_preview_tests;
+
+#[cfg(test)]
+mod ton_disabled_tests;
+
+#[cfg(all(test, feature = "wip"))]
+mod beefy_resource_tests;
+
+mod bridge_reference_price;

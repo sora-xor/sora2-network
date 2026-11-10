@@ -1,5 +1,8 @@
 # Dependency Audit After Polkadot Stable 2603
 
+> Historical review, superseded by the [2026-10-24 dependency security review](dependency_audit_2026-10-24.md).
+> The findings below describe the former `stable2603-3` dependency graph.
+
 `cargo audit` still reports vulnerable transitive crates after the upgrade to
 `polkadot-stable2603-3`. These are not currently fixable with a normal
 `cargo update` because the vulnerable versions are pinned by upstream SDK or

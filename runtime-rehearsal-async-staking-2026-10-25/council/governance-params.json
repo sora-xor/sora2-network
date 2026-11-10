@@ -1,0 +1,215 @@
+{
+  "checkedAt": "2026-10-25T14:13:43.441Z",
+  "endpoint": "wss://mof2.sora.org",
+  "blockHash": "0x56caa1ca82b13b20f5dd0b270bc64afb3053b413a410bf4eebc5b0dabf16511a",
+  "blockNumber": 28191490,
+  "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "liveRuntime": {
+    "specName": "sora-substrate",
+    "implName": "sora-substrate",
+    "authoringVersion": 1,
+    "specVersion": 134,
+    "implVersion": 1,
+    "apis": [
+      [
+        "0xdf6acb689907609b",
+        5
+      ],
+      [
+        "0x37e397fc7c91f5e4",
+        2
+      ],
+      [
+        "0x40fe3ad401f8959a",
+        6
+      ],
+      [
+        "0xd2bc9897eed08f15",
+        3
+      ],
+      [
+        "0xf78b278be53f454c",
+        2
+      ],
+      [
+        "0xab3c0572291feb8b",
+        2
+      ],
+      [
+        "0x37c8bb1350a9a2a8",
+        4
+      ],
+      [
+        "0x49a15104d14de433",
+        1
+      ],
+      [
+        "0x3c174d7764069e61",
+        2
+      ],
+      [
+        "0x0f3489937d1c2064",
+        1
+      ],
+      [
+        "0x7b08daa9d117c89b",
+        1
+      ],
+      [
+        "0xd83dc51e16a813fc",
+        1
+      ],
+      [
+        "0xf8e0c25200c466cc",
+        1
+      ],
+      [
+        "0x7714ae7197b04674",
+        1
+      ],
+      [
+        "0xfa5dc115e8dd759b",
+        3
+      ],
+      [
+        "0x8fd89fd41faef876",
+        1
+      ],
+      [
+        "0xc890b8837395d703",
+        1
+      ],
+      [
+        "0x5cb928f4410f41fc",
+        1
+      ],
+      [
+        "0xcbca25e39f142387",
+        2
+      ],
+      [
+        "0xbc9d89904f5b923f",
+        1
+      ],
+      [
+        "0x49eaaf1b548a0cb0",
+        6
+      ],
+      [
+        "0x91d5df18b0d2cf58",
+        3
+      ],
+      [
+        "0xed99c5acb25eedf5",
+        3
+      ],
+      [
+        "0xeb4d485ae89fbcb5",
+        1
+      ],
+      [
+        "0x8e688fe9454ac970",
+        1
+      ],
+      [
+        "0x4ee6f974cd3d43f9",
+        2
+      ],
+      [
+        "0x98deaed7652aeff9",
+        1
+      ],
+      [
+        "0xfbc577b9d747efd6",
+        1
+      ]
+    ],
+    "transactionVersion": 131,
+    "systemVersion": 0,
+    "stateVersion": 0
+  },
+  "liveCodeSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
+  "liveMetadataSha256": "70fb15b7f598a58fc71a174af66df68b9136a2e87ec51dcd56aa279165cd6ba4",
+  "candidateSpecVersion": 137,
+  "candidateTransactionVersion": 133,
+  "candidateSha256": "535b6499c78769a62701520d0bdf17ef65f07319450ca69a5264e99410e1910f",
+  "candidateBlake2_256": "0x1b5d5366f3f72542da23a6ee7558068bc117ab4cec22d219c79fca51e1c38622",
+  "upgradeCall": {
+    "section": "system",
+    "method": "setCode",
+    "codeFile": "sora-nexus-runtime-137.compact.compressed.wasm",
+    "callIndex": "0,2",
+    "wasmBytes": 1959169
+  },
+  "preimage": {
+    "section": "preimage",
+    "method": "notePreimage",
+    "bytesFile": "runtime.preimage.hex",
+    "binaryBytesFile": "runtime.preimage.call",
+    "callHexFile": "note-preimage.hex",
+    "proposalHash": "0x31d3bee4e348dc89b97d2fde74f3d49be846c4127b75d640f513b747066bc36c",
+    "proposalLen": 1959175,
+    "existingStatus": null,
+    "existingRequestStatus": null
+  },
+  "council": {
+    "members": [
+      "cnSGoq13YebjhR8ATsSTEWef1VmueFmnA6H3zWwXHRaqj6jiN",
+      "cnSN33HpCwZqxQ4iVf3voVUJ9jx9wPULVMXw6iVgPgkeneNtM",
+      "cnUGD6KnZ4HsamuDRDwRHsMytEaYWcYfywcTprNyKypQZYBij",
+      "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq",
+      "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+      "cnVcjvUEVGbK4LGLB9K382EEKm57dxtmGYdiFfnjEWWg9vr72",
+      "cnWA5jrFjKWE9e5Tv7nysnQLqC2kEzBthc83ekqnkiHLfE33q",
+      "cnWn9rhK9CcCVWGGXs5MDYRd7QBm6s6T4cDsmNeFWZVF2t3Le"
+    ],
+    "memberCount": 8,
+    "threshold": 5,
+    "thresholdPolicy": "strict majority, matching the repository helper",
+    "length_bound": 39,
+    "proposal": {
+      "section": "democracy",
+      "method": "externalProposeMajority",
+      "args": {
+        "proposal": {
+          "Lookup": {
+            "hash": "0x31d3bee4e348dc89b97d2fde74f3d49be846c4127b75d640f513b747066bc36c",
+            "len": 1959175
+          }
+        }
+      }
+    },
+    "proposalHash": "0xaa82445c0b9eaf2d7529872b76c1e8a4f3ccc388c2ee551717a6b11297c60137",
+    "callHexFile": "council-propose.hex"
+  },
+  "optionalFastTrack": {
+    "members": [
+      "cnSSrHHm7AKjbKbS6a9KpCxzYhzptgnz47yCw4TVjSzYzpJQC",
+      "cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc",
+      "cnW7voz8dzsEb961QFqQC2RZE82wWhYbWfjcmaaCSfixC6wDw",
+      "cnXC9NAHCwcgmd6NWUFZ6rak6avn4fVKZVchXUFcRPTEi6Jza"
+    ],
+    "memberCount": 4,
+    "threshold": 3,
+    "voting_period": 1800,
+    "delay": 0,
+    "length_bound": 42,
+    "proposal": {
+      "section": "democracy",
+      "method": "fastTrack",
+      "args": {
+        "proposal_hash": "0x31d3bee4e348dc89b97d2fde74f3d49be846c4127b75d640f513b747066bc36c",
+        "voting_period": 1800,
+        "delay": 0
+      }
+    },
+    "proposalHash": "0x60cdf9a6d0dd62b424d86adc11a21dfe802c087a6a4c6e03c4f913cfc71e73c8",
+    "callHexFile": "technical-fast-track.hex",
+    "timingPolicy": "Current helper defaults for council review; timing is not a submission or activation instruction."
+  },
+  "currentExternalProposal": null,
+  "encodingVerifiedAgainstLiveMetadata": true,
+  "rpcPolicy": "Read-only public RPC; provider assertions trusted.",
+  "signaturesCreated": 0,
+  "transactionsSubmitted": 0
+}

@@ -51,10 +51,10 @@ use sc_service::config::PrometheusConfig;
 use sc_service::error::Error as ServiceError;
 use sc_service::{Configuration, TaskManager};
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
+use sp_blockchain::HeaderBackend;
 use sp_consensus_babe::inherents::BabeCreateInherentDataProviders;
 use sp_core::offchain::OffchainStorage;
 use sp_core::ByteArray;
-use sp_core::Pair;
 use sp_keystore::Keystore;
 use sp_runtime::offchain::STORAGE_PREFIX;
 use sp_runtime::traits::{Block as BlockT, IdentifyAccount};
@@ -68,13 +68,13 @@ use telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
 
 // Historical SORA runtimes on mainnet require these imports during sync, so the
 // node must expose them even in non-benchmark release builds.
-type HostFunctions = (
+pub(crate) type HostFunctions = (
     sp_io::SubstrateHostFunctions,
     frame_benchmarking::benchmarking::HostFunctions,
 );
 pub(crate) type FullClient =
     sc_service::TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
-type FullBackend = sc_service::TFullBackend<Block>;
+pub(crate) type FullBackend = sc_service::TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type TransactionPool = sc_transaction_pool::TransactionPoolHandle<Block, FullClient>;
 type FullGrandpaBlockImport =
@@ -86,6 +86,14 @@ type FullBeefyBlockImport = beefy_gadget::import::BeefyBlockImport<
     FullGrandpaBlockImport,
     BeefyId,
 >;
+type FullBabeBlockImport = sc_consensus_babe::BabeBlockImport<
+    Block,
+    FullClient,
+    FullBeefyBlockImport,
+    BabeCreateInherentDataProviders<Block>,
+    FullSelectChain,
+>;
+type RecoveryBabeBlockImport = crate::recovery::RecoveryBlockImport<FullBabeBlockImport>;
 type BridgePeerConfig = PeerConfig<<Runtime as eth_bridge::Config>::NetworkId>;
 const GRANDPA_JUSTIFICATION_PERIOD: u32 = 512;
 
@@ -255,6 +263,12 @@ fn set_offchain_u64_metric<S: OffchainStorage>(storage: &mut S, key: &[u8], valu
     storage.set(STORAGE_PREFIX, key, &value.encode());
 }
 
+fn remove_legacy_bridge_secret<S: OffchainStorage>(storage: &mut S) {
+    // Signing is handled by the keystore host API. Offchain local storage is
+    // readable through unsafe RPC and must never retain a private-key copy.
+    storage.remove(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY);
+}
+
 fn set_offchain_network_metric<S: OffchainStorage, N: core::fmt::Debug>(
     storage: &mut S,
     prefix: &str,
@@ -271,10 +285,10 @@ fn set_offchain_network_metric<S: OffchainStorage, N: core::fmt::Debug>(
 )]
 fn resolve_local_bridge_credentials<F>(
     public_keys: Vec<Vec<u8>>,
-    mut local_seed_for_public: F,
-) -> Result<Option<(Vec<u8>, Vec<u8>)>, ServiceError>
+    mut has_local_keypair: F,
+) -> Result<Option<Vec<u8>>, ServiceError>
 where
-    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<Option<Vec<u8>>, ServiceError>,
+    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<bool, ServiceError>,
 {
     let mut saw_any_public_key = false;
 
@@ -305,8 +319,8 @@ where
             substrate_public
         );
 
-        if let Some(seed) = local_seed_for_public(&bridge_public)? {
-            return Ok(Some((public_key_bytes, seed)));
+        if has_local_keypair(&bridge_public)? {
+            return Ok(Some(public_key_bytes));
         }
     }
 
@@ -327,20 +341,18 @@ where
 )]
 fn resolve_local_bridge_bootstrap<F, G>(
     public_keys: Vec<Vec<u8>>,
-    local_seed_for_public: F,
+    has_local_keypair: F,
     load_peer_config: G,
-) -> Result<Option<(Vec<u8>, Vec<u8>, BridgePeerConfig)>, ServiceError>
+) -> Result<Option<(Vec<u8>, BridgePeerConfig)>, ServiceError>
 where
-    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<Option<Vec<u8>>, ServiceError>,
+    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<bool, ServiceError>,
     G: FnOnce() -> Result<BridgePeerConfig, ServiceError>,
 {
-    let Some((marker, legacy_secret)) =
-        resolve_local_bridge_credentials(public_keys, local_seed_for_public)?
-    else {
+    let Some(marker) = resolve_local_bridge_credentials(public_keys, has_local_keypair)? else {
         return Ok(None);
     };
 
-    Ok(Some((marker, legacy_secret, load_peer_config()?)))
+    Ok(Some((marker, load_peer_config()?)))
 }
 
 #[allow(
@@ -350,6 +362,8 @@ where
 pub fn new_partial(
     config: &mut Configuration,
     telemetry_worker_handle: Option<TelemetryWorkerHandle>,
+    offline: bool,
+    recovery_evidence: Option<Arc<crate::recovery_evidence::Recorder>>,
 ) -> Result<
     sc_service::PartialComponents<
         FullClient,
@@ -362,13 +376,7 @@ pub fn new_partial(
                 sc_rpc::SubscriptionTaskExecutor,
             ) -> Result<crate::rpc::RpcExtension, sc_service::Error>,
             (
-                sc_consensus_babe::BabeBlockImport<
-                    Block,
-                    FullClient,
-                    FullBeefyBlockImport,
-                    BabeCreateInherentDataProviders<Block>,
-                    FullSelectChain,
-                >,
+                RecoveryBabeBlockImport,
                 sc_finality_grandpa::LinkHalf<Block, FullClient, FullSelectChain>,
                 sc_consensus_babe::BabeLink<Block>,
                 beefy_gadget::BeefyVoterLinks<Block, BeefyId>,
@@ -379,6 +387,8 @@ pub fn new_partial(
     >,
     ServiceError,
 > {
+    crate::recovery::validate_configuration(config)?;
+    let recovery = framenode_chain_spec::recovery::config(&*config.chain_spec).cloned();
     set_prometheus_registry(config)?;
 
     let telemetry = config
@@ -408,29 +418,71 @@ pub fn new_partial(
             vec![],
         )?;
     let client = Arc::new(client);
-    let bridge_public_keys = keystore_container
-        .keystore()
-        .keys(eth_bridge::KEY_TYPE)
-        .unwrap_or_default();
-    let bridge_bootstrap = resolve_local_bridge_bootstrap(
-        bridge_public_keys,
-        |public_key| {
-            let local_keystore = keystore_container.local_keystore();
-            local_keystore
-                .key_pair::<eth_bridge::offchain::crypto::Pair>(public_key)
-                .map(|key_pair| key_pair.map(|key_pair| key_pair.to_raw_vec()))
-                .map_err(|error| {
-                    ServiceError::Other(format!(
-                        "Failed to inspect local ethereum bridge keypair: {}",
-                        error
-                    ))
-                })
-        },
-        || {
-            let path = bridge_config_path(config)?;
-            load_bridge_peer_config(&path)
-        },
-    )?;
+    if let Some(recorder) = &recovery_evidence {
+        use sc_client_api::AuxStore as _;
+        let info = client.info();
+        let marker = client.get_aux(b"sora-nexus/recovery/checkpoint-imported/v1")?;
+        recorder.record(serde_json::json!({"kind":"database-open",
+            "bestHash":format!("{:#x}",info.best_hash),"bestNumber":info.best_number,
+            "finalizedHash":format!("{:#x}",info.finalized_hash),"finalizedNumber":info.finalized_number,
+            "genesisHash":format!("{:#x}",info.genesis_hash),"checkpointMarkerPresent":marker.is_some(),
+        }),None).map_err(ServiceError::Other)?;
+    }
+    crate::recovery::validate_startup_network(
+        client.info().genesis_hash,
+        recovery.is_some(),
+        offline,
+    )
+    .map_err(ServiceError::Other)?;
+    if let Some(recovery) = &recovery {
+        crate::recovery::validate_database(&client, recovery)?;
+        if let Some(recorder) = &recovery_evidence {
+            recorder
+                .record_database_admission(&client)
+                .map_err(ServiceError::Other)?;
+        }
+        let grandpa_keys = keystore_container
+            .keystore()
+            .keys(sp_core::crypto::key_types::GRANDPA)
+            .map_err(|error| {
+                ServiceError::Other(format!("cannot inspect GRANDPA key identifiers: {error}"))
+            })?;
+        crate::recovery::validate_grandpa_keys(
+            recovery,
+            &grandpa_keys,
+            config.role.is_authority(),
+            crate::recovery::maintenance_active(&client, recovery)?,
+        )
+        .map_err(ServiceError::Other)?;
+    }
+    // Purge stale seeds for every startup mode, including recovery/offline modes
+    // that deliberately skip bootstrap. Do this before configuration can fail.
+    if let Some(mut storage) = backend.offchain_storage() {
+        remove_legacy_bridge_secret(&mut storage);
+    }
+    let bridge_bootstrap = if recovery.is_some() || offline {
+        // Recovery never re-arms HASHI from an operator's existing bridge files.
+        None
+    } else {
+        let bridge_public_keys = keystore_container
+            .keystore()
+            .keys(eth_bridge::KEY_TYPE)
+            .unwrap_or_default();
+        resolve_local_bridge_bootstrap(
+            bridge_public_keys,
+            |public_key| {
+                // Availability checks only need the public key and key type.
+                // Do not deserialize a secret pair during bootstrap.
+                Ok(keystore_container
+                    .keystore()
+                    .has_keys(&[(public_key.to_raw_vec(), eth_bridge::KEY_TYPE)]))
+            },
+            || {
+                let path = bridge_config_path(config)?;
+                load_bridge_peer_config(&path)
+            },
+        )?
+    };
 
     if let Some(mut storage) = backend.offchain_storage() {
         set_offchain_u64_metric(
@@ -446,7 +498,7 @@ pub fn new_partial(
         );
     }
 
-    if let Some((marker, legacy_secret, peer_config)) = bridge_bootstrap {
+    if let Some((marker, peer_config)) = bridge_bootstrap {
         let mut storage = backend.offchain_storage().ok_or_else(|| {
             ServiceError::Other(
                 "Ethereum bridge offchain storage is unavailable for local bridge bootstrap."
@@ -455,12 +507,6 @@ pub fn new_partial(
         })?;
         // Keep a non-secret OCW activation marker in offchain DB for bridge workers.
         storage.set(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY, &marker.encode());
-        // The deployed bridge runtime still reads the legacy 32-byte seed from the offchain DB.
-        storage.set(
-            STORAGE_PREFIX,
-            STORAGE_PEER_SECRET_KEY,
-            &legacy_secret.encode(),
-        );
         let mut network_ids = BTreeSet::new();
         for (net_id, params) in peer_config.networks {
             let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
@@ -552,7 +598,7 @@ pub fn new_partial(
         telemetry
     });
 
-    let grandpa_hard_forks = Vec::new();
+    let grandpa_hard_forks = crate::recovery::hard_forks(&*config.chain_spec);
 
     let (grandpa_block_import, grandpa_link) =
         sc_finality_grandpa::block_import_with_authority_set_hard_forks(
@@ -590,6 +636,13 @@ pub fn new_partial(
         select_chain.clone(),
         OffchainTransactionPoolFactory::new(transaction_pool.clone()),
     )?;
+    let babe_block_import = crate::recovery::RecoveryBlockImport::new(
+        babe_block_import,
+        recovery,
+        grandpa_link.shared_authority_set().clone(),
+        client.clone(),
+    )
+    .with_evidence(recovery_evidence);
 
     let (import_queue, babe_worker_handle) =
         sc_consensus_babe::import_queue(sc_consensus_babe::ImportQueueParams {
@@ -676,13 +729,35 @@ pub fn new_full<FullNetwork>(
     mut config: Configuration,
     disable_beefy: bool,
     telemetry_worker_handle: Option<TelemetryWorkerHandle>,
+    recovery_inherent_dir: Option<PathBuf>,
+    recovery_evidence_dir: Option<PathBuf>,
+    recovery_hashi: Option<(PathBuf, sp_core::H256)>,
+    bridge_resume_after_halt: Option<u32>,
 ) -> Result<TaskManager, ServiceError>
 where
     FullNetwork: NetworkBackend<Block, <Block as BlockT>::Hash> + 'static,
 {
+    if recovery_inherent_dir.is_some()
+        && framenode_chain_spec::recovery::config(&*config.chain_spec).is_none()
+    {
+        return Err(ServiceError::Other(
+            "--recovery-inherent-dir requires a recovery chain specification".into(),
+        ));
+    }
+    if let Some(directory) = &recovery_inherent_dir {
+        if !directory.is_dir() {
+            return Err(ServiceError::Other(
+                "recovery inherent directory does not exist".into(),
+            ));
+        }
+    }
+    let recovery_evidence = recovery_evidence_dir
+        .as_deref()
+        .map(|directory| crate::recovery_evidence::Recorder::create(directory, &config))
+        .transpose()
+        .map_err(ServiceError::Other)?;
     // Increase the default value by 2 to make wasm being able to use 128MB, each heap page is 64KiB
     config.executor.default_heap_pages = Some(1024 * 2);
-    resolve_libp2p_bootnodes(&mut config);
 
     debug!("using: {:#?}", config);
 
@@ -695,7 +770,27 @@ where
         select_chain,
         transaction_pool,
         other: (rpc_extensions_builder, import_setup, rpc_setup, mut telemetry),
-    } = new_partial(&mut config, telemetry_worker_handle)?;
+    } = new_partial(
+        &mut config,
+        telemetry_worker_handle,
+        false,
+        recovery_evidence.clone(),
+    )?;
+    // Before any offchain worker runs, so a confirmed halt applies from the first block.
+    crate::guardian_halt::on_startup(&client, &backend, bridge_resume_after_halt);
+    let hashi_witness_pump = recovery_hashi
+        .as_ref()
+        .map(|(directory, pin)| {
+            crate::recovery_hashi::LocalRequestPump::open(directory, *pin, client.clone(), &config)
+        })
+        .transpose()
+        .map_err(ServiceError::Other)?;
+    if framenode_chain_spec::recovery::config(&*config.chain_spec).is_some() && !disable_beefy {
+        return Err(ServiceError::Other(
+            "BEEFY must remain disabled for production recovery".into(),
+        ));
+    }
+    resolve_libp2p_bootnodes(&mut config);
 
     let genesis_hash = client
         .block_hash(0)
@@ -755,13 +850,21 @@ where
         Some(beefy_notification_service)
     };
 
-    let warp_sync = Arc::new(sc_finality_grandpa::warp_proof::NetworkProvider::new(
+    let grandpa_warp = Arc::new(sc_finality_grandpa::warp_proof::NetworkProvider::new(
         backend.clone(),
         import_setup.1.shared_authority_set().clone(),
-        vec![],
+        crate::recovery::hard_forks(&*config.chain_spec),
     ));
+    let warp_sync = Arc::new(
+        crate::recovery::RecoveryWarpProvider::new(
+            grandpa_warp,
+            client.clone(),
+            framenode_chain_spec::recovery::config(&*config.chain_spec).cloned(),
+        )
+        .with_evidence(recovery_evidence),
+    );
 
-    let (network, system_rpc_tx, tx_handler_controller, sync_service) =
+    let (network, system_rpc_tx, tx_handler_controller, sync_service, _bitswap_handle) =
         sc_service::build_network(sc_service::BuildNetworkParams {
             config: &config,
             net_config,
@@ -774,6 +877,7 @@ where
             warp_sync_config: Some(WarpSyncConfig::WithProvider(warp_sync)),
             block_relay: None,
             metrics,
+            gap_sync_body_policy: None,
         })?;
 
     if config.offchain_worker.enabled {
@@ -790,10 +894,23 @@ where
                 enable_http_requests: true,
                 custom_extensions: |_| vec![],
             })?;
+        let worker_client = client.clone();
+        let worker_spawner = task_manager.spawn_handle();
+        let worker_recovery = framenode_chain_spec::recovery::config(&*config.chain_spec).cloned();
         task_manager.spawn_handle().spawn(
             "offchain-workers-runner",
             "offchain-worker",
-            offchain_workers.run(client.clone(), task_manager.spawn_handle()),
+            async move {
+                if let Some(recovery) = worker_recovery {
+                    if let Err(error) =
+                        crate::recovery::wait_for_activation(worker_client.clone(), &recovery).await
+                    {
+                        log::error!("Recovery offchain workers remain stopped: {error}");
+                        return;
+                    }
+                }
+                offchain_workers.run(worker_client, worker_spawner).await;
+            },
         );
     }
 
@@ -805,6 +922,9 @@ where
     let prometheus_registry = config.prometheus_registry().cloned();
 
     let (block_import, link_half, babe_link, beefy_links) = import_setup;
+    let authoring_recovery = framenode_chain_spec::recovery::config(&*config.chain_spec).cloned();
+    let grandpa_recovery = authoring_recovery.clone();
+    let grandpa_start_gate = block_import.grandpa_start_gate();
 
     let _rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
         network: network.clone(),
@@ -836,6 +956,7 @@ where
         let backoff_authoring_blocks =
             Some(sc_consensus_slots::BackoffAuthoringOnFinalizedHeadLagging::default());
         let slot_duration = babe_link.config().slot_duration();
+        let recovery_client = client.clone();
 
         let babe_config = sc_consensus_babe::BabeParams {
             keystore: keystore_container.keystore(),
@@ -850,7 +971,10 @@ where
             block_proposal_slot_portion: sc_consensus_babe::SlotProportion::new(2f32 / 3f32),
             max_block_proposal_slot_portion: None,
             backoff_authoring_blocks,
-            create_inherent_data_providers: move |_parent, ()| {
+            create_inherent_data_providers: move |parent, ()| {
+                let recovery_client = recovery_client.clone();
+                let directory = recovery_inherent_dir.clone();
+                let recovery = authoring_recovery.clone();
                 // let client_clone = client_clone.clone();
                 // let overseer_handle = overseer_handle.clone();
                 async move {
@@ -862,7 +986,13 @@ where
                             slot_duration //slot_duration.slot_duration(),
                         );
 
-                    Ok((slot, time))
+                    let recovery = crate::recovery::RecoveryInherentProvider::for_parent(
+                        &recovery_client,
+                        parent,
+                        recovery.as_ref(),
+                        directory.as_deref(),
+                    )?;
+                    Ok((slot, time, recovery))
                 }
             },
             telemetry: telemetry.as_ref().map(|x| x.handle()),
@@ -951,6 +1081,7 @@ where
         // and vote data availability than the observer. The observer has not
         // been tested extensively yet and having most nodes in a network run it
         // could lead to finality stalls.
+        let grandpa_authorities = link_half.shared_authority_set().clone();
         let grandpa_config = sc_finality_grandpa::GrandpaParams {
             config: grandpa_config,
             link: link_half,
@@ -966,10 +1097,45 @@ where
 
         // the GRANDPA voter task is considered infallible, i.e.
         // if it fails we take down the service with it.
-        task_manager.spawn_essential_handle().spawn_blocking(
-            "sc_finality_grandpa-voter",
-            Some("sc_finality_grandpa-voter"),
-            sc_finality_grandpa::run_grandpa_voter(grandpa_config)?,
+        if let Some(recovery) = grandpa_recovery {
+            task_manager.spawn_essential_handle().spawn_blocking(
+                "sc_finality_grandpa-voter",
+                Some("sc_finality_grandpa-voter"),
+                async move {
+                    if let Err(error) = crate::recovery::wait_for_grandpa_start(
+                        client,
+                        &recovery,
+                        grandpa_authorities,
+                        grandpa_start_gate,
+                    )
+                    .await
+                    {
+                        log::error!("Recovery GRANDPA voter remains stopped: {error}");
+                        return;
+                    }
+                    // Construction itself must follow the verified import barrier.
+                    match sc_finality_grandpa::run_grandpa_voter(grandpa_config) {
+                        Ok(voter) => voter.await,
+                        Err(error) => {
+                            log::error!("Recovery GRANDPA voter failed to start: {error}")
+                        }
+                    }
+                },
+            );
+        } else {
+            task_manager.spawn_essential_handle().spawn_blocking(
+                "sc_finality_grandpa-voter",
+                Some("sc_finality_grandpa-voter"),
+                sc_finality_grandpa::run_grandpa_voter(grandpa_config)?,
+            );
+        }
+    }
+
+    if let Some(pump) = hashi_witness_pump {
+        task_manager.spawn_handle().spawn_blocking(
+            "recovery-hashi-witness",
+            Some("recovery"),
+            pump.run(),
         );
     }
 
@@ -978,7 +1144,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{bridge_rpc_url, load_bridge_peer_config, resolve_local_bridge_bootstrap};
+    use super::{
+        bridge_rpc_url, load_bridge_peer_config, remove_legacy_bridge_secret,
+        resolve_local_bridge_bootstrap,
+    };
+    use sp_core::offchain::{storage::InMemOffchainStorage, OffchainStorage};
     use sp_core::Pair;
     use std::cell::Cell;
     use std::fs;
@@ -994,6 +1164,25 @@ mod tests {
             .to_vec()
     }
 
+    #[test]
+    fn legacy_bridge_secret_is_removed_without_removing_public_bootstrap_marker() {
+        use super::{STORAGE_PEER_MARKER_KEY, STORAGE_PEER_SECRET_KEY, STORAGE_PREFIX};
+        let mut storage = InMemOffchainStorage::default();
+        let marker = sample_bridge_public_key();
+        // Public dummy fixture, never an operator key.
+        storage.set(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY, &[7; 32]);
+        storage.set(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY, &marker);
+        remove_legacy_bridge_secret(&mut storage);
+        remove_legacy_bridge_secret(&mut storage);
+        assert!(storage
+            .get(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY)
+            .is_none());
+        assert_eq!(
+            storage.get(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY),
+            Some(marker)
+        );
+    }
+
     fn unique_temp_path(name: &str) -> PathBuf {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -1003,11 +1192,15 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::result_large_err,
+        reason = "test callbacks must retain the upstream SDK ServiceError required by the production bootstrap API"
+    )]
     fn local_bridge_bootstrap_requires_config_for_local_keypair() {
         let missing_path = unique_temp_path("missing-eth-json");
         let result = resolve_local_bridge_bootstrap(
             vec![sample_bridge_public_key()],
-            |_| Ok(Some(vec![7u8; 32])),
+            |_| Ok(true),
             || load_bridge_peer_config(&missing_path),
         );
 
@@ -1015,13 +1208,17 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::result_large_err,
+        reason = "test callbacks must retain the upstream SDK ServiceError required by the production bootstrap API"
+    )]
     fn local_bridge_bootstrap_rejects_invalid_config() {
         let invalid_path = unique_temp_path("invalid-eth-json");
         fs::write(&invalid_path, "{not-json").expect("invalid config fixture should be written");
 
         let result = resolve_local_bridge_bootstrap(
             vec![sample_bridge_public_key()],
-            |_| Ok(Some(vec![7u8; 32])),
+            |_| Ok(true),
             || load_bridge_peer_config(&invalid_path),
         );
 
@@ -1030,11 +1227,15 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::result_large_err,
+        reason = "test callbacks must retain the upstream SDK ServiceError required by the production bootstrap API"
+    )]
     fn local_bridge_bootstrap_skips_public_only_keys() {
         let loader_called = Cell::new(false);
         let result = resolve_local_bridge_bootstrap(
             vec![sample_bridge_public_key()],
-            |_| Ok(None),
+            |_| Ok(false),
             || {
                 loader_called.set(true);
                 unreachable!("bridge config should not be loaded without a local keypair")

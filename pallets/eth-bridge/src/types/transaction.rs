@@ -147,6 +147,7 @@ pub struct RawTransactionDetails {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::{RawTransaction, Receipt, H256};
     use serde_json;

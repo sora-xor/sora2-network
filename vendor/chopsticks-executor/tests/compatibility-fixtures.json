@@ -1,0 +1,244 @@
+{
+  "stateRoots": [
+    {
+      "entries": [],
+      "version": 0,
+      "root": "0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314"
+    },
+    {
+      "entries": [],
+      "version": 1,
+      "root": "0x03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314"
+    },
+    {
+      "entries": [
+        [
+          "0x01",
+          "0x02"
+        ]
+      ],
+      "version": 0,
+      "root": "0xb702cfc0277a95e40d55cf7128e1e83a24ed70dabb92340a06b68bc4599fbb61"
+    },
+    {
+      "entries": [
+        [
+          "0x01",
+          "0x02"
+        ]
+      ],
+      "version": 1,
+      "root": "0xb702cfc0277a95e40d55cf7128e1e83a24ed70dabb92340a06b68bc4599fbb61"
+    },
+    {
+      "entries": [
+        [
+          "0x",
+          "0x"
+        ]
+      ],
+      "version": 0,
+      "root": "0xd60cac7859387608244c41b9d61c1ade74c3e9fea8a68b74f3ad9ab716d46f0a"
+    },
+    {
+      "entries": [
+        [
+          "0x",
+          "0x"
+        ]
+      ],
+      "version": 1,
+      "root": "0xd60cac7859387608244c41b9d61c1ade74c3e9fea8a68b74f3ad9ab716d46f0a"
+    },
+    {
+      "entries": [
+        [
+          "0x0102",
+          "0x0304"
+        ],
+        [
+          "0x01",
+          "0x"
+        ],
+        [
+          "0xffff",
+          "0x42424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242"
+        ]
+      ],
+      "version": 0,
+      "root": "0x5f37321bc8fe401a1135dc8b7ad5091d19161201711870fb64c0b498dfc3d024"
+    },
+    {
+      "entries": [
+        [
+          "0x0102",
+          "0x0304"
+        ],
+        [
+          "0x01",
+          "0x"
+        ],
+        [
+          "0xffff",
+          "0x42424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242"
+        ]
+      ],
+      "version": 1,
+      "root": "0x0c0e1d968dae4e65f8e92fbd4521261303b783822db7dd09c830014acbadae9a"
+    },
+    {
+      "entries": [
+        [
+          "0x01",
+          "0x02"
+        ],
+        [
+          "0x01",
+          "0x03"
+        ]
+      ],
+      "version": 0,
+      "root": "0xce4d5a827134b03bc4e1aa37f7f6f816452f22fe704d0005be37249df80cbf06"
+    },
+    {
+      "entries": [
+        [
+          "0x01",
+          "0x02"
+        ],
+        [
+          "0x01",
+          "0x03"
+        ]
+      ],
+      "version": 1,
+      "root": "0xce4d5a827134b03bc4e1aa37f7f6f816452f22fe704d0005be37249df80cbf06"
+    },
+    {
+      "entries": [
+        [
+          "0x10",
+          "0x20"
+        ],
+        [
+          "0x11",
+          "0x21"
+        ],
+        [
+          "0x1000",
+          "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        ]
+      ],
+      "version": 0,
+      "root": "0xb003f602cfeeb9106eb81865057bb85d3d0bb1180d3b46a2de4c955bc71396b7"
+    },
+    {
+      "entries": [
+        [
+          "0x10",
+          "0x20"
+        ],
+        [
+          "0x11",
+          "0x21"
+        ],
+        [
+          "0x1000",
+          "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        ]
+      ],
+      "version": 1,
+      "root": "0x453763d82219cfe6c1038ebdf958c9a2b4c820ee36144711c9f9981268492928"
+    }
+  ],
+  "proofs": [
+    {
+      "nodes": [
+        "0x00"
+      ],
+      "updates": [
+        [
+          "0x01",
+          "0x02"
+        ]
+      ],
+      "result": [
+        "0xb702cfc0277a95e40d55cf7128e1e83a24ed70dabb92340a06b68bc4599fbb61",
+        [
+          "0x42010402"
+        ]
+      ],
+      "decoded": [
+        [
+          "0x01",
+          "0x02"
+        ]
+      ]
+    },
+    {
+      "nodes": [
+        "0x00"
+      ],
+      "updates": [
+        [
+          "0x01",
+          "0x02"
+        ],
+        [
+          "0x0102",
+          "0x0304"
+        ],
+        [
+          "0xff",
+          "0x"
+        ]
+      ],
+      "result": [
+        "0xe7235ad8a6684f886bad73b0696929f5982be8cc3eecd81f30a440a91e56524b",
+        [
+          "0x80018030c101010004021441020803040c410f00"
+        ]
+      ],
+      "decoded": [
+        [
+          "0x01",
+          "0x02"
+        ],
+        [
+          "0x0102",
+          "0x0304"
+        ],
+        [
+          "0xff",
+          "0x"
+        ]
+      ]
+    }
+  ],
+  "runtimeVersion": {
+    "specName": "0x736f72612d6578656375746f722d66697874757265",
+    "implName": "0x736f72612d6578656375746f722d66697874757265",
+    "authoringVersion": 1,
+    "specVersion": 1,
+    "implVersion": 1,
+    "apis": [],
+    "transactionVersion": 1,
+    "stateVersion": 1
+  },
+  "runtimeCall": {
+    "Call": {
+      "result": "0x54736f72612d6578656375746f722d6669787475726554736f72612d6578656375746f722d66697874757265010000000100000001000000000100000001",
+      "storageDiff": [],
+      "offchainStorageDiff": [],
+      "runtimeLogs": []
+    }
+  },
+  "arithmeticCall": {
+    "Call": {
+      "result": "0x2a000000",
+      "storageDiff": [],
+      "offchainStorageDiff": [],
+      "runtimeLogs": []
+    }
+  }
+}

@@ -35,10 +35,10 @@ use crate::contract::{
     REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS,
 };
 use crate::requests::{
-    parse_hash_from_call, AssetKind, ChangePeersContract, IncomingCancelOutgoingRequest,
-    IncomingChangePeersCompat, IncomingRequest, IncomingTransactionRequestKind,
-    LoadIncomingMetaRequest, LoadIncomingTransactionRequest, OffchainRequest,
-    OutgoingAddPeerCompat, OutgoingRemovePeerCompat, OutgoingRequest,
+    parse_hash_from_call, AssetKind, ChangePeersContract, IncomingChangePeersCompat,
+    IncomingRequest, IncomingTransactionRequestKind, LoadIncomingMetaRequest,
+    LoadIncomingTransactionRequest, OffchainRequest, OutgoingAddPeerCompat,
+    OutgoingRemovePeerCompat, OutgoingRequest,
 };
 use crate::types::{Log, Transaction, TransactionReceipt};
 use crate::util::Decoder;
@@ -66,7 +66,6 @@ pub use http::*;
 use rustc_hex::ToHex;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::crypto::ByteArray;
 use sp_core::{H160, H256};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt;
@@ -76,6 +75,10 @@ pub use transaction::*;
 mod handle;
 mod http;
 mod transaction;
+
+#[cfg(test)]
+#[path = "../tests/coverage_offchain.rs"]
+mod coverage_tests;
 
 pub(crate) fn get_storage_value_or_clear<T: Decode>(
     storage: &mut StorageValueRef<'_>,
@@ -96,6 +99,53 @@ pub(crate) fn get_storage_value_or_clear<T: Decode>(
 
 pub(crate) fn set_offchain_metric_u64(key: &[u8], value: u64) {
     StorageValueRef::persistent(key).set(&value);
+}
+
+/// Whether a guardian halt keeps this node's workers stopped.
+///
+/// The workers stop when the chain names a guardian halt that this node's
+/// operator has not confirmed with `--bridge-resume-after-halt`, and when the
+/// chain's halt record does not decode. Sets the stopped-halt metric each run and
+/// logs a warning once per halt.
+pub(crate) fn stopped_by_guardian_halt() -> bool {
+    let latest = common::bridge_halt::latest_guardian_halt();
+    let confirmed = StorageValueRef::persistent(crate::STORAGE_RESUMED_AFTER_HALT_KEY)
+        .get::<common::bridge_halt::GuardianHalt>()
+        .ok()
+        .flatten();
+    if common::bridge_halt::workers_may_run(&latest, confirmed) {
+        set_offchain_metric_u64(crate::STORAGE_GUARDIAN_HALT_STOPPED_KEY, 0);
+        return false;
+    }
+    let stopped_by = match latest {
+        Ok(Some(halt)) => Some(halt),
+        _ => None,
+    };
+    set_offchain_metric_u64(
+        crate::STORAGE_GUARDIAN_HALT_STOPPED_KEY,
+        stopped_by.map_or(u64::MAX, |halt| u64::from(halt.number)),
+    );
+    let reported = StorageValueRef::persistent(crate::STORAGE_GUARDIAN_HALT_REPORTED_KEY);
+    if reported
+        .get::<Option<common::bridge_halt::GuardianHalt>>()
+        .ok()
+        .flatten()
+        != Some(stopped_by)
+    {
+        reported.set(&stopped_by);
+        match stopped_by {
+            Some(halt) => frame_support::__private::log::warn!(
+                "Guardian halt #{} (block #{}) stopped the HASHI bridge workers. Once it is safe, restart this node with --bridge-resume-after-halt {}.",
+                halt.number,
+                halt.block,
+                halt.number,
+            ),
+            None => frame_support::__private::log::error!(
+                "The guardian halt record on chain does not decode; the HASHI bridge workers stay stopped."
+            ),
+        }
+    }
+    true
 }
 
 pub(crate) fn increment_offchain_metric_u64(key: &[u8]) {
@@ -282,17 +332,29 @@ impl<T: Config> Pallet<T> {
         author: &<T as frame_system::pallet::Config>::AccountId,
     ) -> bool {
         let message = eth::prepare_message(msg);
-        let sig_bytes = signature.to_bytes();
-        let res = secp256k1::Signature::parse_standard_slice(&sig_bytes[..64]).and_then(|sig| {
-            secp256k1::PublicKey::parse_slice(ecdsa_public_key.as_slice(), None).map(|pk| (sig, pk))
-        });
-        if let Ok((signature, public_key)) = res {
-            let signer_account = MultiSigner::Ecdsa(ecdsa_public_key.clone()).into_account();
-            let verified = secp256k1::verify(&message, &signature, &public_key);
-            signer_account.encode() == author.encode() && verified
-        } else {
-            false
-        }
+        let Some(recovered) = Self::recover_prepared_message_signer(&message, signature) else {
+            return false;
+        };
+        let signer_account = MultiSigner::Ecdsa(recovered.clone()).into_account();
+        recovered == *ecdsa_public_key && signer_account.encode() == author.encode()
+    }
+
+    /// Recover retained approval ownership when reconciling a changed peer set.
+    /// The caller bounds the number of signatures before invoking this helper.
+    pub(crate) fn recover_prepared_message_signer(
+        message: &secp256k1::Message,
+        signature: &SignatureParams,
+    ) -> Option<ecdsa::Public> {
+        // Preserve the bridge's 0/1/27/28 domain and strict scalar parsing.
+        // The v2 host also accepts recovery IDs 2/3, so its checks alone are
+        // insufficient. Pass the prepared (reduced) digest used by the original
+        // software implementation to keep historical signature semantics.
+        let canonical = signature.clone().canonical_recovery_id()?;
+        let bytes = canonical.to_bytes();
+        secp256k1::Signature::parse_standard_slice(&bytes[..64]).ok()?;
+        let public =
+            sp_io::crypto::secp256k1_ecdsa_recover_compressed(&bytes, &message.serialize()).ok()?;
+        Some(ecdsa::Public::from_raw(public))
     }
 
     /// Signs a message with a peer's secret key.
@@ -320,11 +382,11 @@ impl<T: Config> Pallet<T> {
     fn parse_cancel_incoming_request(
         tx_receipt: TransactionReceipt,
         pre_request: LoadIncomingMetaRequest<T>,
-        pre_request_hash: H256,
+        _pre_request_hash: H256,
     ) -> Result<IncomingRequest<T>, Error<T>> {
         let tx_approved = tx_receipt.is_approved();
         ensure!(!tx_approved, Error::<T>::EthTransactionIsSucceeded);
-        let at_height = tx_receipt
+        let _at_height = tx_receipt
             .block_number
             .ok_or(Error::<T>::EthTransactionIsPending)?
             .as_u64();
@@ -346,7 +408,8 @@ impl<T: Config> Pallet<T> {
         let fun_meta = funs.get(&method_id).ok_or(Error::<T>::UnknownMethodId)?;
         let fun = &fun_meta.function;
         let tokens = fun
-            .decode_input(&tx.input.0)
+            // The selector was validated above; ethabi decodes only the arguments.
+            .decode_input(&tx.input.0[METHOD_ID_SIZE..])
             .map_err(|_| Error::<T>::InvalidFunctionInput)?;
         let hash = parse_hash_from_call::<T>(tokens, fun_meta.tx_hash_arg_pos)?;
         let oc_request: OffchainRequest<T> =
@@ -361,19 +424,9 @@ impl<T: Config> Pallet<T> {
             request.author() == &author,
             Error::<T>::RequestIsNotOwnedByTheAuthor
         );
-        Ok(IncomingRequest::CancelOutgoingRequest(
-            IncomingCancelOutgoingRequest {
-                outgoing_request: request,
-                outgoing_request_hash: hash,
-                initial_request_hash: pre_request_hash,
-                author,
-                tx_input: tx.input.0,
-                tx_hash: pre_request.hash,
-                at_height,
-                timepoint: pre_request.timepoint,
-                network_id: pre_request.network_id,
-            },
-        ))
+        // A failed call is still retryable, and a duplicate successful withdrawal
+        // also reverts. Neither case is irreversible cancellation evidence.
+        Err(Error::<T>::PublicApprovalsRequireSettlement)
     }
 
     /// Gets Thischain asset id and its kind. If the `raw_asset_id` is `zero`, it means that it's
@@ -502,6 +555,77 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    /// Validate receipt identity and the known bridge event before interpreting
+    /// its economic fields. Keep RPC inconsistency separate from deterministic
+    /// unsupported-asset or amount errors, so those cannot pin the log scanner.
+    fn attributed_deposit_log<'a>(
+        receipt: &'a TransactionReceipt,
+        load: &LoadIncomingTransactionRequest<T>,
+        observed_log: Option<&Log>,
+    ) -> Result<(&'a Log, u64), Error<T>> {
+        // Inconsistent/pending RPC responses must be retried, not turned into an
+        // abort or a failed import that permanently consumes the deposit hash.
+        let inconsistent = || Error::<T>::JsonDeserializationError;
+        ensure!(receipt.transaction_hash.0 == load.hash.0, inconsistent());
+        ensure!(receipt.status == Some(1u64.into()), inconsistent());
+        ensure!(!receipt.from.is_zero(), inconsistent());
+        let height = receipt.block_number.ok_or_else(inconsistent)?;
+        let block_hash = receipt.block_hash.ok_or_else(inconsistent)?;
+        let log = receipt
+            .logs
+            .iter()
+            .find(|log| {
+                log.topics.first().map(|topic| topic.0) == Some(DEPOSIT_TOPIC.0)
+                    && !log.removed.unwrap_or(true)
+                    && Self::ensure_known_contract(H160(log.address.0), load.network_id).is_ok()
+            })
+            .ok_or_else(inconsistent)?;
+        ensure!(
+            log.transaction_hash == Some(receipt.transaction_hash)
+                && log.block_number == Some(height)
+                && log.block_hash == Some(block_hash)
+                && log.transaction_index == Some(receipt.transaction_index),
+            inconsistent()
+        );
+        if let Some(observed) = observed_log {
+            ensure!(
+                observed.address == log.address
+                    && observed.topics == log.topics
+                    && observed.data == log.data
+                    && observed.transaction_hash == log.transaction_hash
+                    && observed.block_number == log.block_number
+                    && observed.block_hash == log.block_hash
+                    && observed.transaction_index == log.transaction_index
+                    && observed.log_index == log.log_index
+                    && !observed.removed.unwrap_or(true),
+                inconsistent()
+            );
+        }
+        Ok((log, height.as_u64()))
+    }
+
+    /// Reconstruct the deposit and its transaction signer from one internally
+    /// consistent RPC receipt. Peers still trust their Ethereum RPC for canonical
+    /// chain data; this is not a receipt proof or token-owner tracing through routers.
+    pub(crate) fn parse_attributed_transfer(
+        receipt: TransactionReceipt,
+        load: LoadIncomingTransactionRequest<T>,
+        observed_log: Option<&Log>,
+    ) -> Result<IncomingRequest<T>, Error<T>> {
+        let (log, height) = Self::attributed_deposit_log(&receipt, &load, observed_log)?;
+        let event = Self::parse_deposit_event_from_known_contract(load.network_id, log)?;
+        let mut request = IncomingRequest::<T>::try_from_contract_event(
+            ContractEvent::Deposit(event),
+            load,
+            height,
+        )?;
+        let IncomingRequest::Transfer(transfer) = &mut request else {
+            unreachable!("a deposit event always builds a transfer")
+        };
+        transfer.from = H160(receipt.from.0);
+        Ok(request)
+    }
+
     /// Tries to parse incoming request from the given pre-request and transaction receipt.
     ///
     /// The transaction should be approved and contain a known event from which the request
@@ -510,6 +634,53 @@ impl<T: Config> Pallet<T> {
         tx_receipt: TransactionReceipt,
         incoming_pre_request: LoadIncomingTransactionRequest<T>,
     ) -> Result<IncomingRequest<T>, Error<T>> {
+        if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)
+            && matches!(
+                incoming_pre_request.kind,
+                IncomingTransactionRequestKind::Transfer
+                    | IncomingTransactionRequestKind::TransferXOR
+            )
+        {
+            // A public load hint has not reserved or credited any money. A
+            // complete mined receipt can therefore reject a failed transaction
+            // or one without a bridge deposit. Keep contradictory/incomplete
+            // metadata retryable. Pending monetary requests and scanner logs
+            // bypass this classification and retain the stricter retry policy.
+            let inconsistent = || Error::<T>::JsonDeserializationError;
+            ensure!(
+                tx_receipt.transaction_hash.0 == incoming_pre_request.hash.0
+                    && !tx_receipt.from.is_zero(),
+                inconsistent()
+            );
+            let height = tx_receipt.block_number.ok_or_else(inconsistent)?;
+            let block_hash = tx_receipt.block_hash.ok_or_else(inconsistent)?;
+            ensure!(
+                tx_receipt.logs.iter().all(|log| {
+                    log.transaction_hash == Some(tx_receipt.transaction_hash)
+                        && log.block_number == Some(height)
+                        && log.block_hash == Some(block_hash)
+                        && log.transaction_index == Some(tx_receipt.transaction_index)
+                        && !log.removed.unwrap_or(true)
+                }),
+                inconsistent()
+            );
+            if tx_receipt.status == Some(0u64.into()) && tx_receipt.logs.is_empty() {
+                return Err(Error::<T>::EthTransactionIsFailed);
+            }
+            ensure!(tx_receipt.status == Some(1u64.into()), inconsistent());
+            ensure!(
+                tx_receipt.logs.iter().any(|log| {
+                    log.topics.first().map(|topic| topic.0) == Some(DEPOSIT_TOPIC.0)
+                        && Self::ensure_known_contract(
+                            H160(log.address.0),
+                            incoming_pre_request.network_id,
+                        )
+                        .is_ok()
+                }),
+                Error::<T>::UnknownEvent
+            );
+            return Self::parse_attributed_transfer(tx_receipt, incoming_pre_request, None);
+        }
         let tx_approved = tx_receipt.is_approved();
         ensure!(tx_approved, Error::<T>::EthTransactionIsFailed);
         let kind = incoming_pre_request.kind;
@@ -555,6 +726,9 @@ impl<T: Config> Pallet<T> {
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
+        if crate::recovery::halted() {
+            return;
+        }
         let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);
 
         let substrate_finalized_height = match Self::handle_substrate() {
@@ -598,6 +772,17 @@ pub struct SignatureParams {
 }
 
 impl SignatureParams {
+    /// Storage and RPC expose raw parity; Ethereum clients add 27 for `ecrecover`.
+    /// Accept the historical wire spelling without exporting 54/55 to those clients.
+    pub(crate) fn canonical_recovery_id(mut self) -> Option<Self> {
+        self.v = match self.v {
+            0 | 1 => self.v,
+            27 | 28 => self.v - 27,
+            _ => return None,
+        };
+        Some(self)
+    }
+
     pub(crate) fn from_ecdsa_signature(signature: &ecdsa::Signature) -> Self {
         let mut r = [0u8; 32];
         r.copy_from_slice(&signature.0[..32]);

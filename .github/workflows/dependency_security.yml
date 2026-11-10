@@ -1,0 +1,223 @@
+name: Dependency security
+
+on:
+  pull_request:
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "**/package.json"
+      - "**/package-lock.json"
+      - "**/rehearsal-package.json"
+      - "**/rehearsal-package-lock.json"
+      - ".nvmrc"
+      - "rust-toolchain.toml"
+      - "vendor/sora-secp256k1-compat/**"
+      - "misc/runtime_upgrade/**"
+      - "misc/dependency_security/**"
+      - "runtime-rehearsal-dependency-migrations-2026-10-25/**"
+      - "runtime-rehearsal-sdk2609-2026-10-25/**"
+      - "runtime-rehearsal-async-staking-2026-10-25/**"
+      - "vendor/chopsticks-core/**"
+      - "vendor/chopsticks-executor/**"
+      - "vendor/polkadot-wasm-crypto*/**"
+      - "vendor/polkadot-rpc-provider/**"
+      - "vendor/fetch-blob/**"
+      - ".github/dependabot.yml"
+      - ".github/workflows/dependency_security.yml"
+  push:
+    branches: [master, develop]
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "**/package.json"
+      - "**/package-lock.json"
+      - "**/rehearsal-package.json"
+      - "**/rehearsal-package-lock.json"
+      - ".nvmrc"
+      - "rust-toolchain.toml"
+      - "vendor/sora-secp256k1-compat/**"
+      - "misc/runtime_upgrade/**"
+      - "misc/dependency_security/**"
+      - "runtime-rehearsal-dependency-migrations-2026-10-25/**"
+      - "runtime-rehearsal-sdk2609-2026-10-25/**"
+      - "runtime-rehearsal-async-staking-2026-10-25/**"
+      - "vendor/chopsticks-core/**"
+      - "vendor/chopsticks-executor/**"
+      - "vendor/polkadot-wasm-crypto*/**"
+      - "vendor/polkadot-rpc-provider/**"
+      - "vendor/fetch-blob/**"
+      - ".github/dependabot.yml"
+      - ".github/workflows/dependency_security.yml"
+  schedule:
+    - cron: "45 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rustsec:
+    name: RustSec / ${{ matrix.lockfile }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        lockfile:
+          - Cargo.lock
+          - misc/farming_snapshot/convert/Cargo.lock
+          - misc/rewards_snapshot/get_lp_tokens/Cargo.lock
+          - vendor/sora2-common/Cargo.lock
+          - vendor/tikv-jemalloc-ctl-0.6.1/Cargo.lock
+          - misc/runtime_upgrade/vendor/native/py-bip39-bindings/Cargo.lock
+          - misc/runtime_upgrade/vendor/native/py-ed25519-zebra-bindings/Cargo.lock
+          - misc/runtime_upgrade/vendor/native/py-sr25519-bindings/Cargo.lock
+          - misc/runtime_upgrade/vendor/native/pydantic-core/Cargo.lock
+          - vendor/chopsticks-executor/Cargo.lock
+          - vendor/polkadot-wasm-crypto/Cargo.lock
+    env:
+      # The audit tool does not build the project or need its pinned nightly.
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
+        with:
+          tool: cargo-audit@0.22.2
+      # Keep known findings visible: no baseline, advisory ignores or stale DB.
+      # Git forks and local patches still require source review; version-based
+      # advisory matching alone cannot prove those copies are patched.
+      - name: Audit locked Rust dependencies
+        env:
+          LOCKFILE: ${{ matrix.lockfile }}
+        run: cargo audit --deny warnings --file "$LOCKFILE"
+
+  python:
+    name: Python runtime tooling
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install auditor
+        run: python -m pip install pip-audit==2.10.1
+      - name: Build reviewed native bindings and validate governance encoding
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/runtime-tooling-native-target
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          python -m venv "$RUNNER_TEMP/runtime-tooling"
+          # The interpreter's bundled pip carries published advisories.
+          "$RUNNER_TEMP/runtime-tooling/bin/python" -m pip install --upgrade pip==26.2.2
+          "$RUNNER_TEMP/runtime-tooling/bin/python" misc/runtime_upgrade/install_dependencies.py
+          "$RUNNER_TEMP/runtime-tooling/bin/python" -m pip check
+          "$RUNNER_TEMP/runtime-tooling/bin/python" -m unittest discover -s misc/runtime_upgrade/tests -v
+      - name: Audit installed Python distributions
+        run: |
+          site_packages=$("$RUNNER_TEMP/runtime-tooling/bin/python" -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
+          python -m pip_audit --strict --path "$site_packages"
+
+  npm:
+    name: npm / ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: runtime 4.8.9
+            manifest: runtime-upgrade-4.8.9/validation/rehearsal-package.json
+            lockfile: runtime-upgrade-4.8.9/validation/rehearsal-package-lock.json
+          - name: runtime 4.8.10
+            manifest: runtime-upgrade-4.8.10/validation/package.json
+            lockfile: runtime-upgrade-4.8.10/validation/package-lock.json
+          - name: runtime 4.8.11
+            manifest: runtime-upgrade-4.8.11/validation/package.json
+            lockfile: runtime-upgrade-4.8.11/validation/package-lock.json
+          - name: runtime 4.8.12
+            manifest: runtime-upgrade-4.8.12/validation/package.json
+            lockfile: runtime-upgrade-4.8.12/validation/package-lock.json
+          - name: production rehearsal 2026-10-25
+            manifest: runtime-rehearsal-dependency-migrations-2026-10-25/validation/package.json
+            lockfile: runtime-rehearsal-dependency-migrations-2026-10-25/validation/package-lock.json
+          - name: stable2609 production rehearsal
+            manifest: runtime-rehearsal-sdk2609-2026-10-25/validation/package.json
+            lockfile: runtime-rehearsal-sdk2609-2026-10-25/validation/package-lock.json
+          - name: async staking production rehearsal
+            manifest: runtime-rehearsal-async-staking-2026-10-25/validation/package.json
+            lockfile: runtime-rehearsal-async-staking-2026-10-25/validation/package-lock.json
+          - name: frontend reproduction
+            manifest: misc/polkadotjs/bug-hunt/frontend-repro/package.json
+            lockfile: misc/polkadotjs/bug-hunt/frontend-repro/package-lock.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
+        if: matrix.name == 'runtime 4.8.12'
+        with:
+          tool: wasm-bindgen@0.2.129
+      - name: Rebuild and verify both reviewed Wasm packages
+        if: matrix.name == 'runtime 4.8.12'
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/chopsticks-executor-target
+        run: |
+          rustup toolchain install nightly-2026-10-23 --profile minimal --target wasm32-unknown-unknown
+          npm install --prefix "$RUNNER_TEMP/executor-build-tools" --ignore-scripts --no-audit @swc/core@1.16.20 fflate@0.8.2
+          python3 vendor/chopsticks-executor/scripts/verify-artifacts.py
+          node vendor/chopsticks-executor/scripts/build-reviewed.mjs --check --build-tools-dir "$RUNNER_TEMP/executor-build-tools"
+          python3 vendor/polkadot-wasm-crypto/scripts/verify-artifacts.py
+          node vendor/polkadot-wasm-crypto/scripts/build-reviewed.mjs --check --build-tools-dir "$RUNNER_TEMP/executor-build-tools"
+      - name: Validate npm audit staging
+        run: python3 -m unittest discover -s misc/dependency_security -v
+      - name: Validate production rehearsal interface guards offline
+        if: matrix.name == 'production rehearsal 2026-10-25'
+        run: |
+          node --test runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-wasm-interfaces.cjs
+          python3 runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-fee-evidence.py
+          python3 runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-rehearsal-run.py
+      - name: Validate async staking build and evidence guards offline
+        if: matrix.name == 'async staking production rehearsal'
+        run: |
+          python3 runtime-rehearsal-async-staking-2026-10-25/validation/test-build-verification.py --include-environment
+          node --test runtime-rehearsal-async-staking-2026-10-25/validation/test-wasm-interfaces.cjs runtime-rehearsal-async-staking-2026-10-25/validation/test-runtime-execution.cjs runtime-rehearsal-async-staking-2026-10-25/validation/test-bridge-rpc-size.cjs
+          python3 runtime-rehearsal-async-staking-2026-10-25/validation/test-fee-evidence.py
+          python3 runtime-rehearsal-async-staking-2026-10-25/validation/test-rehearsal-run.py
+          python3 runtime-rehearsal-async-staking-2026-10-25/validation/test-source-fingerprint.py
+      - name: Audit a complete temporary copy of the operational npm graph
+        env:
+          MANIFEST: ${{ matrix.manifest }}
+          LOCKFILE: ${{ matrix.lockfile }}
+        run: |
+          audit_root="$(mktemp -d "$RUNNER_TEMP/npm-audit.XXXXXX")"
+          audit_dir=$(python3 misc/dependency_security/prepare_npm_audit.py "$MANIFEST" "$LOCKFILE" "$audit_root")
+          echo "NPM_AUDIT_PROJECT=$audit_dir" >> "$GITHUB_ENV"
+          cd "$audit_dir"
+          # Check graph completeness before audit, including copied local packages.
+          npm ls --all --package-lock-only --offline
+          npm audit --package-lock-only --ignore-scripts --audit-level=low
+      - name: Test installed schema, providers, and both rebuilt Wasm interfaces
+        if: matrix.name == 'runtime 4.8.12'
+        run: |
+          cd "$NPM_AUDIT_PROJECT"
+          npm ci --ignore-scripts --install-links --no-audit
+          node "$GITHUB_WORKSPACE/vendor/chopsticks-core/tests/zod-migration.cjs"
+          node "$GITHUB_WORKSPACE/vendor/chopsticks-executor/scripts/smoke.cjs" "$NPM_AUDIT_PROJECT/node_modules/@acala-network/chopsticks-executor/dist/cjs/index.js"
+          node "$GITHUB_WORKSPACE/misc/dependency_security/test_js_native_integration.cjs" "$NPM_AUDIT_PROJECT"
+          node "$GITHUB_WORKSPACE/vendor/fetch-blob/tests/native-domexception.mjs" "$NPM_AUDIT_PROJECT/node_modules/fetch-blob"
+          node "$GITHUB_WORKSPACE/vendor/polkadot-wasm-crypto/tests/compatibility.cjs" --candidate "$NPM_AUDIT_PROJECT/node_modules/@polkadot/wasm-crypto" --security-regressions true
+      - name: Preserve frontend reproduction behavior
+        if: matrix.name == 'frontend reproduction'
+        run: |
+          cp "$GITHUB_WORKSPACE/misc/polkadotjs/bug-hunt/frontend-repro/"*.mjs "$NPM_AUDIT_PROJECT/"
+          cd "$NPM_AUDIT_PROJECT"
+          npm ci --ignore-scripts --install-links --no-audit
+          npm test

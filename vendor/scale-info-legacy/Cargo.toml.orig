@@ -1,0 +1,28 @@
+[package]
+name = "scale-info-legacy"
+version = "0.4.2"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2021"
+
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/paritytech/scale-info-legacy"
+documentation = "https://docs.rs/scale-info-legacy"
+homepage = "https://www.parity.io/"
+description = "Create type information that can be used to decode historic data from Substrate based chains"
+keywords = ["parity", "scale", "encoding", "decoding"]
+include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE"]
+
+[features]
+default = []
+
+[dependencies]
+scale-type-resolver = { version = "0.2", default-features = false, features = ["visitor"] }
+smallvec = "1.13.1"
+yap = "0.12.0"
+hashbrown = { version = "0.16.1", features = ["serde"] }
+serde = { version = "1.0.201", default-features = false, features = ["derive", "alloc"] }
+thiserror = { version = "2.0.0", default-features = false }
+
+[dev-dependencies]
+serde_json = { version = "1.0.117", default-features = false, features = ["alloc"] }

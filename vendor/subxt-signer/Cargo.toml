@@ -1,0 +1,211 @@
+# Based on crates.io subxt-signer; see SORA-PATCH.md.
+"test" = [{ "name" = "rustcrypto_migration", "path" = "tests/rustcrypto_migration.rs" }]
+
+["package"]
+"edition" = "2024"
+"rust-version" = "1.88.0"
+"name" = "subxt-signer"
+"version" = "0.50.3"
+"authors" = ["Parity Technologies <admin@parity.io>"]
+"build" = false
+"publish" = true
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"description" = "Sign extrinsics to be submitted by Subxt"
+"homepage" = "https://www.parity.io/"
+"documentation" = "https://docs.rs/subxt"
+"readme" = "README.md"
+"keywords" = ["parity", "subxt", "extrinsic", "signer"]
+"license" = "Apache-2.0 OR GPL-3.0"
+"repository" = "https://github.com/paritytech/subxt"
+"resolver" = "2"
+
+["package"."metadata"]
+
+["package"."metadata"."cargo-machete"]
+"ignored" = ["getrandom"]
+
+["package"."metadata"."docs"]
+
+["package"."metadata"."docs"."rs"]
+"default-features" = true
+
+["package"."metadata"."playground"]
+"default-features" = true
+
+["features"]
+"default" = ["sr25519", "ecdsa", "subxt", "native", "std"]
+"ecdsa" = ["secp256k1"]
+"native" = ["subxt?/native"]
+"polkadot-js-compat" = ["std", "subxt-utils-accountid32", "sr25519", "base64", "scrypt", "crypto_secretbox", "serde", "serde_json"]
+"sr25519" = ["schnorrkel"]
+"std" = ["regex/std", "pbkdf2/std", "sha2/std", "hmac/std", "bip39/std", "schnorrkel?/std", "secp256k1?/std", "serde?/std", "serde_json?/std", "base64?/std", "scrypt?/std", "crypto_secretbox?/std"]
+"subxt" = ["dep:subxt"]
+"unstable-eth" = ["keccak-hash", "ecdsa", "secp256k1", "bip32"]
+"web" = ["getrandom/js", "subxt?/web"]
+
+["lib"]
+"name" = "subxt_signer"
+"path" = "src/lib.rs"
+
+["dependencies"]
+
+["dependencies"."base64"]
+"version" = "0.22.1"
+"features" = ["alloc"]
+"optional" = true
+"default-features" = false
+
+["dependencies"."bip32"]
+"version" = "0.6.0"
+"features" = ["alloc", "secp256k1"]
+"optional" = true
+"default-features" = false
+
+["dependencies"."bip39"]
+"version" = "2.1.0"
+"default-features" = false
+
+["dependencies"."cfg-if"]
+"version" = "1.0.0"
+
+["dependencies"."codec"]
+"version" = "3.7.4"
+"features" = ["derive"]
+"default-features" = false
+"package" = "parity-scale-codec"
+
+["dependencies"."crypto_secretbox"]
+"version" = "0.1.1"
+"features" = ["alloc", "salsa20"]
+"optional" = true
+"default-features" = false
+
+["dependencies"."getrandom"]
+"version" = "0.2"
+"optional" = true
+"default-features" = false
+
+["dependencies"."hex"]
+"version" = "0.4.3"
+"features" = ["alloc"]
+"default-features" = false
+
+["dependencies"."hmac"]
+"version" = "0.12.1"
+"default-features" = false
+
+["dependencies"."keccak-hash"]
+"version" = "0.11.0"
+"optional" = true
+"default-features" = false
+
+["dependencies"."pbkdf2"]
+"version" = "0.12.2"
+"default-features" = false
+
+["dependencies"."regex"]
+"version" = "1.11.0"
+"features" = ["unicode"]
+"default-features" = false
+
+["dependencies"."schnorrkel"]
+"version" = "0.11.4"
+"features" = ["getrandom"]
+"optional" = true
+"default-features" = false
+
+["dependencies"."scrypt"]
+"version" = "0.11.0"
+"optional" = true
+"default-features" = false
+
+["dependencies"."secp256k1"]
+"version" = "0.30.0"
+"features" = ["alloc", "recovery"]
+"optional" = true
+"default-features" = false
+
+["dependencies"."secrecy"]
+"version" = "0.10.3"
+
+["dependencies"."serde"]
+"version" = "1.0.210"
+"features" = ["derive"]
+"optional" = true
+"default-features" = false
+
+["dependencies"."serde_json"]
+"version" = "1.0.128"
+"optional" = true
+"default-features" = false
+
+["dependencies"."sha2"]
+"version" = "0.10.8"
+"default-features" = false
+
+["dependencies"."sp-crypto-hashing"]
+"version" = "0.1.0"
+"default-features" = false
+
+["dependencies"."subxt"]
+"version" = "0.50.0"
+"optional" = true
+"default-features" = false
+
+["dependencies"."subxt-utils-accountid32"]
+"version" = "0.50.0"
+"optional" = true
+"default-features" = false
+
+["dependencies"."thiserror"]
+"version" = "2.0.0"
+"default-features" = false
+
+["dependencies"."zeroize"]
+"version" = "1"
+"default-features" = false
+
+["dev-dependencies"]
+
+["dev-dependencies"."hex-literal"]
+"version" = "0.4.1"
+
+["dev-dependencies"."proptest"]
+"version" = "1.5.0"
+
+["dev-dependencies"."sp-core"]
+"version" = "36.1.0"
+"features" = ["std"]
+"default-features" = false
+
+["dev-dependencies"."sp-keyring"]
+"version" = "41.0.0"
+"features" = ["std"]
+"default-features" = false
+
+["lints"]
+
+["lints"."clippy"]
+"type_complexity" = "allow"
+
+["lints"."clippy"."all"]
+"level" = "deny"
+"priority" = -1
+
+["lints"."rust"]
+"bad_style" = "deny"
+"improper_ctypes" = "deny"
+"missing_docs" = "deny"
+"non_shorthand_field_patterns" = "deny"
+"overflowing_literals" = "deny"
+"path_statements" = "deny"
+"patterns_in_fns_without_body" = "deny"
+"unconditional_recursion" = "deny"
+"unused_allocation" = "deny"
+"unused_comparisons" = "deny"
+"unused_extern_crates" = "deny"
+"unused_parens" = "deny"
