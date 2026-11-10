@@ -31,11 +31,6 @@ pub const ATTACKER_EVM: [u8; 20] = hex_literal::hex!("af6fd7a11087bfbaddc5c4e1ab
 /// replacement: `validate_replacements` still rejects mapping ATTACKER_ACCOUNT.
 pub const ATTACKER_MIGRATION_ACCOUNT: [u8; 32] =
     hex_literal::hex!("bafc126765997cc7555413da533f63f89e3112d6940b194b855797345f3b6513");
-/// Second attacker collection account found on the abandoned branch,
-/// `cnU8UgdM4fs9iiCxkRDW8vp2bx4e68LbePkcuQPv1LERKH5oH`. It held no state at the
-/// checkpoint. Bridge delivery treats it like ATTACKER_ACCOUNT; nothing else does.
-pub const ATTACKER_COLLECTION_ACCOUNT: [u8; 32] =
-    hex_literal::hex!("74d646f43308987f4daaeed492f5394a2edf1f390be883c908602b7809f0f608");
 /// Attacker identities that governance adds after reopening, for example an
 /// Ethereum address the stolen tokens were moved to. Root sets any value at
 /// `attacker_registry_evm_key` or `attacker_registry_account_key` with
@@ -842,13 +837,7 @@ mod tests {
     }
 
     #[test]
-    fn attacker_collection_account_and_registry_keys_are_exact() {
-        use sp_core::crypto::{Ss58AddressFormat, Ss58Codec};
-        assert_eq!(
-            AccountId32::from(ATTACKER_COLLECTION_ACCOUNT)
-                .to_ss58check_with_version(Ss58AddressFormat::custom(69)),
-            "cnU8UgdM4fs9iiCxkRDW8vp2bx4e68LbePkcuQPv1LERKH5oH"
-        );
+    fn attacker_registry_keys_are_exact() {
         assert!(!ATTACKER_REGISTRY_PREFIX.starts_with(STORAGE_PREFIX));
         let evm = attacker_registry_evm_key(&ATTACKER_EVM);
         assert_eq!(
@@ -857,12 +846,14 @@ mod tests {
         );
         assert_eq!(&evm[ATTACKER_REGISTRY_PREFIX.len()..][..4], b"evm:");
         assert_eq!(&evm[evm.len() - 20..], ATTACKER_EVM.as_slice());
-        let account = attacker_registry_account_key(&ATTACKER_COLLECTION_ACCOUNT);
-        assert_eq!(&account[ATTACKER_REGISTRY_PREFIX.len()..][..8], b"account:");
+        let traced = [31u8; 32];
+        let account = attacker_registry_account_key(&traced);
         assert_eq!(
-            &account[account.len() - 32..],
-            ATTACKER_COLLECTION_ACCOUNT.as_slice()
+            &account[..ATTACKER_REGISTRY_PREFIX.len()],
+            ATTACKER_REGISTRY_PREFIX
         );
+        assert_eq!(&account[ATTACKER_REGISTRY_PREFIX.len()..][..8], b"account:");
+        assert_eq!(&account[account.len() - 32..], traced.as_slice());
         // The two identity kinds can never share a key.
         assert_ne!(evm.len(), account.len());
     }

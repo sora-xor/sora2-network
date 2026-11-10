@@ -615,10 +615,10 @@ fn recovery_attacker_sender_matches_each_identity_form_only() {
 }
 
 #[test]
-fn recovery_attacker_registry_and_collection_account_extend_identities() {
+fn recovery_attacker_registry_extends_identities() {
     use xcm::{v4, VersionedLocation};
     sp_io::TestExternalities::default().execute_with(|| {
-        let collection = AccountId::new(recovery::ATTACKER_COLLECTION_ACCOUNT);
+        let recorded = attacker();
         let traced = AccountId::new([31; 32]);
         let traced_evm = [32u8; 20];
         let located = GenericAccount::Parachain(VersionedLocation::V4(v4::Location::new(
@@ -637,10 +637,10 @@ fn recovery_attacker_registry_and_collection_account_extend_identities() {
             >>::redirect_transfer(&bridge_types::H160::from(from), to)
         };
 
-        // The recorded collection account is an attacker identity everywhere.
-        assert!(attacker_sender(&GenericAccount::Sora(collection.clone())));
+        // The recorded account is an attacker identity on every local network.
+        assert!(attacker_sender(&GenericAccount::Sora(recorded.clone())));
         assert!(attacker_sender(&GenericAccount::Liberland(
-            collection.clone()
+            recorded.clone()
         )));
         // Untraced identities are ordinary until root registers them.
         assert!(!attacker_sender(&GenericAccount::Sora(traced.clone())));
@@ -650,12 +650,12 @@ fn recovery_attacker_registry_and_collection_account_extend_identities() {
         )));
 
         // HASHI redirects need the recovery policy and an open bridge.
-        assert_eq!(redirect([0; 20], &collection), None);
+        assert_eq!(redirect([0; 20], &recorded), None);
         sp_io::storage::set(POLICY_STORAGE_KEY, &[1]);
-        assert_eq!(redirect([0; 20], &collection), Some(migration()));
+        assert_eq!(redirect([0; 20], &recorded), Some(migration()));
         assert_eq!(redirect(traced_evm, &old()), None);
         sp_io::storage::set(BRIDGE_HALT_STORAGE_KEY, &[1]);
-        assert_eq!(redirect([0; 20], &collection), None, "halted");
+        assert_eq!(redirect([0; 20], &recorded), None, "halted");
         sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
 
         sp_io::storage::set(&recovery::attacker_registry_account_key(&[31; 32]), &[1]);

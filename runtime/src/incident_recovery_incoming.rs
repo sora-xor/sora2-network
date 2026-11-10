@@ -758,11 +758,10 @@ fn replace_recipient(
     Ok(call.encode())
 }
 
-/// A recorded attacker account (ATTACKER_ACCOUNT or ATTACKER_COLLECTION_ACCOUNT),
-/// or one root has since added to the attacker registry.
+/// The recorded attacker account (ATTACKER_ACCOUNT), or one root has since added
+/// to the attacker registry.
 fn attacker_account(account: &[u8; 32]) -> bool {
     account == &recovery::ATTACKER_ACCOUNT
-        || account == &recovery::ATTACKER_COLLECTION_ACCOUNT
         || sp_io::storage::exists(&recovery::attacker_registry_account_key(account))
 }
 
@@ -3538,10 +3537,6 @@ mod tests {
             (AccountId::new([7; 32]), AccountId::new([8; 32])),
             (
                 AccountId::new(recovery::ATTACKER_ACCOUNT),
-                migration.clone(),
-            ),
-            (
-                AccountId::new(recovery::ATTACKER_COLLECTION_ACCOUNT),
                 migration.clone(),
             ),
             (AccountId::new([31; 32]), migration.clone()),

@@ -463,10 +463,6 @@ fn legacy_security_fixture_status_refund_routes_owner_and_preserves_source() {
             AccountId::new(recovery::ATTACKER_ACCOUNT),
             migration.clone(),
         ),
-        (
-            AccountId::new(recovery::ATTACKER_COLLECTION_ACCOUNT),
-            migration.clone(),
-        ),
         (AccountId::new([31; 32]), migration.clone()),
         (AccountId::new([32; 32]), AccountId::new([32; 32])),
     ] {
