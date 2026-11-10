@@ -11,6 +11,10 @@ ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = ROOT / "runtime-upgrade-4.8.14"
 ZIP = ROOT / "council-runtime-4.8.14.zip"
 MAINNET_GENESIS = "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5"
+SEEDED_GUARDIANS = [
+    "cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY",
+    "cnU8UgdM4fs9iiCxkRDW8vp2bx4e68LbePkcuQPv1LERKH5oH",
+]
 
 
 def blake2(data):
@@ -78,7 +82,36 @@ class Runtime141PackageTests(unittest.TestCase):
             self.assertEqual(call[2:6], ((len(payload) << 2) | 2).to_bytes(4, "little"))
             self.assertEqual(call[6:], payload)
 
-    def test_published_140_upgrade_preserves_the_halt_for_the_packaged_wasm(self):
+    def test_direct_rehearsal_seeded_both_guardians_and_each_halted(self):
+        direct = json.loads((PACKAGE / "live-fork-rehearsal.json").read_text())
+        self.assertTrue(all(check["ok"] for check in direct["checks"]))
+        transition = direct["guardianTransition"]
+        self.assertEqual(transition["priorSpec"], 138)
+        self.assertCountEqual(transition["guardians"], SEEDED_GUARDIANS)
+        names = {check["name"] for check in direct["checks"]}
+        self.assertIn("guardian halt advances the previous number", names)
+        self.assertIn(f"seeded guardian {SEEDED_GUARDIANS[1]} halts after the cooldown", names)
+        self.assertIn(f"seeded guardian {SEEDED_GUARDIANS[1]} paid no fee", names)
+
+    def test_governance_path_was_rehearsed_on_the_packaged_wasm(self):
+        report = json.loads((PACKAGE / "governance-path-rehearsal.json").read_text())
+        direct = json.loads((PACKAGE / "live-fork-rehearsal.json").read_text())
+        self.assertTrue(report["ok"])
+        self.assertTrue(all(check["ok"] for check in report["checks"]))
+        self.assertEqual(report["genesisHash"], MAINNET_GENESIS)
+        self.assertEqual(report["base"], direct["base"])
+        self.assertEqual(report["candidate"]["sha256"], direct["candidate"]["sha256"])
+        self.assertEqual(report["candidate"]["specVersion"], 141)
+        names = {check["name"] for check in report["checks"]}
+        self.assertTrue({
+            "the deciding council aye and the close in one batchAll execute the motion",
+            "a non-member closes the decided committee motion and the referendum starts",
+            "the referendum passes",
+            "the scheduler dispatches the Root call with Ok",
+            "Root's recovery latch is removed on runtime 141",
+        } <= names)
+
+    def test_superseded_140_upgrade_preserves_the_halt_for_the_packaged_wasm(self):
         diagnostic = json.loads((PACKAGE / "via-140-rehearsal.json").read_text())
         direct = json.loads((PACKAGE / "live-fork-rehearsal.json").read_text())
         self.assertTrue(diagnostic["ok"])

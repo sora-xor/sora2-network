@@ -1,0 +1,303 @@
+{
+  "endpoint": "wss://mof2.sora.org",
+  "checks": [
+    {
+      "name": "fork uses finalized mainnet state and the expected prior runtime",
+      "ok": true,
+      "detail": {
+        "specVersion": 138,
+        "codeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6",
+        "policyCommitment": "0x1f4e11427a9c0a61a4868af40c9e0bdf263bb44a9ee59886a537c52164f3cdbb"
+      }
+    },
+    {
+      "name": "candidate is spec 141, transaction version 134",
+      "ok": true,
+      "detail": {
+        "spec": 141,
+        "tx": 134
+      }
+    },
+    {
+      "name": "upgrade block applied runtime 141",
+      "ok": true,
+      "detail": {
+        "specVersion": 141,
+        "specName": "sora-substrate"
+      }
+    },
+    {
+      "name": "no inherent failed in the upgrade block",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "existing guardian state preserved",
+      "ok": true,
+      "detail": {
+        "priorSpec": 140,
+        "before": {
+          "guardians": "0x047373737373737373737373737373737373737373737373737373737373737373",
+          "lastHalt": "0x010000007373737373737373737373737373737373737373737373737373737373737373e10eb00100",
+          "signal": "0x01000000e10eb001"
+        },
+        "after": {
+          "guardians": "0x047373737373737373737373737373737373737373737373737373737373737373",
+          "lastHalt": "0x010000007373737373737373737373737373737373737373737373737373737373737373e10eb00100",
+          "signal": "0x01000000e10eb001"
+        },
+        "guardians": [
+          "cnU6fH7byLsQ9s8Gh3pPpB9xbAt7NH7wGVJMZyyatm7tPbTML"
+        ]
+      }
+    },
+    {
+      "name": "upgrade block weight fits in a block",
+      "ok": true,
+      "detail": {
+        "mandatoryRefTime": "128278770506",
+        "maxRefTime": "2000000000000"
+      }
+    },
+    {
+      "name": "native XOR issuance unchanged by the upgrade",
+      "ok": true,
+      "detail": "34970614288206918604196662"
+    },
+    {
+      "name": "mainnet recovery policy preserved by the upgrade",
+      "ok": true
+    },
+    {
+      "name": "Root's recovery latch left as it was",
+      "ok": true,
+      "detail": "0x01"
+    },
+    {
+      "name": "last halt and worker signal preserved by the upgrade",
+      "ok": true
+    },
+    {
+      "name": "the next block builds on runtime 141",
+      "ok": true,
+      "detail": {
+        "number": 28315363
+      }
+    },
+    {
+      "name": "a non-guardian halt is rejected before inclusion",
+      "ok": true,
+      "detail": "{\"invalid\":{\"badSigner\":null}}"
+    },
+    {
+      "name": "guardian halt advances the previous number",
+      "ok": true,
+      "detail": {
+        "section": "bridgeHalt",
+        "method": "BridgeHalted",
+        "data": {
+          "number": "2",
+          "guardian": "cnU6fH7byLsQ9s8Gh3pPpB9xbAt7NH7wGVJMZyyatm7tPbTML",
+          "reason": "live-fork rehearsal: guardian halt"
+        }
+      }
+    },
+    {
+      "name": "guardian paid no fee",
+      "ok": true,
+      "detail": {
+        "section": "transactionPayment",
+        "method": "TransactionFeePaid",
+        "data": {
+          "who": "cnU6fH7byLsQ9s8Gh3pPpB9xbAt7NH7wGVJMZyyatm7tPbTML",
+          "actualFee": "0",
+          "tip": "0"
+        }
+      }
+    },
+    {
+      "name": "guardian balance unchanged",
+      "ok": true
+    },
+    {
+      "name": "workers see the next halt at its block",
+      "ok": true,
+      "detail": {
+        "signal": "0x02000000eb0eb001",
+        "expected": "0x02000000eb0eb001"
+      }
+    },
+    {
+      "name": "LastHalt records number, guardian and block",
+      "ok": true,
+      "detail": {
+        "number": 2,
+        "guardian": "cnU6fH7byLsQ9s8Gh3pPpB9xbAt7NH7wGVJMZyyatm7tPbTML",
+        "block": 28315371,
+        "reason": "0x6c6976652d666f726b2072656865617273616c3a20677561726469616e2068616c74"
+      }
+    },
+    {
+      "name": "Root's recovery latch still untouched",
+      "ok": true
+    },
+    {
+      "name": "a second halt inside the cooldown is refused",
+      "ok": true,
+      "detail": "{\"invalid\":{\"stale\":null}}"
+    }
+  ],
+  "candidate": {
+    "path": "runtime-upgrade-4.8.14/framenode-runtime-4.8.14.compact.compressed.wasm",
+    "bytes": 2151959,
+    "sha256": "125e6582db89251a9b0ebe3f3549548d9addc7f4b83531d17239bc9e99403b9f",
+    "specVersion": 141,
+    "transactionVersion": 134
+  },
+  "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "base": {
+    "hash": "0x4d9d2c1660361839978c14c7355b589fb52d40f810fe596ebb959141d1c7620d",
+    "number": 28315359
+  },
+  "deployed": {
+    "specVersion": 138,
+    "codeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6",
+    "policyCommitment": "0x1f4e11427a9c0a61a4868af40c9e0bdf263bb44a9ee59886a537c52164f3cdbb"
+  },
+  "intermediate": {
+    "specVersion": 140,
+    "codeSha256": "0d9c61bc3142318f595404cc7809128a11beaf80369660688d9b740d08517b7e",
+    "fixtureGuardian": "cnU6fH7byLsQ9s8Gh3pPpB9xbAt7NH7wGVJMZyyatm7tPbTML",
+    "previousHalt": {
+      "number": 1,
+      "guardian": "cnU6fH7byLsQ9s8Gh3pPpB9xbAt7NH7wGVJMZyyatm7tPbTML",
+      "block": 28315361,
+      "reason": "0x"
+    }
+  },
+  "upgradeBlock": {
+    "number": 28315362,
+    "hash": "0x1f19958b9e90329685b95798bd9b6d4c9529ece706552a7e1d9937dba3b637fb",
+    "seconds": 35.991
+  },
+  "upgradeEvents": [
+    {
+      "section": "multiBlockMigrations",
+      "method": "UpgradeStarted",
+      "data": {
+        "migrations": "1"
+      }
+    },
+    {
+      "section": "system",
+      "method": "ExtrinsicSuccess",
+      "data": {
+        "dispatchInfo": {
+          "weight": {
+            "refTime": "413,973,000",
+            "proofSize": "17,877"
+          },
+          "class": "Mandatory",
+          "paysFee": "Yes"
+        }
+      }
+    },
+    {
+      "section": "multiBlockMigrations",
+      "method": "MigrationSkipped",
+      "data": {
+        "index": "0"
+      }
+    },
+    {
+      "section": "multiBlockMigrations",
+      "method": "UpgradeCompleted",
+      "data": {}
+    }
+  ],
+  "guardianTransition": {
+    "priorSpec": 140,
+    "before": {
+      "guardians": "0x047373737373737373737373737373737373737373737373737373737373737373",
+      "lastHalt": "0x010000007373737373737373737373737373737373737373737373737373737373737373e10eb00100",
+      "signal": "0x01000000e10eb001"
+    },
+    "after": {
+      "guardians": "0x047373737373737373737373737373737373737373737373737373737373737373",
+      "lastHalt": "0x010000007373737373737373737373737373737373737373737373737373737373737373e10eb00100",
+      "signal": "0x01000000e10eb001"
+    },
+    "guardians": [
+      "cnU6fH7byLsQ9s8Gh3pPpB9xbAt7NH7wGVJMZyyatm7tPbTML"
+    ]
+  },
+  "upgradeWeight": {
+    "used": {
+      "normal": {
+        "refTime": 0,
+        "proofSize": 0
+      },
+      "operational": {
+        "refTime": 0,
+        "proofSize": 0
+      },
+      "mandatory": {
+        "refTime": 128278770506,
+        "proofSize": 7505210
+      }
+    },
+    "maxBlock": {
+      "refTime": 2000000000000,
+      "proofSize": "0xffffffffffffffff"
+    }
+  },
+  "haltEvents": [
+    {
+      "section": "system",
+      "method": "ExtrinsicSuccess",
+      "data": {
+        "dispatchInfo": {
+          "weight": {
+            "refTime": "413,973,000",
+            "proofSize": "17,877"
+          },
+          "class": "Mandatory",
+          "paysFee": "Yes"
+        }
+      }
+    },
+    {
+      "section": "bridgeHalt",
+      "method": "BridgeHalted",
+      "data": {
+        "number": "2",
+        "guardian": "cnU6fH7byLsQ9s8Gh3pPpB9xbAt7NH7wGVJMZyyatm7tPbTML",
+        "reason": "live-fork rehearsal: guardian halt"
+      }
+    },
+    {
+      "section": "transactionPayment",
+      "method": "TransactionFeePaid",
+      "data": {
+        "who": "cnU6fH7byLsQ9s8Gh3pPpB9xbAt7NH7wGVJMZyyatm7tPbTML",
+        "actualFee": "0",
+        "tip": "0"
+      }
+    },
+    {
+      "section": "system",
+      "method": "ExtrinsicSuccess",
+      "data": {
+        "dispatchInfo": {
+          "weight": {
+            "refTime": "1,440,491,000",
+            "proofSize": "52,361"
+          },
+          "class": "Operational",
+          "paysFee": "Yes"
+        }
+      }
+    }
+  ],
+  "ok": true
+}
