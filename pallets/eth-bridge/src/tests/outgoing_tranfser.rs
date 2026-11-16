@@ -86,6 +86,7 @@ fn recovery_halt_blocks_new_debits_approvals_and_outgoing_cancellation_refunds()
         let (request, hash) = last_outgoing_request(net_id).unwrap();
         let (_, account, seed) = &state.networks[&net_id].ocw_keypairs[0];
         let (public, signature) = approval_params(&request, hash, seed);
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
         assert_err!(
@@ -1463,6 +1464,7 @@ fn permanent_request_quarantine_blocks_approval_refund_and_execution_after_halt_
         let (_, account, seed) = &state.networks[&net_id].ocw_keypairs[0];
         let (public, signature) = approval_params(&request, hash, seed);
         sp_io::storage::set(&bridge_types::recovery::hashi_key(net_id, hash), &[1]);
+        common::recovery::bridge_admission_fixtures::clear_state();
         sp_io::storage::clear(crate::recovery::HALT_KEY);
         let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
         assert_err!(request.cancel(), Error::RecoveryHalted);
@@ -1535,6 +1537,7 @@ fn permanent_quarantine_blocks_referenced_incoming_work_and_legacy_aggregate_bur
         );
         sp_io::storage::set(&bridge_types::recovery::hashi_key(network, id), &[1]);
         sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        common::recovery::bridge_admission_fixtures::clear_state();
         sp_io::storage::clear(crate::recovery::HALT_KEY);
         let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
         assert_err!(

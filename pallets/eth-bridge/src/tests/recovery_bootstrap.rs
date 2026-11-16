@@ -1,4 +1,4 @@
-//! Recovery bootstrap may prepare a peer locally without opening the bridge halt.
+//! Peer bootstrap does not bypass unfinished recovery or local worker acknowledgement.
 
 use crate::tests::mock::{BlockNumber, EthBridge, ExtBuilder, Runtime};
 use crate::{STORAGE_BOOTSTRAP_READY_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_MARKER_KEY};
@@ -7,7 +7,7 @@ use sp_runtime::offchain::storage::StorageValueRef;
 use std::collections::BTreeSet;
 
 #[test]
-fn initialized_peer_stays_idle_while_recovery_halt_exists_without_worker_lock() {
+fn initialized_peer_stays_idle_during_unfinished_recovery_without_worker_lock() {
     let (mut ext, mut state) = ExtBuilder::default().build();
     ext.execute_with(|| {
         // The fixture supplies actual local signing keys, peer membership, network IDs
@@ -32,8 +32,8 @@ fn initialized_peer_stays_idle_while_recovery_halt_exists_without_worker_lock() 
         }));
         StorageValueRef::persistent(STORAGE_BOOTSTRAP_READY_KEY).set(&1u64);
 
-        // No worker lock is held. Both values must halt by key existence, so
-        // nothing may depend on an absent marker, missing key or boolean decoding.
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
+        // The authenticated recovery state, not either legacy marker byte, stops work.
         for value in [1u8, 0u8] {
             sp_io::storage::set(crate::recovery::HALT_KEY, &[value]);
             <EthBridge as Hooks<BlockNumber>>::offchain_worker(1);
@@ -61,13 +61,14 @@ fn initialized_peer_stays_idle_while_recovery_halt_exists_without_worker_lock() 
                 StorageValueRef::persistent(STORAGE_BOOTSTRAP_READY_KEY)
                     .get::<u64>()
                     .unwrap(),
-                Some(1)
+                Some(0)
             );
         }
 
-        // Remove the latch only inside this test's in-memory chain state. The
+        // Restore the pre-recovery fixture only inside in-memory chain state. The
         // helper queues deterministic local mock responses, never external I/O.
         // The same prepared marker and network IDs must now drive the real hook.
+        common::recovery::bridge_admission_fixtures::clear_state();
         sp_io::storage::clear(crate::recovery::HALT_KEY);
         state.run_next_offchain_worker_with_params(0, 0, false);
         let methods: Vec<_> = state

@@ -166,7 +166,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::initialize())]
+        #[pallet::weight((<T as Config>::WeightInfo::initialize()).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -182,7 +182,7 @@ pub mod pallet {
 
         #[pallet::call_index(1)]
         #[transactional]
-        #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::add_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn add_peer(origin: OriginFor<T>, peer: ecdsa::Public) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
             info!("Call add_peer {:?} by {:?}", peer, output);
@@ -212,7 +212,7 @@ pub mod pallet {
 
         #[pallet::call_index(2)]
         #[transactional]
-        #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::remove_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn remove_peer(
             origin: OriginFor<T>,
             peer: ecdsa::Public,
@@ -249,7 +249,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::force_set_peers())]
+        #[pallet::weight((<T as Config>::WeightInfo::force_set_peers()).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn force_set_peers(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -271,7 +271,7 @@ pub mod pallet {
             id: H256,
             acknowledgement: bridge_types::substrate::DataSignerCall,
         ) -> DispatchResult {
-            if !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1") {
+            if !bridge_types::recovery::recovery_in_progress() {
                 return T::OutboundChannel::submit(
                     network,
                     &frame_system::RawOrigin::Root,
@@ -281,14 +281,10 @@ pub mod pallet {
                 .map(drop);
             }
             ensure!(
-                sp_io::storage::exists(b":sora-nexus:recovery:incoming-active:v1")
-                    && sp_io::storage::get(b":sora-nexus:recovery:bridge-inbound-context:v1")
-                        .as_deref()
-                        == Some(
-                            frame_system::Pallet::<T>::block_number()
-                                .encode()
-                                .as_slice()
-                        ),
+                frame_system::Pallet::<T>::block_number()
+                    .try_into()
+                    .ok()
+                    .is_some_and(bridge_types::recovery::maintenance_inbound_active),
                 Error::<T>::RecoveryHalted
             );
             let key = recovery_peer_ack_key(network, id);

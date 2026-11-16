@@ -68,10 +68,13 @@ use telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
 
 // Historical SORA runtimes on mainnet require these imports during sync, so the
 // node must expose them even in non-benchmark release builds.
-pub(crate) type HostFunctions = (
-    sp_io::SubstrateHostFunctions,
-    frame_benchmarking::benchmarking::HostFunctions,
-);
+pub(crate) type HostFunctions = sc_executor::sp_wasm_interface::ExtendedHostFunctions<
+    (
+        sp_io::SubstrateHostFunctions,
+        frame_benchmarking::benchmarking::HostFunctions,
+    ),
+    crate::bridge_local_quarantine::storage::HostFunctions,
+>;
 pub(crate) type FullClient =
     sc_service::TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 pub(crate) type FullBackend = sc_service::TFullBackend<Block>;
@@ -516,23 +519,8 @@ pub fn new_partial(
     if let Some(mut storage) = backend.offchain_storage() {
         remove_legacy_bridge_secret(&mut storage);
     }
-    if !offline {
-        let best_hash = client.info().best_hash;
-        match client.storage(
-            best_hash,
-            &sp_core::storage::StorageKey(common::recovery::BRIDGE_HALT_STORAGE_KEY.to_vec()),
-        ) {
-            Ok(Some(_)) => log::info!(
-                target: "eth_bridge",
-                "Bridge halted, offchain worker idle at startup: recovery bridge halt key is present at best head {best_hash:?}"
-            ),
-            Ok(None) => {}
-            Err(error) => log::warn!(
-                target: "eth_bridge",
-                "Could not read bridge halt status at startup: {error}; bridge readiness is unknown"
-            ),
-        }
-    }
+    // Worker readiness is reported by recovery_acknowledgement::on_startup
+    // before the runner starts. A legacy raw latch alone is not that decision.
     let bridge_bootstrap = if !crate::bridge_bootstrap_policy::enabled(
         recovery.is_some(),
         offline,
@@ -594,12 +582,12 @@ pub fn new_partial(
                 &storage,
                 peer_config.networks.keys().copied(),
                 peer_config.recovery_scan_start.as_ref(),
-                || {
+                |filename| {
                     let path = bridge_config_path(config)
                         .map_err(|e| e.to_string())?
-                        .with_file_name("eth-scan-cursors.json");
+                        .with_file_name(filename);
                     std::fs::read(&path)
-                        .map_err(|e| format!("Cannot read HASHI scan backup at {path:?}: {e}"))
+                        .map_err(|e| format!("Cannot read HASHI scan evidence at {path:?}: {e}"))
                 },
                 |backup| {
                     let info = client.info();
@@ -607,6 +595,40 @@ pub fn new_partial(
                         .hash(backup.source_number)
                         .map_err(|e| e.to_string())?;
                     backup.verify_history(info.genesis_hash, info.finalized_number, hash)
+                },
+                |reconstruction| {
+                    let info = client.info();
+                    let hash = client
+                        .hash(reconstruction.audit_anchor_number)
+                        .map_err(|e| e.to_string())?;
+                    reconstruction.verify_history(info.genesis_hash, info.finalized_number, hash)?;
+                    for at in [reconstruction.audit_anchor_hash, info.best_hash] {
+                        let runtime_code_hash = client
+                            .storage_hash(
+                                at,
+                                &sp_core::storage::StorageKey(
+                                    sp_core::storage::well_known_keys::CODE.to_vec(),
+                                ),
+                            )
+                            .map_err(|e| format!("Cannot read HASHI reconstruction runtime: {e}"))?;
+                        reconstruction.verify_state(runtime_code_hash, |network| {
+                            client
+                                .storage(
+                                    at,
+                                    &sp_core::storage::StorageKey(
+                                        crate::bridge_scan_cursor::contract_storage_key(network),
+                                    ),
+                                )
+                                .map(|value| value.map(|value| value.0))
+                                .map_err(|e| format!("Cannot read HASHI reconstruction contract: {e}"))
+                        })?;
+                    }
+                    log::warn!(
+                        target: "eth_bridge",
+                        "SORA Nexus scan reconstruction accepted at audit anchor {:?}; Ethereum log completeness and reconciliation rely on the operator-reviewed audit. Bridge halt and acknowledgement gates remain in force.",
+                        reconstruction.audit_anchor_hash
+                    );
+                    Ok(())
                 },
             )
             .map_err(ServiceError::Other)?
@@ -878,7 +900,22 @@ where
         bridge_workers.recovery_bootstrap,
     )?;
     // Before any offchain worker runs, so a confirmed halt applies from the first block.
-    crate::guardian_halt::on_startup(&client, &backend, bridge_workers.resume_after_halt);
+    let (guardian_monitor, guardian_observer) = crate::guardian_halt::on_startup(
+        client.clone(),
+        backend.clone(),
+        bridge_workers.resume_after_halt,
+        bridge_workers.resume_after_observed_halt,
+    );
+    task_manager.spawn_handle().spawn(
+        "bridge-guardian-observer",
+        "offchain-worker",
+        guardian_observer,
+    );
+    crate::recovery_acknowledgement::on_startup(
+        &client,
+        &backend,
+        bridge_workers.resume_after_recovery,
+    );
     let hashi_witness_pump = recovery_hashi
         .as_ref()
         .map(|(directory, pin)| {
@@ -982,23 +1019,26 @@ where
         })?;
 
     if config.offchain_worker.enabled {
+        log::warn!("SORA Nexus local OCW quarantine: seven exact network-0 withdrawals blocked; reviewed runtime required; chain state unchanged");
         use crate::guardian_halt::worker_guard::{
             WorkerGuard, WorkerKeystore, WorkerPasses, WorkerPool,
         };
         let guard = WorkerGuard {
             client: client.clone(),
             backend: backend.clone(),
+            execution_block: None,
+            guardian_monitor: guardian_monitor.clone(),
         };
+        let invocation_guard = guard.clone();
+        let worker_keystore = keystore_container.keystore();
         let storage = backend.offchain_storage();
         let passes = WorkerPasses::default();
         let offchain_workers =
             sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
                 runtime_api_provider: client.clone(),
                 is_validator: config.role.is_authority(),
-                keystore: Some(Arc::new(WorkerKeystore {
-                    inner: keystore_container.keystore(),
-                    guard: guard.clone(),
-                })),
+                // Bind each keystore to the exact Wasm invocation's block below.
+                keystore: None,
                 // Each per-block runtime API gets its own storage extension and
                 // pass token; other offchain storage uses the original backend.
                 offchain_db: None::<sc_offchain::NoOffchainStorage>,
@@ -1008,12 +1048,25 @@ where
                 })),
                 network_provider: Arc::new(network.clone()),
                 enable_http_requests: true,
-                custom_extensions: move |_| {
-                    storage
+                custom_extensions: move |hash| {
+                    // Persist queued guardian observations before this invocation
+                    // can see a halt and return without touching its signing guard.
+                    guardian_monitor.refresh();
+                    let mut extensions: Vec<Box<dyn sp_externalities::Extension>> = storage
                         .clone()
-                        .map(|db| passes.extension(db))
+                        .map(|db| passes.extension(db, guardian_monitor.clone()))
                         .into_iter()
-                        .collect()
+                        .collect();
+                    extensions.push(crate::bridge_local_quarantine::extension());
+                    let mut guard = invocation_guard.clone();
+                    guard.execution_block = Some(hash);
+                    extensions.push(Box::new(sp_keystore::KeystoreExt(Arc::new(
+                        WorkerKeystore {
+                            inner: worker_keystore.clone(),
+                            guard,
+                        },
+                    ))));
+                    extensions
                 },
             })?;
         let worker_client = client.clone();
@@ -1299,6 +1352,50 @@ mod tests {
         .expect("bridge config fixture should decode")
     }
 
+    fn reconstructed_fixture_cursors(
+        storage: &impl OffchainStorage,
+        accepted_anchor: bool,
+    ) -> Result<std::collections::BTreeMap<framenode_runtime::NetworkId, u64>, String> {
+        use sp_core::{H160, H256};
+        let audit = br#"{"origin":"operator-reviewed reconstruction"}"#;
+        let document = serde_json::to_vec(&serde_json::json!({
+            "format": "hashi-scan-reconstruction-v1",
+            "genesisHash": H256::repeat_byte(1),
+            "auditAnchorNumber": 20,
+            "auditAnchorHash": H256::repeat_byte(2),
+            "runtimeCodeHash": H256::repeat_byte(3),
+            "scanner": "eth-bridge-main-contract-deposits-v1",
+            "depositTopic": framenode_runtime::eth_bridge::DEPOSIT_TOPIC,
+            "configuredNetworkContracts": {"0": H160::repeat_byte(4), "42": H160::repeat_byte(4)},
+            "nextHeights": {"0": 5, "42": 17},
+            "auditManifestSha256": H256::from(sp_io::hashing::sha2_256(audit))
+        }))
+        .unwrap();
+        crate::bridge_scan_cursor::prepare(
+            storage,
+            [0, 42].into_iter(),
+            Some(&crate::bridge_scan_cursor::ScanStart::Reconstructed {
+                sha256: sp_io::hashing::sha2_256(&document).into(),
+            }),
+            |name| match name {
+                "eth-scan-reconstruction.json" => Ok(document.clone()),
+                "eth-scan-reconstruction-audit.json" => Ok(audit.to_vec()),
+                _ => unreachable!(),
+            },
+            |_| unreachable!(),
+            |evidence| {
+                evidence.verify_history(
+                    H256::repeat_byte(1),
+                    30,
+                    accepted_anchor.then_some(H256::repeat_byte(2)),
+                )?;
+                evidence.verify_state(Some(H256::repeat_byte(3)), |_| {
+                    Ok(Some(H160::repeat_byte(4).encode()))
+                })
+            },
+        )
+    }
+
     #[test]
     fn legacy_bridge_secret_is_removed_without_removing_public_bootstrap_marker() {
         use super::{STORAGE_PEER_MARKER_KEY, STORAGE_PEER_SECRET_KEY, STORAGE_PREFIX};
@@ -1387,6 +1484,14 @@ mod tests {
         externalities.execute_with(|| {
             let halt_key = common::recovery::BRIDGE_HALT_STORAGE_KEY;
             sp_io::storage::set(halt_key, &[1]);
+            let guardian_halt = common::bridge_halt::GuardianHalt {
+                number: 3,
+                block: 20,
+            };
+            sp_io::storage::set(
+                common::bridge_halt::GUARDIAN_HALT_STORAGE_KEY,
+                &guardian_halt.encode(),
+            );
             assert!(crate::bridge_bootstrap_policy::enabled(
                 true, false, true, true
             ));
@@ -1399,17 +1504,23 @@ mod tests {
             .expect("local peer should be found");
             let expected_networks = config.networks.clone();
             let mut storage = InMemOffchainStorage::default();
+            storage.set(
+                STORAGE_PREFIX,
+                &framenode_runtime::eth_bridge::eth_scan_cursor_key(0),
+                &3u64.encode(),
+            );
+            let cursors = reconstructed_fixture_cursors(&storage, true).unwrap();
             let networks = initialize_bridge_offchain_storage(
                 &mut storage,
                 &marker,
                 config,
                 Some(SocketAddr::from(([0, 0, 0, 0], 9944))),
-                [(0, 5), (42, 17)].into_iter().collect(),
+                cursors,
             )
             .expect("local bridge initialization should succeed while halted");
 
             assert_eq!(networks, [0, 42].into_iter().collect());
-            for (network, height) in [(0u32, 5u64), (42, 17)] {
+            for (network, height) in [(0u32, 3u64), (42, 17)] {
                 assert_eq!(
                     storage.get(
                         STORAGE_PREFIX,
@@ -1448,7 +1559,47 @@ mod tests {
                 .get(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY)
                 .is_none());
             assert_eq!(sp_io::storage::get(halt_key).as_deref(), Some(&[1u8][..]));
+            assert_eq!(
+                common::bridge_halt::latest_guardian_halt(),
+                Ok(Some(guardian_halt))
+            );
+            assert!(!common::bridge_halt::workers_may_run(
+                &common::bridge_halt::latest_guardian_halt(),
+                None,
+            ));
         });
+    }
+
+    #[test]
+    fn rejected_reconstruction_does_not_publish_bootstrap_or_partial_cursors() {
+        let mut storage = InMemOffchainStorage::default();
+        let result = reconstructed_fixture_cursors(&storage, false).and_then(|cursors| {
+            initialize_bridge_offchain_storage(
+                &mut storage,
+                &sample_bridge_public_key(),
+                sample_bridge_peer_config(),
+                Some(SocketAddr::from(([127, 0, 0, 1], 9944))),
+                cursors,
+            )
+            .map_err(|error| error.to_string())
+        });
+        assert!(result.is_err());
+        for key in [
+            STORAGE_PEER_MARKER_KEY,
+            STORAGE_BOOTSTRAP_READY_KEY,
+            STORAGE_NETWORK_IDS_KEY,
+        ] {
+            assert_eq!(storage.get(STORAGE_PREFIX, key), None);
+        }
+        for network in [0, 42] {
+            assert_eq!(
+                storage.get(
+                    STORAGE_PREFIX,
+                    &framenode_runtime::eth_bridge::eth_scan_cursor_key(network)
+                ),
+                None
+            );
+        }
     }
 
     #[test]

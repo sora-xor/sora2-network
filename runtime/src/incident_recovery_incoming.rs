@@ -1579,12 +1579,12 @@ fn dispatch_authenticated(
     // Tombstones are permanent, independent of the temporary global worker halt.
     // A direct authenticated-origin dispatch must not bypass channel admission.
     if bridge_types::recovery::message_quarantined(network, id.hash()) {
-        if sp_io::storage::exists(BRIDGE_HALT_STORAGE_KEY) {
+        if bridge_types::recovery::maintenance_inbound_active(System::block_number()) {
             sp_io::storage::set(FAILED_KEY, &RecoveryError::Replay.encode());
         }
         return MessageDispatchOutcome::Failed;
     }
-    if !sp_io::storage::exists(BRIDGE_HALT_STORAGE_KEY) {
+    if !bridge_types::recovery::recovery_in_progress() {
         if !sp_io::storage::exists(POLICY_STORAGE_KEY) {
             // Preserve deployed pre-recovery dispatch bytes and behavior.
             return forward(payload);
@@ -1639,6 +1639,9 @@ fn dispatch_authenticated(
         };
     }
     let result = (|| -> Result<MessageDispatchOutcome, RecoveryError> {
+        if !bridge_types::recovery::maintenance_inbound_active(System::block_number()) {
+            return Err(RecoveryError::WrongPhase);
+        }
         if sp_io::storage::get(BRIDGE_INBOUND_CONTEXT_STORAGE_KEY).as_deref()
             != Some(System::block_number().encode().as_slice())
         {
@@ -1749,7 +1752,9 @@ fn dispatch_authenticated(
         Ok(outcome)
     })();
     result.unwrap_or_else(|error| {
-        sp_io::storage::set(FAILED_KEY, &error.encode());
+        if bridge_types::recovery::maintenance_inbound_active(System::block_number()) {
+            sp_io::storage::set(FAILED_KEY, &error.encode());
+        }
         MessageDispatchOutcome::Failed
     })
 }
@@ -2115,8 +2120,18 @@ mod tests {
     fn recovery_hashi_offline_codec_golden() {
         sp_io::TestExternalities::default().execute_with(|| {
             let (mut policy, mut operation, keys) = hashi_fixture(false);
-            let committed = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../misc/incident_recovery/hashi_codec_fixture.json");
+            let fixture_directory = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../misc/incident_recovery");
+            let versioned = fixture_directory.join(format!(
+                "hashi_codec_fixture_spec{}.json", crate::VERSION.spec_version
+            ));
+            // Retain historical native payloads as immutable evidence. Runtime
+            // version changes use a separately emitted native golden fixture.
+            let committed = if versioned.exists() {
+                versioned
+            } else {
+                fixture_directory.join("hashi_codec_fixture.json")
+            };
             let expected: Option<serde_json::Value> = committed
                 .exists()
                 .then(|| serde_json::from_slice(&std::fs::read(&committed).unwrap()).unwrap());
@@ -3332,7 +3347,7 @@ mod tests {
         for malformed in [false, true] {
             sp_io::TestExternalities::default().execute_with(|| {
                 let (policy, operation, payload) = fixture(AccountId::new([7; 32]));
-                recovery::storage::initialize(&policy).unwrap();
+                delayed_hashi_complete_and_enable(&policy);
                 sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
                 let IncomingChannel::Substrate {
                     network,
@@ -3597,7 +3612,7 @@ mod tests {
                 );
                 sp_io::storage::set(&recovery::attacker_registry_account_key(&[31; 32]), &[1]);
                 crate::incident_recovery::with_test_policy(&policy, || {
-                    sp_io::storage::set(POLICY_STORAGE_KEY, &policy.commitment());
+                    delayed_hashi_complete_and_enable(&policy);
                     let payer = AccountId::new([44; 32]);
                     let call = RuntimeCall::BridgeProxy(bridge_proxy::Call::retry_refund {
                         network_id: network,
@@ -3711,7 +3726,7 @@ impl eth_bridge::recovery::IncomingAccountResolver<AccountId> for PersistentAcco
     /// zero-source requests cannot pass ordinary delivery after recovery.
     fn redirect_transfer(from: &bridge_types::H160, beneficiary: &AccountId) -> Option<AccountId> {
         (sp_io::storage::exists(POLICY_STORAGE_KEY)
-            && !sp_io::storage::exists(BRIDGE_HALT_STORAGE_KEY)
+            && !bridge_types::recovery::recovery_in_progress()
             && (attacker_sender(&GenericAccount::EVM(*from))
                 || attacker_local_account(beneficiary)))
         .then(|| AccountId::new(recovery::ATTACKER_MIGRATION_ACCOUNT))

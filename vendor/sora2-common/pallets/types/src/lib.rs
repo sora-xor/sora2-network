@@ -50,8 +50,8 @@ use derive_where::derive_where;
 pub use ethereum_types::{H128, H64};
 pub use log::Log;
 use serde::{Deserialize, Serialize};
+use sp_core::Get;
 pub use sp_core::{H160, H256, H512, U256};
-use sp_core::{Get};
 use staging_xcm as xcm;
 use ton::{TonAddress, TonBalance, TonNetworkId, TonTransactionId};
 
@@ -112,15 +112,7 @@ pub enum SubNetworkId {
 }
 
 #[derive(
-    Encode,
-    Decode,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Debug,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Encode, Decode, Copy, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
@@ -262,15 +254,7 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages,
 
 #[allow(clippy::large_enum_variant)]
 #[derive(
-    Encode,
-    Decode,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Debug,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Encode, Decode, Clone, Copy, PartialEq, Eq, Debug, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum GenericAssetId {
@@ -320,15 +304,7 @@ pub type MainnetAccountId = sp_runtime::AccountId32;
 pub type MainnetBalance = u128;
 
 #[derive(
-    Encode,
-    Decode,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Debug,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Encode, Decode, Clone, Copy, PartialEq, Eq, Debug, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 // The asset-locker bound requires serde in Wasm builds as well. Serde is
 // already available with alloc and no default features; SCALE is unchanged.

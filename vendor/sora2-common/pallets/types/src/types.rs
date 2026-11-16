@@ -39,7 +39,7 @@ use derive_where::derive_where;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_consensus_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
-use sp_core::{Get};
+use sp_core::Get;
 use sp_runtime::traits::Hash;
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;
@@ -183,15 +183,7 @@ pub enum AssetKind {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
@@ -205,15 +197,7 @@ pub enum MessageStatus {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 /// Additional leaf data for MMR
 pub struct LeafExtraData<Hash, RandomSeed> {
@@ -224,15 +208,7 @@ pub struct LeafExtraData<Hash, RandomSeed> {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
@@ -251,15 +227,7 @@ pub enum BridgeAssetInfo {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum BridgeAppInfo {

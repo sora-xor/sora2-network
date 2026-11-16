@@ -179,11 +179,11 @@ pub mod pallet {
         // The commitment hash is included in an [`AuxiliaryDigestItem`] in the block header,
         // with the corresponding commitment is persisted offchain.
         fn on_initialize(now: BlockNumberFor<T>) -> Weight {
-            if crate::recovery::halted() {
-                return T::DbWeight::get().reads(1);
+            let mut weight = bridge_types::recovery::completion_weight::<T>(1);
+            if crate::recovery::in_progress() {
+                return weight;
             }
             let interval = Self::interval();
-            let mut weight = Default::default();
             if now % interval == Zero::zero() {
                 for chain_id in MessageQueues::<T>::iter_keys() {
                     weight += Self::commit(chain_id);
@@ -251,7 +251,12 @@ pub mod pallet {
         }
 
         pub(crate) fn commit(network_id: GenericNetworkId) -> Weight {
-            if crate::recovery::halted() {
+            Self::commit_inner(network_id)
+                .saturating_add(bridge_types::recovery::completion_weight::<T>(1))
+        }
+
+        fn commit_inner(network_id: GenericNetworkId) -> Weight {
+            if crate::recovery::in_progress() {
                 return T::DbWeight::get().reads(1);
             }
             let Some(next_nonce) = ChannelNonces::<T>::get(network_id).checked_add(1) else {
@@ -278,11 +283,16 @@ pub mod pallet {
             {
                 return T::DbWeight::get().reads(recovery_reads);
             }
-            let recovery_overhead = if sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
+            // Every committed message reaches the runtime's BridgeProxy status
+            // notifier, which independently validates completed recovery.
+            let recovery_overhead = (if sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
                 T::DbWeight::get().reads(recovery_reads)
             } else {
                 Weight::zero()
-            };
+            })
+            .saturating_add(bridge_types::recovery::completion_weight::<T>(
+                message_count as u64,
+            ));
             debug!("Commit substrate messages");
             let messages = MessageQueues::<T>::take(network_id);
             QueueTotalGas::<T>::remove(network_id);
@@ -420,12 +430,15 @@ pub mod pallet {
         /// queue position, the global/batch gates and repeated weight probes.
         /// No-policy execution retains deployed historical dispatch weights.
         pub(crate) fn recovery_submit_overhead() -> Weight {
+            let lifecycle = bridge_types::recovery::completion_weight::<T>(2);
             if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
-                return Weight::zero();
+                return lifecycle;
             }
             let positions = T::MaxMessagesPerCommit::get() as u64;
-            T::DbWeight::get()
-                .reads(positions.saturating_mul(2).saturating_add(8))
+            lifecycle
+                .saturating_add(
+                    T::DbWeight::get().reads(positions.saturating_mul(2).saturating_add(8)),
+                )
                 .saturating_add(Weight::from_parts(
                     positions.saturating_mul(250_000).saturating_add(2_000_000),
                     positions.saturating_mul(8_192).saturating_add(16_384),
@@ -438,7 +451,7 @@ pub mod pallet {
             payload: &[u8],
             additional_data: AdditionalEVMOutboundData,
         ) -> Result<H256, DispatchError> {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(!crate::recovery::in_progress(), Error::<T>::RecoveryHalted);
             ensure!(
                 additional_data.max_gas < T::MaxGasPerMessage::get(),
                 Error::<T>::MessageGasLimitExceeded
@@ -471,7 +484,7 @@ pub mod pallet {
             who: &RawOrigin<T::AccountId>,
             message: GenericBridgeMessage<T::MaxMessagePayloadSize>,
         ) -> Result<H256, DispatchError> {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(!crate::recovery::in_progress(), Error::<T>::RecoveryHalted);
             debug!("Send message from {:?} to network {:?}", who, network_id);
             let messages_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as u64;
             ensure!(
@@ -522,7 +535,7 @@ impl<T: Config> OutboundChannel<SubNetworkId, T::AccountId, ()> for Pallet<T> {
         payload: &[u8],
         _: (),
     ) -> Result<H256, DispatchError> {
-        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+        ensure!(!crate::recovery::in_progress(), Error::<T>::RecoveryHalted);
         let message = BridgeMessage {
             payload: payload
                 .to_vec()

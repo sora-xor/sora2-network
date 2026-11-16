@@ -1,16 +1,45 @@
-// Public-fixture native admission tests for a later, explicitly authorized reopening.
-// Only these local tests clear the latch. No production call or recovery context
-// is added. Legacy native runs inject their public test policy; production legacy
-// runtimes still reject ordinary recovery delivery (see the overlay stub test).
+// Public-fixture native admission after coherent completed recovery.
+// Historical halt markers stay present; no restart extrinsic or maintenance
+// context is used. Legacy native runs inject their public test policy;
+// deployed legacy runtimes retain their original admission behavior.
 
 fn delayed_hashi_complete_and_enable(policy: &RecoveryPolicy) {
     recovery::storage::initialize(policy).unwrap();
     let mut status = recovery::storage::status().unwrap().unwrap();
     status.phase = RecoveryPhase::Complete;
     status.next_chunk = policy.chunk_hashes.len() as u32;
+    assert!(status.failure.is_none());
     sp_io::storage::set(STATUS_STORAGE_KEY, &status.encode());
-    // Test-only simulation of a later, separately authorized bridge reopening.
-    sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
+    let active_policy: [u8; 32] = sp_io::storage::get(ACTIVE_POLICY_STORAGE_KEY)
+        .unwrap()
+        .as_ref()
+        .try_into()
+        .unwrap();
+    if !sp_io::storage::exists(recovery::RECOVERY_ANCHOR_STORAGE_KEY) {
+        recovery::storage::record_recovery_anchor([91; 32]).unwrap();
+    }
+    sp_io::storage::set(
+        recovery::TERMINAL_AUDIT_STORAGE_KEY,
+        &(
+            active_policy,
+            policy.terminal_audit_commitment,
+            status.next_chunk,
+        )
+            .encode(),
+    );
+    assert_eq!(
+        sp_io::storage::get(recovery::INCOMING_AUDIT_PENDING_KEY).as_deref(),
+        Some(0u32.encode().as_slice()),
+    );
+    // A coherent terminal proof permits normal consensus execution. The legacy
+    // marker remains intact and neither authorizes nor prevents that execution.
+    assert_eq!(
+        sp_io::storage::get(BRIDGE_HALT_STORAGE_KEY).as_deref(),
+        Some(&[1][..])
+    );
+    assert!(bridge_types::recovery::completion().unwrap().is_some());
+    assert!(!sp_io::storage::exists(ACTIVE_KEY));
+    assert!(!sp_io::storage::exists(BRIDGE_INBOUND_CONTEXT_STORAGE_KEY));
 }
 
 fn delayed_hashi_approvals(
@@ -399,7 +428,7 @@ fn delayed_hashi_prepared_original_transfer_finalizes_once_after_complete() {
 }
 
 #[test]
-fn delayed_hashi_complete_does_not_itself_allow_ordinary_delivery() {
+fn delayed_hashi_phase_complete_without_terminal_proof_rejects_ordinary_delivery() {
     sp_io::TestExternalities::default().execute_with(|| {
         let (policy, operation, _) = hashi_fixture_with_author(AccountId::new([7; 32]));
         let IncomingChannel::Hashi { approvals, .. } = &operation.channel else {
@@ -578,10 +607,15 @@ fn delayed_hashi_attacker_proceeds_credit_migration_account_after_reopening() {
             crate::incident_recovery::with_test_policy(&policy, || {
                 delayed_hashi_complete_and_enable(&policy);
                 assert_eq!(redirect(), Some(migration.clone()));
-                // Halted delivery belongs to the committed maintenance resolution.
+                // A historical marker never disables ordinary attacker redirection.
                 sp_io::storage::set(BRIDGE_HALT_STORAGE_KEY, &[1]);
-                assert_eq!(redirect(), None);
-                sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
+                assert_eq!(redirect(), Some(migration.clone()));
+                let completed = recovery::storage::status().unwrap().unwrap();
+                let mut unfinished = completed.clone();
+                unfinished.phase = RecoveryPhase::Applying;
+                sp_io::storage::set(STATUS_STORAGE_KEY, &unfinished.encode());
+                assert_eq!(redirect(), None, "unfinished recovery");
+                sp_io::storage::set(STATUS_STORAGE_KEY, &completed.encode());
                 for approval in delayed_hashi_approvals(&operation, &keys, inner.clone()) {
                     assert_ok!(delayed_hashi_submit(&approval));
                 }

@@ -147,11 +147,12 @@ fn nodes_that_are_not_bridge_peers_ignore_halts() {
 }
 
 #[test]
-fn roots_recovery_latch_still_stops_the_workers_on_its_own() {
+fn unfinished_recovery_stops_workers_independently_of_guardian_acknowledgement() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
         halt_on_chain(&FIRST);
         operator_confirms(FIRST);
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         run_hook(6);
         assert!(state.http_requests().is_empty());
@@ -159,9 +160,10 @@ fn roots_recovery_latch_still_stops_the_workers_on_its_own() {
 }
 
 #[test]
-fn guardian_reporting_continues_while_roots_latch_stops_work() {
+fn guardian_reporting_continues_while_recovery_is_unfinished() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         halt_on_chain(&FIRST);
         run_hook(6);

@@ -180,8 +180,9 @@ fn prepare_native(context: &Context) -> Result<RecoveryHashiPreparation, Recover
         bridge_multisig::Accounts::<Runtime>::get(&bridge).ok_or(RecoveryError::WrongPreimage)?;
     let current = u64::from(context.execution_number);
     let mut payloads = Vec::with_capacity(approvals.len());
-    // Existing native admission permits retained loads only inside this exact
-    // one-block inbound context. It is temporary and removed before apply.
+    // Existing native admission permits retained loads only inside this exact,
+    // typed one-block context. Both keys are temporary and removed before apply.
+    sp_io::storage::set(super::ACTIVE_KEY, &active.encode());
     sp_io::storage::set(
         recovery::BRIDGE_INBOUND_CONTEXT_STORAGE_KEY,
         &context.execution_number.encode(),
@@ -228,6 +229,7 @@ fn prepare_native(context: &Context) -> Result<RecoveryHashiPreparation, Recover
         });
     }
     sp_io::storage::clear(recovery::BRIDGE_INBOUND_CONTEXT_STORAGE_KEY);
+    sp_io::storage::clear(super::ACTIVE_KEY);
     let version = <Runtime as frame_system::Config>::Version::get();
     Ok(RecoveryHashiPreparation {
         format_version: FORMAT_VERSION,

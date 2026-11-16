@@ -636,7 +636,7 @@ fn unauthenticated_or_wrong_type_submission_is_rejected_before_execution() {
 }
 
 #[test]
-fn recovery_halt_requires_exact_current_context_and_still_checks_authentication() {
+fn unfinished_recovery_requires_exact_current_context_and_still_checks_authentication() {
     new_tester().execute_with(|| {
         let commitment =
             bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
@@ -648,6 +648,7 @@ fn recovery_halt_requires_exact_current_context_and_still_checks_authentication(
                 .try_into()
                 .unwrap(),
             });
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         let validate =
             || Pallet::<Test>::validate_submission(BASE_NETWORK_ID, &commitment, &vec![255]);
@@ -674,6 +675,7 @@ fn recovery_context_cannot_admit_abandoned_outbound_status_reports() {
         let chain: EVMChainId = [1u8; 32].into();
         let channel = H160::repeat_byte(4);
         EVMChannelAddresses::<Test>::insert(chain, channel);
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         let number: u32 = System::block_number().try_into().unwrap();
         sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &number.to_le_bytes());
@@ -1000,6 +1002,7 @@ fn quarantined_inbound_messages_are_rejected_for_each_protocol() {
             assert_eq!(ChannelNonces::<Test>::get(network), 0);
         }
         System::set_block_number(u64::from(u32::MAX) + 1);
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &0u32.to_le_bytes());
         assert!(!crate::recovery::inbound_allowed::<Test>());

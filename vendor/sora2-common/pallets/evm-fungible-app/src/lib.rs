@@ -355,7 +355,7 @@ pub mod pallet {
         // DON'T CHANGE ORDER
 
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        #[pallet::weight((<T as Config>::WeightInfo::mint()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn mint(
             origin: OriginFor<T>,
             token: H160,
@@ -427,14 +427,14 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_asset_internal())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_asset_internal()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_asset_internal(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
             contract: H160,
         ) -> DispatchResult {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             let CallOriginOutput {
@@ -467,7 +467,7 @@ pub mod pallet {
         // Common exstrinsics
 
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        #[pallet::weight((<T as Config>::WeightInfo::burn()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn burn(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -483,7 +483,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_sidechain_asset()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -493,7 +493,7 @@ pub mod pallet {
             decimals: u8,
         ) -> DispatchResult {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_root(origin)?;
@@ -533,7 +533,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_existing_sidechain_asset()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -542,7 +542,7 @@ pub mod pallet {
             decimals: u8,
         ) -> DispatchResult {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_root(origin)?;
@@ -580,14 +580,14 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_thischain_asset()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_thischain_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_root(origin)?;
@@ -618,7 +618,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_native_app()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -628,7 +628,7 @@ pub mod pallet {
             sidechain_precision: u8,
         ) -> DispatchResult {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_root(origin)?;
@@ -651,7 +651,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_existing_native_app())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_existing_native_app()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_network_with_existing_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -660,7 +660,7 @@ pub mod pallet {
             sidechain_precision: u8,
         ) -> DispatchResult {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_root(origin)?;
@@ -682,7 +682,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(8)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_native_app()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn claim_relayer_fees(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -690,7 +690,7 @@ pub mod pallet {
             signature: sp_core::ecdsa::Signature,
         ) -> DispatchResult {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             let who = ensure_signed(origin)?;
@@ -811,7 +811,7 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
@@ -885,7 +885,7 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);

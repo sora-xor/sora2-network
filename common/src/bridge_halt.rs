@@ -6,9 +6,10 @@
 //! last confirmed: while they differ, the worker does nothing. Operators confirm
 //! a halt on their own servers, so no on-chain call restarts the workers.
 //!
-//! This is separate from Root's recovery latch,
-//! [`crate::recovery::BRIDGE_HALT_STORAGE_KEY`], which makes the bridge pallets
-//! themselves refuse calls.
+//! This is separate from authenticated recovery admission. Unfinished or
+//! malformed recovery remains closed; a complete recovery is not vetoed by the
+//! historical [`crate::recovery::BRIDGE_HALT_STORAGE_KEY`]. Operators acknowledge
+//! the completed recovery locally before their bridge workers run.
 
 use codec::{Decode, DecodeAll, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;

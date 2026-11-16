@@ -299,9 +299,11 @@ impl frame_support::traits::StoredMap<AccountId, pallet_balances::AccountData<cr
     }
 }
 
-/// Do not start bridge work merely because ordinary runtime execution resumes.
+/// Malformed or unfinished recovery blocks bridge execution independently of
+/// the historical latch. Complete recovery permits consensus execution; OCW
+/// still requires its separate local operator acknowledgement.
 pub fn bridge_halted() -> bool {
-    sp_io::storage::exists(recovery::BRIDGE_HALT_STORAGE_KEY)
+    bridge_types::recovery::recovery_in_progress()
 }
 
 /// Shift seconds, not milliseconds; retain fee accrual preceding the checkpoint.
@@ -453,8 +455,36 @@ mod tests {
     }
 
     #[test]
-    fn release_without_actual_inputs_is_not_admissible() {
-        assert_eq!(compiled_policy(), Err(RecoveryError::MissingCompiledPolicy));
+    fn release_requires_completed_state_even_with_verified_compiled_inputs() {
+        // The development stub has no policy; sealed release builds carry the
+        // verified policy. Neither configuration authorizes unprepared mainnet.
+        match compiled_policy() {
+            Ok(policy) => {
+                assert_eq!(policy.commitment(), generated::POLICY_COMMITMENT);
+                assert!(policy.validate().is_ok());
+            }
+            Err(error) => {
+                assert_eq!(error, RecoveryError::MissingCompiledPolicy);
+                assert!(
+                    generated::POLICY_SCALE.is_empty() || generated::POLICY_COMMITMENT == [0; 32]
+                );
+            }
+        }
+        sp_io::TestExternalities::default().execute_with(|| {
+            frame_system::BlockHash::<Runtime>::insert(0, sp_core::H256::from(GENESIS_HASH));
+            let header = Header::new(
+                CHECKPOINT_NUMBER + 2,
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                assert_final_runtime_admission(&header)
+            }))
+            .is_err());
+            assert!(!sp_io::storage::exists(POLICY_STORAGE_KEY));
+        });
     }
 
     #[test]

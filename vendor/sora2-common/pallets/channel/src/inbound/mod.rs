@@ -252,6 +252,7 @@ pub mod pallet {
             let proof_weight = T::Verifier::verify_weight(proof);
 
             <T as Config>::WeightInfo::submit()
+                .saturating_add(bridge_types::recovery::completion_weight::<T>(4))
                 .saturating_add(commitment_weight)
                 .saturating_add(proof_weight)
                 // Signed admission may verify in validation, preparation and dispatch.
@@ -378,7 +379,7 @@ pub mod pallet {
             >,
         ) -> Result<MessageDispatchOutcome, sp_runtime::DispatchError> {
             ensure!(
-                !crate::recovery::halted()
+                !crate::recovery::in_progress()
                     || matches!(&commitment, bridge_types::evm::Commitment::Inbound(_)),
                 Error::<T>::RecoveryHalted
             );

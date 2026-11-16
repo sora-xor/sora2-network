@@ -31,6 +31,7 @@
 use super::Call;
 use crate::{mock::*, Error};
 use bridge_types::{SubNetworkId, H256};
+use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
     bounded::BoundedVec,
@@ -163,7 +164,7 @@ fn quorum_emits_exactly_the_authenticated_signatures_in_canonical_peer_order() {
 
 #[test]
 #[allow(deprecated)]
-fn recovery_halt_rejects_new_signatures_for_retained_pending_approvals() {
+fn unfinished_recovery_rejects_new_signatures_for_retained_pending_approvals() {
     use sp_runtime::traits::ValidateUnsigned;
     new_test_ext().execute_with(|| {
         let network = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
@@ -176,6 +177,7 @@ fn recovery_halt_rejects_new_signatures_for_retained_pending_approvals() {
         let data = H256::repeat_byte(17);
         open_pending_approval(network, data);
         let signature = keys[0].sign_prehashed(&data.0);
+        sp_io::storage::set(b":sora-nexus:recovery:status:v1", &[0]);
         sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
         let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
         let call = Call::<Test>::approve {
@@ -200,6 +202,74 @@ fn recovery_halt_rejects_new_signatures_for_retained_pending_approvals() {
             Error::<Test>::RecoveryHalted
         );
         assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
+    });
+}
+
+#[test]
+#[allow(deprecated)]
+fn completed_recovery_and_worker_halt_do_not_veto_authenticated_approval() {
+    use sp_runtime::traits::ValidateUnsigned;
+    new_test_ext().execute_with(|| {
+        let network = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, keys) = test_peers();
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(),
+            network,
+            peers.try_into().unwrap()
+        ));
+        let data = H256::repeat_byte(17);
+        open_pending_approval(network, data);
+        for (key, value) in [
+            (
+                b":sora-nexus:recovery:policy:v1".as_slice(),
+                [11u8; 32].to_vec(),
+            ),
+            (
+                b":sora-nexus:recovery:active-policy:v1".as_slice(),
+                [11u8; 32].to_vec(),
+            ),
+            (
+                b":sora-nexus:recovery:branch-anchor:v1".as_slice(),
+                [12u8; 32].to_vec(),
+            ),
+            (
+                b":sora-nexus:recovery:status:v1".as_slice(),
+                (1u32, [11u8; 32], 4u8, 1u32, 0u64, 0u8).encode(),
+            ),
+            (
+                b":sora-nexus:recovery:terminal-audit:v1".as_slice(),
+                ([11u8; 32], [13u8; 32], 1u32).encode(),
+            ),
+            (
+                b":sora-nexus:recovery:incoming-audit-pending:v1".as_slice(),
+                0u32.encode(),
+            ),
+            (b":sora-nexus:recovery:bridge-halt:v1".as_slice(), vec![1]),
+            (
+                b":sora-nexus:bridge-halt:latest:v1".as_slice(),
+                (1u32, 1u32).encode(),
+            ),
+        ] {
+            sp_io::storage::set(key, &value);
+        }
+        let signature = keys[0].sign_prehashed(&data.0);
+        let call = Call::<Test>::approve {
+            network_id: network,
+            data,
+            signature: signature.clone(),
+        };
+        assert!(DataSigner::validate_unsigned(TransactionSource::InBlock, &call).is_ok());
+        assert_ok!(DataSigner::approve(
+            RuntimeOrigin::none(),
+            network,
+            data,
+            signature
+        ));
+        assert_eq!(DataSigner::approvals(network, data).len(), 1);
+        assert_eq!(
+            sp_io::storage::get(b":sora-nexus:recovery:bridge-halt:v1").as_deref(),
+            Some(&[1][..])
+        );
     });
 }
 
@@ -1548,10 +1618,11 @@ fn adding_a_peer_at_capacity_rolls_back_the_update() {
 }
 
 #[test]
-fn recovery_halt_blocks_every_membership_mutation() {
+fn unfinished_recovery_blocks_every_membership_mutation() {
     new_test_ext().execute_with(|| {
         let network = SubNetworkId::Mainnet.into();
         let peer = ecdsa::Pair::from_seed(&[42; 32]).public();
+        sp_io::storage::set(b":sora-nexus:recovery:status:v1", &[0]);
         sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
         assert_noop!(
             DataSigner::register_network(

@@ -881,6 +881,10 @@ impl<T: Config> Pallet<T> {
     pub fn protocol_validation_weight() -> Weight {
         T::DbWeight::get()
             .reads_writes(84, 5)
+            // Cover repeated complete-recovery checks in the bridge protocol
+            // admission hooks; this allowance is independent of stored state.
+            .saturating_add(T::DbWeight::get().reads(320))
+            .saturating_add(Weight::from_parts(160_000_000, 32 * 32_768))
             .saturating_add(Weight::from_parts(
                 10_000_000_000,
                 2 * T::MaxCallBytes::get() as u64 + 532_480,

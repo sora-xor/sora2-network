@@ -110,7 +110,7 @@ fn cancelled_incoming_unlock_restores_only_custody_without_pricing_or_quota() {
 }
 
 #[test]
-fn cancelled_incoming_unlock_preserves_halt_and_arithmetic_guards() {
+fn cancelled_incoming_unlock_preserves_unfinished_recovery_and_arithmetic_guards() {
     new_tester().execute_with(|| {
         LockedAssets::<Test>::insert(network(), XOR, u128::MAX);
         assert_noop!(
@@ -122,10 +122,20 @@ fn cancelled_incoming_unlock_preserves_halt_and_arithmetic_guards() {
             BridgeProxy::cancel_asset_unlock(network(), AssetKind::Sidechain, &XOR, &1),
             crate::Error::<Test>::NotEnoughLockedLiquidity
         );
-        sp_io::storage::set(common::recovery::BRIDGE_HALT_STORAGE_KEY, &[1]);
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
+        sp_io::storage::clear(common::recovery::BRIDGE_HALT_STORAGE_KEY);
         assert_noop!(
             BridgeProxy::cancel_asset_unlock(network(), AssetKind::Thischain, &XOR, &1),
             crate::Error::<Test>::RecoveryHalted
         );
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
+        sp_io::storage::set(common::recovery::BRIDGE_HALT_STORAGE_KEY, &[1]);
+        assert_ok!(BridgeProxy::cancel_asset_unlock(
+            network(),
+            AssetKind::Thischain,
+            &XOR,
+            &1
+        ));
+        assert_eq!(LockedAssets::<Test>::get(network(), XOR), 1);
     });
 }

@@ -247,15 +247,7 @@ pub struct BridgeMessage<MaxPayload: Get<u32>> {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// Substrate bridge asset info

@@ -177,6 +177,13 @@ fixnum = { path = "vendor/fixnum" }
 
 [workspace]
 members = [
+    "vendor/sora2-common/pallets/types",
+    "vendor/sora2-common/pallets/channel",
+    "vendor/sora2-common/pallets/substrate-channel",
+    "vendor/sora2-common/pallets/substrate-app",
+    "vendor/sora2-common/pallets/data-signer",
+    "vendor/sora2-common/pallets/multisig-verifier",
+    "vendor/sora2-common/pallets/evm-fungible-app",
     "vendor/frame-decode",
     "vendor/scale-info-legacy",
     "vendor/polkadot-sdk/primitives/io",

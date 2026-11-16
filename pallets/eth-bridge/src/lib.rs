@@ -194,9 +194,10 @@ pub const STORAGE_LIVE_SIGNING_GUARD_KEY: &[u8] = b"eth-bridge-ocw::live-signing
 /// v2 adds exclusive, process-lifetime ownership for the entire HASHI pass.
 pub const STORAGE_SERIAL_SIGNING_GUARD_KEY: &[u8] = b"eth-bridge-ocw::live-signing-guard:v2";
 pub const STORAGE_WORKER_LOCK_KEY: &[u8] = b"eth-bridge-ocw::lock";
-/// The guardian halt this node's operator confirmed with `--bridge-resume-after-halt`,
-/// as a SCALE `common::bridge_halt::GuardianHalt`. The node writes it at startup; the
-/// workers run only while it names the newest halt on chain.
+/// The guardian signal covered by this node's exact local observed-halt acknowledgement,
+/// as a SCALE `common::bridge_halt::GuardianHalt`. The node writes it at startup after
+/// `--bridge-resume-after-observed-halt <digest>` succeeds. The durable local stop and
+/// completed-recovery acknowledgement remain separate worker gates.
 pub const STORAGE_RESUMED_AFTER_HALT_KEY: &[u8] = b"eth-bridge-ocw::resumed-after-halt";
 /// Metric: the number of the guardian halt that stopped this node's workers, or 0 while
 /// they may run. `u64::MAX` when the halt on chain does not decode.
@@ -588,10 +589,11 @@ pub mod pallet {
                 u64::from(cursors_ready),
             );
 
-            // A guardian halt stops this node's workers until its operator confirms
-            // that halt with `--bridge-resume-after-halt`. Nothing on chain restarts them.
+            // A guardian halt stops this node's workers until its operator acknowledges
+            // the exact local digest with `--bridge-resume-after-observed-halt`.
+            // Nothing on chain restarts them.
             if crate::offchain::stopped_by_guardian_halt()
-                || crate::recovery::halted()
+                || crate::offchain::stopped_by_recovery::<T>()
                 || !cursors_ready
             {
                 return;
@@ -630,14 +632,17 @@ pub mod pallet {
         #[transactional]
         #[pallet::call_index(0)]
         // eth-bridge pallet will be deprecated soon, so we set const weight here
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn register_bridge(
             origin: OriginFor<T>,
             bridge_contract_address: EthAddress,
             initial_peers: Vec<<T as frame_system::pallet::Config>::AccountId>,
             signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             let net_id = NextNetworkId::<T>::get();
             ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
@@ -668,13 +673,16 @@ pub mod pallet {
         #[transactional]
         #[pallet::call_index(1)]
         // eth-bridge pallet will be deprecated soon, so we set const weight here
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn add_asset(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
@@ -703,7 +711,7 @@ pub mod pallet {
         #[transactional]
         #[pallet::call_index(2)]
         // eth-bridge pallet will be deprecated soon, so we set const weight here
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
             token_address: EthAddress,
@@ -712,7 +720,10 @@ pub mod pallet {
             decimals: u8,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called add_sidechain_token");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -750,7 +761,7 @@ pub mod pallet {
         /// - `network_id` - network identifier.
         #[transactional]
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::transfer_to_sidechain())]
+        #[pallet::weight((<T as Config>::WeightInfo::transfer_to_sidechain()).saturating_add(bridge_types::recovery::completion_weight::<T>(8)))]
         pub fn transfer_to_sidechain(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -758,7 +769,10 @@ pub mod pallet {
             amount: Balance,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called transfer_to_sidechain");
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
@@ -787,7 +801,7 @@ pub mod pallet {
 
         #[transactional]
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
+        #[pallet::weight((<T as Config>::WeightInfo::request_from_sidechain().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>())).saturating_add(bridge_types::recovery::completion_weight::<T>(16)))]
         pub fn request_from_sidechain(
             origin: OriginFor<T>,
             eth_tx_hash: H256,
@@ -851,7 +865,7 @@ pub mod pallet {
         /// - `request` - an incoming request.
         /// - `network_id` - network identifier.
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
+        #[pallet::weight((<T as Config>::WeightInfo::finalize_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>())).saturating_add(bridge_types::recovery::completion_weight::<T>(32)))]
         pub fn finalize_incoming_request(
             origin: OriginFor<T>,
             hash: H256,
@@ -883,14 +897,17 @@ pub mod pallet {
         #[transactional]
         #[pallet::call_index(6)]
         // eth-bridge pallet will be deprecated soon, so we set const weight here
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn add_peer(
             origin: OriginFor<T>,
             account_id: <T as frame_system::pallet::Config>::AccountId,
             address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called change_peers_out");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -933,14 +950,17 @@ pub mod pallet {
         #[transactional]
         #[pallet::call_index(7)]
         // eth-bridge pallet will be deprecated soon, so we set const weight here
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn remove_peer(
             origin: OriginFor<T>,
             account_id: <T as frame_system::pallet::Config>::AccountId,
             peer_address: Option<EthAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called change_peers_out");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -1002,12 +1022,15 @@ pub mod pallet {
         #[transactional]
         #[pallet::call_index(8)]
         // eth-bridge pallet will be deprecated soon, so we set const weight here
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn prepare_for_migration(
             origin: OriginFor<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called prepare_for_migration");
             ensure_root(origin)?;
             if BridgeSignatureVersions::<T>::get(network_id) == BridgeSignatureVersion::V1
@@ -1042,7 +1065,7 @@ pub mod pallet {
         #[transactional]
         #[pallet::call_index(9)]
         // eth-bridge pallet will be deprecated soon, so we set const weight here
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn migrate(
             origin: OriginFor<T>,
             new_contract_address: EthAddress,
@@ -1050,7 +1073,10 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
             new_signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             debug!("called prepare_for_migration");
             ensure_root(origin)?;
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
@@ -1078,7 +1104,7 @@ pub mod pallet {
         ///
         /// Can only be called by a bridge account.
         #[pallet::call_index(10)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
+        #[pallet::weight((<T as Config>::WeightInfo::register_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>())).saturating_add(bridge_types::recovery::completion_weight::<T>(24)))]
         pub fn register_incoming_request(
             origin: OriginFor<T>,
             incoming_request: IncomingRequest<T>,
@@ -1105,7 +1131,7 @@ pub mod pallet {
         ///
         /// Can only be called by a bridge account.
         #[pallet::call_index(11)]
-        #[pallet::weight({
+        #[pallet::weight(({
             <T as Config>::WeightInfo::request_from_sidechain()
                 .saturating_add(crate::recovery::resolution_weight::<T>())
                 .saturating_add(<T as Config>::WeightInfo::register_incoming_request())
@@ -1114,7 +1140,7 @@ pub mod pallet {
                 } else {
                     <T as Config>::WeightInfo::abort_request()
                 }).saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
-        })]
+        }).saturating_add(bridge_types::recovery::completion_weight::<T>(64)))]
         pub fn import_incoming_request(
             origin: OriginFor<T>,
             load_incoming_request: LoadIncomingRequest<T>,
@@ -1141,13 +1167,11 @@ pub mod pallet {
         /// Verifies the peer signature of the given request and adds it to `RequestApprovals`.
         /// Once quorum is collected, the request gets finalized and removed from request queue.
         #[pallet::call_index(12)]
-        #[pallet::weight(
-            <T as Config>::WeightInfo::approve_request()
+        #[pallet::weight((<T as Config>::WeightInfo::approve_request()
                 .max(<T as Config>::WeightInfo::approve_request_finalize())
                 .saturating_mul(3)
                 .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
-                .saturating_add(Pallet::<T>::approval_reconciliation_weight(*network_id, *hash).saturating_mul(3))
-        )]
+                .saturating_add(Pallet::<T>::approval_reconciliation_weight(*network_id, *hash).saturating_mul(3))).saturating_add(bridge_types::recovery::completion_weight::<T>(8)))]
         pub fn approve_request(
             origin: OriginFor<T>,
             ocw_public: ecdsa::Public,
@@ -1186,7 +1210,7 @@ pub mod pallet {
         ///
         /// Can only be called from a bridge account.
         #[pallet::call_index(13)]
-        #[pallet::weight(<T as Config>::WeightInfo::abort_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        #[pallet::weight((<T as Config>::WeightInfo::abort_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())).saturating_add(bridge_types::recovery::completion_weight::<T>(24)))]
         pub fn abort_request(
             origin: OriginFor<T>,
             hash: H256,
@@ -1211,14 +1235,17 @@ pub mod pallet {
         #[transactional]
         #[pallet::call_index(14)]
         // eth-bridge pallet will be deprecated soon, so we set const weight here
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn force_add_peer(
             origin: OriginFor<T>,
             who: <T as frame_system::pallet::Config>::AccountId,
             address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             let _ = ensure_root(origin)?;
             let mut peers = Peers::<T>::get(network_id);
             if !peers.contains(&who) {
@@ -1247,13 +1274,16 @@ pub mod pallet {
         /// Can only be called by root.
         #[pallet::call_index(15)]
         // eth-bridge pallet will be deprecated soon, so we set const weight here
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn remove_sidechain_asset(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             log::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
             ensure!(
@@ -1274,14 +1304,17 @@ pub mod pallet {
         /// `register_existing_sidechain_asset_with_precision`, because local
         /// asset precision cannot establish the remote token's decimals.
         #[pallet::call_index(16)]
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
             token_address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             let _ = (asset_id, token_address, network_id);
             Err(Error::<T>::Unavailable.into())
@@ -1292,13 +1325,16 @@ pub mod pallet {
         /// Used by operators to recover from failed finalization without implicitly wiping
         /// approvals on-chain.
         #[pallet::call_index(17)]
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn reset_request_signatures(
             origin: OriginFor<T>,
             network_id: BridgeNetworkId<T>,
             hash: H256,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             crate::recovery::ensure_outgoing_active::<T>(network_id, hash)?;
             let status =
@@ -1325,7 +1361,7 @@ pub mod pallet {
         /// proposer or execution of the proposed call. This does not create a
         /// new multisig operation, so it remains available when its queue is full.
         #[pallet::call_index(18)]
-        #[pallet::weight(bridge_multisig::Pallet::<T>::cancellation_weight().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        #[pallet::weight((bridge_multisig::Pallet::<T>::cancellation_weight().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn cancel_pending_multisig(
             origin: OriginFor<T>,
             network_id: BridgeNetworkId<T>,
@@ -1350,7 +1386,7 @@ pub mod pallet {
         /// failed local finalization. Signatures authorize the operation; the
         /// submitter only pays to retry its bounded local accounting.
         #[pallet::call_index(19)]
-        #[pallet::weight(Pallet::<T>::finalization_declared_weight(*network_id, *hash))]
+        #[pallet::weight((Pallet::<T>::finalization_declared_weight(*network_id, *hash)).saturating_add(bridge_types::recovery::completion_weight::<T>(8)))]
         pub fn finalize_approved_request(
             origin: OriginFor<T>,
             network_id: BridgeNetworkId<T>,
@@ -1385,7 +1421,8 @@ pub mod pallet {
                             Self::approval_message_weight(encoded.as_raw().len() as u64),
                         )
                         .saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight())
-                        .saturating_add(admission_weight),
+                        .saturating_add(admission_weight)
+                        .saturating_add(bridge_types::recovery::completion_weight::<T>(8)),
                 ),
                 Pays::Yes,
             )
@@ -1397,9 +1434,9 @@ pub mod pallet {
         /// is independent of the local representation's precision. Existing
         /// registrations and partial mappings are never overwritten.
         #[pallet::call_index(20)]
-        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT
+        #[pallet::weight((EXTRINSIC_FIXED_WEIGHT
             .saturating_add(T::DbWeight::get().reads_writes(12, 4))
-            .saturating_add(frame_support::weights::Weight::from_parts(0, 32_768)))]
+            .saturating_add(frame_support::weights::Weight::from_parts(0, 32_768))).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn register_existing_sidechain_asset_with_precision(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -1407,7 +1444,10 @@ pub mod pallet {
             sidechain_precision: BalancePrecision,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                !crate::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             let bridge_account =
                 Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
@@ -2194,6 +2234,7 @@ impl<T: Config> Pallet<T> {
             Call::finalize_incoming_request { hash, .. } => {
                 let request =
                     Requests::<T>::get(network, hash).ok_or(Error::<T>::UnknownRequest)?;
+                ensure!(request.network_id() == network, Error::<T>::UnknownNetwork);
                 let (incoming, _) = request
                     .as_incoming()
                     .ok_or(Error::<T>::ExpectedIncomingRequest)?;
@@ -2207,6 +2248,7 @@ impl<T: Config> Pallet<T> {
             Call::abort_request { hash, .. } => {
                 let request =
                     Requests::<T>::get(network, hash).ok_or(Error::<T>::UnknownRequest)?;
+                ensure!(request.network_id() == network, Error::<T>::UnknownNetwork);
                 crate::recovery::ensure_request_active::<T>(&request)?;
                 Self::ensure_outgoing_refund_unsigned(&request, network, *hash)?;
                 ensure!(
@@ -2260,12 +2302,16 @@ impl<T: Config> Pallet<T> {
         author: &T::AccountId,
         network: T::NetworkId,
     ) -> DispatchResult {
-        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+        ensure!(
+            !crate::recovery::recovery_in_progress(),
+            Error::<T>::RecoveryHalted
+        );
         crate::recovery::ensure_outgoing_active::<T>(network, *hash)?;
         Self::ensure_peer(author, network)?;
         let request = Requests::<T>::get(network, hash)
             .and_then(|request| request.into_outgoing().map(|x| x.0))
             .ok_or(Error::<T>::UnknownRequest)?;
+        ensure!(request.network_id() == network, Error::<T>::UnknownNetwork);
         let status = RequestStatuses::<T>::get(network, hash).ok_or(Error::<T>::UnknownRequest)?;
         ensure!(
             Self::outgoing_finalization_retryable(&status),
@@ -2312,7 +2358,7 @@ impl<T: Config> Pallet<T> {
     fn add_request(request: &OffchainRequest<T>) -> Result<(), DispatchError> {
         crate::recovery::ensure_request_active::<T>(request)?;
         ensure!(
-            !crate::recovery::halted()
+            !crate::recovery::recovery_in_progress()
                 || (request.as_outgoing().is_none() && crate::recovery::inbound_allowed::<T>()),
             Error::<T>::RecoveryHalted
         );
@@ -2408,6 +2454,10 @@ impl<T: Config> Pallet<T> {
         incoming_request: &OffchainRequest<T>,
         network_id: T::NetworkId,
     ) -> Result<H256, DispatchError> {
+        ensure!(
+            incoming_request.network_id() == network_id,
+            Error::<T>::UnknownNetwork
+        );
         crate::recovery::ensure_request_active::<T>(incoming_request)?;
         ensure!(
             crate::recovery::inbound_allowed::<T>(),
@@ -2500,6 +2550,10 @@ impl<T: Config> Pallet<T> {
         hash: H256,
         network_id: T::NetworkId,
     ) -> DispatchResult {
+        ensure!(
+            request.network_id() == network_id,
+            Error::<T>::UnknownNetwork
+        );
         crate::recovery::ensure_incoming_active::<T>(request)?;
         ensure!(
             crate::recovery::inbound_allowed::<T>(),
@@ -2521,7 +2575,7 @@ impl<T: Config> Pallet<T> {
             // Recovery's outer transaction owns rollback. The ordinary cancellation
             // path would relock/refund while outbound activity is deliberately halted.
             // Propagate the failure instead of invoking cancellation (which may panic).
-            if crate::recovery::halted() {
+            if crate::recovery::maintenance_inbound_active::<T>() {
                 return Err(e);
             }
             error!("Incoming request failed {:?} {:?}", hash, e);
@@ -2710,9 +2764,13 @@ impl<T: Config> Pallet<T> {
         error: DispatchError,
         network_id: T::NetworkId,
     ) -> Result<(), DispatchError> {
+        ensure!(
+            request.network_id() == network_id,
+            Error::<T>::UnknownNetwork
+        );
         crate::recovery::ensure_request_active::<T>(request)?;
         ensure!(
-            !crate::recovery::halted()
+            !crate::recovery::recovery_in_progress()
                 || (request.as_outgoing().is_none() && crate::recovery::inbound_allowed::<T>()),
             Error::<T>::RecoveryHalted
         );
@@ -2733,7 +2791,7 @@ impl<T: Config> Pallet<T> {
     /// authenticate the sidechain transaction. Canonical peer imports may replace
     /// it until an incoming attempt consumes the external replay identity.
     fn unconsumed_public_transaction_load(network: T::NetworkId, hash: H256) -> bool {
-        !crate::recovery::halted()
+        !crate::recovery::recovery_in_progress()
             && !LoadToIncomingRequestHash::<T>::contains_key(network, hash)
             && matches!(
                 RequestStatuses::<T>::get(network, hash),
@@ -2755,7 +2813,7 @@ impl<T: Config> Pallet<T> {
     /// Merely being halted does not authorize reuse outside the internal
     /// authenticated recovery inbound context.
     fn retained_recovery_load(load: &LoadIncomingRequest<T>) -> Result<bool, DispatchError> {
-        if !crate::recovery::halted() || !crate::recovery::inbound_allowed::<T>() {
+        if !crate::recovery::maintenance_inbound_active::<T>() {
             return Ok(false);
         }
         let network = load.network_id();
@@ -2888,11 +2946,15 @@ impl<T: Config> Pallet<T> {
         net_id: T::NetworkId,
         hash: H256,
     ) -> Result<(OutgoingRequest<T>, RequestStatus), DispatchError> {
-        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+        ensure!(
+            !crate::recovery::recovery_in_progress(),
+            Error::<T>::RecoveryHalted
+        );
         crate::recovery::ensure_outgoing_active::<T>(net_id, hash)?;
         let request = Requests::<T>::get(net_id, hash)
             .and_then(|x| x.into_outgoing().map(|x| x.0))
             .ok_or(Error::<T>::UnknownRequest)?;
+        ensure!(request.network_id() == net_id, Error::<T>::UnknownNetwork);
         let current_status =
             RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
         // Ready signatures are the retained Ethereum settlement evidence. Do not
@@ -2929,6 +2991,7 @@ impl<T: Config> Pallet<T> {
             .max(<T as Config>::WeightInfo::approve_request_finalize())
             .saturating_add(Self::approval_metadata_read_weight())
             .saturating_add(Self::approval_message_weight(message_byte_bound))
+            .saturating_add(bridge_types::recovery::completion_weight::<T>(8))
     }
 
     /// Retain both signed-extension admission passes and the dispatch-time
@@ -3129,6 +3192,7 @@ impl<T: Config> Pallet<T> {
             // Each pass hashes the new caller's signature and the retained
             // approval batch. Use the real byte count without truncation.
             .saturating_add(Self::approval_message_weight(message_bytes).saturating_mul(6))
+            .saturating_add(bridge_types::recovery::completion_weight::<T>(8))
     }
 
     fn outgoing_finalization_retryable(status: &RequestStatus) -> bool {

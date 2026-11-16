@@ -172,9 +172,14 @@ pub mod pallet {
             );
             // Recovery journals replies without sending them. In ordinary mode,
             // reject a congested batch before dispatch so it remains retryable.
-            if !crate::recovery::halted() {
-                ensure!(<T::ResponseCapacity as frame_support::traits::Contains<_>>::contains(
-                    &(network_id, batch.messages.len() as u32)), Error::<T>::ResponseQueueFull);
+            if !crate::recovery::in_progress() {
+                ensure!(
+                    <T::ResponseCapacity as frame_support::traits::Contains<_>>::contains(&(
+                        network_id,
+                        batch.messages.len() as u32
+                    )),
+                    Error::<T>::ResponseQueueFull
+                );
             }
             for index in 0..batch.messages.len() {
                 ensure!(
@@ -216,10 +221,17 @@ pub mod pallet {
             let proof_weight = T::Verifier::verify_weight(proof);
 
             <T as Config>::WeightInfo::submit()
-                .saturating_add(T::DbWeight::get().reads(3 + 2 * T::MaxMessagesPerCommit::get() as u64))
-                .saturating_add(Weight::from_parts(0,
-                    8192u64.saturating_add((T::MaxMessagesPerCommit::get() as u64)
-                        .saturating_mul(T::MaxMessagePayloadSize::get() as u64 + 8192))))
+                .saturating_add(bridge_types::recovery::completion_weight::<T>(4))
+                .saturating_add(
+                    T::DbWeight::get().reads(3 + 2 * T::MaxMessagesPerCommit::get() as u64),
+                )
+                .saturating_add(Weight::from_parts(
+                    0,
+                    8192u64.saturating_add(
+                        (T::MaxMessagesPerCommit::get() as u64)
+                            .saturating_mul(T::MaxMessagePayloadSize::get() as u64 + 8192),
+                    ),
+                ))
                 .saturating_add(commitment_weight)
                 .saturating_add(proof_weight)
                 // Signed admission may verify in validation, preparation and dispatch.

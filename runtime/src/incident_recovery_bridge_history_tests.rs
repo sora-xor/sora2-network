@@ -209,9 +209,36 @@ fn terminal_history_marker_blocks_native_status_refund_and_recreation_after_glob
         };
         assert_ok!(recovery::storage::initialize(&policy));
         assert_ok!(recovery::storage::apply_chunk(&policy, &chunk));
+        for key in recovery::TRANSIENT_CONTEXT_KEYS {
+            assert!(!sp_io::storage::exists(key), "leaked recovery context");
+        }
+        let mut completed = recovery::storage::status().unwrap().unwrap();
+        assert!(completed.failure.is_none());
+        completed.phase = recovery::RecoveryPhase::Complete;
+        sp_io::storage::set(recovery::STATUS_STORAGE_KEY, &completed.encode());
+        recovery::storage::record_recovery_anchor([92; 32]).unwrap();
+        sp_io::storage::set(
+            recovery::TERMINAL_AUDIT_STORAGE_KEY,
+            &(
+                policy.commitment(),
+                policy.terminal_audit_commitment,
+                completed.next_chunk,
+            )
+                .encode(),
+        );
+        assert!(bridge_types::recovery::completion().unwrap().is_some());
         sp_io::storage::clear(recovery::BRIDGE_HALT_STORAGE_KEY);
         let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
         let issuance = Balances::total_issuance();
+        sp_io::storage::start_transaction();
+        sp_io::storage::clear(&bridge_types::recovery::historical_message_key(network, id));
+        let control = BridgeProxy::refund(network, id, GenericAccount::Root, common::XOR, 500);
+        sp_io::storage::rollback_transaction();
+        assert_eq!(
+            control,
+            Err(bridge_proxy::Error::<Runtime>::WrongAccountKind.into())
+        );
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
         BridgeProxy::update_status(
             network,
             id,

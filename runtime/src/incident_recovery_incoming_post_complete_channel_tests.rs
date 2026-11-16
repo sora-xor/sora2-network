@@ -1,5 +1,5 @@
-//! Candidate-only regressions for delayed ordinary native delivery after Complete.
-//! The halt is cleared only in test storage. No runtime call reopens a bridge.
+//! Regressions for delayed ordinary native delivery after coherent Complete.
+//! A retained historical marker does not veto consensus or start local workers.
 
 use super::*;
 
@@ -8,10 +8,36 @@ fn complete_for_test(policy: &RecoveryPolicy) {
     let mut status = recovery::storage::status().unwrap().unwrap();
     status.phase = RecoveryPhase::Complete;
     status.next_chunk = policy.chunk_hashes.len() as u32;
+    assert!(status.failure.is_none());
     sp_io::storage::set(STATUS_STORAGE_KEY, &status.encode());
-    // Model a separately approved future reopening without changing production
-    // admission or adding a method to clear the permanent release halt.
-    sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
+    let active_policy: [u8; 32] = sp_io::storage::get(ACTIVE_POLICY_STORAGE_KEY)
+        .unwrap()
+        .as_ref()
+        .try_into()
+        .unwrap();
+    if !sp_io::storage::exists(recovery::RECOVERY_ANCHOR_STORAGE_KEY) {
+        recovery::storage::record_recovery_anchor([91; 32]).unwrap();
+    }
+    sp_io::storage::set(
+        recovery::TERMINAL_AUDIT_STORAGE_KEY,
+        &(
+            active_policy,
+            policy.terminal_audit_commitment,
+            status.next_chunk,
+        )
+            .encode(),
+    );
+    assert_eq!(
+        sp_io::storage::get(recovery::INCOMING_AUDIT_PENDING_KEY).as_deref(),
+        Some(0u32.encode().as_slice()),
+    );
+    // A coherent terminal proof permits normal consensus execution. The legacy
+    // marker remains intact and neither authorizes nor prevents that execution.
+    assert_eq!(
+        sp_io::storage::get(BRIDGE_HALT_STORAGE_KEY).as_deref(),
+        Some(&[1][..])
+    );
+    assert!(bridge_types::recovery::completion().unwrap().is_some());
     assert!(!sp_io::storage::exists(ACTIVE_KEY));
     assert!(!sp_io::storage::exists(BRIDGE_INBOUND_CONTEXT_STORAGE_KEY));
 }
@@ -141,7 +167,7 @@ fn recovery_channels_post_complete_original_payload_credits_replacement_once() {
 }
 
 #[test]
-fn recovery_channels_post_complete_release_halt_still_blocks_ordinary_delivery() {
+fn recovery_channels_phase_complete_without_terminal_proof_blocks_ordinary_delivery() {
     for kind in kinds() {
         sp_io::TestExternalities::default().execute_with(|| {
             let (policy, operation) = fixture(kind, old());
@@ -237,10 +263,13 @@ fn recovery_channels_post_complete_policy_mismatch_never_recreates_old_recipient
             crate::incident_recovery::with_test_policy(&policy, || {
                 complete_for_test(&policy);
                 sp_io::storage::set(POLICY_STORAGE_KEY, &[99; 32]);
-                // Authentication succeeds and the native channel consumes the
-                // delivery, but the inconsistent local map cannot mint to anyone.
-                assert_ok!(submit_native(&operation));
-                assert_eq!(native_nonce(&operation), 1);
+                // Inconsistent recovery state rejects before consuming the
+                // authenticated delivery or changing recipient accounting.
+                assert!(bridge_types::recovery::completion().is_err());
+                let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+                assert!(submit_native(&operation).is_err());
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+                assert_eq!(native_nonce(&operation), 0);
                 assert_no_credit(&operation, &entry);
                 assert!(!sp_io::storage::exists(ACTIVE_KEY));
                 assert!(!sp_io::storage::exists(FAILED_KEY));
@@ -263,8 +292,11 @@ fn recovery_channels_post_complete_attacker_redirect_requires_matching_policy() 
         crate::incident_recovery::with_test_policy(&policy, || {
             complete_for_test(&policy);
             sp_io::storage::set(POLICY_STORAGE_KEY, &[99; 32]);
-            assert_ok!(submit_native(&operation));
-            assert_eq!(native_nonce(&operation), 1);
+            assert!(bridge_types::recovery::completion().is_err());
+            let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+            assert!(submit_native(&operation).is_err());
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+            assert_eq!(native_nonce(&operation), 0);
             assert_eq!(crate::Assets::total_issuance(&common::DAI).unwrap(), 0);
             assert_eq!(
                 crate::Assets::free_balance(&common::DAI, &migration()).unwrap(),
@@ -649,14 +681,21 @@ fn recovery_attacker_registry_extends_identities() {
             bridge_types::H160::from(traced_evm)
         )));
 
-        // HASHI redirects need the recovery policy and an open bridge.
+        // HASHI redirects require coherent completed recovery, independent of
+        // the historical halt marker or local worker acknowledgements.
         assert_eq!(redirect([0; 20], &recorded), None);
-        sp_io::storage::set(POLICY_STORAGE_KEY, &[1]);
+        let (policy, _) = fixture(ChannelKind::Substrate, old());
+        complete_for_test(&policy);
         assert_eq!(redirect([0; 20], &recorded), Some(migration()));
         assert_eq!(redirect(traced_evm, &old()), None);
         sp_io::storage::set(BRIDGE_HALT_STORAGE_KEY, &[1]);
-        assert_eq!(redirect([0; 20], &recorded), None, "halted");
-        sp_io::storage::clear(BRIDGE_HALT_STORAGE_KEY);
+        assert_eq!(redirect([0; 20], &recorded), Some(migration()));
+        let completed = recovery::storage::status().unwrap().unwrap();
+        let mut unfinished = completed.clone();
+        unfinished.phase = RecoveryPhase::Applying;
+        sp_io::storage::set(STATUS_STORAGE_KEY, &unfinished.encode());
+        assert_eq!(redirect([0; 20], &recorded), None, "unfinished recovery");
+        sp_io::storage::set(STATUS_STORAGE_KEY, &completed.encode());
 
         sp_io::storage::set(&recovery::attacker_registry_account_key(&[31; 32]), &[1]);
         sp_io::storage::set(&recovery::attacker_registry_evm_key(&traced_evm), &[1]);

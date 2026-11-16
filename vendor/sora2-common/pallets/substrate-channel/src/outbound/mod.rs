@@ -164,30 +164,34 @@ pub mod pallet {
         // Use `on_finalize` instead of `on_idle` to ensure that the commitment is always sent,
         // because `on_idle` not guaranteed to be called.
         fn on_initialize(now: BlockNumberFor<T>) -> Weight {
-            if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
-                return Weight::zero();
-            }
-            if crate::recovery::halted() {
-                return T::DbWeight::get().reads(2);
+            // Charge the checks here and in on_finalize, including each commit.
+            let mut lifecycle_checks = 2u64;
+            if crate::recovery::in_progress() {
+                return bridge_types::recovery::completion_weight::<T>(lifecycle_checks);
             }
             let interval = Self::interval();
             let mut reads = 3u64;
             if now % interval == Zero::zero() {
                 for network in MessageQueues::<T>::iter_keys() {
+                    lifecycle_checks = lifecycle_checks.saturating_add(1);
                     let count = MessageQueues::<T>::decode_len(network)
                         .unwrap_or(0)
                         .min(T::MaxMessagesPerCommit::get() as usize)
                         as u64;
+                    // BridgeProxy validates recovery for each committed status.
+                    lifecycle_checks = lifecycle_checks.saturating_add(count);
                     reads = reads
                         .saturating_add(3)
                         .saturating_add(count.saturating_mul(2));
                 }
             }
-            T::DbWeight::get().reads(reads)
+            T::DbWeight::get().reads(reads).saturating_add(
+                bridge_types::recovery::completion_weight::<T>(lifecycle_checks),
+            )
         }
 
         fn on_finalize(now: BlockNumberFor<T>) {
-            if crate::recovery::halted() {
+            if crate::recovery::in_progress() {
                 return;
             }
             let interval = Self::interval();
@@ -259,10 +263,15 @@ pub mod pallet {
         // Payload and queue bounds remain enforced at the storage write boundary.
         pub fn can_queue_messages(network_id: SubNetworkId, additional: u32) -> bool {
             // Read the compact length, not every queued payload.
-            let total = MessageQueues::<T>::decode_len(network_id).unwrap_or(0)
+            let total = MessageQueues::<T>::decode_len(network_id)
+                .unwrap_or(0)
                 .saturating_add(additional as usize);
-            if total > T::MaxMessagesPerCommit::get() as usize { return false; }
-            if additional == 0 { return true; }
+            if total > T::MaxMessagesPerCommit::get() as usize {
+                return false;
+            }
+            if additional == 0 {
+                return true;
+            }
             let Some(nonce) = ChannelNonces::<T>::get(network_id).checked_add(1) else {
                 return false;
             };
@@ -271,9 +280,18 @@ pub mod pallet {
             }
             // Retained quarantine survives reopening. Reserve only positions the
             // actual outbound submit path will accept, including queued prefixes.
-            !(0..total).any(|index| bridge_types::recovery::message_quarantined(
-                network_id.into(), MessageId::batched(T::ThisNetworkId::get(),
-                    network_id.into(), nonce, index as u64).hash()))
+            !(0..total).any(|index| {
+                bridge_types::recovery::message_quarantined(
+                    network_id.into(),
+                    MessageId::batched(
+                        T::ThisNetworkId::get(),
+                        network_id.into(),
+                        nonce,
+                        index as u64,
+                    )
+                    .hash(),
+                )
+            })
         }
 
         fn append_message(network_id: SubNetworkId, payload: &[u8]) -> DispatchResult {
@@ -298,7 +316,7 @@ pub mod pallet {
         }
 
         pub(crate) fn commit(network_id: SubNetworkId) {
-            if crate::recovery::halted() {
+            if crate::recovery::in_progress() {
                 return;
             }
             let Some(next_nonce) = ChannelNonces::<T>::get(network_id).checked_add(1) else {
@@ -394,7 +412,7 @@ pub mod pallet {
             payload: &[u8],
             _: (),
         ) -> Result<H256, DispatchError> {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(!crate::recovery::in_progress(), Error::<T>::RecoveryHalted);
             debug!("Send message from {:?} to network {:?}", who, network_id);
             let messages_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as u64;
             ensure!(
@@ -446,7 +464,8 @@ pub mod pallet {
         }
 
         fn submit_weight() -> Weight {
-            let base = <T as Config>::WeightInfo::submit();
+            let base = <T as Config>::WeightInfo::submit()
+                .saturating_add(bridge_types::recovery::completion_weight::<T>(2));
             if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
                 return base;
             }

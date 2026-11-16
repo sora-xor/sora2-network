@@ -50,6 +50,7 @@ pub const POLICY_STORAGE_KEY: &[u8] = b":sora-nexus:recovery:policy:v1";
 pub const STATUS_STORAGE_KEY: &[u8] = b":sora-nexus:recovery:status:v1";
 /// First recovery child hash, recorded from its child after that header exists.
 pub const RECOVERY_ANCHOR_STORAGE_KEY: &[u8] = b":sora-nexus:recovery:branch-anchor:v1";
+/// Historical recovery marker. Its presence is not a post-completion consensus veto.
 pub const BRIDGE_HALT_STORAGE_KEY: &[u8] = b":sora-nexus:recovery:bridge-halt:v1";
 pub const BRIDGE_INBOUND_CONTEXT_STORAGE_KEY: &[u8] =
     b":sora-nexus:recovery:bridge-inbound-context:v1";
@@ -81,6 +82,9 @@ pub const TRANSIENT_CONTEXT_KEYS: &[&[u8]] = &[
     b":sora-nexus:recovery:incoming-failed:v1",
     b":sora-nexus:recovery:hashi-resolution:v1",
 ];
+
+#[cfg(any(test, feature = "test"))]
+pub mod bridge_admission_fixtures;
 
 /// The header commitment is emitted on every recovery descendant, including
 /// ordinary blocks after final activation. It is not a substitute for finality.

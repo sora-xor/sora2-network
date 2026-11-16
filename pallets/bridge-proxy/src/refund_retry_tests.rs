@@ -169,11 +169,15 @@ fn automatic_refund_uses_the_same_fallible_owner_resolution() {
 }
 
 #[test]
-fn retries_reject_halts_both_quarantine_markers_and_non_failed_outbound_records() {
+fn retries_reject_unfinished_recovery_quarantine_and_non_failed_outbound_records() {
     for marker in 0..3 {
         new_tester().execute_with(|| {
             let owner: AccountId = Keyring::Alice.into();
             let (network, id, _) = mark_failed_without_custody(owner.clone());
+            common::recovery::bridge_admission_fixtures::complete([1; 32]);
+            if marker == 0 {
+                common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
+            }
             let key = match marker {
                 0 => common::recovery::BRIDGE_HALT_STORAGE_KEY.to_vec(),
                 1 => bridge_types::recovery::message_key(network, id),
@@ -208,6 +212,35 @@ fn retries_reject_halts_both_quarantine_markers_and_non_failed_outbound_records(
             );
         });
     }
+}
+
+#[test]
+fn completed_recovery_refund_succeeds_with_historical_halt_marker_present() {
+    new_tester().execute_with(|| {
+        let owner: AccountId = Keyring::Alice.into();
+        let (network, id, custody) = mark_failed_without_custody(owner.clone());
+        assert_ok!(Currencies::update_balance(
+            RuntimeOrigin::root(),
+            custody,
+            XOR,
+            1_000
+        ));
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
+        sp_io::storage::set(common::recovery::BRIDGE_HALT_STORAGE_KEY, &[0xff]);
+        assert_ok!(BridgeProxy::retry_refund(
+            RuntimeOrigin::signed(owner.clone()),
+            network,
+            id
+        ));
+        assert_eq!(balance(&owner), 1_000);
+        assert_eq!(
+            Transactions::<Test>::get((network, owner), id)
+                .unwrap()
+                .status,
+            MessageStatus::Refunded
+        );
+        assert_eq!(LockedAssets::<Test>::get(network, XOR), 0);
+    });
 }
 
 #[test]

@@ -112,7 +112,7 @@ fn cooldown() -> u32 {
     crate::BridgeHaltCooldown::get()
 }
 
-/// A bridge entry point that checks the latch before anything else.
+/// A bridge entry point whose ordinary recipient-kind check must remain reachable.
 fn burn_error() -> DispatchError {
     BridgeProxy::burn(
         RuntimeOrigin::signed(account(&stranger())),
@@ -328,19 +328,24 @@ fn a_wrapped_halt_pays_and_is_admitted_only_when_it_can_halt() {
 }
 
 #[test]
-fn roots_latch_stays_separate_from_guardian_halts() {
+fn legacy_recovery_marker_never_vetoes_dispatch_or_replaces_guardian_signal() {
     ext().execute_with(|| {
         setup();
-        // Governance's hard stop: bridge pallets refuse calls while it is set.
+        // A historical recovery marker alone is not a consensus stop.
         sp_io::storage::set(BRIDGE_HALT_STORAGE_KEY, &[1]);
         assert_eq!(
             burn_error(),
-            bridge_proxy::Error::<Runtime>::RecoveryHalted.into()
+            bridge_proxy::Error::<Runtime>::WrongAccountKind.into()
         );
-        // A guardian can still signal the workers, and the latch stays as Root set it.
+        assert_eq!(signal(), None);
+        // A guardian signals only the workers; the historical marker remains intact.
         assert_ok!(Executive::apply_extrinsic(signed(halt(b"x"), &guardian())).unwrap());
         assert_eq!(signal().map(|halt| halt.number), Some(1));
         assert_eq!(latch(), Some(vec![1]));
+        assert_eq!(
+            burn_error(),
+            bridge_proxy::Error::<Runtime>::WrongAccountKind.into()
+        );
         // The old Root-only resume call is gone: index 1 no longer decodes.
         let mut bytes = halt(b"").encode();
         bytes[1] = 1;

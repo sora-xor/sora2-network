@@ -54,7 +54,7 @@ use bridge_types::types::{MessageDirection, MessageId, MessageStatus};
 mod coverage;
 
 #[test]
-fn recovery_halt_keeps_failed_outgoing_liability_quarantined() {
+fn unfinished_recovery_keeps_failed_outgoing_liability_quarantined() {
     use bridge_types::traits::MessageStatusNotifier;
     new_tester().execute_with(|| {
         let owner: AccountId = Keyring::Alice.into();
@@ -72,6 +72,7 @@ fn recovery_halt_keeps_failed_outgoing_liability_quarantined() {
         };
         crate::Senders::<Test>::insert(network, id, owner.clone());
         Transactions::<Test>::insert((network, owner.clone()), id, request.clone());
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         sp_io::storage::set(common::recovery::BRIDGE_HALT_STORAGE_KEY, &[1]);
         let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
         BridgeProxy::update_status(

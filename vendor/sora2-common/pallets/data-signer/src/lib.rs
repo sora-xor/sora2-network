@@ -226,14 +226,14 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_network())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_network()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
         ) -> DispatchResultWithPostInfo {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_root(origin)?;
@@ -255,7 +255,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::approve())]
+        #[pallet::weight((<T as Config>::WeightInfo::approve()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn approve(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -267,7 +267,7 @@ pub mod pallet {
                 Error::<T>::RecoveryHalted
             );
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_none(origin)?;
@@ -312,14 +312,14 @@ pub mod pallet {
 
         #[pallet::call_index(2)]
         #[transactional]
-        #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::add_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn add_peer(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_root(origin)?;
@@ -355,14 +355,14 @@ pub mod pallet {
 
         #[pallet::call_index(3)]
         #[transactional]
-        #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::remove_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn remove_peer(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_root(origin)?;
@@ -390,13 +390,13 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::finish_remove_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::finish_remove_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn finish_remove_peer(
             origin: OriginFor<T>,
             peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin)?;
@@ -424,13 +424,13 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::finish_add_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::finish_add_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn finish_add_peer(
             origin: OriginFor<T>,
             _peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin)?;
@@ -444,14 +444,14 @@ pub mod pallet {
         }
 
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::force_set_peers())]
+        #[pallet::weight((<T as Config>::WeightInfo::force_set_peers()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn force_set_peers(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
         ) -> DispatchResultWithPostInfo {
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_root(origin)?;
@@ -468,7 +468,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_pending_approval())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_pending_approval()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn register_pending_approval(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -479,7 +479,7 @@ pub mod pallet {
                 Error::<T>::RecoveryHalted
             );
             ensure!(
-                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
+                !bridge_types::recovery::recovery_in_progress(),
                 Error::<T>::RecoveryHalted
             );
             ensure_root(origin)?;
@@ -499,7 +499,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(8)]
-        #[pallet::weight(<T as Config>::WeightInfo::clear_pending_approval())]
+        #[pallet::weight((<T as Config>::WeightInfo::clear_pending_approval()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn clear_pending_approval(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -606,7 +606,7 @@ pub mod pallet {
         type Call = Call<T>;
         // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-            if sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1") {
+            if bridge_types::recovery::recovery_in_progress() {
                 return InvalidTransaction::Call.into();
             }
             if let Call::approve {

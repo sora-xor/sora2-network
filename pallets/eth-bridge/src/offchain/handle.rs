@@ -55,7 +55,9 @@ use crate::{
 use alloc::string::String;
 use alloc::vec::Vec;
 use bridge_multisig::MultiChainHeight;
-use codec::{Decode, Encode};
+#[cfg(test)]
+use codec::Decode;
+use codec::Encode;
 use frame_support::__private::log::{debug, error, info, trace, warn};
 use frame_support::sp_runtime::app_crypto::ecdsa;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
@@ -63,7 +65,7 @@ use frame_support::sp_runtime::traits::{
     IdentifyAccount, One, Saturating, UniqueSaturatedInto, Zero,
 };
 use frame_support::sp_runtime::RuntimeAppPublic;
-use frame_support::traits::Get;
+use frame_support::traits::{Get, IsSubType};
 use frame_support::{ensure, fail};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction, Signer};
 use rustc_hex::ToHex;
@@ -94,6 +96,10 @@ mod coverage_faults;
 #[cfg(test)]
 #[path = "../tests/attacker_attribution.rs"]
 mod attacker_attribution;
+
+#[cfg(test)]
+#[path = "../ocw_only_failed_queue_tests.rs"]
+mod ocw_only_failed_queue_tests;
 
 impl<T: Config> Pallet<T> {
     fn pending_multisig_rehandle_key(
@@ -715,35 +721,46 @@ impl<T: Config> Pallet<T> {
             .unwrap_or_default();
         let mut to_remove = Vec::new();
         for (key, tx) in &failed_txs {
-            let tx_call = bridge_multisig::Call::<T>::decode(&mut &tx.call.encode()[1..]);
-            if let Ok(tx_call) = tx_call {
-                let maybe_call = match &tx_call {
-                    bridge_multisig::Call::as_multi_threshold_1 { call, .. } => {
-                        Call::<T>::decode(&mut &call.encode()[1..])
-                    }
-                    bridge_multisig::Call::as_multi { call, .. } => {
-                        Call::<T>::decode(&mut &call[1..])
-                    }
-                    _ => continue,
-                };
-                match maybe_call {
-                    Ok(Call::<T>::import_incoming_request {
-                        load_incoming_request,
-                        ..
-                    }) => {
-                        let network_id = load_incoming_request.network_id();
-                        let tx_hash = load_incoming_request.hash();
-
-                        if !Self::should_import_sidechain_transaction(network_id, tx_hash) {
-                            to_remove.push(*key);
-                            // Skip already submitted requests.
-                            continue;
-                        }
-                        let _ = Self::send_transaction::<bridge_multisig::Call<T>>(tx_call);
-                    }
-                    _ => (),
-                };
+            // Retained bytes are not a trusted pallet-index encoding. Preserve
+            // unknown/malformed entries without slicing or signing them; use
+            // the same bounded, exact runtime-call decoder as live admission.
+            let Some(tx_call) = <<T as Config>::RuntimeCall as IsSubType<
+                bridge_multisig::Call<T>,
+            >>::is_sub_type(&tx.call) else {
+                continue;
+            };
+            let inner = match tx_call {
+                bridge_multisig::Call::as_multi_threshold_1 { call, .. } => {
+                    Some(call.as_ref().clone())
+                }
+                bridge_multisig::Call::as_multi { call, .. } => {
+                    bridge_multisig::Pallet::<T>::decode_call(&blake2_256(call), Some(call))
+                }
+                _ => continue,
+            };
+            let Some(inner) = inner else {
+                continue;
+            };
+            let Some(Call::<T>::import_incoming_request {
+                load_incoming_request,
+                ..
+            }) = <<T as Config>::RuntimeCall as IsSubType<Call<T>>>::is_sub_type(&inner)
+            else {
+                continue;
+            };
+            let network_id = load_incoming_request.network_id();
+            if crate::recovery::recovery_in_progress()
+                || !crate::BridgeStatuses::<T>::contains_key(network_id)
+            {
+                continue;
             }
+            let tx_hash = load_incoming_request.hash();
+            if !Self::should_import_sidechain_transaction(network_id, tx_hash) {
+                to_remove.push(*key);
+                // Skip already submitted requests.
+                continue;
+            }
+            let _ = Self::send_transaction::<bridge_multisig::Call<T>>(tx_call.clone());
         }
         if !to_remove.is_empty() {
             for key in to_remove {
@@ -1212,6 +1229,9 @@ impl<T: Config> Pallet<T> {
                     continue;
                 }
             };
+            if request.network_id() != network_id {
+                continue;
+            }
             if crate::recovery::ensure_request_active::<T>(&request).is_err() {
                 continue;
             }

@@ -1,6 +1,23 @@
 @Library('jenkins-library') _
 
-def pipeline = new org.rust.AppPipeline(steps: this,
+// Release publishing must not trigger the inherited test-network runtime upgrade.
+class PublishOnlyRustPipeline extends org.rust.AppPipeline {
+  @Override
+  public void pushDockerImage() {
+    if (steps.env.TAG_NAME == '4.8.15') {
+      steps.echo('SORA Nexus 4.8.15 images are published by the separate verified-artifact process; skipping legacy Jenkins image publication.')
+      return
+    }
+    super.pushDockerImage()
+  }
+
+  @Override
+  public void runtimeUpgrade() {
+    steps.echo('SORA Nexus runtime deployment is disabled; normal checks and artifact publication remain enabled.')
+  }
+}
+
+def pipeline = new PublishOnlyRustPipeline(steps: this,
       initSubmodules: true,
       envImageName: 'docker.soramitsu.co.jp/sora2/env:latest',
       appImageName: 'docker.soramitsu.co.jp/sora2/substrate',

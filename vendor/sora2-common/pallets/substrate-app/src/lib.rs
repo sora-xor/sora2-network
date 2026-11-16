@@ -313,7 +313,7 @@ pub mod pallet {
         /// The Origin for this call is the Bridge Origin
         /// Only the relayer can call this function
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        #[pallet::weight((<T as Config>::WeightInfo::mint()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn mint(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -328,7 +328,7 @@ pub mod pallet {
         /// The Origin for this call is the Bridge Origin
         /// Only the relayer can call this function
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
+        #[pallet::weight((<T as Config>::WeightInfo::finalize_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768))).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         #[frame_support::transactional]
         pub fn finalize_asset_registration(
             origin: OriginFor<T>,
@@ -378,14 +378,14 @@ pub mod pallet {
         /// Only the relayer can call this function
         /// Sends the message to sidechain to finalize asset registration
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::incoming_thischain_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
+        #[pallet::weight((<T as Config>::WeightInfo::incoming_thischain_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768))).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         #[frame_support::transactional]
         pub fn incoming_thischain_asset_registration(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
             sidechain_asset_id: GenericAssetId,
         ) -> DispatchResult {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(!crate::recovery::in_progress(), Error::<T>::RecoveryHalted);
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
             ensure!(
                 T::AssetRegistry::ensure_asset_exists(asset_id.clone()),
@@ -436,7 +436,7 @@ pub mod pallet {
 
         /// Function used by users to send tokens to the sidechain
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        #[pallet::weight((<T as Config>::WeightInfo::burn()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn burn(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -456,7 +456,7 @@ pub mod pallet {
         /// Only the root can call this function
         /// Sends the message to sidechain to register asset
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
+        #[pallet::weight((<T as Config>::WeightInfo::register_sidechain_asset().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768))).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         #[frame_support::transactional]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
@@ -465,7 +465,7 @@ pub mod pallet {
             symbol: AssetSymbolOf<T>,
             name: AssetNameOf<T>,
         ) -> DispatchResult {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(!crate::recovery::in_progress(), Error::<T>::RecoveryHalted);
             ensure_root(origin)?;
 
             // Ensure that asset had not been registered for current network id
@@ -503,14 +503,14 @@ pub mod pallet {
         /// The Origin for this call is the Bridge Origin
         /// Only the relayer can call this function
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status()
-            .saturating_add(T::MessageStatusNotifier::update_status_weight()))]
+        #[pallet::weight((<T as Config>::WeightInfo::update_transaction_status()
+            .saturating_add(T::MessageStatusNotifier::update_status_weight())).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn update_transaction_status(
             origin: OriginFor<T>,
             message_id: H256,
             message_status: MessageStatus,
         ) -> DispatchResult {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(!crate::recovery::in_progress(), Error::<T>::RecoveryHalted);
             // Only delivery success/failure are remote protocol results. Local
             // custody states (especially Refunded) cannot be asserted remotely.
             ensure!(
@@ -535,7 +535,7 @@ pub mod pallet {
         /// Authorize an incoming native-asset registration, or reconstruct a
         /// reviewed pre-upgrade pending registration. No token rights change here.
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768)))]
+        #[pallet::weight((<T as Config>::WeightInfo::finalize_asset_registration().saturating_add(T::DbWeight::get().reads_writes(6, 2)).saturating_add(frame_support::weights::Weight::from_parts(5_000_000, 32768))).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         #[frame_support::transactional]
         pub fn authorize_asset_registration(
             origin: OriginFor<T>,
@@ -617,7 +617,7 @@ pub mod pallet {
                     bridge_types::traits::MessageDispatchOutcome::Applied => MessageStatus::Done,
                     bridge_types::traits::MessageDispatchOutcome::Failed => MessageStatus::Failed,
                 };
-                if crate::recovery::halted() {
+                if crate::recovery::in_progress() {
                     DeferredTransferResults::<T>::insert(network_id, message_id, message_status);
                 } else {
                     T::OutboundChannel::submit(
@@ -699,7 +699,7 @@ pub mod pallet {
             recipient: GenericAccount,
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
-            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(!crate::recovery::in_progress(), Error::<T>::RecoveryHalted);
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
             // The receiving app converts only these two AccountId32 forms.
             // Other variants fail before its transfer-result response can run.

@@ -1450,7 +1450,10 @@ fn recovery_channels_registration_preview_weight_covers_success_and_failure_path
             set_substrate_messages(&mut operation, vec![finalization_call(kind)]);
             let payload = finalization_call(kind).encode();
             let expected = SubstrateDispatch::dispatch_weight(&payload)
-                .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().writes(1));
+                .saturating_add(bridge_types::recovery::completion_weight::<Runtime>(1))
+                .saturating_add(
+                    <Runtime as frame_system::Config>::DbWeight::get().reads_writes(6, 2),
+                );
             assert_eq!(audit::registration_preview_weight(&operation), expected);
             assert!(expected
                 .saturating_mul(3)

@@ -101,11 +101,13 @@ fn non_peer_approval_is_rejected_by_pool_validation() {
                 EthBridge::validate_peer_protocol_call(&outsider, &call),
                 Error::Forbidden
             );
+            common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
             sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
             assert_err!(
                 EthBridge::validate_peer_protocol_call(&outsider, &call),
                 Error::Forbidden
             );
+            common::recovery::bridge_admission_fixtures::clear_state();
             sp_io::storage::clear(crate::recovery::HALT_KEY);
         }
         assert_err!(
@@ -173,11 +175,13 @@ fn finalization_is_admitted_only_for_a_request_with_a_recorded_quorum() {
             Error::InsufficientCurrentApprovals
         );
         crate::PendingPeer::<Runtime>::remove(net);
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         assert_err!(
             EthBridge::validate_peer_protocol_call(&anyone, &finalize(hash)),
             Error::RecoveryHalted
         );
+        common::recovery::bridge_admission_fixtures::clear_state();
         sp_io::storage::clear(crate::recovery::HALT_KEY);
 
         // Anyone may finalize the existing quorum; the call remains fee-paying.
@@ -240,6 +244,7 @@ fn early_approval_and_finalization_failures_report_small_actual_weight() {
         }
         crate::RequestStatuses::<Runtime>::insert(net, hash, RequestStatus::Pending);
 
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         for target in [hash, absent] {
             rejected(
@@ -254,6 +259,7 @@ fn early_approval_and_finalization_failures_report_small_actual_weight() {
             );
             rejected(finalize(target), &outsider, Error::RecoveryHalted);
         }
+        common::recovery::bridge_admission_fixtures::clear_state();
         sp_io::storage::clear(crate::recovery::HALT_KEY);
         assert!(crate::RequestApprovers::<Runtime>::get(net, hash).is_empty());
     });

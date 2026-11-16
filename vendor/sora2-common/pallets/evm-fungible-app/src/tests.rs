@@ -410,8 +410,30 @@ fn existing_sidechain_asset_registration_records_both_directions_and_rejects_dup
 }
 
 #[test]
-fn recovery_halt_blocks_registration_and_relayer_payouts_before_mutation() {
+fn emergency_worker_signal_does_not_veto_valid_asset_registration() {
     new_tester().execute_with(|| {
+        sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
+        sp_io::storage::set(
+            b":sora-nexus:bridge-halt:latest:v1",
+            &[1, 0, 0, 0, 7, 0, 0, 0],
+        );
+        assert_eq!(bridge_types::recovery::completion(), Ok(None));
+        assert_ok!(FungibleApp::register_existing_sidechain_asset(
+            RuntimeOrigin::root(),
+            BASE_NETWORK_ID,
+            H160::repeat_byte(8),
+            ETH,
+            12
+        ));
+    });
+}
+
+#[test]
+fn unfinished_recovery_blocks_registration_and_relayer_payouts_before_mutation() {
+    new_tester().execute_with(|| {
+        // A legacy emergency marker alone is not a consensus veto.
+        // Malformed/incomplete recovery state must still reject before mutation.
+        sp_io::storage::set(b":sora-nexus:recovery:status:v1", &[0]);
         sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
         let address = H160::repeat_byte(8);
         assert_noop!(
@@ -481,9 +503,12 @@ fn last_event() -> RuntimeEvent {
 }
 
 #[test]
-fn recovery_halt_rejects_direct_burn_and_refund_before_balance_changes() {
+fn unfinished_recovery_rejects_direct_burn_and_refund_before_balance_changes() {
     new_tester().execute_with(|| {
         let owner: AccountId = Keyring::Bob.into();
+        // A legacy emergency marker alone is not a consensus veto.
+        // Malformed/incomplete recovery state must still reject before mutation.
+        sp_io::storage::set(b":sora-nexus:recovery:status:v1", &[0]);
         sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
         assert_noop!(
             FungibleApp::burn_inner(owner.clone(), BASE_NETWORK_ID, XOR, H160::repeat_byte(9), 1),

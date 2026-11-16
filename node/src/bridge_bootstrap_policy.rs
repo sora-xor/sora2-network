@@ -1,11 +1,13 @@
 //! Local bootstrap policy for SORA Nexus recovery bridge peers.
 //!
-//! Preparing local configuration never opens the recovery or on-chain halt gates.
+//! Preparing local configuration never acknowledges recovery or guardian halts.
 
 #[derive(Clone, Copy)]
 pub(crate) struct BridgeWorkerOptions {
     pub recovery_bootstrap: bool,
     pub resume_after_halt: Option<u32>,
+    pub resume_after_observed_halt: Option<sp_core::H256>,
+    pub resume_after_recovery: Option<sp_core::H256>,
 }
 
 pub(crate) fn enabled(

@@ -10,6 +10,7 @@ use common::{AssetInfoProvider, AssetName, AssetSymbol};
 use frame_support::traits::{OnRuntimeUpgrade, StorageVersion};
 
 fn inbound_context() {
+    common::recovery::bridge_admission_fixtures::applying([1; 32], System::block_number() as u32);
     sp_io::storage::set(common::recovery::BRIDGE_HALT_STORAGE_KEY, &[1]);
     sp_io::storage::set(
         common::recovery::BRIDGE_INBOUND_CONTEXT_STORAGE_KEY,
@@ -277,6 +278,7 @@ fn recovery_accounting_requires_current_context_and_legacy_owned_route() {
                 crate::Error::<Test>::RecoveryHalted
             );
         }
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         sp_io::storage::set(common::recovery::BRIDGE_HALT_STORAGE_KEY, &[1]);
         assert_noop!(
             BridgeProxy::recovery_restore_extinguished_hashi_owned(legacy, XOR, 10),
@@ -343,6 +345,7 @@ fn lock_accounting_overflow_and_recovery_gate_preserve_existing_liquidity() {
             BridgeProxy::before_asset_lock(network, AssetKind::Sidechain, &XOR, &1),
             crate::Error::<Test>::NotEnoughLockedLiquidity
         );
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         sp_io::storage::set(common::recovery::BRIDGE_HALT_STORAGE_KEY, &[1]);
         assert_noop!(
             BridgeProxy::before_asset_lock(network, AssetKind::Thischain, &XOR, &1),
@@ -426,6 +429,7 @@ fn fee_custody_round_trip_and_halt_preserve_balances() {
             assets::Pallet::<Test>::free_balance(&XOR, &fee_account).unwrap(),
             25
         );
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         sp_io::storage::set(common::recovery::BRIDGE_HALT_STORAGE_KEY, &[1]);
         assert_noop!(
             BridgeProxy::withdraw_fee(network, &owner, &XOR, &1),
@@ -600,6 +604,50 @@ fn limited_lock_rejects_unrepresentable_prices_and_unlock_schedule_overflow() {
         assert_eq!(
             BridgeProxy::transfer_limit_unlock_schedule(unlock_at),
             balance!(2.5)
+        );
+    });
+}
+
+#[test]
+fn ocw_only_halt_completed_markers_do_not_block_custody_or_grant_maintenance() {
+    new_tester().execute_with(|| {
+        let network = GenericNetworkId::EVMLegacy(0);
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
+        sp_io::storage::set(common::bridge_halt::GUARDIAN_HALT_STORAGE_KEY, &[255]);
+        for marker in [vec![1], vec![0], vec![255], vec![]] {
+            sp_io::storage::set(common::recovery::BRIDGE_HALT_STORAGE_KEY, &marker);
+            assert_ok!(BridgeProxy::before_asset_lock(
+                network,
+                AssetKind::Thischain,
+                &XOR,
+                &10
+            ));
+            assert_eq!(BridgeProxy::locked_assets(network, XOR), 10);
+            assert_ok!(BridgeProxy::before_asset_unlock(
+                network,
+                AssetKind::Thischain,
+                &XOR,
+                &10
+            ));
+            assert_eq!(BridgeProxy::locked_assets(network, XOR), 0);
+            assert_noop!(
+                BridgeProxy::recovery_restore_extinguished_hashi_owned(network, XOR, 10),
+                crate::Error::<Test>::RecoveryHalted
+            );
+        }
+        // A stale context number on an otherwise Complete state is not an
+        // authenticated recovery operation and cannot mutate custody.
+        sp_io::storage::set(
+            common::recovery::BRIDGE_INBOUND_CONTEXT_STORAGE_KEY,
+            &(System::block_number() as u32).encode(),
+        );
+        assert_noop!(
+            BridgeProxy::recovery_restore_extinguished_hashi_owned(network, XOR, 10),
+            crate::Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            BridgeProxy::before_asset_lock(network, AssetKind::Thischain, &XOR, &10),
+            crate::Error::<Test>::RecoveryHalted
         );
     });
 }

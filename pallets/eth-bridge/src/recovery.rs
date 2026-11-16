@@ -1,4 +1,5 @@
-//! Persistent SORA Nexus bridge maintenance latch. No call can clear it here.
+//! SORA Nexus recovery admission and authenticated maintenance context.
+//! A completed recovery marker does not halt consensus; emergency stopping is local to OCW.
 
 use codec::{Decode, Encode};
 use frame_support::ensure;
@@ -21,7 +22,8 @@ pub(crate) fn transfer_resolution<T: crate::Config>(
     request: &crate::IncomingTransfer<T>,
 ) -> Result<Option<HashiResolution<T::AccountId>>, DispatchError> {
     ensure_incoming_transaction_active::<T>(request.network_id, request.tx_hash)?;
-    if !halted() {
+    if !maintenance_inbound_active::<T>() {
+        ensure!(!recovery_in_progress(), crate::Error::<T>::RecoveryHalted);
         return Ok(None);
     }
     ensure!(inbound_allowed::<T>(), crate::Error::<T>::RecoveryHalted);
@@ -53,21 +55,21 @@ pub(crate) fn consume_transfer<AccountId: Encode>(mut resolution: HashiResolutio
 pub(crate) const HALT_KEY: &[u8] = b":sora-nexus:recovery:bridge-halt:v1";
 pub(crate) const INBOUND_CONTEXT_KEY: &[u8] = b":sora-nexus:recovery:bridge-inbound-context:v1";
 
-pub(crate) fn halted() -> bool {
-    sp_io::storage::exists(HALT_KEY)
+pub(crate) fn recovery_in_progress() -> bool {
+    bridge_types::recovery::recovery_in_progress()
+}
+
+pub(crate) fn maintenance_inbound_active<T: frame_system::Config>() -> bool {
+    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
+    number
+        .ok()
+        .is_some_and(bridge_types::recovery::maintenance_inbound_active)
 }
 
 /// The recovery executive sets this exact SCALE u32 only around a committed
 /// authenticated inbound operation, and clears it transactionally before return.
 pub(crate) fn inbound_allowed<T: frame_system::Config>() -> bool {
-    if !halted() {
-        return true;
-    }
-    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
-    number.ok().is_some_and(|number| {
-        sp_io::storage::get(INBOUND_CONTEXT_KEY)
-            .is_some_and(|bytes| bytes.as_ref() == number.to_le_bytes().as_slice())
-    })
+    !recovery_in_progress() || maintenance_inbound_active::<T>()
 }
 
 /// A request quarantine cannot be reopened by clearing the global maintenance latch.
@@ -132,7 +134,7 @@ pub(crate) fn ensure_ordinary_transfer_source<T: crate::Config>(
 ) -> Result<(), crate::Error<T>> {
     ensure!(
         !sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY)
-            || halted()
+            || maintenance_inbound_active::<T>()
             || *from != sp_core::H160::zero(),
         crate::Error::<T>::InvalidAddress
     );
@@ -174,7 +176,7 @@ pub(crate) fn ensure_request_active<T: crate::Config>(
 pub trait IncomingAccountResolver<AccountId> {
     fn resolve(account: &AccountId) -> Result<Option<AccountId>, DispatchError>;
 
-    /// Consulted only by ordinary (unhalted) transfer finalization while a
+    /// Consulted only by ordinary post-recovery transfer finalization while a
     /// recovery policy is installed, after peers authenticated the request.
     /// `beneficiary` is the recipient the request names. `Some` credits the
     /// returned account instead, with the same asset, amount and fee; the
@@ -196,9 +198,10 @@ impl<AccountId> IncomingAccountResolver<AccountId> for () {
 pub(crate) fn ordinary_account<T: crate::Config>(
     account: &T::AccountId,
 ) -> Result<T::AccountId, DispatchError> {
-    if halted() {
+    if maintenance_inbound_active::<T>() {
         return Ok(account.clone());
     }
+    ensure!(!recovery_in_progress(), crate::Error::<T>::RecoveryHalted);
     Ok(T::IncomingAccountResolver::resolve(account)?.unwrap_or_else(|| account.clone()))
 }
 
@@ -214,9 +217,10 @@ where
     T: crate::Config,
     R: IncomingAccountResolver<T::AccountId>,
 {
-    if halted() {
+    if maintenance_inbound_active::<T>() {
         return Ok(to.clone());
     }
+    ensure!(!recovery_in_progress(), crate::Error::<T>::RecoveryHalted);
     ensure_ordinary_transfer_source::<T>(from)?;
     let account = R::resolve(to)?.unwrap_or_else(|| to.clone());
     if !sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) {
@@ -251,8 +255,10 @@ pub(crate) fn incoming_index_author<T: crate::Config>(
 /// adds policy/halt reads across preflight, validation and delivery; reserve
 /// twenty-four additional reads for their nested paths.
 pub(crate) fn resolution_weight<T: crate::Config>() -> frame_support::weights::Weight {
-    if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") || halted() {
-        // Halted manifest work supplies its own bounded executor allowance and
+    if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1")
+        || maintenance_inbound_active::<T>()
+    {
+        // Authenticated manifest work supplies its own bounded executor allowance and
         // never calls the permanent resolver. Preserve its signed max_weight.
         return frame_support::weights::Weight::zero();
     }

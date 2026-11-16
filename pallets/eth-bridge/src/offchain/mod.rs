@@ -101,12 +101,36 @@ pub(crate) fn set_offchain_metric_u64(key: &[u8], value: u64) {
     StorageValueRef::persistent(key).set(&value);
 }
 
+/// Recovery completion permits consensus execution. Workers still require a
+/// separate, exact local operator acknowledgement; no on-chain restart call exists.
+pub(crate) fn stopped_by_recovery<T: frame_system::Config>() -> bool {
+    use bridge_types::recovery::{acknowledgement_matches, completion, RECOVERY_ACK_STORAGE_KEY};
+    match completion() {
+        Ok(None) => false,
+        Err(()) => true,
+        Ok(Some(completion)) => {
+            let hash = frame_system::Pallet::<T>::block_hash(
+                frame_system::pallet_prelude::BlockNumberFor::<T>::from(0u32),
+            );
+            let Ok(genesis) = <[u8; 32]>::try_from(hash.as_ref()) else {
+                return true;
+            };
+            let acknowledgement = sp_io::offchain::local_storage_get(
+                sp_core::offchain::StorageKind::PERSISTENT,
+                RECOVERY_ACK_STORAGE_KEY,
+            );
+            !acknowledgement_matches(genesis, &completion, acknowledgement.as_deref())
+        }
+    }
+}
+
 /// Whether a guardian halt keeps this node's workers stopped.
 ///
 /// The workers stop when the chain names a guardian halt that this node's
-/// operator has not confirmed with `--bridge-resume-after-halt`, and when the
-/// chain's halt record does not decode. Sets the stopped-halt metric each run and
-/// logs a warning once per halt.
+/// operator has not confirmed locally, and when the chain's halt record does
+/// not decode. DevOps uses the exact observed-halt digest printed by the node;
+/// the numeric signal alone cannot release a pending durable node stop. Sets the
+/// stopped-halt metric each run and logs a warning once per halt.
 pub(crate) fn stopped_by_guardian_halt() -> bool {
     let latest = common::bridge_halt::latest_guardian_halt();
     let confirmed = StorageValueRef::persistent(crate::STORAGE_RESUMED_AFTER_HALT_KEY)
@@ -135,10 +159,9 @@ pub(crate) fn stopped_by_guardian_halt() -> bool {
         reported.set(&stopped_by);
         match stopped_by {
             Some(halt) => frame_support::__private::log::warn!(
-                "Guardian halt #{} (block #{}) stopped the HASHI bridge workers. Once it is safe, restart this node with --bridge-resume-after-halt {}.",
+                "SORA Nexus guardian halt #{} (block #{}) stopped the HASHI bridge workers. After review, DevOps must restart this node with --bridge-resume-after-observed-halt and the exact local digest printed by the node guardian observer.",
                 halt.number,
                 halt.block,
-                halt.number,
             ),
             None => frame_support::__private::log::error!(
                 "The guardian halt record on chain does not decode; the HASHI bridge workers stay stopped."
@@ -726,7 +749,7 @@ impl<T: Config> Pallet<T> {
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
-        if crate::recovery::halted() {
+        if stopped_by_guardian_halt() || stopped_by_recovery::<T>() {
             return;
         }
         let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);

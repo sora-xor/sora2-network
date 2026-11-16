@@ -131,8 +131,21 @@ fn failed_signed_transaction_construction_never_creates_or_replaces_retry_record
         let account = Signer::<Runtime, crate::offchain::crypto::TestAuthId>::keystore_accounts()
             .next()
             .unwrap();
-        let mut tx =
-            SignedTransactionData::<Runtime>::new(H256::repeat_byte(1), None, call.clone());
+        // Use an actual protocol retry for the post-sign reconstruction failure;
+        // generic calls remain supported only by the direct send helper.
+        let retry_call = crate::Call::<Runtime>::import_incoming_request {
+            load_incoming_request: crate::requests::LoadIncomingRequest::Transaction(
+                crate::requests::LoadIncomingTransactionRequest::new(
+                    alice(),
+                    H256::repeat_byte(61),
+                    Default::default(),
+                    crate::requests::IncomingTransactionRequestKind::Transfer,
+                    0,
+                ),
+            ),
+            incoming_request_result: Err(crate::Error::<Runtime>::EthTransactionIsFailed.into()),
+        };
+        let mut tx = SignedTransactionData::<Runtime>::new(H256::repeat_byte(1), None, retry_call);
         let original = tx.encode();
         set_signed_transaction_creation_results(&[true, false]);
         assert!(!tx.resend(&signer));

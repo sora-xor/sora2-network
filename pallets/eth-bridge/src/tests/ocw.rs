@@ -331,9 +331,19 @@ fn ocw_outgoing_retry_keeps_payload_key_and_rejects_removed_peer() {
         let sp_runtime::MultiSigner::Ecdsa(ocw_public) = selected.public.clone() else {
             panic!("bridge test key is ECDSA");
         };
+        let user = get_account_id_from_seed::<sr25519::Public>("Alice");
+        assert_ok!(Assets::mint_to(&XOR.into(), &user, &user, 100));
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(user),
+            XOR.into(),
+            EthAddress::repeat_byte(0x53),
+            100,
+            ETH_NETWORK_ID,
+        ));
+        let (_, request_hash) = last_outgoing_request(ETH_NETWORK_ID).unwrap();
         let call = crate::Call::<Runtime>::approve_request {
             ocw_public,
-            hash: H256::repeat_byte(0x53),
+            hash: request_hash,
             signature_params: crate::offchain::SignatureParams {
                 r: [0; 32],
                 s: [0; 32],

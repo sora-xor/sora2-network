@@ -31,6 +31,9 @@ use std::{
 pub(crate) struct WorkerGuard {
     pub client: Arc<FullClient>,
     pub backend: Arc<FullBackend>,
+    /// The Wasm context using this key. None is used only by the shared pool.
+    pub execution_block: Option<H256>,
+    pub guardian_monitor: Arc<super::observed::Monitor>,
 }
 
 pub(crate) trait BridgeGuard: Send + Sync {
@@ -43,19 +46,46 @@ impl BridgeGuard for WorkerGuard {
         // importer instead of waiting for the lock while holding that instance.
         let _import = self.backend.get_import_lock().try_read()?;
         let best = self.client.info().best_hash;
-        let latest = halt_at(&self.client, best).ok()?;
-        let storage = self.backend.offchain_storage()?;
-        let confirmed = storage
-            .get(STORAGE_PREFIX, eth_bridge::STORAGE_RESUMED_AFTER_HALT_KEY)
-            .and_then(|bytes| GuardianHalt::decode_all(&mut &bytes[..]).ok());
-        if !workers_may_run(&Ok(latest), confirmed) {
-            return None;
-        }
-        let root_latch = StorageKey(common::recovery::BRIDGE_HALT_STORAGE_KEY.to_vec());
-        if self.client.storage(best, &root_latch).ok()?.is_some() {
-            return None;
-        }
-        Some(action())
+        self.guardian_monitor.while_open(best, || {
+            // The local request guard relies on reviewed Wasm signing/retry paths.
+            // Recheck both the worker's historical context and live best code under
+            // the import lock. An upgrade, unknown chain or missing state closes
+            // HASHI signing/submission until its behavior is reviewed.
+            let code_key = StorageKey(b":code".to_vec());
+            let genesis = self.client.info().genesis_hash;
+            for hash in [Some(best), self.execution_block].into_iter().flatten() {
+                let code = self.client.storage_hash(hash, &code_key).ok()?;
+                if !crate::bridge_local_quarantine::reviewed_code(genesis, code) {
+                    log::error!("SORA Nexus local request quarantine: unreviewed runtime; HASHI signing/submission refused");
+                    return None;
+                }
+            }
+            let latest = halt_at(&self.client, best).ok()?;
+            let storage = self.backend.offchain_storage()?;
+            let confirmed = storage
+                .get(STORAGE_PREFIX, eth_bridge::STORAGE_RESUMED_AFTER_HALT_KEY)
+                .and_then(|bytes| GuardianHalt::decode_all(&mut &bytes[..]).ok());
+            if !workers_may_run(&Ok(latest), confirmed) {
+                return None;
+            }
+            let completed = crate::recovery_acknowledgement::completion_at(&self.client, best);
+            let execution = self
+                .execution_block
+                .map(|hash| crate::recovery_acknowledgement::completion_at(&self.client, hash));
+            let acknowledgement = storage.get(
+                STORAGE_PREFIX,
+                bridge_types::recovery::RECOVERY_ACK_STORAGE_KEY,
+            );
+            if !crate::recovery_acknowledgement::workers_may_run(
+                genesis,
+                &completed,
+                execution.as_ref(),
+                acknowledgement.as_deref(),
+            ) {
+                return None;
+            }
+            Some(action())
+        })
     }
 }
 
@@ -75,17 +105,37 @@ impl WorkerPasses {
             inner,
             passes: self.clone(),
             invocation: Arc::new(()),
+            guardian_monitor: None,
         }
     }
 
     pub(crate) fn extension<S: OffchainStorage + 'static>(
         &self,
         inner: S,
+        guardian_monitor: Arc<super::observed::Monitor>,
+    ) -> Box<dyn sp_externalities::Extension> {
+        self.extension_inner(inner, Some(guardian_monitor))
+    }
+
+    #[cfg(test)]
+    fn test_extension<S: OffchainStorage + 'static>(
+        &self,
+        inner: S,
+    ) -> Box<dyn sp_externalities::Extension> {
+        self.extension_inner(inner, None)
+    }
+
+    fn extension_inner<S: OffchainStorage + 'static>(
+        &self,
+        inner: S,
+        guardian_monitor: Option<Arc<super::observed::Monitor>>,
     ) -> Box<dyn sp_externalities::Extension> {
         use sp_core::offchain::{Capabilities, LimitedExternalities, OffchainDbExt};
+        let mut storage = self.storage(inner);
+        storage.guardian_monitor = guardian_monitor;
         Box::new(OffchainDbExt::new(LimitedExternalities::new(
             Capabilities::all(),
-            sc_offchain::OffchainDb::new(self.storage(inner)),
+            sc_offchain::OffchainDb::new(storage),
         )))
     }
 }
@@ -95,11 +145,19 @@ struct WorkerStorage<S> {
     inner: S,
     passes: WorkerPasses,
     invocation: Arc<()>,
+    guardian_monitor: Option<Arc<super::observed::Monitor>>,
 }
 
 fn guard_capability(key: &[u8]) -> bool {
     key == eth_bridge::STORAGE_LIVE_SIGNING_GUARD_KEY
         || key == eth_bridge::STORAGE_SERIAL_SIGNING_GUARD_KEY
+}
+
+fn worker_write_protected(key: &[u8]) -> bool {
+    guard_capability(key)
+        || key == bridge_types::recovery::RECOVERY_ACK_STORAGE_KEY
+        || key == super::observed::STORAGE_KEY
+        || key == eth_bridge::STORAGE_RESUMED_AFTER_HALT_KEY
 }
 
 impl<S: OffchainStorage> WorkerStorage<S> {
@@ -122,7 +180,11 @@ impl<S: OffchainStorage> WorkerStorage<S> {
 impl<S: OffchainStorage> OffchainStorage for WorkerStorage<S> {
     fn get(&self, prefix: &[u8], key: &[u8]) -> Option<Vec<u8>> {
         if prefix == STORAGE_PREFIX && guard_capability(key) {
-            return Some(vec![1]);
+            return self
+                .guardian_monitor
+                .as_ref()
+                .map_or(true, |monitor| monitor.is_open_now())
+                .then(|| vec![1]);
         }
         if prefix == STORAGE_PREFIX && key == eth_bridge::STORAGE_WORKER_LOCK_KEY {
             return self
@@ -139,7 +201,7 @@ impl<S: OffchainStorage> OffchainStorage for WorkerStorage<S> {
 
     fn set(&mut self, prefix: &[u8], key: &[u8], value: &[u8]) {
         if prefix != STORAGE_PREFIX
-            || (!guard_capability(key) && key != eth_bridge::STORAGE_WORKER_LOCK_KEY)
+            || (!worker_write_protected(key) && key != eth_bridge::STORAGE_WORKER_LOCK_KEY)
         {
             self.inner.set(prefix, key, value);
         }
@@ -154,7 +216,7 @@ impl<S: OffchainStorage> OffchainStorage for WorkerStorage<S> {
             {
                 *slot = None;
             }
-        } else if prefix != STORAGE_PREFIX || !guard_capability(key) {
+        } else if prefix != STORAGE_PREFIX || !worker_write_protected(key) {
             self.inner.remove(prefix, key);
         }
     }
@@ -169,7 +231,7 @@ impl<S: OffchainStorage> OffchainStorage for WorkerStorage<S> {
         if prefix == STORAGE_PREFIX && key == eth_bridge::STORAGE_WORKER_LOCK_KEY {
             return self.acquire(old, new);
         }
-        (prefix != STORAGE_PREFIX || !guard_capability(key))
+        (prefix != STORAGE_PREFIX || !worker_write_protected(key))
             && self.inner.compare_and_set(prefix, key, old, new)
     }
 }
@@ -456,9 +518,9 @@ mod tests {
         let passes = WorkerPasses::default();
         let db = TestPersistentOffchainDB::new();
         let mut older = sp_io::TestExternalities::default();
-        older.register_extension(passes.extension(db.clone()));
+        older.register_extension(passes.test_extension(db.clone()));
         let mut newer = sp_io::TestExternalities::default();
-        newer.register_extension(passes.extension(db));
+        newer.register_extension(passes.test_extension(db));
         let lock = eth_bridge::STORAGE_WORKER_LOCK_KEY;
         older.execute_with(|| {
             assert!(sp_io::offchain::local_storage_compare_and_set(
@@ -512,6 +574,35 @@ mod tests {
             guarded.set(STORAGE_PREFIX, key, &[1]);
             assert!(!guarded.compare_and_set(STORAGE_PREFIX, key, None, &[1]));
             assert!(guarded.inner.get(STORAGE_PREFIX, key).is_none());
+        }
+    }
+
+    #[test]
+    fn worker_cannot_write_or_erase_operator_recovery_acknowledgement() {
+        use sp_core::offchain::storage::InMemOffchainStorage;
+        let mut worker = WorkerPasses::default().storage(InMemOffchainStorage::default());
+        for key in [
+            bridge_types::recovery::RECOVERY_ACK_STORAGE_KEY,
+            super::super::observed::STORAGE_KEY,
+            eth_bridge::STORAGE_RESUMED_AFTER_HALT_KEY,
+        ] {
+            worker.set(STORAGE_PREFIX, key, b"runtime-created");
+            assert!(!worker.compare_and_set(STORAGE_PREFIX, key, None, b"runtime-created"));
+            assert!(worker.get(STORAGE_PREFIX, key).is_none());
+            // Startup uses the underlying node database, outside the OCW extension.
+            worker.inner.set(STORAGE_PREFIX, key, b"operator-confirmed");
+            worker.set(STORAGE_PREFIX, key, b"replacement");
+            worker.remove(STORAGE_PREFIX, key);
+            assert!(!worker.compare_and_set(
+                STORAGE_PREFIX,
+                key,
+                Some(b"operator-confirmed"),
+                b"replacement"
+            ));
+            assert_eq!(
+                worker.get(STORAGE_PREFIX, key),
+                Some(b"operator-confirmed".to_vec())
+            );
         }
     }
 }

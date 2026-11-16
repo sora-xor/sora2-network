@@ -8,6 +8,9 @@ use crate::{GenericNetworkId, H256};
 use codec::{Decode, DecodeWithMemTracking, Encode};
 use sp_std::vec::Vec;
 
+mod lifecycle;
+pub use lifecycle::*;
+
 fn key(prefix: &[u8], identity: impl Encode) -> Vec<u8> {
     let mut key = prefix.to_vec();
     key.extend(identity.encode());

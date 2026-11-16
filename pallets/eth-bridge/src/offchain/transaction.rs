@@ -113,8 +113,10 @@ impl<T: Config> SignedTransactionData<T> {
         Some(Self::new(ext_hash, submitted_at, overarching_call))
     }
 
-    /// Re-sends current call and updates self. Returns `true` if sent.
-    pub fn resend(&mut self, signer: &Signer<T, T::PeerId>) -> bool
+    /// Re-sends a recognized current-peer bridge protocol call. Unknown wrappers
+    /// and missing/undecodable stored calls are retained without key use. The
+    /// legacy argument remains for API compatibility, never as signing authority.
+    pub fn resend(&mut self, _signer: &Signer<T, T::PeerId>) -> bool
     where
         T: CreateSignedTransaction<Call<T>>,
     {
@@ -123,7 +125,11 @@ impl<T: Config> SignedTransactionData<T> {
             self.call.get_call_metadata()
         );
         let protocol_signer = match Pallet::<T>::signer_for_protocol_call(&self.call) {
-            Ok(signer) => signer,
+            Ok(Some(signer)) => signer,
+            Ok(None) => {
+                error!("Retaining unrecognized cached call without bridge-key signing");
+                return false;
+            }
             Err(error) => {
                 error!(
                     "No authorized local bridge key available for retry: {:?}",
@@ -132,8 +138,7 @@ impl<T: Config> SignedTransactionData<T> {
                 return false;
             }
         };
-        let signer = protocol_signer.as_ref().unwrap_or(signer);
-        let result = Pallet::<T>::send_signed_transaction(signer, &self.call);
+        let result = Pallet::<T>::send_signed_transaction(&protocol_signer, &self.call);
 
         if let Some((account, res)) = result {
             let submitted_at = if res.is_err() {
@@ -220,7 +225,16 @@ impl<T: Config> Pallet<T> {
         match call {
             crate::Call::approve_request {
                 network_id, hash, ..
-            } => crate::recovery::ensure_outgoing_active::<T>(*network_id, *hash),
+            } => {
+                crate::recovery::ensure_outgoing_active::<T>(*network_id, *hash)?;
+                let request = crate::Requests::<T>::get(network_id, hash)
+                    .ok_or(Error::<T>::UnknownRequest)?;
+                ensure!(
+                    request.network_id() == *network_id,
+                    Error::<T>::UnknownNetwork
+                );
+                Ok(())
+            }
             crate::Call::abort_request {
                 network_id, hash, ..
             }
@@ -229,6 +243,10 @@ impl<T: Config> Pallet<T> {
             } => {
                 let request = crate::Requests::<T>::get(network_id, hash)
                     .ok_or(Error::<T>::UnknownRequest)?;
+                ensure!(
+                    request.network_id() == *network_id,
+                    Error::<T>::UnknownNetwork
+                );
                 crate::recovery::ensure_request_active::<T>(&request)
             }
             crate::Call::register_incoming_request { incoming_request } => {
@@ -242,6 +260,10 @@ impl<T: Config> Pallet<T> {
                     &crate::requests::OffchainRequest::LoadIncoming(load_incoming_request.clone()),
                 )?;
                 if let Ok(request) = incoming_request_result {
+                    ensure!(
+                        request.network_id() == load_incoming_request.network_id(),
+                        Error::<T>::UnknownNetwork
+                    );
                     crate::recovery::ensure_incoming_active::<T>(request)?;
                 }
                 Ok(())

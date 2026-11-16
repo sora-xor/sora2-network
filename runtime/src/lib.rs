@@ -469,7 +469,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 141,
+    spec_version: 142,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 134,
@@ -3050,7 +3050,8 @@ parameter_types! {
 /// every other transaction; see `xor_fee_impls::validate_bridge_fee_exemption`
 /// for transaction admission, `operational_admission` for wrapped halts and
 /// `pool_priority` for the ordering. The HASHI offchain workers stop on a halt
-/// until devops restart each node with `--bridge-resume-after-halt`.
+/// until DevOps restarts each node with `--bridge-resume-after-observed-halt <digest>`
+/// using the exact local digest printed by that node.
 impl bridge_halt::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     /// The same authority that manages BridgeProxy.

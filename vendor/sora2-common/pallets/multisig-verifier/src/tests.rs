@@ -804,6 +804,12 @@ fn recovery_peer_acknowledgements_require_live_context_and_cannot_be_replayed() 
             test_peers().try_into().unwrap()
         ));
         let added = ecdsa::Pair::from_seed(&[9; 32]).public();
+        sp_io::storage::set(b":sora-nexus:recovery:policy:v1", &[11; 32]);
+        sp_io::storage::set(b":sora-nexus:recovery:active-policy:v1", &[11; 32]);
+        sp_io::storage::set(
+            b":sora-nexus:recovery:status:v1",
+            &(1u32, [11u8; 32], 0u8, 1u32, 0u64, 0u8).encode(),
+        );
         sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
         assert_noop!(
             TrustedVerifier::add_peer(RuntimeOrigin::signed(1), added),
@@ -812,7 +818,7 @@ fn recovery_peer_acknowledgements_require_live_context_and_cannot_be_replayed() 
         sp_io::storage::set(b":sora-nexus:recovery:incoming-active:v1", &[1]);
         sp_io::storage::set(
             b":sora-nexus:recovery:bridge-inbound-context:v1",
-            &9u64.encode(),
+            &9u32.encode(),
         );
         assert_noop!(
             TrustedVerifier::add_peer(RuntimeOrigin::signed(1), added),
@@ -820,7 +826,7 @@ fn recovery_peer_acknowledgements_require_live_context_and_cannot_be_replayed() 
         );
         sp_io::storage::set(
             b":sora-nexus:recovery:bridge-inbound-context:v1",
-            &10u64.encode(),
+            &10u32.encode(),
         );
         assert_ok!(TrustedVerifier::add_peer(RuntimeOrigin::signed(1), added));
         let key = crate::recovery_peer_ack_key(network, [1; 32].into());

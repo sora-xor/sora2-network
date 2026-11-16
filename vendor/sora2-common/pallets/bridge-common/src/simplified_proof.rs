@@ -31,9 +31,7 @@ use bridge_types::H256;
 use codec::{Decode, Encode};
 use scale_info::prelude::{vec, vec::Vec};
 
-#[derive(
-    Encode, Decode, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
-)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo)]
 pub struct Proof<T> {
     pub order: u64,
     pub items: Vec<T>,

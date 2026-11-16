@@ -1,9 +1,10 @@
-# SORA bridge emergency halt page
+# SORA Nexus bridge emergency halt page
 
 A static page with one button: **HALT BRIDGE WORKERS**. Guardians press it during an
 attack. It submits `bridgeHalt.halt(message)`, which writes a numbered halt on chain.
 The HASHI offchain worker on every bridge node stops as soon as it sees the halt and
-stays stopped until devops restart that node with `--bridge-resume-after-halt <number>`.
+stays stopped until DevOps restart that node with its exact local
+`--bridge-resume-after-observed-halt <digest>` acknowledgement.
 No Root call or vote is needed to bring the bridge back, and guardians cannot restart
 anything. Guardians pay no fee. For any other account the button has no effect: the
 chain rejects the transaction before it reaches a block, so nothing is written and no
@@ -23,24 +24,31 @@ unavailable.
 | Cooldown | `bridgeHalt.haltCooldown`: 10 blocks (one minute) from one halt to the next |
 | Guardian list | `bridgeHalt.guardians`, changed by the technical committee (more than 2/3) or Root; the upgrade that adds the pallet installs `cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY` and `cnU8UgdM4fs9iiCxkRDW8vp2bx4e68LbePkcuQPv1LERKH5oH` |
 
-Halts are numbered from 1. Each HASHI bridge node compares the signal with the halt its
-operator last confirmed, which the node keeps in its offchain database. While the two
-differ, the worker does nothing: it signs no withdrawals and imports no deposits. The
-node's log names the halt, and the Prometheus gauge
-`eth_bridge_guardian_halt_stopped` holds its number until acknowledged, including while
-Root's separate recovery latch is set. The exporter reads the current best-chain signal
-and local acknowledgement. A zero value means no guardian halt is outstanding.
-The corrected spec-141 candidate requires the node guard that keeps one HASHI pass
+Halts are numbered from 1. The node persists each changed observation in its local
+offchain database with a genesis-bound, monotonically increasing epoch. A new halt,
+rewind, disappearance or unreadable signal leaves the worker stopped until DevOps
+acknowledges that exact local epoch. A chain reorg and an ordinary daemon restart
+cannot release the stop. The import observer must also catch up to the current best
+block before any HASHI key use or local submission is allowed.
+
+The existing `eth_bridge_guardian_halt_stopped` gauge reports the current chain signal
+and its runtime acknowledgement. A zero gauge is not proof that the durable local
+stop is released: after a reorg removes the chain signal, the local stop remains.
+Use the node's observed-halt log and exact acknowledgement result as well.
+The corrected spec142 candidate requires the node guard that keeps one HASHI pass
 active until it finishes, even when an Ethereum RPC stalls beyond the original lease.
 Deploy the corrected node binary before enacting this candidate. Peers providing only
 the earlier signing guard remain idle on the corrected runtime. The node checks the current chain state when a
 worker signs or submits bridge transactions. Approvals already handed to the pool
 before a halt can still propagate and be included afterward.
 
-Root's recovery latch, raw key `:sora-nexus:recovery:bridge-halt:v1`, is separate: a halt
-neither sets it nor needs it to be clear. While governance keeps it set, the bridge
-pallets refuse new bridge work and the HASHI workers stop whatever the halts say. The
-October 2026 recovery set it; any value, even empty, counts.
+The October 2026 recovery left the raw key `:sora-nexus:recovery:bridge-halt:v1`.
+The corrected OCW-only-halt runtime uses validated recovery completion instead of
+that historical key's presence for ordinary bridge admission. Unfinished or malformed
+recovery still blocks processing. After completion, each node additionally needs its
+own explicit local recovery acknowledgement before its HASHI worker signs. No peer
+quorum, governance vote or on-chain resume transaction is needed for that restart.
+Installing the corrected runtime on the chain is a separate upgrade prerequisite.
 
 Admission rules, enforced in transaction validation and again before dispatch:
 
@@ -56,8 +64,8 @@ wrapper pays its usual fee and dispatch still requires a guardian.
 ### What a halt does not do
 
 - It does not make the chain refuse bridge calls. Transfers users submit during a halt
-  wait until the workers run again. When the calls themselves must stop, governance sets
-  Root's latch.
+  wait until workers run again. Existing approvals can still complete a quorum, and
+  already signed withdrawals remain usable on the external contract.
 - The relayers of the EVM, TON and Liberland bridges do not read the signal yet. Devops
   stop them on their servers.
 - It does not pause the Ethereum, TON or Liberland contracts. Withdrawals the bridge has
@@ -66,7 +74,7 @@ wrapper pays its usual fee and dispatch still requires a guardian.
 
 ## For guardians
 
-1. Use a browser extension wallet: Fearless Wallet (SORA's own, recommended),
+1. Use a browser extension wallet: Fearless Wallet (the SORA Nexus wallet, recommended),
    polkadot{.js}, SubWallet or Talisman. The page lists them the way Polkaswap does, with
    an install link for any that is missing; another injected Substrate wallet is listed
    too.
@@ -102,13 +110,22 @@ bridgeHalt.removeGuardian(account)
 
 ### Restarting the workers after a halt
 
-On each HASHI peer, wait for the halt to finalize and confirm that bridge work can
-resume. Start the peer with its usual recovery chain specification and the halt number
-shown on the console. For example, to acknowledge halt 3:
+On each HASHI peer, review the incident and pending work. Wait for its current best
+and finalized guardian states to agree, then restart with the exact observed-halt
+digest printed by that node:
 
 ```sh
-framenode <usual flags> --offchain-worker always --bridge-resume-after-halt 3
+framenode <usual flags> --offchain-worker always --bridge-resume-after-observed-halt 0x<64-hex-digit-context-hash>
 ```
+
+This works even when a reorg removed the observed signal, after the new absence is
+finalized. The digest covers the node's genesis, local epoch and observed guardian
+state. A later change requires a different digest, so retaining an old flag in a
+service file cannot release it. The legacy `--bridge-resume-after-halt <number>` is
+accepted only as an idempotent compatibility check after an exact release; it cannot
+release a pending stop. On the first upgrade, an existing guardian record requires
+one digest acknowledgement even if an older node saved its numeric acknowledgement.
+No signing key is used and no on-chain transaction is submitted by this procedure.
 
 A replacement peer needs its current HASHI key in the node keystore, a local HTTP RPC
 listener, and `bridge/eth.json` in the recovery chain configuration directory. Each
@@ -136,27 +153,132 @@ bootstrap. On restart with `--offchain-worker always`, the node verifies the exa
 file digest, genesis hash, and source block against its own finalized history before
 initializing any missing network. Existing heights are never advanced by the backup.
 
-When a trustworthy pre-outage cursor is unavailable, set
+When a trustworthy pre-outage cursor is unavailable, an explicitly audited
+reconstruction can be used by a node build containing the reconstruction support
+described below. Otherwise, set
 `"recovery_scan_start": "genesis"` to scan missing networks from Ethereum block 0.
 Use a sidechain RPC serving historical logs for the replay. Once the guardian halt
 is finalized, acknowledge it with the restart flags above.
 
-The log line `Acknowledged guardian halt #3` confirms that halt on this peer. Check the peer's
-bootstrap, signing-key, and guardian-halt gauges. Root's recovery latch and peer
-membership still govern whether the worker can process requests. An old or future
-halt number is refused and the node logs the reason. The next halt requires its own
-acknowledgement.
+#### Audited reconstruction of a missing cursor
+
+This host-node extension adds an explicit `reconstructed` mode for SORA Nexus.
+The originally released 4.8.14 binary does **not** support it. Deploy a separately
+reviewed build containing this extension before using this configuration. It
+changes neither the runtime nor the worker, signing or halt rules.
+
+A reconstruction is a new operator decision based on reconciled evidence. It is
+**not** a recovered pre-outage peer cursor and must never be labelled as a
+`hashi-scan-cursors-v1` backup. Before choosing a height, review the complete
+inventory of relevant deposits strictly below it against replay state at a
+canonical finalized native block. The chosen height must be inclusive of the
+earliest unreconciled deposit. Include provider/proof limitations, unresolved
+identities, retained retry state and any work outside this scanner's scope in
+the audit. A cursor audit does not authorize payments, establish entitlement,
+clear attacker-linked requests, or release a halt.
+
+Store the reviewed JSON audit manifest unchanged as
+`bridge/eth-scan-reconstruction-audit.json`. It should bind the evidence files,
+native genesis/header/state root/runtime/metadata, Ethereum chain and inventory
+ranges, exact contracts and Deposit decoder, scanner source/build, per-network
+heights, reconciliation method, origin and time of the new derivation, and its
+limitations. The node checks the manifest's digest and that it is a nonempty
+JSON object. **It does not execute the audit or independently prove its
+completeness or conclusions.** The operator must review the manifest and all
+referenced evidence before pinning the document below.
+
+Store a separate `bridge/eth-scan-reconstruction.json` with this strict schema
+(replace all angle-bracket placeholders; heights below are illustrative):
+
+```json
+{
+  "format": "hashi-scan-reconstruction-v1",
+  "genesisHash": "0x<32-byte native genesis hash>",
+  "auditAnchorNumber": 123,
+  "auditAnchorHash": "0x<32-byte finalized native audit block hash>",
+  "runtimeCodeHash": "0x<Blake2-256 of native :code at the audit anchor>",
+  "scanner": "eth-bridge-main-contract-deposits-v1",
+  "depositTopic": "0x<Deposit(bytes32,uint256,address,bytes32) event topic>",
+  "configuredNetworkContracts": {"0": "0x<20-byte BridgeContractAddress for network 0>"},
+  "nextHeights": {"0": 100},
+  "auditManifestSha256": "0x<SHA-256 of exact audit manifest bytes>"
+}
+```
+
+Pin the SHA-256 of the exact reconstruction document bytes in `bridge/eth.json`
+alongside `networks`:
+
+```json
+"recovery_scan_start": {"reconstructed": {"sha256": "0x<document SHA-256>"}}
+```
+
+The network sets in both maps must exactly equal the configured networks, even
+when some cursors already exist. This scanner consumes only `Deposit` logs from
+each network's current `BridgeContractAddress`. Legacy XOR/VAL or retired
+contracts are not implicitly covered; inventory evidence spanning them is only
+a superset of this scanner's coverage. Any scanner semantics change requires a
+new scope identifier and a new audit.
+
+Before initializing a missing cursor, the node verifies both document hashes,
+schema and scanner scope, genesis and canonical finalized audit anchor, and the
+runtime code and nonzero contracts at both that anchor and the current best
+block. Missing/pruned state or a mismatch refuses startup. Sync through the
+audit anchor first with workers disabled; retain its state for this check.
+Every check completes before any cursor/configuration activation is written.
+Existing valid cursors are authoritative and never rewound or advanced; malformed
+ones refuse bootstrap. If every configured cursor already exists, no evidence
+file is loaded. These are the same existing-cursor rules as `backup` mode.
+
+This procedure only prepares local scan state. Keep the workers stopped during the
+test, and do not add a recovery or guardian acknowledgement as part of
+installing the reconstruction. Any eventual release of the bridge requires its
+separate transaction review and operator decision.
+
+The log line `SORA Nexus observed halt epoch ... acknowledged locally` confirms the
+local release. Bootstrap, signing-key readiness, recovery completion, the separate
+recovery acknowledgement and peer membership still govern whether a worker can
+process requests. Malformed local state or an unverified database write keeps signing
+and submission closed. Do not delete the observed-halt record to bypass a stop.
+Only observations successfully persisted and read back can survive a process crash.
+An observation persistence error keeps the current process closed; this cannot
+preserve an unwritten observation across a crash or repair a failed storage medium.
+Keep the node stopped until its storage and retained state have been checked.
 
 If the halt was not warranted (for example a guardian key was stolen), remove that
 guardian before restarting the workers, or it can halt again a minute later.
 
-### Root's latch
+### Local restart after completed recovery
 
-Remove Root's recovery latch only with Root, and only that key:
-`system.killStorage(["0x3a736f72612d6e657875733a7265636f766572793a6272696467652d68616c743a7631"])`.
-Never use `killPrefix` on `:sora-nexus:recovery:`; it deletes recovery state the chain
-still reads. Before reopening after an incident, finish the bridge reconciliation
-(counterparty nonces, HASHI scan height, peer key rotation).
+The corrected node logs the completed recovery context digest while its HASHI worker
+is stopped. Review the transactions, retry state and scanner position, then restart
+only the intended peer with that exact digest:
+
+```sh
+framenode <usual flags> --offchain-worker always --bridge-resume-after-recovery 0x<64-hex-digit-context-hash>
+```
+
+The node accepts the digest only when its best and finalized recovery contexts agree.
+It stores a versioned acknowledgement in its local offchain database, bound to the
+chain genesis, policies, recovery anchor, terminal audit and completion counters.
+An ordinary restart preserves that acknowledgement without creating or refreshing it.
+A changed recovery context needs a new explicit digest. The setting does not enable
+workers by itself, change chain storage, install keys or acknowledge a guardian halt.
+
+When there is also an outstanding guardian halt, use its separate
+`--bridge-resume-after-observed-halt <digest>` acknowledgement after finality. The next guardian
+halt stops signing and submission again. Leave Germany and Canada configured with
+`--offchain-worker never`; acknowledging France must not alter their configuration.
+Keep the seven-request node quarantine in place. One France signature can complete
+previously collected approvals, so one enabled worker is not a no-settlement guarantee.
+
+The old France test watcher requires the historical latch to remain set, the guardian
+record to remain absent, and activity/cursor metrics to stay fixed. It must be replaced
+as part of operational activation; otherwise it deliberately disables OCW when work
+begins. Preserve its fail-closed response to changed binary, configuration or node
+identity, without treating legitimate cursor or transaction progress as a failure.
+
+No recovery storage keys are cleared by this procedure. Never use `killPrefix` on
+`:sora-nexus:recovery:`; those records still establish completion and reconciliation.
 
 The upgrade that adds BridgeHalt installs two guardians,
 `cnSECvLF9MwFojPXk94PVKS4N34WsgZDPNDYMjxcbJWWTPWkY` and
@@ -178,7 +300,7 @@ Have the host send `Content-Security-Policy: frame-ancestors 'none'` (or
 frame.
 
 `config.js` holds the node list and the genesis hash of the chain the page may sign on
-(SORA mainnet). Guardians will use this page during an incident, when phishing links
+(SORA Nexus mainnet). Guardians will use this page during an incident, when phishing links
 are likely, so the page:
 
 - ignores `?rpc=` unless it points at a node on the same computer;

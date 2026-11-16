@@ -98,19 +98,19 @@ pub struct TransferLimitSettings<BlockNumber> {
 
 pub use pallet::*;
 
-fn recovery_halted() -> bool {
-    sp_io::storage::exists(common::recovery::BRIDGE_HALT_STORAGE_KEY)
+fn recovery_in_progress() -> bool {
+    bridge_types::recovery::recovery_in_progress()
+}
+
+fn maintenance_inbound_active<T: frame_system::Config>() -> bool {
+    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
+    number
+        .ok()
+        .is_some_and(bridge_types::recovery::maintenance_inbound_active)
 }
 
 fn recovery_inbound_allowed<T: frame_system::Config>() -> bool {
-    if !recovery_halted() {
-        return true;
-    }
-    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
-    number.ok().is_some_and(|number| {
-        sp_io::storage::get(common::recovery::BRIDGE_INBOUND_CONTEXT_STORAGE_KEY)
-            .is_some_and(|bytes| bytes.as_ref() == number.to_le_bytes().as_slice())
-    })
+    !recovery_in_progress() || maintenance_inbound_active::<T>()
 }
 
 #[frame_support::pallet]
@@ -294,7 +294,7 @@ pub mod pallet {
             recipient: GenericAccount,
             amount: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
-            ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
+            ensure!(!recovery_in_progress(), Error::<T>::RecoveryHalted);
             let sender = ensure_signed(origin)?;
             match recipient {
                 GenericAccount::EVM(recipient) => {
@@ -385,7 +385,7 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
             ensure!(
-                !recovery_halted()
+                !recovery_in_progress()
                     && !bridge_types::recovery::message_quarantined(network_id, message_id),
                 Error::<T>::RecoveryHalted
             );
@@ -446,7 +446,7 @@ pub mod pallet {
             amount: Balance,
         ) -> DispatchResult {
             ensure!(
-                !recovery_halted()
+                !recovery_in_progress()
                     && !bridge_types::recovery::message_quarantined(network_id, message_id),
                 Error::<T>::RecoveryHalted
             );
@@ -477,6 +477,7 @@ pub mod pallet {
                 .max(T::LiberlandApp::transfer_weight())
                 .saturating_add(T::HashiBridge::is_asset_supported_weight())
                 .saturating_add(T::FAApp::is_asset_supported_weight())
+                .saturating_add(bridge_types::recovery::completion_weight::<T>(8))
         }
 
         pub fn retry_refund_weight() -> Weight {
@@ -496,6 +497,7 @@ pub mod pallet {
                 .saturating_add(T::RefundAccountResolver::weight())
                 .saturating_add(T::DbWeight::get().reads_writes(12, 3))
                 .saturating_add(Weight::from_parts(50_000_000, 32_768))
+                .saturating_add(bridge_types::recovery::completion_weight::<T>(8))
         }
     }
 }
@@ -533,7 +535,7 @@ where
         };
         Transactions::<T>::mutate((network_id, sender), message_id, |req| {
             if let Some(req) = req {
-                if recovery_halted() && req.direction == MessageDirection::Outbound {
+                if recovery_in_progress() && req.direction == MessageDirection::Outbound {
                     return;
                 }
                 // Authenticated reports can arrive in distinct messages for the
@@ -711,8 +713,7 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> DispatchResult {
         ensure!(
-            recovery_halted()
-                && recovery_inbound_allowed::<T>()
+            maintenance_inbound_active::<T>()
                 && matches!(network_id, GenericNetworkId::EVMLegacy(_)),
             Error::<T>::RecoveryHalted
         );
@@ -730,7 +731,7 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> DispatchResult {
         ensure!(
-            recovery_halted() && recovery_inbound_allowed::<T>(),
+            maintenance_inbound_active::<T>(),
             Error::<T>::RecoveryHalted
         );
         LockedAssets::<T>::try_mutate(network_id, asset_id, |value| {
@@ -796,7 +797,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
+        ensure!(!recovery_in_progress(), Error::<T>::RecoveryHalted);
         let bridge_account = Self::bridge_fee_tech_account(network_id);
         technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
         Ok(())
@@ -808,7 +809,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
+        ensure!(!recovery_in_progress(), Error::<T>::RecoveryHalted);
         let bridge_account = Self::bridge_fee_tech_account(network_id);
         technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
         Ok(())
@@ -825,7 +826,7 @@ impl<T: Config> BridgeAssetLockChecker<AssetIdOf<T>, Balance> for Pallet<T> {
         asset_id: &AssetIdOf<T>,
         amount: &Balance,
     ) -> DispatchResult {
-        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
+        ensure!(!recovery_in_progress(), Error::<T>::RecoveryHalted);
         LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
             network_id,
             asset_id,
@@ -885,7 +886,7 @@ impl<T: Config> BridgeAssetLockChecker<AssetIdOf<T>, Balance> for Pallet<T> {
         asset_id: &AssetIdOf<T>,
         amount: &Balance,
     ) -> DispatchResult {
-        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
+        ensure!(!recovery_in_progress(), Error::<T>::RecoveryHalted);
         // Cancellation reverses an incoming reservation. It neither consumes
         // outbound quota nor depends on a current reference-price quote.
         LockedAssets::<T>::try_mutate(network_id, asset_id, |locked_amount| {

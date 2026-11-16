@@ -255,23 +255,42 @@ impl frame_support::traits::Contains<(SubNetworkId, u32)> for TestResponseCapaci
 #[test]
 fn full_response_queue_preserves_nonce_and_batch_for_retry() {
     new_tester().execute_with(|| {
-        let commitment = bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
-            nonce: 1,
-            messages: vec![BridgeMessage { timepoint: Default::default(), payload: Default::default() }]
-                .try_into().unwrap(),
-        });
+        let commitment =
+            bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: vec![BridgeMessage {
+                    timepoint: Default::default(),
+                    payload: Default::default(),
+                }]
+                .try_into()
+                .unwrap(),
+            });
         sp_io::storage::set(b"test/response-capacity", &0u32.encode());
-        assert_noop!(BridgeInboundChannel::submit(
-            RuntimeOrigin::signed(Keyring::Bob.into()), BASE_NETWORK_ID, commitment.clone(), vec![],
-        ), Error::<Test>::ResponseQueueFull);
+        assert_noop!(
+            BridgeInboundChannel::submit(
+                RuntimeOrigin::signed(Keyring::Bob.into()),
+                BASE_NETWORK_ID,
+                commitment.clone(),
+                vec![],
+            ),
+            Error::<Test>::ResponseQueueFull
+        );
         assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
         assert!(!sp_io::storage::exists(b"test/applied-messages"));
         sp_io::storage::set(b"test/response-capacity", &1u32.encode());
         assert_ok!(BridgeInboundChannel::submit(
-            RuntimeOrigin::signed(Keyring::Bob.into()), BASE_NETWORK_ID, commitment, vec![],
+            RuntimeOrigin::signed(Keyring::Bob.into()),
+            BASE_NETWORK_ID,
+            commitment,
+            vec![],
         ));
         assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
-        assert_eq!(sp_io::storage::get(b"test/applied-messages").unwrap().as_ref(), &[1]);
+        assert_eq!(
+            sp_io::storage::get(b"test/applied-messages")
+                .unwrap()
+                .as_ref(),
+            &[1]
+        );
     });
 }
 
@@ -570,7 +589,7 @@ fn unauthenticated_or_wrong_type_submission_is_rejected_before_execution() {
 }
 
 #[test]
-fn recovery_halt_requires_exact_current_context_and_still_checks_authentication() {
+fn unfinished_recovery_requires_exact_current_context_and_still_checks_authentication() {
     new_tester().execute_with(|| {
         let commitment =
             bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
@@ -582,6 +601,7 @@ fn recovery_halt_requires_exact_current_context_and_still_checks_authentication(
                 .try_into()
                 .unwrap(),
             });
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         let validate =
             || Pallet::<Test>::validate_submission(BASE_NETWORK_ID, &commitment, &vec![255]);
@@ -674,6 +694,7 @@ fn quarantined_message_and_unrepresentable_context_cannot_pass_admission() {
             id,
         ));
         System::set_block_number(u64::from(u32::MAX) + 1);
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &0u32.to_le_bytes());
         assert_noop!(

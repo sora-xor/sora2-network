@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "4.8.14"
+version = "4.8.15"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -30,6 +30,7 @@ secp256k1 = { package = "sora-secp256k1-compat", path = "../vendor/sora-secp256k
 
 framenode-chain-spec = { path = "chain_spec" }
 common = { path = "../common" }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0" }
 assets = { path = "../pallets/assets" }
 dex-api-rpc = { path = "../pallets/dex-api/rpc" }
 dex-manager-rpc = { path = "../pallets/dex-manager/rpc" }
@@ -54,6 +55,7 @@ framenode-runtime = { path = "../runtime" }
 # Substrate dependencies
 bridge-proxy-rpc = { path = "../pallets/bridge-proxy/rpc" }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sp-runtime-interface = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
@@ -119,6 +121,7 @@ netlink-proto = "=0.12.0"
 substrate-build-script-utils = "3"
 
 [dev-dependencies]
+sc-executor-common = { path = "../vendor/polkadot-sdk/client/executor/common" }
 tokio = { version = "1.10.1", features = ["macros"] }
 
 # Substrate dependencies

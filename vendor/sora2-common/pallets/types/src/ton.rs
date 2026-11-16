@@ -34,7 +34,7 @@ use serde::{Deserialize, Serialize};
 use sp_core::{Get, H256};
 use sp_runtime::{traits::Hash, BoundedVec};
 
-use crate::{H128, MainnetAssetId, MainnetBalance};
+use crate::{MainnetAssetId, MainnetBalance, H128};
 
 #[derive(
     Encode,
@@ -129,16 +129,7 @@ impl TonAddress {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-    Default,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen, Default,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonTransactionId {
@@ -147,16 +138,7 @@ pub struct TonTransactionId {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-    Default,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen, Default,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonAddressWithPrefix {
@@ -201,15 +183,7 @@ pub struct AdditionalTONInboundData {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// Information about Jetton in TON network
@@ -223,15 +197,7 @@ pub struct TonAssetInfo {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonAppInfo {

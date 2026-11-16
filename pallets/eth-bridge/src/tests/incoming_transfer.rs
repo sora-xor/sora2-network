@@ -1975,7 +1975,7 @@ fn recovery_policy_credits_attacker_sender_deposit_to_migration_account() {
             .config
             .bridge_account_id
             .clone();
-        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
         // Minted (Sidechain) asset.
         let minted = redirect_transfer_request(
             attacker_evm(),
@@ -2041,7 +2041,7 @@ fn recovery_policy_redirects_deposit_to_attacker_account() {
             .config
             .bridge_account_id
             .clone();
-        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
         let transfer = redirect_transfer_request(
             EthAddress::from([1; 20]),
             attacker.clone(),
@@ -2073,7 +2073,7 @@ fn recovery_policy_leaves_ordinary_sender_deposit_unaffected() {
     let (mut ext, _) = attacker_redirect_ext();
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
         let transfer = redirect_transfer_request(
             EthAddress::from([1; 20]),
             alice.clone(),
@@ -2099,7 +2099,7 @@ fn recovery_policy_leaves_ordinary_sender_deposit_unaffected() {
 }
 
 #[test]
-fn attacker_deposit_is_not_redirected_without_policy_key_or_while_halted() {
+fn attacker_deposit_is_not_redirected_without_policy_key_or_inside_maintenance() {
     let (mut ext, _) = attacker_redirect_ext();
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
@@ -2133,8 +2133,13 @@ fn attacker_deposit_is_not_redirected_without_policy_key_or_while_halted() {
             Assets::total_balance(&USDT.into(), &migration_account()).unwrap(),
             0
         );
-        // Halted delivery belongs to the maintenance resolution, never this redirect.
-        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        // Only authenticated Applying context belongs to maintenance, never a stale halt marker.
+        common::recovery::bridge_admission_fixtures::applying(
+            [1; 32],
+            System::block_number()
+                .try_into()
+                .expect("fixture block fits u32"),
+        );
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         assert_eq!(
             crate::recovery::ordinary_transfer_beneficiary::<Runtime, AttackerRedirect>(
@@ -2151,7 +2156,7 @@ fn default_resolver_never_redirects_even_with_recovery_policy() {
     let (mut ext, state) = attacker_redirect_ext();
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[0x61; 32]),
@@ -2202,7 +2207,7 @@ fn recovery_policy_rejects_zero_source_import_before_any_bookkeeping() {
             IncomingTransactionRequestKind::Transfer,
             ETH_NETWORK_ID,
         );
-        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
         let bridge = state.networks[&ETH_NETWORK_ID]
             .config
             .bridge_account_id
@@ -2251,7 +2256,7 @@ fn recovery_policy_retains_ambiguous_pending_deposit_without_cancel_or_rewrite()
             crate::RequestStatuses::<Runtime>::get(ETH_NETWORK_ID, hash),
             Some(RequestStatus::Pending)
         );
-        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
         // No refund, reserve release, queue removal, signature or replay mutation.
         assert_noop!(
             EthBridge::finalize_incoming_request(
@@ -2270,6 +2275,12 @@ fn recovery_policy_retains_ambiguous_pending_deposit_without_cancel_or_rewrite()
             Some(RequestStatus::Pending)
         );
         // Authenticated maintenance retains the original zero-source request.
+        common::recovery::bridge_admission_fixtures::applying(
+            [1; 32],
+            System::block_number()
+                .try_into()
+                .expect("fixture block fits u32"),
+        );
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         assert_ok!(crate::recovery::ensure_ordinary_transfer_source::<Runtime>(
             &EthAddress::zero()

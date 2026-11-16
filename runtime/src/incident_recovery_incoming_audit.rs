@@ -255,7 +255,8 @@ pub(super) fn registration_preview_weight(operation: &IncomingOperation) -> Weig
     else {
         return Weight::zero();
     };
-    batch
+    let mut has_registration = false;
+    let native = batch
         .messages
         .iter()
         .fold(Weight::zero(), |weight, message| {
@@ -263,13 +264,21 @@ pub(super) fn registration_preview_weight(operation: &IncomingOperation) -> Weig
                 classify_substrate_control(&message.payload),
                 Ok(Some(ControlDisposition::NativeRegistration))
             ) {
-                weight
-                    .saturating_add(SubstrateDispatch::dispatch_weight(&message.payload))
-                    .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().writes(1))
+                has_registration = true;
+                weight.saturating_add(SubstrateDispatch::dispatch_weight(&message.payload))
             } else {
                 weight
             }
-        })
+        });
+    if has_registration {
+        native
+            .saturating_add(bridge_types::recovery::completion_weight::<Runtime>(1))
+            // Active-policy binding and five strict maintenance-context reads;
+            // two temporary keys, both discarded with the preview transaction.
+            .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads_writes(6, 2))
+    } else {
+        native
+    }
 }
 
 /// Derived from original payloads, never from observed BridgeProxy request values.
@@ -298,10 +307,27 @@ pub(super) fn derive_requests(
         // and committed effects still happen only in the native channel below.
         return frame_support::storage::transactional::with_transaction_opaque_err(|| {
             let result = (|| {
-                sp_io::storage::set(
-                    BRIDGE_INBOUND_CONTEXT_STORAGE_KEY,
-                    &System::block_number().encode(),
-                );
+                // Ordinary previews must not synthesize an incomplete recovery
+                // context. Actual Applying previews use the prepared typed
+                // operation, with all temporary writes discarded below.
+                let has_registration = active.controls.iter().any(|control| {
+                    matches!(control.disposition, ControlDisposition::NativeRegistration)
+                });
+                if has_registration && bridge_types::recovery::recovery_in_progress() {
+                    if sp_io::storage::get(ACTIVE_POLICY_STORAGE_KEY).as_deref()
+                        != Some(active.policy.as_slice())
+                    {
+                        return Err(RecoveryError::WrongPolicy);
+                    }
+                    sp_io::storage::set(ACTIVE_KEY, &active.encode());
+                    sp_io::storage::set(
+                        BRIDGE_INBOUND_CONTEXT_STORAGE_KEY,
+                        &System::block_number().encode(),
+                    );
+                    if !bridge_types::recovery::maintenance_inbound_active(System::block_number()) {
+                        return Err(RecoveryError::WrongPhase);
+                    }
+                }
                 let mut requests = Vec::with_capacity(active.transfers.len());
                 for (index, message) in batch.messages.iter().enumerate() {
                     let id = MessageId::batched(

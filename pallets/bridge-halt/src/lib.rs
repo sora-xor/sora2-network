@@ -3,7 +3,7 @@
 
 //! # Bridge halt
 //!
-//! An emergency stop for the SORA bridge workers.
+//! An emergency stop for the SORA Nexus bridge workers.
 //!
 //! Governance keeps a short list of guardian accounts; the runtime may install
 //! the first ones in the upgrade that adds this pallet. A guardian calls
@@ -13,15 +13,17 @@
 //!
 //! Bridge workers read that key. A HASHI offchain worker stops as soon as it
 //! names a halt that the node's operator has not confirmed, and stays stopped
-//! until devops restart the node with `--bridge-resume-after-halt <number>`.
+//! until DevOps restarts the node with `--bridge-resume-after-observed-halt <digest>`
+//! using the exact local digest printed by that node.
 //! Nothing on chain restarts the workers, so bringing the bridges back needs no
 //! Root call, and a guardian can stop the workers but never restart them.
 //!
-//! A halt leaves Root's recovery latch
-//! ([`common::recovery::BRIDGE_HALT_STORAGE_KEY`]) alone. When the bridge pallets
-//! themselves must refuse calls, governance sets that latch with Root.
+//! The historical incident-recovery marker
+//! ([`common::recovery::BRIDGE_HALT_STORAGE_KEY`]) is not an emergency control
+//! for transaction dispatch. Unfinished recovery retains its consistency and
+//! authenticated-maintenance checks; completed recovery needs no unhalt call.
 //!
-//! The SORA runtime charges guardians no fee for `halt`. It rejects the call from
+//! The SORA Nexus runtime charges guardians no fee for `halt`. It rejects the call from
 //! every other signer while validating the transaction, through
 //! [`Pallet::validate_halt`], so another account's attempt never reaches a block:
 //! it changes no state and costs no fee. After a halt, the next one is refused
@@ -94,8 +96,8 @@ pub mod pallet {
         Clone, Encode, Decode, DecodeWithMemTracking, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen,
     )]
     pub struct HaltRecord<AccountId, BlockNumber, Reason> {
-        /// 1 for the first halt, then counting up. Operators pass it to
-        /// `--bridge-resume-after-halt` to restart their workers.
+        /// 1 for the first halt, then counting up. This identifies the chain signal;
+        /// operators release workers using the exact node-local observed-halt digest.
         pub number: u32,
         pub guardian: AccountId,
         pub block: BlockNumber,
@@ -111,7 +113,8 @@ pub mod pallet {
         StorageValue<_, BoundedBTreeSet<T::AccountId, T::MaxGuardians>, ValueQuery>;
 
     /// The most recent halt. Bridge workers stay stopped after it until their
-    /// operators confirm its number; the chain does not record those restarts.
+    /// operators acknowledge the exact local observed-halt digest; the chain does
+    /// not record those restarts.
     #[pallet::storage]
     pub type LastHalt<T: Config> = StorageValue<_, HaltRecordOf<T>, OptionQuery>;
 

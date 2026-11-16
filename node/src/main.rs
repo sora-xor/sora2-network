@@ -44,6 +44,7 @@ mod babe_epoch_repair;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 mod bridge_bootstrap_policy;
+mod bridge_local_quarantine;
 mod bridge_scan_cursor;
 mod cli;
 mod command;
@@ -52,7 +53,10 @@ mod eth_bridge_metrics;
 #[cfg(feature = "private-net")]
 mod fork_off;
 mod guardian_halt;
+#[cfg(test)]
+mod ocw_only_halt_wasm_tests;
 mod recovery;
+mod recovery_acknowledgement;
 mod recovery_evidence;
 mod recovery_hashi;
 mod rpc;

@@ -573,6 +573,47 @@ mod tests {
         );
     }
 
+    // This only completes the public test lifecycle. Preserve operation counters,
+    // policy bindings and all quarantine markers; fail on leaked active context.
+    fn complete_for_quarantine_assertions() {
+        for key in recovery::TRANSIENT_CONTEXT_KEYS {
+            assert!(!sp_io::storage::exists(key), "leaked recovery context");
+        }
+        let policy: [u8; 32] = sp_io::storage::get(recovery::POLICY_STORAGE_KEY)
+            .map(|bytes| bytes.as_ref().try_into().unwrap())
+            .unwrap_or([91; 32]);
+        let mut status = recovery::storage::status()
+            .unwrap()
+            .unwrap_or(RecoveryStatus {
+                format_version: 1,
+                policy,
+                phase: RecoveryPhase::Complete,
+                next_chunk: 0,
+                operation_counter: 0,
+                failure: None,
+            });
+        assert_eq!(status.policy, policy);
+        assert!(status.failure.is_none());
+        status.phase = RecoveryPhase::Complete;
+        sp_io::storage::set(recovery::POLICY_STORAGE_KEY, &policy);
+        sp_io::storage::set(recovery::STATUS_STORAGE_KEY, &status.encode());
+        let active: [u8; 32] = sp_io::storage::get(recovery::ACTIVE_POLICY_STORAGE_KEY)
+            .map(|bytes| bytes.as_ref().try_into().unwrap())
+            .unwrap_or(policy);
+        sp_io::storage::set(recovery::ACTIVE_POLICY_STORAGE_KEY, &active);
+        if !sp_io::storage::exists(recovery::RECOVERY_ANCHOR_STORAGE_KEY) {
+            recovery::storage::record_recovery_anchor([92; 32]).unwrap();
+        }
+        let pending = sp_io::storage::get(recovery::INCOMING_AUDIT_PENDING_KEY);
+        assert!(pending.is_none() || pending.as_deref() == Some(0u32.encode().as_slice()));
+        sp_io::storage::set(recovery::INCOMING_AUDIT_PENDING_KEY, &0u32.encode());
+        sp_io::storage::set(
+            recovery::TERMINAL_AUDIT_STORAGE_KEY,
+            &(active, [93u8; 32], status.next_chunk).encode(),
+        );
+        assert!(bridge_types::recovery::completion().unwrap().is_some());
+    }
+
     fn queue_fixture() -> OutgoingOperation {
         let network = SubNetworkId::Liberland;
         let mut messages = Vec::new();
@@ -684,14 +725,40 @@ mod tests {
                     );
                 }
             }
+            complete_for_quarantine_assertions();
             sp_io::storage::clear(recovery::BRIDGE_HALT_STORAGE_KEY);
-            assert!(crate::SubstrateBridgeOutboundChannel::submit(
+            frame_support::assert_noop!(
+                crate::SubstrateBridgeOutboundChannel::submit(
+                    SubNetworkId::Liberland,
+                    &frame_system::RawOrigin::Signed(AccountId::new([7; 32])),
+                    &[9],
+                    ()
+                ),
+                substrate_bridge_channel::outbound::Error::<Runtime>::RecoveryHalted
+            );
+            let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
+            sp_io::storage::start_transaction();
+            if let OutgoingTarget::Channel {
+                network,
+                nonce,
+                messages,
+                ..
+            } = &operation.target
+            {
+                sp_io::storage::clear(&tombstone::batch_key(1, *network, *nonce));
+                for message in messages {
+                    sp_io::storage::clear(&tombstone::message_key(*network, message.message_id));
+                }
+            }
+            let control = crate::SubstrateBridgeOutboundChannel::submit(
                 SubNetworkId::Liberland,
                 &frame_system::RawOrigin::Signed(AccountId::new([7; 32])),
                 &[9],
-                ()
-            )
-            .is_err());
+                (),
+            );
+            sp_io::storage::rollback_transaction();
+            assert_ok!(control);
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
             assert_eq!(
                 substrate_bridge_channel::outbound::Pallet::<Runtime>::recovery_queue(
                     SubNetworkId::Liberland
@@ -717,6 +784,7 @@ mod tests {
                 b"snxpend1",
             );
             assert!(!tombstone::batch_quarantined(1, network.into(), 1));
+            complete_for_quarantine_assertions();
             sp_io::storage::clear(recovery::BRIDGE_HALT_STORAGE_KEY);
             assert_ok!(crate::SubstrateBridgeOutboundChannel::update_interval(
                 crate::RuntimeOrigin::root(),
@@ -739,12 +807,24 @@ mod tests {
                 0
             );
             assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
+            sp_io::storage::start_transaction();
+            sp_io::storage::clear(&tombstone::historical_message_key(
+                network.into(),
+                messages[0].message_id,
+            ));
+            <crate::SubstrateBridgeOutboundChannel as Hooks<u32>>::on_initialize(10);
+            <crate::SubstrateBridgeOutboundChannel as Hooks<u32>>::on_finalize(10);
+            let control_nonce =
+                substrate_bridge_channel::outbound::ChannelNonces::<Runtime>::get(network);
+            sp_io::storage::rollback_transaction();
+            assert_eq!(control_nonce, 1);
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
         });
         sp_io::TestExternalities::default().execute_with(|| {
             let network = SubNetworkId::Liberland;
             let id = <crate::BridgeOutboundChannel as OutboundChannel<SubNetworkId,AccountId,()>>::submit(network,&frame_system::RawOrigin::Root,&[1],()).unwrap();
             sp_io::storage::set(&tombstone::historical_message_key(network.into(),id),b"snxpend1");
-            sp_io::storage::set(recovery::POLICY_STORAGE_KEY,&[1;32]);
+            complete_for_quarantine_assertions();
             sp_io::storage::set(&frame_support::storage::storage_prefix(b"BridgeOutboundChannel",b"Interval"),&1u32.encode());
             assert!(!tombstone::batch_quarantined(0,network.into(),1));
             let root=sp_io::storage::root(sp_runtime::StateVersion::V1);
@@ -752,6 +832,13 @@ mod tests {
             frame_support::assert_noop!(<crate::BridgeOutboundChannel as OutboundChannel<SubNetworkId,AccountId,()>>::submit(network,&frame_system::RawOrigin::Root,&[2],()),bridge_channel::outbound::Error::<Runtime>::RecoveryHalted);
             assert_eq!(bridge_channel::outbound::ChannelNonces::<Runtime>::get(GenericNetworkId::Sub(network)),0);
             assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1),root);
+            sp_io::storage::start_transaction();
+            sp_io::storage::clear(&tombstone::historical_message_key(network.into(), id));
+            <crate::BridgeOutboundChannel as Hooks<u32>>::on_initialize(10);
+            let control_nonce = bridge_channel::outbound::ChannelNonces::<Runtime>::get(GenericNetworkId::Sub(network));
+            sp_io::storage::rollback_transaction();
+            assert_eq!(control_nonce, 1);
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
         });
     }
 
@@ -761,8 +848,8 @@ mod tests {
         type Generic = crate::BridgeOutboundChannel;
         type Substrate = crate::SubstrateBridgeOutboundChannel;
         sp_io::TestExternalities::default().execute_with(|| {
-            let generic_base = <<Runtime as bridge_channel::outbound::Config>::WeightInfo as bridge_channel::outbound::WeightInfo>::submit();
-            let substrate_base = <<Runtime as substrate_bridge_channel::outbound::Config>::WeightInfo as substrate_bridge_channel::outbound::WeightInfo>::submit();
+            let generic_base = <<Runtime as bridge_channel::outbound::Config>::WeightInfo as bridge_channel::outbound::WeightInfo>::submit().saturating_add(bridge_types::recovery::completion_weight::<Runtime>(2));
+            let substrate_base = <<Runtime as substrate_bridge_channel::outbound::Config>::WeightInfo as substrate_bridge_channel::outbound::WeightInfo>::submit().saturating_add(bridge_types::recovery::completion_weight::<Runtime>(2));
             let weights = || [
                 <Generic as OutboundChannel<SubNetworkId, AccountId, ()>>::submit_weight(),
                 <Generic as OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData>>::submit_weight(),
@@ -795,7 +882,7 @@ mod tests {
             let id = <Channel as OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData>>::submit(
                 network, &origin, &[1], additional(),
             ).unwrap();
-            sp_io::storage::set(recovery::POLICY_STORAGE_KEY, &[1; 32]);
+            complete_for_quarantine_assertions();
             sp_io::storage::set(&tombstone::historical_message_key(network.into(), id), b"snxpend1");
             assert!(!sp_io::storage::exists(recovery::BRIDGE_HALT_STORAGE_KEY));
             let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
@@ -805,6 +892,13 @@ mod tests {
                 ),
                 bridge_channel::outbound::Error::<Runtime>::RecoveryHalted
             );
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
+            sp_io::storage::start_transaction();
+            sp_io::storage::clear(&tombstone::historical_message_key(network.into(), id));
+            let control = <Channel as OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData>>::submit(
+                network, &origin, &[2], additional());
+            sp_io::storage::rollback_transaction();
+            assert_ok!(control);
             assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
         });
     }

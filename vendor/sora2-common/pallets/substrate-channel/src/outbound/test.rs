@@ -33,7 +33,10 @@ use crate::outbound::*;
 use bridge_types::{
     substrate::Commitment, traits::OutboundChannel, types::GenericCommitmentWithBlock, SubNetworkId,
 };
-use frame_support::{assert_noop, assert_ok, traits::Hooks};
+use frame_support::{
+    assert_noop, assert_ok,
+    traits::{Get, Hooks},
+};
 use frame_system::RawOrigin;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::{AccountId32, BoundedVec, DispatchError};
@@ -43,9 +46,9 @@ fn response_reservation_rejects_quarantined_future_slots_and_nonce_exhaustion() 
     new_tester().execute_with(|| {
         let network = BASE_NETWORK_ID;
         assert!(BridgeOutboundChannel::can_queue_messages(network, 2));
-        let id = bridge_types::types::MessageId::batched(
-            ThisNetworkId::get(), network.into(), 1, 1,
-        ).hash();
+        let id =
+            bridge_types::types::MessageId::batched(ThisNetworkId::get(), network.into(), 1, 1)
+                .hash();
         let key = bridge_types::recovery::message_key(network.into(), id);
         sp_io::storage::set(&key, &[1]);
         assert!(BridgeOutboundChannel::can_queue_messages(network, 1));
@@ -241,7 +244,7 @@ fn test_on_finalize() {
 }
 
 #[test]
-fn recovery_halt_preserves_queued_messages_and_nonces_without_committing() {
+fn unfinished_recovery_preserves_queued_messages_and_nonces_without_committing() {
     new_tester().execute_with(|| {
         let origin = RawOrigin::Signed(Keyring::Bob.to_account_id());
         assert_ok!(BridgeOutboundChannel::submit(
@@ -251,6 +254,7 @@ fn recovery_halt_preserves_queued_messages_and_nonces_without_committing() {
             ()
         ));
         let queue = MessageQueues::<Test>::get(BASE_NETWORK_ID);
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
         assert_noop!(
@@ -280,8 +284,8 @@ fn permanent_batch_quarantine_survives_global_halt_removal() {
             &bridge_types::recovery::batch_key(1, BASE_NETWORK_ID.into(), 1),
             &[1],
         );
+        crate::recovery::install_completed_test_recovery();
         sp_io::storage::clear(crate::recovery::HALT_KEY);
-        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
         assert_noop!(
             BridgeOutboundChannel::submit(BASE_NETWORK_ID, &origin, &[3], ()),
             Error::<Test>::RecoveryHalted
@@ -291,6 +295,15 @@ fn permanent_batch_quarantine_survives_global_halt_removal() {
         assert_eq!(MessageQueues::<Test>::get(BASE_NETWORK_ID), queue);
         assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
         assert!(LatestCommitment::<Test>::get(BASE_NETWORK_ID).is_none());
+        // The tombstone is the reason commit is blocked, not recovery state.
+        sp_io::storage::clear(&bridge_types::recovery::batch_key(
+            1,
+            BASE_NETWORK_ID.into(),
+            1,
+        ));
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
+        assert!(MessageQueues::<Test>::get(BASE_NETWORK_ID).is_empty());
     });
 }
 
@@ -299,12 +312,17 @@ fn policy_weight_reservation_and_commit_hooks_preserve_interval_behavior() {
     new_tester().execute_with(|| {
         assert_eq!(
             BridgeOutboundChannel::on_initialize(1),
-            frame_support::weights::Weight::zero()
+            bridge_types::recovery::completion_weight::<Test>(2).saturating_add(
+                <<Test as frame_system::Config>::DbWeight as Get<
+                    frame_support::weights::RuntimeDbWeight,
+                >>::get()
+                .reads(3)
+            )
         );
         let base =
             <BridgeOutboundChannel as OutboundChannel<SubNetworkId, AccountId, ()>>::submit_weight(
             );
-        sp_io::storage::set(b":sora-nexus:recovery:policy:v1", &[1]);
+        crate::recovery::install_completed_test_recovery();
         let policy =
             <BridgeOutboundChannel as OutboundChannel<SubNetworkId, AccountId, ()>>::submit_weight(
             );
@@ -326,6 +344,7 @@ fn policy_weight_reservation_and_commit_hooks_preserve_interval_behavior() {
         BridgeOutboundChannel::on_initialize(10);
         BridgeOutboundChannel::on_finalize(10);
         assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         BridgeOutboundChannel::on_initialize(20);
         assert!(BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID).is_empty());
@@ -360,4 +379,28 @@ fn individual_message_quarantine_and_nonce_exhaustion_preserve_the_queue() {
         );
         assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), u64::MAX);
     });
+}
+
+#[test]
+fn committed_message_count_reserves_each_notifier_recovery_check() {
+    use frame_support::traits::Hooks;
+    let measure = |count: u32| {
+        new_tester().execute_with(|| {
+            crate::recovery::install_completed_test_recovery();
+            for _ in 0..count {
+                assert_ok!(BridgeOutboundChannel::submit(
+                    BASE_NETWORK_ID,
+                    &RawOrigin::Root,
+                    &[1],
+                    ()
+                ));
+            }
+            BridgeOutboundChannel::on_initialize(10)
+        })
+    };
+    let one = measure(1);
+    let two = measure(2);
+    let additional = two.saturating_sub(one);
+    // An extra notification must reserve a complete lifecycle read/proof bound.
+    assert!(bridge_types::recovery::completion_weight::<Test>(1).all_lte(additional));
 }

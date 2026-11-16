@@ -1630,7 +1630,7 @@ fn peer_events_resolve_identity_and_complete_synchronization_in_either_order() {
 }
 
 #[test]
-fn halted_dispatch_and_internal_registration_leave_request_bookkeeping_unchanged() {
+fn unfinished_recovery_dispatch_and_internal_registration_leave_bookkeeping_unchanged() {
     use super::mock::{EthBridge, RuntimeOrigin};
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -1654,7 +1654,8 @@ fn halted_dispatch_and_internal_registration_leave_request_bookkeeping_unchanged
             0,
         ));
         crate::RequestStatuses::<Runtime>::insert(0, hash, RequestStatus::Pending);
-        sp_io::storage::set(crate::recovery::HALT_KEY, &[]);
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
+        sp_io::storage::clear(crate::recovery::HALT_KEY);
         let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
         assert_err!(
             EthBridge::request_from_sidechain(

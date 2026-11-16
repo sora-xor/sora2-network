@@ -382,7 +382,7 @@ fn evm_queue_total_gas_is_cleared_after_commit() {
 }
 
 #[test]
-fn recovery_halt_preserves_queued_messages_and_nonces_without_committing() {
+fn unfinished_recovery_preserves_queued_messages_and_nonces_without_committing() {
     new_tester().execute_with(|| {
         let origin = RawOrigin::Signed(Keyring::Bob.to_account_id());
         assert_ok!(BridgeOutboundChannel::submit(
@@ -392,6 +392,7 @@ fn recovery_halt_preserves_queued_messages_and_nonces_without_committing() {
             ()
         ));
         let queue = MessageQueues::<Test>::get(BASE_NETWORK_ID);
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
         assert_noop!(
@@ -421,8 +422,8 @@ fn permanent_batch_quarantine_survives_global_halt_removal() {
             &bridge_types::recovery::batch_key(0, BASE_NETWORK_ID, 1),
             &[1],
         );
+        crate::recovery::install_completed_test_recovery();
         sp_io::storage::clear(crate::recovery::HALT_KEY);
-        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
         assert_noop!(
             BridgeOutboundChannel::submit(BASE_NETWORK_ID.sub().unwrap(), &origin, &[3], ()),
             Error::<Test>::RecoveryHalted
@@ -432,6 +433,11 @@ fn permanent_batch_quarantine_survives_global_halt_removal() {
         assert_eq!(MessageQueues::<Test>::get(BASE_NETWORK_ID), queue);
         assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
         assert!(LatestCommitment::<Test>::get(BASE_NETWORK_ID).is_none());
+        // The tombstone is the reason commit is blocked, not recovery state.
+        sp_io::storage::clear(&bridge_types::recovery::batch_key(0, BASE_NETWORK_ID, 1));
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
+        assert!(MessageQueues::<Test>::get(BASE_NETWORK_ID).is_empty());
     });
 }
 
@@ -445,7 +451,7 @@ fn automatic_commit_obeys_interval_and_empty_queue_keeps_nonce() {
         assert_eq!(BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID).len(), 1);
         BridgeOutboundChannel::on_initialize(9);
         assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
-        sp_io::storage::set(b":sora-nexus:recovery:policy:v1", &[1]);
+        crate::recovery::install_completed_test_recovery();
         BridgeOutboundChannel::on_initialize(10);
         assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
         assert!(BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID).is_empty());
@@ -479,7 +485,7 @@ fn evm_gas_limits_and_policy_rollback_protect_the_queue_budget() {
             target: H160::repeat_byte(1),
             max_gas: gas.into(),
         };
-        sp_io::storage::set(b":sora-nexus:recovery:policy:v1", &[1]);
+        crate::recovery::install_completed_test_recovery();
         assert_noop!(
             BridgeOutboundChannel::submit(network, &origin, &[1], data(5_000_000)),
             Error::<Test>::MessageGasLimitExceeded
@@ -520,6 +526,7 @@ fn evm_gas_limits_and_policy_rollback_protect_the_queue_budget() {
             3_000_000u32.into()
         );
         assert_eq!(BridgeOutboundChannel::recovery_queue(network.into()), queue);
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         assert_noop!(
             BridgeOutboundChannel::submit(network, &origin, &[2], data(1)),
@@ -655,4 +662,28 @@ fn legacy_mixed_domain_queues_do_not_include_foreign_payloads_in_commitments() {
             assert!(MessageQueues::<Test>::get(network).is_empty());
         }
     });
+}
+
+#[test]
+fn committed_message_count_reserves_each_notifier_recovery_check() {
+    use frame_support::traits::Hooks;
+    let measure = |count: u32| {
+        new_tester().execute_with(|| {
+            crate::recovery::install_completed_test_recovery();
+            for _ in 0..count {
+                assert_ok!(BridgeOutboundChannel::submit(
+                    BASE_NETWORK_ID.sub().unwrap(),
+                    &RawOrigin::Root,
+                    &[1],
+                    ()
+                ));
+            }
+            BridgeOutboundChannel::on_initialize(10)
+        })
+    };
+    let one = measure(1);
+    let two = measure(2);
+    let additional = two.saturating_sub(one);
+    // An extra notification must reserve a complete lifecycle read/proof bound.
+    assert!(bridge_types::recovery::completion_weight::<Test>(1).all_lte(additional));
 }

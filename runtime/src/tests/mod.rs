@@ -32,6 +32,8 @@ mod babe_config;
 mod bridge_halt;
 mod liquidity_proxy;
 mod liveness;
+mod ocw_only_halt;
+mod ocw_only_halt_flow;
 mod operational_admission;
 mod pool_priority;
 mod referrals;

@@ -5,7 +5,7 @@ use derive_where::derive_where;
 use ethabi::Token;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{Get};
+use sp_core::Get;
 use sp_runtime::{traits::Hash, BoundedVec};
 use sp_std::prelude::*;
 
@@ -19,15 +19,7 @@ fn to_ethabi_u256(value: U256) -> ethabi::ethereum_types::U256 {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// EVM contract kind
@@ -46,15 +38,7 @@ pub enum EVMAppKind {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EVMAppInfo {
@@ -98,15 +82,7 @@ pub struct AdditionalEVMInboundData {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// Information about ERC-20 asset in EVM network
@@ -122,15 +98,7 @@ pub struct EVMAssetInfo {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// HASHI bridge asset info
@@ -260,7 +228,8 @@ pub struct InboundCommitment<MaxPayload: Get<u32>> {
 impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
     pub fn hash(&self) -> H256 {
         crate::h256_from_sp_core(
-            ("evm-inbound", self).using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded)),
+            ("evm-inbound", self)
+                .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded)),
         )
     }
 }

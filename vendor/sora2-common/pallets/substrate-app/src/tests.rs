@@ -233,6 +233,7 @@ fn status_updates_and_recovery_gates_validate_authenticated_context() {
             ),
             sp_runtime::DispatchError::BadOrigin
         );
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         assert_noop!(
             SubstrateApp::update_transaction_status(origin(), H256::zero(), MessageStatus::Done),
@@ -475,8 +476,11 @@ fn it_works_incoming_thischain_asset_registration() {
         let generic_asset_id = GenericAssetId::Sora(H256([0; 32]));
 
         assert_ok!(SubstrateApp::authorize_asset_registration(
-            RuntimeOrigin::root(), SubNetworkId::Liberland, asset_id,
-            generic_asset_id, AssetKind::Thischain,
+            RuntimeOrigin::root(),
+            SubNetworkId::Liberland,
+            asset_id,
+            generic_asset_id,
+            AssetKind::Thischain,
         ));
 
         assert_ok!(SubstrateApp::incoming_thischain_asset_registration(
@@ -501,8 +505,11 @@ fn it_works_finalize_asset_registration() {
         let generic_asset_id = GenericAssetId::Sora(H256([0; 32]));
 
         assert_ok!(SubstrateApp::authorize_asset_registration(
-            RuntimeOrigin::root(), SubNetworkId::Liberland, asset_id,
-            generic_asset_id, AssetKind::Thischain,
+            RuntimeOrigin::root(),
+            SubNetworkId::Liberland,
+            asset_id,
+            generic_asset_id,
+            AssetKind::Thischain,
         ));
 
         assert_ok!(SubstrateApp::finalize_asset_registration(
@@ -564,6 +571,7 @@ fn recovery_mint_journals_ack_without_outbound_nonce_or_duplicate_credit() {
         };
         crate::AssetKinds::<Test>::insert(network, AssetId::Xor, AssetKind::Sidechain);
         crate::SidechainPrecision::<Test>::insert(network, AssetId::Xor, 18);
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         let before = Currencies::total_balance(AssetId::Xor, &recipient);
         let mint = || {
@@ -624,6 +632,7 @@ fn recovery_failed_mint_rolls_back_partial_credit_and_journals_failed_result() {
         .into();
         crate::AssetKinds::<Test>::insert(network, AssetId::Xor, AssetKind::Sidechain);
         crate::SidechainPrecision::<Test>::insert(network, AssetId::Xor, 18);
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
         sp_io::storage::set(b"test:fail-after-recovery-credit", &[1]);
@@ -662,6 +671,7 @@ fn recovery_chunk_failure_rolls_back_successful_credit_and_deferred_ack_together
         let id = H256::repeat_byte(21);
         crate::AssetKinds::<Test>::insert(network, AssetId::Xor, AssetKind::Sidechain);
         crate::SidechainPrecision::<Test>::insert(network, AssetId::Xor, 18);
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
         let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
@@ -761,6 +771,7 @@ fn direct_and_authenticated_mints_preserve_balances_under_quarantine() {
             Error::<Test>::RecoveryHalted
         );
         sp_io::storage::clear(&bridge_types::recovery::message_key(network.into(), id));
+        crate::recovery::install_test_recovery();
         sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
         assert_noop!(mint(), Error::<Test>::RecoveryHalted);
     });
