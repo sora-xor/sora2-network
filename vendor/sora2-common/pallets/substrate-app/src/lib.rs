@@ -361,7 +361,7 @@ pub mod pallet {
             );
             ensure!(
                 ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
-                    .map_or(true, |registered| registered == asset_id),
+                    .is_none_or(|registered| registered == asset_id),
                 Error::<T>::AssetRegistrationMismatch
             );
             SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
@@ -404,7 +404,7 @@ pub mod pallet {
             );
             ensure!(
                 ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
-                    .map_or(true, |registered| registered == asset_id),
+                    .is_none_or(|registered| registered == asset_id),
                 Error::<T>::AssetRegistrationMismatch
             );
 
@@ -555,12 +555,12 @@ pub mod pallet {
             );
             ensure!(
                 PendingAssetRegistrations::<T>::get(network_id, &asset_id)
-                    .map_or(true, |pending| pending == (sidechain_asset_id, asset_kind)),
+                    .is_none_or(|pending| pending == (sidechain_asset_id, asset_kind)),
                 Error::<T>::AssetRegistrationMismatch
             );
             ensure!(
                 ThischainAssetId::<T>::get(network_id, sidechain_asset_id)
-                    .map_or(true, |registered| registered == asset_id),
+                    .is_none_or(|registered| registered == asset_id),
                 Error::<T>::AssetRegistrationMismatch
             );
             PendingAssetRegistrations::<T>::insert(
@@ -855,7 +855,7 @@ impl<T: Config> BridgeApp<T::AccountId, GenericAccount, AssetIdOf<T>, BalanceOf<
         AssetKinds::<T>::iter_keys()
             .map(|(network_id, _asset_id)| BridgeAppInfo::Sub(network_id.into()))
             .fold(vec![], |mut acc, value| {
-                if !acc.iter().any(|x| value == *x) {
+                if !acc.contains(&value) {
                     acc.push(value);
                 }
                 acc
