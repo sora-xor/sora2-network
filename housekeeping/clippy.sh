@@ -105,7 +105,7 @@ run_clippy() {
         fi
     fi
 
-    local args=(clippy --locked --all-targets "${selection[@]}")
+    local args=(clippy --locked --keep-going --all-targets "${selection[@]}")
     if [[ "$json" == true ]]; then
         args+=(--message-format=json)
     fi

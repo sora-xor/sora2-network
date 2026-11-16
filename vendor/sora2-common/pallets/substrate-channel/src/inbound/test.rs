@@ -30,15 +30,19 @@
 
 use super::*;
 use bridge_types::substrate::BridgeMessage;
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, Encode};
 use frame_support::derive_impl;
 
 use frame_support::traits::{Everything, UnfilteredDispatchable};
-use frame_support::{assert_err, assert_noop, assert_ok, parameter_types, Deserialize, Serialize};
-use scale_info::TypeInfo;
+use frame_support::{assert_err, assert_noop, assert_ok, parameter_types};
 use sp_core::{ConstU64, H256};
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, ValidateUnsigned, Verify};
+#[allow(
+    deprecated,
+    reason = "Tests exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
+use sp_runtime::traits::ValidateUnsigned;
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionSource, TransactionValidityError,
 };
@@ -68,28 +72,6 @@ frame_support::construct_runtime!(
 
 pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-
-#[derive(
-    Encode,
-    Decode,
-    codec::DecodeWithMemTracking,
-    PartialEq,
-    Eq,
-    Debug,
-    Clone,
-    Copy,
-    MaxEncodedLen,
-    TypeInfo,
-    PartialOrd,
-    Ord,
-    Serialize,
-    Deserialize,
-)]
-pub enum AssetId {
-    Xor,
-    Eth,
-    Dai,
-}
 
 pub type Balance = u128;
 
