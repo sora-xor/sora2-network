@@ -40,6 +40,7 @@ jobs:
         with:
           # Use the GitHub cache provider supported by the pinned action.
           cache-provider: "github"
+          cache-on-failure: true
 
       - name: Export LLVM env
         id: llvm-env

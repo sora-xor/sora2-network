@@ -53,7 +53,9 @@ mod eth_bridge_metrics;
 #[cfg(feature = "private-net")]
 mod fork_off;
 mod guardian_halt;
-#[cfg(test)]
+// This fixture uses mainnet genesis; the mainnet release harness still executes
+// the actual-Wasm gate independently of private-network feature checks.
+#[cfg(all(test, not(feature = "private-net")))]
 mod ocw_only_halt_wasm_tests;
 mod recovery;
 mod recovery_acknowledgement;

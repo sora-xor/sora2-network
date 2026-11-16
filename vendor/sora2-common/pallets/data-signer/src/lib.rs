@@ -286,7 +286,7 @@ pub mod pallet {
                 fail!(Error::<T>::SignatureAlreadyExists);
             }
             approvals
-                .try_insert(public, signature.clone())
+                .try_insert(public, signature)
                 .map_err(|_| Error::<T>::TooMuchApprovals)?;
             Approvals::<T>::insert(network_id, data, &approvals);
             let peers_len = peers.len() as u32;

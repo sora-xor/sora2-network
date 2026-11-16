@@ -142,7 +142,7 @@ fn left_peak_height_pos(mmr_size: u64) -> (u32, u64) {
     (height - 1, prev_pos)
 }
 
-fn calculate_merkle_proof_order<T>(leave: u64, proof: &Vec<T>) -> u64 {
+fn calculate_merkle_proof_order<T>(leave: u64, proof: &[T]) -> u64 {
     let mut order = 0u64;
     let mut tree_pos = leave;
 
