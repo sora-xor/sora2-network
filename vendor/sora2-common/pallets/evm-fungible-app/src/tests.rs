@@ -968,12 +968,12 @@ fn inbound_origin_domains_sources_and_quarantines_cannot_credit_assets() {
             source: H160::repeat_byte(2),
         });
         for (network, additional) in [
-            (bad_network, evm_data.clone()),
+            (bad_network, evm_data),
             (BASE_NETWORK_ID.into(), GenericAdditionalInboundData::Sub),
         ] {
             assert_noop!(
                 FungibleApp::mint(
-                    origin(network, additional.clone(), H256::zero()),
+                    origin(network, additional, H256::zero()),
                     H160::repeat_byte(3),
                     H160::zero(),
                     Keyring::Alice.into(),
@@ -995,7 +995,7 @@ fn inbound_origin_domains_sources_and_quarantines_cannot_credit_assets() {
         });
         assert_noop!(
             FungibleApp::mint(
-                origin(BASE_NETWORK_ID.into(), bad_source.clone(), H256::zero()),
+                origin(BASE_NETWORK_ID.into(), bad_source, H256::zero()),
                 H160::repeat_byte(3),
                 H160::zero(),
                 Keyring::Alice.into(),
