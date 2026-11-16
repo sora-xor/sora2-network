@@ -183,7 +183,7 @@ fn unfinished_recovery_rejects_new_signatures_for_retained_pending_approvals() {
         let call = Call::<Test>::approve {
             network_id: network,
             data,
-            signature: signature.clone(),
+            signature,
         };
         assert_eq!(
             DataSigner::validate_unsigned(TransactionSource::InBlock, &call),
@@ -256,7 +256,7 @@ fn completed_recovery_and_worker_halt_do_not_veto_authenticated_approval() {
         let call = Call::<Test>::approve {
             network_id: network,
             data,
-            signature: signature.clone(),
+            signature,
         };
         assert!(DataSigner::validate_unsigned(TransactionSource::InBlock, &call).is_ok());
         assert_ok!(DataSigner::approve(
@@ -450,7 +450,7 @@ fn it_fails_approve_sign_already_exist() {
             RuntimeOrigin::none(),
             network_id,
             H256::from(data),
-            signature.clone(),
+            signature,
         ));
 
         assert!(DataSigner::approvals(network_id, H256::from(data)).len() == 1);
@@ -1410,7 +1410,7 @@ fn it_fails_validate_unsigned_transaction_stale() {
             RuntimeOrigin::none(),
             network_id,
             H256::from(data),
-            signature.clone(),
+            signature,
         ));
 
         assert!(DataSigner::approvals(network_id, H256::from(data)).len() == 1);
@@ -1488,7 +1488,7 @@ fn permanent_commitment_quarantine_retains_signatures_and_rejects_reapproval() {
         let call = Call::<Test>::approve {
             network_id: network,
             data,
-            signature: signature.clone(),
+            signature,
         };
         assert_eq!(
             DataSigner::validate_unsigned(TransactionSource::InBlock, &call),

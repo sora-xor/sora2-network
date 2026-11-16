@@ -156,7 +156,7 @@ benchmarks! {
         initialize_pending_approval::<T>(network_id, data.into());
         let signature = sp_io::crypto::ecdsa_sign_prehashed(sp_core::crypto::key_types::DUMMY, &key, &data).unwrap();
         let mut expected = BoundedBTreeMap::<ecdsa::Public, ecdsa::Signature, T::MaxPeers>::new();
-        expected.try_insert(key, signature.clone()).unwrap();
+        expected.try_insert(key, signature).unwrap();
     }: _(RawOrigin::None, network_id, data.into(), signature)
     verify {
         assert_eq!(Approvals::<T>::get(network_id, H256::from(data)), expected);
