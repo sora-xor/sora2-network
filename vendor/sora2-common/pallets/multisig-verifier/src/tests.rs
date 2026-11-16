@@ -89,7 +89,7 @@ fn it_works_initialize_pallet() {
                 test_peers().try_into().unwrap(),
             ),
             ().into()
-        )
+        );
     });
 }
 
