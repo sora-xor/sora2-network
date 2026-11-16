@@ -52,7 +52,9 @@ pub(crate) fn consume_transfer<AccountId: Encode>(mut resolution: HashiResolutio
     sp_io::storage::set(HASHI_RESOLUTION_KEY, &resolution.encode());
 }
 
+#[cfg(test)]
 pub(crate) const HALT_KEY: &[u8] = b":sora-nexus:recovery:bridge-halt:v1";
+#[cfg(test)]
 pub(crate) const INBOUND_CONTEXT_KEY: &[u8] = b":sora-nexus:recovery:bridge-inbound-context:v1";
 
 pub(crate) fn recovery_in_progress() -> bool {

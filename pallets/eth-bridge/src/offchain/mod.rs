@@ -107,7 +107,7 @@ pub(crate) fn stopped_by_recovery<T: frame_system::Config>() -> bool {
     use bridge_types::recovery::{acknowledgement_matches, completion, RECOVERY_ACK_STORAGE_KEY};
     match completion() {
         Ok(None) => false,
-        Err(()) => true,
+        Err(_) => true,
         Ok(Some(completion)) => {
             let hash = frame_system::Pallet::<T>::block_hash(
                 frame_system::pallet_prelude::BlockNumberFor::<T>::from(0u32),

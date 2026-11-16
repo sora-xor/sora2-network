@@ -228,8 +228,7 @@ pub struct InboundCommitment<MaxPayload: Get<u32>> {
 impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
     pub fn hash(&self) -> H256 {
         crate::h256_from_sp_core(
-            ("evm-inbound", self)
-                .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded)),
+            ("evm-inbound", self).using_encoded(sp_runtime::traits::Keccak256::hash),
         )
     }
 }
@@ -259,8 +258,7 @@ pub struct StatusReport<MaxMessages: Get<u32>> {
 impl<MaxMessages: Get<u32>> StatusReport<MaxMessages> {
     pub fn hash(&self) -> H256 {
         crate::h256_from_sp_core(
-            ("evm-status-report", self)
-                .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded)),
+            ("evm-status-report", self).using_encoded(sp_runtime::traits::Keccak256::hash),
         )
     }
 }
@@ -280,8 +278,7 @@ pub struct BaseFeeUpdate {
 impl BaseFeeUpdate {
     pub fn hash(&self) -> H256 {
         crate::h256_from_sp_core(
-            ("base-fee-update", self)
-                .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded)),
+            ("base-fee-update", self).using_encoded(sp_runtime::traits::Keccak256::hash),
         )
     }
 }

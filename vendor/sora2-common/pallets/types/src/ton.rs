@@ -248,7 +248,7 @@ pub struct InboundCommitment<MaxPayload: Get<u32>> {
 
 impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
     pub fn hash(&self) -> H256 {
-        ("ton-inbound", self).using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
+        ("ton-inbound", self).using_encoded(sp_runtime::traits::Keccak256::hash)
     }
 }
 

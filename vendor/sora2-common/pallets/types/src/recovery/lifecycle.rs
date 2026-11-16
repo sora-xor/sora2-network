@@ -54,6 +54,12 @@ impl RecoveryCompletion {
     }
 }
 
+/// Recovery is unfinished, malformed, or inconsistent. Every failure keeps
+/// ordinary bridge admission and worker access closed. This error carries no
+/// authority and is never encoded into recovery storage.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RecoveryCompletionError;
+
 /// The exact format-one RecoveryStatus representation when failure is None.
 /// Keeping the wire projection here avoids a dependency cycle with common.
 /// common's tests compare it against the authoritative RecoveryStatus codec.
@@ -67,22 +73,26 @@ struct StatusHeader {
     failure_tag: u8,
 }
 
-fn status(bytes: Option<Vec<u8>>) -> Result<StatusHeader, ()> {
-    let bytes = bytes.ok_or(())?;
+fn status(bytes: Option<Vec<u8>>) -> Result<StatusHeader, RecoveryCompletionError> {
+    let bytes = bytes.ok_or(RecoveryCompletionError)?;
     if bytes.len() != 50 {
-        return Err(());
+        return Err(RecoveryCompletionError);
     }
-    let status = StatusHeader::decode_all(&mut &bytes[..]).map_err(|_| ())?;
+    let status = StatusHeader::decode_all(&mut &bytes[..]).map_err(|_| RecoveryCompletionError)?;
     if status.version != 1 || status.policy == [0; 32] || status.failure_tag != 0 {
-        return Err(());
+        return Err(RecoveryCompletionError);
     }
     Ok(status)
 }
 
-fn hash(bytes: Option<Vec<u8>>) -> Result<[u8; 32], ()> {
-    let value: [u8; 32] = bytes.ok_or(())?.as_slice().try_into().map_err(|_| ())?;
+fn hash(bytes: Option<Vec<u8>>) -> Result<[u8; 32], RecoveryCompletionError> {
+    let value: [u8; 32] = bytes
+        .ok_or(RecoveryCompletionError)?
+        .as_slice()
+        .try_into()
+        .map_err(|_| RecoveryCompletionError)?;
     if value == [0; 32] {
-        Err(())
+        Err(RecoveryCompletionError)
     } else {
         Ok(value)
     }
@@ -94,7 +104,7 @@ fn hash(bytes: Option<Vec<u8>>) -> Result<[u8; 32], ()> {
 /// absent storage. No legacy halt marker or guardian signal is consulted here.
 pub fn completion_with(
     mut read: impl FnMut(&[u8]) -> Option<Vec<u8>>,
-) -> Result<Option<RecoveryCompletion>, ()> {
+) -> Result<Option<RecoveryCompletion>, RecoveryCompletionError> {
     let policy_bytes = read(POLICY);
     let status_bytes = read(STATUS);
     if policy_bytes.is_none() {
@@ -104,30 +114,30 @@ pub fn completion_with(
                 .any(|key| read(key).is_some())
             || TRANSIENT.iter().any(|key| read(key).is_some())
         {
-            return Err(());
+            return Err(RecoveryCompletionError);
         }
         return Ok(None);
     }
     let policy = hash(policy_bytes)?;
     let status = status(status_bytes)?;
     if status.phase != 4 || status.policy != policy {
-        return Err(());
+        return Err(RecoveryCompletionError);
     }
     let active_policy = hash(read(ACTIVE_POLICY))?;
     let recovery_anchor = hash(read(ANCHOR))?;
     if read(PENDING).as_deref() != Some(&[0, 0, 0, 0])
         || TRANSIENT.iter().any(|key| read(key).is_some())
     {
-        return Err(());
+        return Err(RecoveryCompletionError);
     }
-    let terminal = read(TERMINAL).ok_or(())?;
+    let terminal = read(TERMINAL).ok_or(RecoveryCompletionError)?;
     if terminal.len() != 68 {
-        return Err(());
+        return Err(RecoveryCompletionError);
     }
-    let (active, audit, chunks) =
-        <([u8; 32], [u8; 32], u32)>::decode_all(&mut &terminal[..]).map_err(|_| ())?;
+    let (active, audit, chunks) = <([u8; 32], [u8; 32], u32)>::decode_all(&mut &terminal[..])
+        .map_err(|_| RecoveryCompletionError)?;
     if active != active_policy || audit == [0; 32] || chunks != status.chunks {
-        return Err(());
+        return Err(RecoveryCompletionError);
     }
     Ok(Some(RecoveryCompletion {
         policy,
@@ -139,7 +149,7 @@ pub fn completion_with(
     }))
 }
 
-pub fn completion() -> Result<Option<RecoveryCompletion>, ()> {
+pub fn completion() -> Result<Option<RecoveryCompletion>, RecoveryCompletionError> {
     completion_with(|key| {
         if TRANSIENT.contains(&key) {
             sp_io::storage::exists(key).then(Vec::new)

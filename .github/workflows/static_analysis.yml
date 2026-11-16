@@ -38,8 +38,8 @@ jobs:
       # v2.9.3
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         with:
-          # 20GB of cache per repo per week
-          cache-provider: "buildjet"
+          # Use the GitHub cache provider supported by the pinned action.
+          cache-provider: "github"
 
       - name: Export LLVM env
         id: llvm-env
