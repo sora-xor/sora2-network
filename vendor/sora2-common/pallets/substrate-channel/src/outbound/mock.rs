@@ -123,6 +123,8 @@ impl tokens::Config for Test {
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
+    #[cfg(feature = "runtime-benchmarks")]
+    type BenchmarkHelper = ();
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type CurrencyHooks = ();

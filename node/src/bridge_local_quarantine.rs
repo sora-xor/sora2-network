@@ -22,7 +22,7 @@ pub(crate) const REQUESTS: [&str; 7] = [
 ];
 const PREFIX: &[u8] = b":sora-nexus:recovery:outgoing-hashi:v1:";
 const GENESIS: &str = "7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5";
-const REVIEWED_CODE: &str = "4d9cdbba314a95d26c6de041c36cd36bc4a5cc2231fb4775ae7a2a12255830c6";
+const REVIEWED_CODE: &str = "d601b781566850086b9341552bcde75b43902665a01fc94897da2adf3cac9a26";
 
 sp_externalities::decl_extension! {
     /// Installed only by the node's offchain-worker runner; Wasm cannot create it.

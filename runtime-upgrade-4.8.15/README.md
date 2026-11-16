@@ -5,7 +5,7 @@ release binaries, Wasm, checksums and validation evidence is the
 [4.8.15 release](https://github.com/sora-xor/sora2-network/releases/tag/4.8.15).
 
 The compressed Wasm's BLAKE2-256 code hash is
-`0x4d9cdbba314a95d26c6de041c36cd36bc4a5cc2231fb4775ae7a2a12255830c6`; its SHA-256 is `999f187c4308ba94eba71346f925522d2beb7924d886ee17a921f8441a0169c2`.
+`0xd601b781566850086b9341552bcde75b43902665a01fc94897da2adf3cac9a26`; its SHA-256 is `6c1d8a0129f144bea4d3498d1fc2c0baf86ab937f401d1103e6eabfc28a90a27`.
 The node commits this exact code hash as its worker's accepted mainnet runtime.
 
 ## Halt behavior

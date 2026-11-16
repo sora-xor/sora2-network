@@ -182,6 +182,8 @@ impl tokens::Config for Test {
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
+    #[cfg(feature = "runtime-benchmarks")]
+    type BenchmarkHelper = ();
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type CurrencyHooks = ();
@@ -214,6 +216,8 @@ impl dispatch::Config for Test {
     type Call = RuntimeCall;
     type CallFilter = Everything;
     type WeightInfo = ();
+    #[cfg(feature = "runtime-benchmarks")]
+    type BenchmarkHelper = ();
 }
 
 parameter_types! {
