@@ -52,6 +52,13 @@ fn blocked_key(key: &[u8]) -> bool {
 /// Both the trusted local marker and the SDK OCW capability are required.
 #[runtime_interface]
 pub trait Storage {
+    #[cfg_attr(
+        not(test),
+        allow(
+            dead_code,
+            reason = "the generated native wrapper is used by tests; production registers the Wasm host function"
+        )
+    )]
     fn exists(&mut self, key: PassFatPointerAndRead<&[u8]>) -> bool {
         let local = self.extension::<LocalQuarantineExt>().is_some()
             && self.extension::<OffchainWorkerExt>().is_some();
