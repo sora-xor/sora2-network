@@ -644,7 +644,7 @@ fn report_equivocation_invalid_equivocation_proof() {
 					key_owner_proof.clone(),
 				),
 				Error::<Test>::InvalidEquivocationProof,
-			)
+			);
 		};
 
 		// both headers have the same hash, no equivocation.
@@ -717,6 +717,10 @@ fn report_equivocation_invalid_equivocation_proof() {
 }
 
 #[test]
+#[expect(
+	deprecated,
+	reason = "Verify rejection of legacy unsigned equivocation reports while preserving call encoding"
+)]
 fn equivocation_reports_reject_all_unsigned_sources_and_publication() {
 	use sp_runtime::transaction_validity::{InvalidTransaction, TransactionSource};
 

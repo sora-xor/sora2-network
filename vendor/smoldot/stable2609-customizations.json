@@ -1,0 +1,319 @@
+{
+  "upstreamCrate": "smoldot",
+  "upstreamVersion": "2.2.0",
+  "upstreamArchiveSha256": "7998fa4206a99d310bd288df99300724da1d7800f06b64387e431d9cd0d870f1",
+  "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+  "sourcePatch": "stable2609-customizations.patch",
+  "sourcePatchSha256": "ac7d1cd76a0d0071eca767095c3ae649dd96b98cdb567a4200d4ce60bb3886a4",
+  "sourcePatchReplay": "passed",
+  "changedTextFiles": [
+    {
+      "path": "Cargo.toml",
+      "upstreamSha256": "428de3a9ce1a98fc7ba498c376be9189a58294eb84fab900b6690b937f4c277d",
+      "localSha256": "d6a1d11e2c9e38641cc9238b3079ebd0dd03e58c283de4579870bf2b03d4c608"
+    },
+    {
+      "path": "src/executor/host/zstd/tests.rs",
+      "upstreamSha256": "beec3045d6b06096652ef68e10b58a47d20ba8002b1836ce06c2c68784fd4b57",
+      "localSha256": "82673caed0165d84e68d8a70a7eae3fdc5e10cf8e632e05cff9958fa6f26ea23"
+    },
+    {
+      "path": "src/executor/host/zstd.rs",
+      "upstreamSha256": "bd93461a63287c6dbf6788a2ad42067427e3b65ebfc47067cb237b693e227ed5",
+      "localSha256": "98d6909e76dc30c1fe104184ed9e464d427f84844928d7ced6707502438e6f80"
+    }
+  ],
+  "restoredFixtures": [
+    {
+      "path": "benches/header-polkadot-512271",
+      "upstreamSha256": null,
+      "localSha256": "1ec3a7b48b3b9f435a07dfc6b71ffad4fa3162fa9c144854e7a7a6df6cfad6d0",
+      "upstreamGitPath": "lib/benches/header-polkadot-512271",
+      "upstreamGitBlob": "97244f6ab72d3dcbdd943faf55d7d2d2b4d75954",
+      "upstreamGitSha256": "1ec3a7b48b3b9f435a07dfc6b71ffad4fa3162fa9c144854e7a7a6df6cfad6d0",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 16104,
+      "referencedBy": [
+        "benches/header.rs"
+      ]
+    },
+    {
+      "path": "benches/proof-decode-large",
+      "upstreamSha256": null,
+      "localSha256": "eed53ec498f91923e3f3a078d9cbaf03274c836329f445848206356593d368b9",
+      "upstreamGitPath": "lib/benches/proof-decode-large",
+      "upstreamGitBlob": "30c29cfef80aa0be13fe897ae3d67e3716a12c2b",
+      "upstreamGitSha256": "eed53ec498f91923e3f3a078d9cbaf03274c836329f445848206356593d368b9",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 100299,
+      "referencedBy": [
+        "benches/proof-decode.rs"
+      ]
+    },
+    {
+      "path": "benches/proof-decode-small",
+      "upstreamSha256": null,
+      "localSha256": "4119a68e8975a03dd81d7a62602f6f0cf7b4017e9a2a845702f33e6d12eafea5",
+      "upstreamGitPath": "lib/benches/proof-decode-small",
+      "upstreamGitBlob": "144dab42df07e7a08526f012b83a8babd442ec5e",
+      "upstreamGitSha256": "4119a68e8975a03dd81d7a62602f6f0cf7b4017e9a2a845702f33e6d12eafea5",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 1762,
+      "referencedBy": [
+        "benches/proof-decode.rs"
+      ]
+    },
+    {
+      "path": "src/author/runtime/example-chain-specs.json",
+      "upstreamSha256": null,
+      "localSha256": "2bcebed56534ec8b250bbee4a1d8410e6407ea9300dabe365a3c22bbd2125b49",
+      "upstreamGitPath": "lib/src/author/runtime/example-chain-specs.json",
+      "upstreamGitBlob": "c5f67107eab029f469a9db6acc7aaa918a37339a",
+      "upstreamGitSha256": "2bcebed56534ec8b250bbee4a1d8410e6407ea9300dabe365a3c22bbd2125b49",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 5114010,
+      "referencedBy": [
+        "src/author/runtime/tests.rs"
+      ]
+    },
+    {
+      "path": "src/chain_spec/tests/example.json",
+      "upstreamSha256": null,
+      "localSha256": "5a0df9dcc409766621a2913aadeb69136404a6d387d4a69f27aa24552e68e31a",
+      "upstreamGitPath": "lib/src/chain_spec/tests/example.json",
+      "upstreamGitBlob": "86a3156a795806c497d0c2af6e6d8929169b6121",
+      "upstreamGitSha256": "5a0df9dcc409766621a2913aadeb69136404a6d387d4a69f27aa24552e68e31a",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 9629303,
+      "referencedBy": [
+        "src/chain_spec/tests.rs"
+      ]
+    },
+    {
+      "path": "src/chain_spec/tests/issue-598.json",
+      "upstreamSha256": null,
+      "localSha256": "ca7d0b8837b8464ca84609a956c06f29ae5cdc7beba4da832e3c3ef44b8039fa",
+      "upstreamGitPath": "lib/src/chain_spec/tests/issue-598.json",
+      "upstreamGitBlob": "0b964773ef165d68e401970d7268433668c8b755",
+      "upstreamGitSha256": "ca7d0b8837b8464ca84609a956c06f29ae5cdc7beba4da832e3c3ef44b8039fa",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 3001085,
+      "referencedBy": [
+        "src/chain_spec/tests.rs"
+      ]
+    },
+    {
+      "path": "src/executor/host/tests/rococo-genesis.wasm",
+      "upstreamSha256": null,
+      "localSha256": "bf19418836e319be5f46b925d2cde46bf3364c3b86071723d04fd87fc71bc602",
+      "upstreamGitPath": "lib/src/executor/host/tests/rococo-genesis.wasm",
+      "upstreamGitBlob": "4963fa19a155dd3b048f5bfe167679b993c4db05",
+      "upstreamGitSha256": "bf19418836e319be5f46b925d2cde46bf3364c3b86071723d04fd87fc71bc602",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 3506626,
+      "referencedBy": [
+        "src/executor/host/tests/initialization.rs"
+      ]
+    },
+    {
+      "path": "src/executor/host/westend-runtime-v9300.wasm",
+      "upstreamSha256": null,
+      "localSha256": "f43e2473e8cfb4f9f208a0f34376a29159b7ae3c11f31adcb82ff03428c3ef1a",
+      "upstreamGitPath": "lib/src/executor/host/westend-runtime-v9300.wasm",
+      "upstreamGitBlob": "440cffcaed146afbd8287b6040e2fbb0a7126ee7",
+      "upstreamGitSha256": "f43e2473e8cfb4f9f208a0f34376a29159b7ae3c11f31adcb82ff03428c3ef1a",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 1258989,
+      "referencedBy": [
+        "src/executor/host/tests.rs"
+      ]
+    },
+    {
+      "path": "src/executor/host/zstd/example-runtime.wasm.zstd",
+      "upstreamSha256": null,
+      "localSha256": "1e654f397605e50759773d3cb7e2609fcce2eb7de37b8213ccc093b01a2e47fe",
+      "upstreamGitPath": "lib/src/executor/host/zstd/example-runtime.wasm.zstd",
+      "upstreamGitBlob": "dde3d0a14fbb66fcd57b3f6b8f50bfb5f13621c1",
+      "upstreamGitSha256": "1e654f397605e50759773d3cb7e2609fcce2eb7de37b8213ccc093b01a2e47fe",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 251125,
+      "referencedBy": [
+        "src/executor/host/zstd/tests.rs",
+        "src/executor/host/zstd/tests.rs"
+      ]
+    },
+    {
+      "path": "src/executor/host/zstd/polkadot-runtime-v9160.wasm.zstd",
+      "upstreamSha256": null,
+      "localSha256": "ebfeb01e3fd0177c2d80de60d90a66b89b7a8fc83822094ba470afec34a0a111",
+      "upstreamGitPath": "lib/src/executor/host/zstd/polkadot-runtime-v9160.wasm.zstd",
+      "upstreamGitBlob": "f541a356b5b393ebab39c135aa4f90e7739301f1",
+      "upstreamGitSha256": "ebfeb01e3fd0177c2d80de60d90a66b89b7a8fc83822094ba470afec34a0a111",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 1163629,
+      "referencedBy": [
+        "src/executor/host/zstd/tests.rs"
+      ]
+    },
+    {
+      "path": "src/executor/runtime_call/child-trie-create-multiple.json",
+      "upstreamSha256": null,
+      "localSha256": "c488c26dde76334e8929f040ef97c7085af7c7fd243deb98a90ea9aef97ec0f7",
+      "upstreamGitPath": "lib/src/executor/runtime_call/child-trie-create-multiple.json",
+      "upstreamGitBlob": "1fc54d9b1833073cb7baa10156ff3464dab1a512",
+      "upstreamGitSha256": "c488c26dde76334e8929f040ef97c7085af7c7fd243deb98a90ea9aef97ec0f7",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 1448795,
+      "referencedBy": [
+        "src/executor/runtime_call/tests.rs"
+      ]
+    },
+    {
+      "path": "src/executor/runtime_call/child-trie-create-one.json",
+      "upstreamSha256": null,
+      "localSha256": "38c0f584fd29557aa795cd89d017be47597f203c0b43e21c218eff45da2b747f",
+      "upstreamGitPath": "lib/src/executor/runtime_call/child-trie-create-one.json",
+      "upstreamGitBlob": "cb66d74969418e8b18cb3167c23227ca4fcd8049",
+      "upstreamGitSha256": "38c0f584fd29557aa795cd89d017be47597f203c0b43e21c218eff45da2b747f",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 1328991,
+      "referencedBy": [
+        "src/executor/runtime_call/tests.rs"
+      ]
+    },
+    {
+      "path": "src/executor/runtime_call/child-trie-destroy.json",
+      "upstreamSha256": null,
+      "localSha256": "b6f09834cdaa09b79dbf667a6fbc0dbc31e61a6841baa5a19605fe69a8581a99",
+      "upstreamGitPath": "lib/src/executor/runtime_call/child-trie-destroy.json",
+      "upstreamGitBlob": "a6dbaa82a44969083577436664de3efee44d383c",
+      "upstreamGitSha256": "b6f09834cdaa09b79dbf667a6fbc0dbc31e61a6841baa5a19605fe69a8581a99",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 1378885,
+      "referencedBy": [
+        "src/executor/runtime_call/tests.rs"
+      ]
+    },
+    {
+      "path": "src/executor/runtime_call/child-trie-read-basic.json",
+      "upstreamSha256": null,
+      "localSha256": "a9d0c46d079c2a790851d61a7bf7e5e3064fbc9577f76aa27caf3c5cf28ec791",
+      "upstreamGitPath": "lib/src/executor/runtime_call/child-trie-read-basic.json",
+      "upstreamGitBlob": "ec59a6665eb5a4cf1fca115c4d2bd63f25d26718",
+      "upstreamGitSha256": "a9d0c46d079c2a790851d61a7bf7e5e3064fbc9577f76aa27caf3c5cf28ec791",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 1381109,
+      "referencedBy": [
+        "src/executor/runtime_call/tests.rs"
+      ]
+    },
+    {
+      "path": "src/executor/vm/test-polkadot-runtime-v9160.wasm",
+      "upstreamSha256": null,
+      "localSha256": "972c0ddb692487d3e728892d20fe27eed182393d661f780832208555814339c0",
+      "upstreamGitPath": "lib/src/executor/vm/test-polkadot-runtime-v9160.wasm",
+      "upstreamGitBlob": "ad8809cfe81c5c83f45b95df7214d4685f648794",
+      "upstreamGitSha256": "972c0ddb692487d3e728892d20fe27eed182393d661f780832208555814339c0",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 4926992,
+      "referencedBy": [
+        "src/executor/vm/tests.rs"
+      ]
+    },
+    {
+      "path": "src/header/tests/header-kusama-7472481",
+      "upstreamSha256": null,
+      "localSha256": "8bd9f3b7c61c2cb88c710f67e698f8c39c8e3abf1d3e9449276f3e1f78989472",
+      "upstreamGitPath": "lib/src/header/tests/header-kusama-7472481",
+      "upstreamGitBlob": "ffe851834274905115358180a5fb8056f4e1aad4",
+      "upstreamGitSha256": "8bd9f3b7c61c2cb88c710f67e698f8c39c8e3abf1d3e9449276f3e1f78989472",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 72562,
+      "referencedBy": [
+        "src/header/tests.rs"
+      ]
+    },
+    {
+      "path": "src/header/tests/header-polkadot-512271",
+      "upstreamSha256": null,
+      "localSha256": "1ec3a7b48b3b9f435a07dfc6b71ffad4fa3162fa9c144854e7a7a6df6cfad6d0",
+      "upstreamGitPath": "lib/src/header/tests/header-polkadot-512271",
+      "upstreamGitBlob": "97244f6ab72d3dcbdd943faf55d7d2d2b4d75954",
+      "upstreamGitSha256": "1ec3a7b48b3b9f435a07dfc6b71ffad4fa3162fa9c144854e7a7a6df6cfad6d0",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 16104,
+      "referencedBy": [
+        "src/header/tests.rs"
+      ]
+    },
+    {
+      "path": "src/transactions/validate/test-fixture.json",
+      "upstreamSha256": null,
+      "localSha256": "be4323fedd2d994c42be532088d82815a85bac531a1c828553fe022c695f48a4",
+      "upstreamGitPath": "lib/src/transactions/validate/test-fixture.json",
+      "upstreamGitBlob": "e9ffee12ca3e48e919f45200190bdf54d70225d6",
+      "upstreamGitSha256": "be4323fedd2d994c42be532088d82815a85bac531a1c828553fe022c695f48a4",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 2627340,
+      "referencedBy": [
+        "src/transactions/validate/tests.rs"
+      ]
+    },
+    {
+      "path": "src/trie/prefix_proof/test.json",
+      "upstreamSha256": null,
+      "localSha256": "23914874daa1d226cdcf1a941b5e55d451d51a1701f6964f3e7d2c3cca7445fd",
+      "upstreamGitPath": "lib/src/trie/prefix_proof/test.json",
+      "upstreamGitBlob": "ae13066ed3e4a093144125b089f0ed3e6d755bf4",
+      "upstreamGitSha256": "23914874daa1d226cdcf1a941b5e55d451d51a1701f6964f3e7d2c3cca7445fd",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 480454,
+      "referencedBy": [
+        "src/trie/prefix_proof/tests.rs"
+      ]
+    },
+    {
+      "path": "src/trie/proof_decode/issue_2035_bis_proof",
+      "upstreamSha256": null,
+      "localSha256": "d39749ad2f5a6b2b20188de9261cc6911963fe6bc7eacdec5e0bf8fa12b5fc8d",
+      "upstreamGitPath": "lib/src/trie/proof_decode/issue_2035_bis_proof",
+      "upstreamGitBlob": "a4b21a0f516287ac4de0dd04490d7a71608550a1",
+      "upstreamGitSha256": "d39749ad2f5a6b2b20188de9261cc6911963fe6bc7eacdec5e0bf8fa12b5fc8d",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 15773,
+      "referencedBy": [
+        "src/trie/proof_decode/tests.rs"
+      ]
+    },
+    {
+      "path": "src/trie/proof_decode/issue_2035_proof",
+      "upstreamSha256": null,
+      "localSha256": "bd7fbb199b104709a4acf68fda953e02429cdfe771e12894edd292fa333f99cd",
+      "upstreamGitPath": "lib/src/trie/proof_decode/issue_2035_proof",
+      "upstreamGitBlob": "70dc79ba1c9e38595563c32037d1f80db61c84ec",
+      "upstreamGitSha256": "bd7fbb199b104709a4acf68fda953e02429cdfe771e12894edd292fa333f99cd",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 15773,
+      "referencedBy": [
+        "src/trie/proof_decode/tests.rs"
+      ]
+    },
+    {
+      "path": "src/trie/proof_decode/issue_2035_ter_proof",
+      "upstreamSha256": null,
+      "localSha256": "56954c674595700681b6623f55b93041544eb50d0c07b45e04ad534c9394928e",
+      "upstreamGitPath": "lib/src/trie/proof_decode/issue_2035_ter_proof",
+      "upstreamGitBlob": "02640b51a4b3c4e7740ac1f199066ee95267954a",
+      "upstreamGitSha256": "56954c674595700681b6623f55b93041544eb50d0c07b45e04ad534c9394928e",
+      "upstreamCommit": "90e94869a7fbd617d28990da3005eaa906bc3862",
+      "bytes": 15773,
+      "referencedBy": [
+        "src/trie/proof_decode/tests.rs"
+      ]
+    }
+  ],
+  "omittedUpstreamFiles": [
+    "Cargo.lock"
+  ],
+  "fixtureProvenance": "All 22 literal non-Rust test/benchmark include fixtures restored or reverified byte-for-byte from the exact smoldot 2.2.0 package Git commit 90e94869a7fbd617d28990da3005eaa906bc3862; Git blob IDs and SHA-256 values are recorded per fixture. No substituted content or disabled tests."
+}

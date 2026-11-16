@@ -310,6 +310,33 @@ fn pay_val_to_reward_destination(
 }
 
 impl CustomFees {
+    /// A flat, nonempty batch of staking payouts pays the direct-payout fee
+    /// (`MINIMAL_FEE`) once for every payout it submits, the same as sending each
+    /// payout on its own. The price does not depend on weight, and failed,
+    /// skipped or replayed payouts are still charged. Only flat batches qualify:
+    /// recursing into wrappers would also subsidize unrelated work or permit
+    /// arbitrary nesting overhead at the payout price.
+    fn payout_batch_fee(call: &RuntimeCall) -> Option<Balance> {
+        let calls = match call {
+            RuntimeCall::Utility(UtilityCall::batch { calls })
+            | RuntimeCall::Utility(UtilityCall::batch_all { calls })
+            | RuntimeCall::Utility(UtilityCall::force_batch { calls }) => calls,
+            _ => return None,
+        };
+        if calls.is_empty()
+            || !calls.iter().all(|call| {
+                matches!(
+                    call,
+                    RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
+                        | RuntimeCall::Staking(pallet_staking::Call::payout_stakers_by_page { .. })
+                )
+            })
+        {
+            return None;
+        }
+        Some(MINIMAL_FEE.saturating_mul(calls.len() as Balance))
+    }
+
     fn match_call(call: &RuntimeCall) -> Option<Balance> {
         match call {
             RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
@@ -361,6 +388,7 @@ impl CustomFees {
             }
             // NOTE: reducing fees to 1/10 for payout_stakers (from SMALL_FEE)
             // https://github.com/sora-xor/sora2-network/issues/1335#issuecomment-3004262480
+            // Flat payout batches pay this fee per payout; see `payout_batch_fee`.
             RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
             | RuntimeCall::Staking(pallet_staking::Call::payout_stakers_by_page { .. })
             | RuntimeCall::Band(..)
@@ -395,6 +423,9 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     type FeeDetails = CustomFeeDetails;
 
     fn compute_fee(call: &RuntimeCall) -> Option<(Balance, CustomFeeDetails)> {
+        if let Some(fee) = Self::payout_batch_fee(call) {
+            return Some((fee, CustomFeeDetails::Regular(fee)));
+        }
         let mut fee = Self::base_fee(call)?;
 
         let mut compute_details = |call: &RuntimeCall| -> CustomFeeDetails {
@@ -892,12 +923,16 @@ mod tests {
         pallet_staking::Payee::<Runtime>::insert(&nominator, RewardDestination::Stash);
         pallet_staking::ErasRewardPoints::<Runtime>::insert(
             era,
-            EraRewardPoints {
+            EraRewardPoints::<Runtime> {
                 total: 10,
-                individual: vec![(validator.clone(), 10)].into_iter().collect(),
+                individual: vec![(validator.clone(), 10)]
+                    .into_iter()
+                    .collect::<std::collections::BTreeMap<_, _>>()
+                    .try_into()
+                    .expect("fixture reward points fit validator bound"),
             },
         );
-        pallet_staking::ErasStakersClipped::<Runtime>::insert(
+        pallet_staking::legacy::ErasStakersClipped::<Runtime>::insert(
             era,
             &validator,
             Exposure {
@@ -943,7 +978,7 @@ mod tests {
                     validator_stash.clone(),
                 ))
                 .ok()?;
-                let page = if pallet_staking::ErasStakersClipped::<Runtime>::contains_key(
+                let page = if pallet_staking::legacy::ErasStakersClipped::<Runtime>::contains_key(
                     era,
                     validator_stash,
                 ) {
@@ -1090,7 +1125,7 @@ mod tests {
                     &second_nominator,
                     RewardDestination::Stash,
                 );
-                pallet_staking::ErasStakersClipped::<Runtime>::remove(
+                pallet_staking::legacy::ErasStakersClipped::<Runtime>::remove(
                     fixture.era,
                     &fixture.validator,
                 );
@@ -1164,7 +1199,10 @@ mod tests {
     fn staking_payout_dispatch_self_only_zero_page_count_is_claimable_once() {
         framenode_chain_spec::ext().execute_with(|| {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
-            pallet_staking::ErasStakersClipped::<Runtime>::remove(fixture.era, &fixture.validator);
+            pallet_staking::legacy::ErasStakersClipped::<Runtime>::remove(
+                fixture.era,
+                &fixture.validator,
+            );
             pallet_staking::ErasStakersOverview::<Runtime>::insert(
                 fixture.era,
                 &fixture.validator,
@@ -1194,7 +1232,7 @@ mod tests {
             let actual = dispatch_staking_payout(&fixture).unwrap().actual_weight.unwrap();
             let native = <<Runtime as pallet_staking::Config>::WeightInfo as pallet_staking::WeightInfo>::payout_stakers_alive_staked(0);
             let val = <super::StakingValPayout as pallet_staking::AdditionalPayout<AccountId>>::weight(1);
-            assert_eq!(actual, native.saturating_add(val));
+            assert_eq!(actual, native.saturating_add(val).saturating_add(crate::incident_recovery_origin::weight()));
             assert!(actual.ref_time() > native.ref_time());
             assert!(actual.proof_size() > native.proof_size());
             assert!(declared.all_gte(actual));
@@ -1507,9 +1545,13 @@ mod tests {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
             pallet_staking::ErasRewardPoints::<Runtime>::insert(
                 fixture.era,
-                EraRewardPoints {
+                EraRewardPoints::<Runtime> {
                     total: 20,
-                    individual: vec![(fixture.controller.clone(), 20)].into_iter().collect(),
+                    individual: vec![(fixture.controller.clone(), 20)]
+                        .into_iter()
+                        .collect::<std::collections::BTreeMap<_, _>>()
+                        .try_into()
+                        .expect("fixture reward points fit validator bound"),
                 },
             );
 
@@ -1528,9 +1570,13 @@ mod tests {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
             pallet_staking::ErasRewardPoints::<Runtime>::insert(
                 fixture.era,
-                EraRewardPoints {
+                EraRewardPoints::<Runtime> {
                     total: 20,
-                    individual: vec![(fixture.controller.clone(), 20)].into_iter().collect(),
+                    individual: vec![(fixture.controller.clone(), 20)]
+                        .into_iter()
+                        .collect::<std::collections::BTreeMap<_, _>>()
+                        .try_into()
+                        .expect("fixture reward points fit validator bound"),
                 },
             );
 
@@ -1553,14 +1599,16 @@ mod tests {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
             pallet_staking::ErasRewardPoints::<Runtime>::insert(
                 fixture.era,
-                EraRewardPoints {
+                EraRewardPoints::<Runtime> {
                     total: 30,
                     individual: vec![
                         (fixture.validator.clone(), 10),
                         (fixture.controller.clone(), 20),
                     ]
                     .into_iter()
-                    .collect(),
+                    .collect::<std::collections::BTreeMap<_, _>>()
+                    .try_into()
+                    .expect("fixture reward points fit validator bound"),
                 },
             );
 
@@ -1582,14 +1630,16 @@ mod tests {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
             pallet_staking::ErasRewardPoints::<Runtime>::insert(
                 fixture.era,
-                EraRewardPoints {
+                EraRewardPoints::<Runtime> {
                     total: u32::MAX,
                     individual: vec![
                         (fixture.validator.clone(), u32::MAX),
                         (fixture.controller.clone(), 1),
                     ]
                     .into_iter()
-                    .collect(),
+                    .collect::<std::collections::BTreeMap<_, _>>()
+                    .try_into()
+                    .expect("fixture reward points fit validator bound"),
                 },
             );
 
@@ -1612,9 +1662,13 @@ mod tests {
             let unknown_author = AccountId32::from([99; 32]);
             pallet_staking::ErasRewardPoints::<Runtime>::insert(
                 fixture.era,
-                EraRewardPoints {
+                EraRewardPoints::<Runtime> {
                     total: 20,
-                    individual: vec![(unknown_author.clone(), 20)].into_iter().collect(),
+                    individual: vec![(unknown_author.clone(), 20)]
+                        .into_iter()
+                        .collect::<std::collections::BTreeMap<_, _>>()
+                        .try_into()
+                        .expect("fixture reward points fit validator bound"),
                 },
             );
 
@@ -1641,9 +1695,13 @@ mod tests {
 
             pallet_staking::ErasRewardPoints::<Runtime>::insert(
                 fixture.era,
-                EraRewardPoints {
+                EraRewardPoints::<Runtime> {
                     total: 20,
-                    individual: vec![(fixture.controller.clone(), 20)].into_iter().collect(),
+                    individual: vec![(fixture.controller.clone(), 20)]
+                        .into_iter()
+                        .collect::<std::collections::BTreeMap<_, _>>()
+                        .try_into()
+                        .expect("fixture reward points fit validator bound"),
                 },
             );
             crate::migrations::RemapStakingRewardPointsToStash::on_runtime_upgrade();
@@ -1907,9 +1965,13 @@ mod tests {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
             pallet_staking::ErasRewardPoints::<Runtime>::insert(
                 fixture.era,
-                EraRewardPoints {
+                EraRewardPoints::<Runtime> {
                     total: 0,
-                    individual: vec![(fixture.validator.clone(), 10)].into_iter().collect(),
+                    individual: vec![(fixture.validator.clone(), 10)]
+                        .into_iter()
+                        .collect::<std::collections::BTreeMap<_, _>>()
+                        .try_into()
+                        .expect("fixture reward points fit validator bound"),
                 },
             );
             let call = payout_stakers_call(&fixture);
@@ -1927,7 +1989,7 @@ mod tests {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
             pallet_staking::ErasRewardPoints::<Runtime>::insert(
                 fixture.era,
-                EraRewardPoints {
+                EraRewardPoints::<Runtime> {
                     total: 10,
                     individual: Default::default(),
                 },
@@ -1948,11 +2010,13 @@ mod tests {
             let other_validator = AccountId32::from([47; 32]);
             pallet_staking::ErasRewardPoints::<Runtime>::insert(
                 fixture.era,
-                EraRewardPoints {
+                EraRewardPoints::<Runtime> {
                     total: 20,
                     individual: vec![(fixture.validator.clone(), 5), (other_validator, 15)]
                         .into_iter()
-                        .collect(),
+                        .collect::<std::collections::BTreeMap<_, _>>()
+                        .try_into()
+                        .expect("fixture reward points fit validator bound"),
                 },
             );
             let call = payout_stakers_call(&fixture);
@@ -2247,7 +2311,10 @@ mod tests {
     fn staking_payout_handles_self_only_zero_page_count_overview() {
         framenode_chain_spec::ext().execute_with(|| {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
-            pallet_staking::ErasStakersClipped::<Runtime>::remove(fixture.era, &fixture.validator);
+            pallet_staking::legacy::ErasStakersClipped::<Runtime>::remove(
+                fixture.era,
+                &fixture.validator,
+            );
             pallet_staking::ErasStakersOverview::<Runtime>::insert(
                 fixture.era,
                 &fixture.validator,
@@ -2277,7 +2344,7 @@ mod tests {
     fn staking_payout_pre_dispatch_skips_claimed_paged_pages() {
         framenode_chain_spec::ext().execute_with(|| {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
-            pallet_staking::ErasStakersClipped::<Runtime>::remove(fixture.era, &fixture.validator);
+            pallet_staking::legacy::ErasStakersClipped::<Runtime>::remove(fixture.era, &fixture.validator);
             pallet_staking::ErasStakersOverview::<Runtime>::insert(
                 fixture.era,
                 &fixture.validator,
@@ -2291,7 +2358,7 @@ mod tests {
             pallet_staking::ClaimedRewards::<Runtime>::insert(
                 fixture.era,
                 &fixture.validator,
-                vec![0],
+                frame_support::WeakBoundedVec::<_, pallet_staking::ClaimedRewardsBound<Runtime>>::force_from(vec![0], None),
             );
 
             let pre = staking_payout_pre(&payout_stakers_call(&fixture))
@@ -2305,7 +2372,7 @@ mod tests {
     fn staking_payout_pre_dispatch_rejects_fully_claimed_paged_exposure() {
         framenode_chain_spec::ext().execute_with(|| {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
-            pallet_staking::ErasStakersClipped::<Runtime>::remove(fixture.era, &fixture.validator);
+            pallet_staking::legacy::ErasStakersClipped::<Runtime>::remove(fixture.era, &fixture.validator);
             pallet_staking::ErasStakersOverview::<Runtime>::insert(
                 fixture.era,
                 &fixture.validator,
@@ -2319,7 +2386,7 @@ mod tests {
             pallet_staking::ClaimedRewards::<Runtime>::insert(
                 fixture.era,
                 &fixture.validator,
-                vec![0, 1],
+                frame_support::WeakBoundedVec::<_, pallet_staking::ClaimedRewardsBound<Runtime>>::force_from(vec![0, 1], None),
             );
 
             assert!(staking_payout_pre(&payout_stakers_call(&fixture)).is_none());
@@ -2331,7 +2398,10 @@ mod tests {
     fn staking_payout_pre_dispatch_rejects_empty_paged_overview() {
         framenode_chain_spec::ext().execute_with(|| {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
-            pallet_staking::ErasStakersClipped::<Runtime>::remove(fixture.era, &fixture.validator);
+            pallet_staking::legacy::ErasStakersClipped::<Runtime>::remove(
+                fixture.era,
+                &fixture.validator,
+            );
             pallet_staking::ErasStakersOverview::<Runtime>::insert(
                 fixture.era,
                 &fixture.validator,
@@ -2352,7 +2422,7 @@ mod tests {
     fn staking_payout_hook_zero_total_exposure_mints_nothing() {
         framenode_chain_spec::ext().execute_with(|| {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
-            pallet_staking::ErasStakersClipped::<Runtime>::insert(
+            pallet_staking::legacy::ErasStakersClipped::<Runtime>::insert(
                 fixture.era,
                 &fixture.validator,
                 Exposure {
@@ -2379,9 +2449,13 @@ mod tests {
             let fixture = setup_staking_payout_fixture(Some(1));
             pallet_staking::ErasRewardPoints::<Runtime>::insert(
                 fixture.era,
-                EraRewardPoints {
+                EraRewardPoints::<Runtime> {
                     total: 10,
-                    individual: vec![(fixture.validator.clone(), 1)].into_iter().collect(),
+                    individual: vec![(fixture.validator.clone(), 1)]
+                        .into_iter()
+                        .collect::<std::collections::BTreeMap<_, _>>()
+                        .try_into()
+                        .expect("fixture reward points fit validator bound"),
                 },
             );
             let call = payout_stakers_call(&fixture);
@@ -2419,7 +2493,7 @@ mod tests {
             pallet_staking::ClaimedRewards::<Runtime>::insert(
                 fixture.era,
                 &fixture.validator,
-                vec![0],
+                frame_support::WeakBoundedVec::<_, pallet_staking::ClaimedRewardsBound<Runtime>>::force_from(vec![0], None),
             );
             let call = RuntimeCall::Staking(pallet_staking::Call::payout_stakers_by_page {
                 validator_stash: fixture.validator.clone(),
@@ -2849,6 +2923,8 @@ mod tests {
 /// The bridge exception is tied to authenticated protocol progress, never to
 /// peer identity alone. Invalid or replayed candidates are rejected before
 /// fee withdrawal and before dispatch in both pool validation and pre-dispatch.
+/// The one identity-based exception is a guardian's `BridgeHalt::halt`, and it
+/// is admitted at most once per halt cooldown (`BridgeHaltCooldown` blocks).
 pub fn validate_bridge_fee_exemption(
     who: &AccountId,
     call: &RuntimeCall,
@@ -2858,7 +2934,21 @@ pub fn validate_bridge_fee_exemption(
     let invalid = |_| {
         sp_runtime::transaction_validity::TransactionValidityError::from(InvalidTransaction::Call)
     };
+    // Reject retired signers before proof-based fee exemption. A dispatch-only
+    // guard would allow free repeated failed submissions of someone else's proof.
+    if crate::incident_recovery::account_retired(who) {
+        return Err(InvalidTransaction::BadSigner.into());
+    }
     match call {
+        // Guardians halt the bridge workers without paying. Any other signer, and
+        // a repeat within the cooldown, is rejected here: that transaction never
+        // reaches a block, so it changes nothing and costs nothing.
+        // Wrapped halts fall through to ordinary fees, and operational_admission
+        // rejects them unless the account they dispatch as could halt.
+        RuntimeCall::BridgeHalt(bridge_halt::Call::halt { .. }) => {
+            BridgeHalt::validate_halt(who)?;
+            return Ok(true);
+        }
         RuntimeCall::BridgeInboundChannel(bridge_channel::inbound::Call::submit {
             network_id,
             commitment,
@@ -2881,6 +2971,22 @@ pub fn validate_bridge_fee_exemption(
         }
         RuntimeCall::EthBridge(protocol) => {
             return EthBridge::validate_peer_protocol_call(who, protocol).map_err(invalid)
+        }
+        #[cfg(feature = "wip")]
+        RuntimeCall::XorFee(xor_fee::Call::xorless_call { call, .. }) => {
+            // xorless preserves the signed origin. Follow only these wrappers;
+            // other wrappers may change origin or enforce their own admission.
+            let mut inner = call.as_ref();
+            while let RuntimeCall::XorFee(xor_fee::Call::xorless_call { call: nested, .. }) = inner
+            {
+                inner = nested.as_ref();
+            }
+            if let RuntimeCall::EthBridge(protocol) = inner {
+                EthBridge::validate_peer_protocol_call(who, protocol).map_err(invalid)?;
+            }
+            // Nested protocol validation must not grant the outer wrapper a
+            // fee exemption, even when a direct protocol call would be free.
+            return Ok(false);
         }
         _ => {}
     }
@@ -2963,7 +3069,7 @@ pub fn validate_bridge_fee_exemption(
                 || BridgeMultisig::accounts(id)
                     .map(|account| account.threshold_num() <= 1 || !account.is_signatory(who))
                     .unwrap_or(true)
-                || bridge_multisig::DispatchedCalls::<Runtime>::contains_key(call_hash, timepoint)
+                || BridgeMultisig::was_dispatched(id, call_hash, *timepoint)
             {
                 return Err(InvalidTransaction::Call.into());
             }
@@ -2985,9 +3091,8 @@ pub fn validate_bridge_fee_exemption(
     {
         return Ok(false);
     }
-    if !EthBridge::validate_peer_protocol_call(id, protocol).map_err(invalid)? {
-        return Ok(false);
-    }
+    // The operation filter validates protocol state and the canonical timepoint
+    // together, matching dispatch admission without repeating the bridge reads.
     BridgeMultisig::validate_protocol_operation(
         who,
         id,

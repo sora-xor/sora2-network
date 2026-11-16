@@ -27,7 +27,7 @@ const MARKER = stringToHex('runtime:migrations:val_staking_rewards_published');
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const report = { status: 'running', startedAt: new Date().toISOString(), localOnly: true, endpoint: opts.endpoint,
   pinnedBlockHash: snapshot.blockHash, pinnedBlockNumber: snapshot.blockNumber,
-  executor: '@acala-network/chopsticks-core@1.5.1', mockSignatureHost: true, allowUnresolvedImports: true,
+  executor: '@acala-network/chopsticks-core@1.5.2', mockSignatureHost: true, allowUnresolvedImports: true,
   offchainWorker: false, submittedTransactions: 0, privateKeysRead: 0, realSignatures: 0, remoteRpcMethods: {},
   constraints: [
     'Public RPC supplies block-hash-pinned state. The public provider accepts only enumerated read-only methods.',

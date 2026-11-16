@@ -331,7 +331,7 @@ fn should_get_all_limit_orders(data: &mut (impl DataLayer<Runtime> + StoragePush
         data.reset();
 
         let mut orders = data.get_all_limit_orders(&order_book_id);
-        orders.sort_by(|a, b| a.id.cmp(&b.id));
+        orders.sort_by_key(|a| a.id);
 
         let expected_orders = vec![
             order_buy1,
@@ -747,7 +747,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             BTreeMap::from([(price1, double_amount), (price2, amount)])
         );
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![
                 order_buy_id1,
                 order_buy_id2,
@@ -819,7 +819,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             BTreeMap::from([(price1, amount), (price2, amount)])
         );
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_buy_id1, order_buy_id2, order_sell_id2, order_sell_id3]
         );
 
@@ -886,7 +886,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             BTreeMap::from([(price1, amount), (price2, amount)])
         );
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_buy_id2, order_sell_id2, order_sell_id3]
         );
 
@@ -944,7 +944,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             BTreeMap::from([(price1, amount), (price2, amount)])
         );
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_sell_id2, order_sell_id3]
         );
 
@@ -996,7 +996,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             BTreeMap::from([(price1, amount)])
         );
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&owner, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id).unwrap(),
             vec![order_sell_id2]
         );
 
@@ -1036,7 +1036,7 @@ fn should_delete_limit_order(data: &mut (impl DataLayer<Runtime> + StoragePush))
             BTreeMap::from([])
         );
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&owner, &order_book_id),
+            OrderBookPallet::user_limit_orders(&owner, order_book_id),
             None
         );
     });

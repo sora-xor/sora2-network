@@ -1,0 +1,3 @@
+*.snap
+.public-read-cache.json.gz
+node_modules/

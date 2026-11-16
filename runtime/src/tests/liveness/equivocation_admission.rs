@@ -181,7 +181,7 @@ fn captured_mainnet_historical_work_admits_all_four_equivocation_calls() {
         let validators = Validators::new();
         let mut overview_count = 0;
         for &(era, start_session, validator_count, total_rows, largest) in CAPTURED_ERAS {
-            pallet_staking::ErasStartSessionIndex::<Runtime>::insert(era, start_session);
+            pallet_staking::legacy::ErasStartSessionIndex::<Runtime>::insert(era, start_session);
             for index in 0..validator_count {
                 // Preserve both the era's aggregate workload and the largest
                 // individual exposure; repeated nominators across validators
@@ -194,7 +194,7 @@ fn captured_mainnet_historical_work_admits_all_four_equivocation_calls() {
                         + u32::from(index - 1 < remainder % (validator_count - 1))
                 };
                 let account = AccountId::from([index as u8 + 150; 32]);
-                EraInfo::<Runtime>::set_exposure(
+                set_exposure(
                     era,
                     &account,
                     Exposure {
@@ -220,10 +220,13 @@ fn captured_mainnet_historical_work_admits_all_four_equivocation_calls() {
         });
         pallet_staking::CurrentEra::<Runtime>::put(7637);
         pallet_staking::BondedEras::<Runtime>::put(
-            CAPTURED_ERAS
-                .iter()
-                .map(|&(era, session, _, _, _)| (era, session))
-                .collect::<Vec<_>>(),
+            frame_support::BoundedVec::<_, pallet_staking::BondedErasBound<Runtime>>::try_from(
+                CAPTURED_ERAS
+                    .iter()
+                    .map(|&(era, session, _, _, _)| (era, session))
+                    .collect::<Vec<_>>(),
+            )
+            .unwrap(),
         );
         validators.start_session(47126);
         let work = crate::liveness::ExposureWork::<Runtime>::get()
@@ -258,7 +261,7 @@ fn real_large_exposure_work_is_not_undercharged_to_force_admission() {
     ext().execute_with(|| {
         let validators = Validators::new();
         let rows = crate::MaxNominators::get();
-        EraInfo::<Runtime>::set_exposure(
+        set_exposure(
             ERA,
             &validators.accounts[0],
             Exposure {
@@ -272,7 +275,7 @@ fn real_large_exposure_work_is_not_undercharged_to_force_admission() {
             .expect("large exposures have bounded metadata even when their work exceeds a block");
         assert_eq!(work.max_nomination_edges, rows + VALIDATORS - 1);
         assert_eq!(
-            Staking::eras_stakers(ERA, &validators.accounts[0])
+            EraInfo::<Runtime>::get_full_exposure(ERA, &validators.accounts[0])
                 .others
                 .len(),
             rows as usize
@@ -410,7 +413,7 @@ fn valid_signed_babe_reports_pass_admission_and_dispatch_in_a_batch() {
             let slot = (first_slot..first_slot + crate::EpochDuration::get())
                 .find(|slot| {
                     let digest = (randomness, sp_consensus_babe::Slot::from(*slot))
-                        .using_encoded(sp_core::blake2_256);
+                        .using_encoded(sp_io::hashing::blake2_256);
                     (sp_core::U256::from_big_endian(&digest) % sp_core::U256::from(VALIDATORS))
                         .as_u32()
                         == index

@@ -54,10 +54,12 @@ mod tests;
 
 pub mod weights;
 
+mod iroha_crypto;
+
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{FromGenericPair, VAL};
-use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
+use ed25519_dalek::{Signature, VerifyingKey as PublicKey, SIGNATURE_LENGTH};
 use frame_support::dispatch::Pays;
 use frame_support::ensure;
 use frame_support::sp_runtime::traits::Zero;
@@ -68,7 +70,6 @@ use frame_system::ensure_signed;
 use frame_system::pallet_prelude::BlockNumberFor;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sha3::Sha3_256;
 use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
@@ -165,7 +166,7 @@ impl<T: Config> Pallet<T> {
     fn parse_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
         let iroha_public_key =
             hex::decode(&iroha_public_key).map_err(|_| Error::<T>::PublicKeyParsingFailed)?;
-        let public_key = PublicKey::from_bytes(iroha_public_key.as_slice())
+        let public_key = PublicKey::try_from(iroha_public_key.as_slice())
             .map_err(|_| Error::<T>::PublicKeyParsingFailed)?;
         Ok(public_key)
     }
@@ -189,10 +190,7 @@ impl<T: Config> Pallet<T> {
         let public_key = Self::parse_public_key(iroha_public_key)?;
         let signature = Self::parse_signature(iroha_signature)?;
         let message = Self::migration_signing_message(iroha_address, iroha_public_key, account);
-        let mut prehashed_message = Sha3_256::default();
-        prehashed_message.update(&message[..]);
-        public_key
-            .verify_prehashed(prehashed_message, None, &signature)
+        iroha_crypto::verify(&public_key, message.as_bytes(), &signature)
             .map_err(|_| Error::<T>::SignatureVerificationFailed)?;
         Ok(())
     }

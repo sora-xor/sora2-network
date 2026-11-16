@@ -15,7 +15,7 @@ const option = (name, fallback) => {
   const index = argv.indexOf(name);
   return index < 0 ? fallback : argv[index + 1];
 };
-const dependencies = resolve(option('--dependencies', '/tmp/sora-payout-runtime-hunt/package.json'));
+const dependencies = resolve(option('--dependencies', resolve(__dirname, 'rehearsal-package.json')));
 const localRequire = createRequire(dependencies);
 const { StorageKey } = localRequire('@polkadot/types');
 const { u8aToHex, hexToU8a } = localRequire('@polkadot/util');
@@ -33,7 +33,7 @@ assert(opts.wasm, '--wasm is required');
 assert(/^0x[0-9a-f]{64}$/i.test(opts.block), 'A pinned upstream block hash is required');
 const report = {
   startedAt: new Date().toISOString(), status: 'running', endpoint: opts.endpoint,
-  pinnedBlockHash: opts.block, executor: '@acala-network/chopsticks-core@1.5.1',
+  pinnedBlockHash: opts.block, executor: '@acala-network/chopsticks-core@1.5.2',
   dependencyManifest: dependencies, localOnly: true, submittedTransactions: 0,
   executedExtrinsics: 0, realSignatures: 0, mockSignatureHost: true,
   allowUnresolvedImports: true, offchainWorker: false, remoteRpcMethods: {},

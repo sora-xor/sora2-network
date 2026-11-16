@@ -72,17 +72,21 @@ pub struct ForkOffCmd {
 
 fn get_storage_prefix(pallet: &str, storage: &str) -> Vec<u8> {
     [
-        sp_core::twox_128(pallet.as_bytes()),
-        sp_core::twox_128(storage.as_bytes()),
+        sp_io::hashing::twox_128(pallet.as_bytes()),
+        sp_io::hashing::twox_128(storage.as_bytes()),
     ]
     .concat()
 }
 
 fn get_pallet_prefix(pallet: &str) -> Vec<u8> {
-    sp_core::twox_128(pallet.as_bytes()).to_vec()
+    sp_io::hashing::twox_128(pallet.as_bytes()).to_vec()
 }
 
 impl ForkOffCmd {
+    #[expect(
+        clippy::result_large_err,
+        reason = "preserve the upstream SDK CLI result type required by the command runner"
+    )]
     pub async fn run(&self, mut cfg: Configuration) -> Result<(), sc_cli::Error> {
         let maybe_state_snapshot: Option<SnapshotConfig> = self.snapshot.clone().map(|s| s.into());
         let mut ext: RemoteExternalities<framenode_runtime::Block> =

@@ -44,9 +44,9 @@ use common::{
     VAL, XOR,
 };
 use frame_support::assert_noop;
-use frame_support::error::BadOrigin;
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
+use sp_runtime::traits::BadOrigin;
 use sp_runtime::traits::Zero;
 
 #[test]

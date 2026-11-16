@@ -1,0 +1,19 @@
+{
+  "package": "@polkadot/rpc-provider",
+  "version": "16.5.6",
+  "dist": {
+    "shasum": "e6cc8d5fff1e2f6606759e05cb778fc74953f345",
+    "tarball": "https://registry.npmjs.org/@polkadot/rpc-provider/-/rpc-provider-16.5.6.tgz",
+    "fileCount": 84,
+    "integrity": "sha512-46sHIjKYr4aSzBCfbyqtCwuP8MMJ3jOp0xx9eggOGbKyP8Z0j0Cp+1nNkZUYzehcdGjjrmCxCbQp17wc6cj4zA==",
+    "signatures": [
+      {
+        "sig": "MEYCIQDtnlSJ8oI028MpjZMi6lKUAE0WiC7y/WmVZcM04+dBqQIhAKCnVt/x+w0ehN5b1KjT2LQlr8gWoQWaOke8l/9Qi2Dn",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "unpackedSize": 199812
+  },
+  "gitHead": "dd76109c422f4f872d25c4939f11a3638b531eea",
+  "archive_sha256": "0c7ad0a8405e9ab2b3e13a46941be181097987012d9283ff618978f9c171f9a1"
+}

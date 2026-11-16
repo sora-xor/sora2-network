@@ -1,0 +1,52 @@
+{
+  "name": "@acala-network/chopsticks-core",
+  "version": "1.5.2",
+  "author": "Acala Developers <hello@acala.network>",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=v22"
+  },
+  "dependencies": {
+    "@acala-network/chopsticks-executor": "file:../chopsticks-executor",
+    "@polkadot/rpc-provider": "^16.4.1",
+    "@polkadot/types": "^16.4.1",
+    "@polkadot/types-codec": "^16.4.1",
+    "@polkadot/types-known": "^16.4.1",
+    "@polkadot/util": "^14.0.1",
+    "@polkadot/util-crypto": "^14.0.1",
+    "comlink": "^4.4.2",
+    "eventemitter3": "^5.0.1",
+    "lodash": "^4.18.1",
+    "lru-cache": "^11.1.0",
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0",
+    "rxjs": "^7.8.2",
+    "zod": "4.6.7"
+  },
+  "files": [
+    "dist/esm/**",
+    "dist/cjs/**",
+    "UPSTREAM.json",
+    "SORA-PATCH.md",
+    "LICENSE"
+  ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js",
+      "default": "./dist/esm/index.js"
+    },
+    "./*": {
+      "require": "./dist/cjs/*.js",
+      "import": "./dist/esm/*.js",
+      "default": "./dist/esm/*.js"
+    }
+  },
+  "browser": {
+    "./dist/cjs/wasm-executor/node-worker.js": "./dist/cjs/wasm-executor/browser-worker.js",
+    "./dist/esm/wasm-executor/node-worker.js": "./dist/esm/wasm-executor/browser-worker.js"
+  }
+}

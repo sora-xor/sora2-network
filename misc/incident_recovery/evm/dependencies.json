@@ -1,0 +1,30 @@
+{
+  "schema": "sora-nexus-repository-keccak-policy-v1",
+  "package": "@noble/hashes",
+  "version": "1.8.0",
+  "files": [
+    {
+      "file": "package.json",
+      "sha256": "7c4657c5e616c22cefa2691cc30670824a639dc71d97bf83925be2d239dc60e3"
+    },
+    {
+      "file": "sha3.js",
+      "sha256": "313da3570150e80b02c3631508ba99099438d2daff641b9cadb2198e0f1d18ec"
+    },
+    {
+      "file": "_u64.js",
+      "sha256": "9b109bb57c0d8852bda12136f0f588ffea2a1a3c0f4241bdbb3727cd449976ae"
+    },
+    {
+      "file": "utils.js",
+      "sha256": "7edf19720c345e1cb76e8d3a9306f3344457d4e03576bbb0b3e1ffd0a42d0d30"
+    },
+    {
+      "file": "cryptoNode.js",
+      "sha256": "7d96258d2ff9da048ceb1fe88fb68172c5f952e461dda65fd08f30e20b5416ae"
+    }
+  ],
+  "newDependenciesInstalled": false,
+  "resolutionPackage": "../../../runtime-rehearsal-async-staking-2026-10-25/validation/package.json",
+  "lockfile": "../../../runtime-rehearsal-async-staking-2026-10-25/validation/package-lock.json"
+}

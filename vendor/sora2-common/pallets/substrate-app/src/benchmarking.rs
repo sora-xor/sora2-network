@@ -61,6 +61,7 @@ benchmarks! {
 
     incoming_thischain_asset_registration {
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
+        SubstrateApp::<T>::authorize_asset_registration(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), GenericAssetId::Liberland(bridge_types::LiberlandAssetId::LLD), AssetKind::Thischain)?;
     }: {
         SubstrateApp::<T>::incoming_thischain_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), GenericAssetId::Liberland(bridge_types::LiberlandAssetId::LLD))?
     }
@@ -70,7 +71,7 @@ benchmarks! {
 
     finalize_asset_registration {
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_sidechain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, GenericAssetId::Sora([0; 32].into()), Default::default(), Default::default())?;
+        SubstrateApp::<T>::authorize_asset_registration(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), GenericAssetId::Sora([0; 32].into()), AssetKind::Thischain)?;
     }: {
         SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), GenericAssetId::Sora([0; 32].into()), AssetKind::Thischain, 12)?;
     }
@@ -81,7 +82,7 @@ benchmarks! {
     mint {
         let who = whitelisted_caller::<T::AccountId>();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_sidechain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, GenericAssetId::Sora([0; 32].into()), Default::default(), Default::default())?;
+        SubstrateApp::<T>::authorize_asset_registration(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), GenericAssetId::Sora([0; 32].into()), AssetKind::Thischain)?;
         SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), GenericAssetId::Sora([0; 32].into()), AssetKind::Thischain, 18)?;
         Currencies::<T>::deposit(asset_id.clone(), &who, 1000u32.into())?;
         T::BridgeAssetLocker::lock_asset(BASE_NETWORK_ID.into(), AssetKind::Thischain, &who, &asset_id, &1000u32.into())?;
@@ -96,6 +97,7 @@ benchmarks! {
         let who = whitelisted_caller::<T::AccountId>();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
         <T as Config>::AssetRegistry::manage_asset(BASE_NETWORK_ID.into(), asset_id.clone())?;
+        SubstrateApp::<T>::authorize_asset_registration(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), GenericAssetId::Liberland(bridge_types::LiberlandAssetId::LLD), AssetKind::Thischain)?;
         SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), GenericAssetId::Liberland(bridge_types::LiberlandAssetId::LLD), AssetKind::Thischain, 18)?;
         Currencies::<T>::deposit(asset_id.clone(), &who, 1000u32.into())?;
     }: _(RawOrigin::Signed(

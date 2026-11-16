@@ -1,0 +1,141 @@
+--- /dev/null
++++ b/.rustfmt.toml
+@@ -0,0 +1,26 @@
++# Basic
++edition = "2021"
++hard_tabs = true
++max_width = 100
++use_small_heuristics = "Max"
++# Imports
++imports_granularity = "Crate"
++reorder_imports = true
++# Consistency
++newline_style = "Unix"
++normalize_comments = true
++normalize_doc_attributes = true
++# Misc
++chain_width = 80
++spaces_around_ranges = false
++binop_separator = "Back"
++reorder_impl_items = false
++match_arm_leading_pipes = "Never"
++match_arm_blocks = true
++match_block_trailing_comma = true
++trailing_comma = "Vertical"
++trailing_semicolon = true
++use_field_init_shorthand = true
++# Format comments
++comment_width = 100
++wrap_comments = true
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -445,8 +445,6 @@
+ 		JudgementGiven { target: T::AccountId, registrar_index: RegistrarIndex },
+ 		/// A registrar was added.
+ 		RegistrarAdded { registrar_index: RegistrarIndex },
+-		/// A registrar was removed.
+-		RegistrarRemoved { registrar_index: RegistrarIndex },
+ 		/// A sub-identity was added to an identity and the deposit paid.
+ 		SubIdentityAdded { sub: T::AccountId, main: T::AccountId, deposit: BalanceOf<T> },
+ 		/// An account's sub-identities were set (in bulk).
+@@ -479,6 +477,9 @@
+ 		UsernameRemoved { username: Username<T> },
+ 		/// A username has been killed.
+ 		UsernameKilled { username: Username<T> },
++		// Append new events so existing SORA Nexus event discriminants remain stable.
++		/// A registrar was removed.
++		RegistrarRemoved { registrar_index: RegistrarIndex },
+ 	}
+ 
+ 	#[pallet::call]
+--- a/src/migration.rs
++++ b/src/migration.rs
+@@ -500,18 +500,19 @@
+ 		// Migrate one entry from `IdentityOf` to `UsernameOf`, if it has a username associated with
+ 		// it. Remove the entry if there was no real identity associated with the account.
+ 		pub(crate) fn identity_step(maybe_last_key: Option<HashedKey>) -> StepResultOf<T> {
+-			if let Some(mut last_key) =
+-				IdentityOf::<T>::translate_next::<
+-					(
+-						Registration<
+-							BalanceOf<T>,
+-							<T as pallet::Config>::MaxRegistrars,
+-							<T as pallet::Config>::IdentityInformation,
+-						>,
+-						Option<Username<T>>,
+-					),
+-					_,
+-				>(maybe_last_key.map(|b| b.to_vec()), |account, (identity, maybe_username)| {
++			if let Some(mut last_key) = IdentityOf::<T>::translate_next::<
++				(
++					Registration<
++						BalanceOf<T>,
++						<T as pallet::Config>::MaxRegistrars,
++						<T as pallet::Config>::IdentityInformation,
++					>,
++					Option<Username<T>>,
++				),
++				_,
++			>(
++				maybe_last_key.map(|b| b.to_vec()),
++				|account, (identity, maybe_username)| {
+ 					if let Some(primary_username) = maybe_username {
+ 						UsernameOf::<T>::insert(&account, primary_username);
+ 					}
+@@ -520,7 +521,8 @@
+ 					} else {
+ 						None
+ 					}
+-				}) {
++				},
++			) {
+ 				last_key.truncate(HashedKey::bound());
+ 				MigrationState::Identity(
+ 					HashedKey::try_from(last_key)
+--- a/src/tests.rs
++++ b/src/tests.rs
+@@ -2388,3 +2388,44 @@
+ 		);
+ 	});
+ }
++
++#[test]
++fn existing_identity_event_indices_survive_sdk_upgrade() {
++	// These discriminants are the deployed stable2603 contract. New events must append.
++	let expected = [
++		"IdentitySet",
++		"IdentityCleared",
++		"IdentityKilled",
++		"JudgementRequested",
++		"JudgementUnrequested",
++		"JudgementGiven",
++		"RegistrarAdded",
++		"SubIdentityAdded",
++		"SubIdentitiesSet",
++		"SubIdentityRenamed",
++		"SubIdentityRemoved",
++		"SubIdentityRevoked",
++		"AuthorityAdded",
++		"AuthorityRemoved",
++		"UsernameSet",
++		"UsernameQueued",
++		"PreapprovalExpired",
++		"PrimaryUsernameSet",
++		"DanglingUsernameRemoved",
++		"UsernameUnbound",
++		"UsernameRemoved",
++		"UsernameKilled",
++	];
++	let info = <Event<Test> as scale_info::TypeInfo>::type_info();
++	let scale_info::TypeDef::Variant(variants) = info.type_def else {
++		panic!("identity events must remain an enum");
++	};
++	for (index, name) in expected.into_iter().enumerate() {
++		let variant = variants.variants.iter().find(|v| v.name == name).unwrap();
++		assert_eq!(variant.index as usize, index, "event index changed for {name}");
++	}
++	assert_eq!(
++		Event::<Test>::RegistrarRemoved { registrar_index: 7 }.encode(),
++		vec![22, 7, 0, 0, 0]
++	);
++}

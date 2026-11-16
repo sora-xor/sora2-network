@@ -1,41 +1,165 @@
-[package]
-name = "pallet-multisig-upstream"
-version = "45.0.0"
-authors = ["Parity Technologies <admin@parity.io>"]
-edition = "2021"
-license = "Apache-2.0"
-homepage = "https://paritytech.github.io/polkadot-sdk/"
-repository = "https://github.com/paritytech/polkadot-sdk.git"
-description = "FRAME multi-signature dispatch pallet"
-readme = "README.md"
+# Vendored from polkadot-stable2609; see SORA-PATCH.md.
 
-[package.metadata.docs.rs]
-targets = ["x86_64-unknown-linux-gnu"]
+["package"]
+"name" = "pallet-multisig-upstream"
+"version" = "50.0.0"
+"authors" = ["Parity Technologies <admin@parity.io>"]
+"edition" = "2021"
+"license" = "Apache-2.0"
+"homepage" = "https://paritytech.github.io/polkadot-sdk/"
+"repository" = "https://github.com/paritytech/polkadot-sdk.git"
+"description" = "FRAME multi-signature dispatch pallet"
+"readme" = "README.md"
 
-[dependencies]
-codec = { package = "parity-scale-codec", version = "3.6.5", default-features = false, features = ["derive", "max-encoded-len"] }
-frame = { package = "polkadot-sdk-frame", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false, features = ["runtime"] }
-scale-info = { version = "2.10.0", default-features = false, features = ["derive"] }
+["package"."metadata"]
 
-# third party
-log = { version = "0.4.20", default-features = false }
+["package"."metadata"."docs"]
 
-[dev-dependencies]
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = true }
+["package"."metadata"."docs"."rs"]
+"targets" = ["x86_64-unknown-linux-gnu"]
 
-[features]
-default = ["std"]
-std = [
-	"codec/std",
-	"frame/std",
-	"log/std",
-	"scale-info/std",
-]
-runtime-benchmarks = [
-	"frame/runtime-benchmarks",
-	"pallet-balances/runtime-benchmarks",
-]
-try-runtime = [
-	"frame/try-runtime",
-	"pallet-balances/try-runtime",
-]
+["lints"]
+
+["lints"."rust"]
+
+["lints"."rust"."suspicious_double_ref_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."rust"."unexpected_cfgs"]
+"level" = "warn"
+"check-cfg" = ["cfg(build_opt_level, values(\"3\"))", "cfg(build_profile, values(\"debug\", \"release\"))", "cfg(enable_alloc_error_handler)", "cfg(fuzzing)", "cfg(ignore_flaky_test)", "cfg(revive_debug)", "cfg(substrate_runtime)"]
+
+["lints"."clippy"]
+
+["lints"."clippy"."all"]
+"level" = "allow"
+"priority" = 0
+
+["lints"."clippy"."bind_instead_of_map"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."borrowed-box"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."complexity"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."correctness"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."default_constructed_unit_structs"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."derivable_impls"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."eq_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."erasing_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."extra-unused-type-parameters"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."identity-op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."if-same-then-else"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless-lifetimes"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless_option_as_deref"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."nonminimal-bool"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."option-map-unit-fn"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."stable_sort_primitive"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."too-many-arguments"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."type_complexity"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unit_arg"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unnecessary_cast"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."useless_conversion"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."while_immutable_condition"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."zero-prefixed-literal"]
+"level" = "allow"
+"priority" = 2
+
+["dependencies"]
+
+["dependencies"."codec"]
+"version" = "3.7.5"
+"default-features" = false
+"package" = "parity-scale-codec"
+
+["dependencies"."frame"]
+"default-features" = false
+"package" = "polkadot-sdk-frame"
+"features" = ["runtime"]
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."scale-info"]
+"version" = "2.11.6"
+"default-features" = false
+"features" = ["derive"]
+
+["dependencies"."log"]
+"version" = "0.4.22"
+"default-features" = false
+
+["dev-dependencies"]
+
+["dev-dependencies"."pallet-balances"]
+"default-features" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["features"]
+"default" = ["std"]
+"std" = ["codec/std", "frame/std", "log/std", "scale-info/std"]
+"runtime-benchmarks" = ["frame/runtime-benchmarks", "pallet-balances/runtime-benchmarks"]
+"try-runtime" = ["frame/try-runtime", "pallet-balances/try-runtime"]

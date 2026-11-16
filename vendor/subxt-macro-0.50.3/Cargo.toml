@@ -1,0 +1,118 @@
+# Based on crates.io subxt-macro-0.50.3; see SORA-PATCH.md.
+["package"]
+"edition" = "2024"
+"rust-version" = "1.88.0"
+"name" = "subxt-macro"
+"version" = "0.50.3"
+"authors" = ["Parity Technologies <admin@parity.io>"]
+"build" = false
+"publish" = true
+"autolib" = false
+"autobins" = false
+"autoexamples" = false
+"autotests" = false
+"autobenches" = false
+"description" = "Generate types and helpers for interacting with Substrate runtimes."
+"homepage" = "https://www.parity.io/"
+"documentation" = "https://docs.rs/subxt"
+"readme" = false
+"license" = "Apache-2.0 OR GPL-3.0"
+"repository" = "https://github.com/paritytech/subxt"
+"resolver" = "2"
+
+["features"]
+"runtime-metadata-insecure-url" = ["subxt-utils-fetchmetadata/url"]
+"runtime-wasm-path" = ["sc-executor", "sc-executor-common", "sp-maybe-compressed-blob", "sp-io", "sp-state-machine"]
+"web" = ["subxt-codegen/web"]
+
+["lib"]
+"name" = "subxt_macro"
+"path" = "src/lib.rs"
+"proc-macro" = true
+
+["dependencies"]
+
+["dependencies"."codec"]
+"version" = "3.7.4"
+"default-features" = false
+"package" = "parity-scale-codec"
+
+["dependencies"."darling"]
+"version" = "0.20.10"
+
+["dependencies"."quote"]
+"version" = "1.0.37"
+
+["dependencies"."sc-executor"]
+"optional" = true
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sc-executor-common"]
+"optional" = true
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."scale-typegen"]
+"version" = "0.12.0"
+
+["dependencies"."sp-io"]
+"optional" = true
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-maybe-compressed-blob"]
+"optional" = true
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-state-machine"]
+"optional" = true
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."subxt-codegen"]
+"version" = "0.50.0"
+
+["dependencies"."subxt-metadata"]
+"version" = "0.50.0"
+"default-features" = false
+
+["dependencies"."subxt-utils-fetchmetadata"]
+"version" = "0.50.0"
+"default-features" = false
+
+["dependencies"."syn"]
+"version" = "2.0.77"
+"features" = ["full", "extra-traits"]
+
+["dependencies"."proc-macro2"]
+"version" = "1.0.92"
+
+["lints"]
+
+["lints"."clippy"]
+"type_complexity" = "allow"
+
+["lints"."clippy"."all"]
+"level" = "deny"
+"priority" = -1
+
+["lints"."rust"]
+"bad_style" = "deny"
+"improper_ctypes" = "deny"
+"missing_docs" = "deny"
+"non_shorthand_field_patterns" = "deny"
+"overflowing_literals" = "deny"
+"path_statements" = "deny"
+"patterns_in_fns_without_body" = "deny"
+"unconditional_recursion" = "deny"
+"unused_allocation" = "deny"
+"unused_comparisons" = "deny"
+"unused_extern_crates" = "deny"
+"unused_parens" = "deny"

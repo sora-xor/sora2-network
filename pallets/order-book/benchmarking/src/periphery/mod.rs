@@ -590,10 +590,10 @@ pub(crate) mod align_single_order {
             .into(),
         );
 
-        assert!(
-            *context.order_to_align.amount.balance() % *context.order_book.step_lot_size.balance()
-                != 0
-        );
-        assert!(*aligned_order.amount.balance() % *context.order_book.step_lot_size.balance() == 0);
+        let step = *context.order_book.step_lot_size.balance();
+        // The setup uses a nonzero step; retain the previous failure for malformed contexts.
+        assert_ne!(step, 0, "order-book step lot size must be nonzero");
+        assert!(!context.order_to_align.amount.balance().is_multiple_of(step));
+        assert!(aligned_order.amount.balance().is_multiple_of(step));
     }
 }

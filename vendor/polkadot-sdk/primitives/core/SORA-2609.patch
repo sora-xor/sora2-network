@@ -1,0 +1,54 @@
+--- a/src/ecdsa.rs
++++ b/src/ecdsa.rs
+@@ -167,7 +167,7 @@
+ 	/// Recover the public key from this signature and a pre-hashed message.
+ 	pub fn recover_prehashed(&self, message: &[u8; 32]) -> Option<PUBLIC> {
+ 		let rid = k256::ecdsa::RecoveryId::from_byte(self.0[64])?;
+-		let sig = k256::ecdsa::Signature::from_bytes((&self.0[..64]).into()).ok()?;
++		let sig = k256::ecdsa::Signature::from_slice(&self.0[..64]).ok()?;
+ 		VerifyingKey::recover_from_prehash(message, &sig, rid).map(From::from).ok()
+ 	}
+ }
+@@ -465,12 +465,7 @@
+ 
+ 		#[cfg(not(feature = "std"))]
+ 		{
+-			// Signing fails only if the `message` number of bytes is less than the field length
+-			// (unfallible as we're using a fixed message length of 32).
+-			self.secret
+-				.sign_prehash_recoverable(message)
+-				.expect("Signing can't fail when using 32 bytes message hash. qed.")
+-				.into()
++			self.secret.sign_prehash_recoverable(message).into()
+ 		}
+ 	}
+ }
+@@ -789,6 +784,16 @@
+ 		assert!(deserialize_signature("\"abc123\"").is_err());
+ 	}
+ 
++	// Captured from unmodified k256 0.13.4. Also checks the native secp256k1 backend.
++	#[test]
++	fn rustcrypto_migration_preserves_recoverable_signatures() {
++		let pair = Pair::from_seed(&[1u8; 32]);
++		let expected = array_bytes::hex2bytes("5b6a8319ca75509315f66be1aed8ba4663c50901eb4ccd503dd5aa2878c305f16040e5a1fc8e4b36b3c5288af89f7f15255dfa0228f393c1de2f7fc13f043a4200").unwrap();
++		let signature = pair.sign_prehashed(&[42u8; 32]);
++		assert_eq!(signature.0.as_slice(), expected.as_slice());
++		assert_eq!(signature.recover_prehashed(&[42u8; 32]), Some(pair.public()));
++	}
++
+ 	#[test]
+ 	fn sign_prehashed_works() {
+ 		let (pair, _, _) = Pair::generate_with_phrase(Some("password"));
+@@ -804,10 +809,7 @@
+ 			}
+ 			#[cfg(not(feature = "std"))]
+ 			{
+-				pair.secret
+-					.sign_prehash_recoverable(&msg)
+-					.expect("signing may not fail (???). qed.")
+-					.into()
++				pair.secret.sign_prehash_recoverable(&msg).into()
+ 			}
+ 		};
+ 		assert_eq!(sig1, sig2);

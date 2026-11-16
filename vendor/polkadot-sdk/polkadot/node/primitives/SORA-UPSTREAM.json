@@ -1,0 +1,43 @@
+{
+  "upstream_commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "source_path": "polkadot/node/primitives",
+  "upstream_files": {
+    "Cargo.toml": {
+      "sha256": "46008b0ea5dccdabebe01bfefdedbbc1aedc560d8186f658843c4f785641839c",
+      "bytes": 1298
+    },
+    "src/approval/criteria.rs": {
+      "sha256": "0bdca6e3dd95832840659b2a0a7a376d23c2151881588a630e1ae705284f8daa",
+      "bytes": 5301
+    },
+    "src/approval/mod.rs": {
+      "sha256": "d0f71ea3506a3ab1d52f81223f82d4bc56734ab08497e8e163c813f324e71b86",
+      "bytes": 14259
+    },
+    "src/approval/time.rs": {
+      "sha256": "bea1e98f4468869a53a4a8258e8721952ce6332422402542a4a6d684e9d5453c",
+      "bytes": 7582
+    },
+    "src/disputes/message.rs": {
+      "sha256": "aecfa580298f483f4315c9042faf116f574332bb9ec269d432095d4ac8fea1b0",
+      "bytes": 8860
+    },
+    "src/disputes/mod.rs": {
+      "sha256": "9c3f4bd0701cbed6809dd9d5e61ab8ab1c5efa3a74293eb2ae2fc4571b19ff0e",
+      "bytes": 10919
+    },
+    "src/disputes/status.rs": {
+      "sha256": "af929b6639c93ca8f76cf0edb7a70f22d55a18a1c4f3719a27e3338f80891b64",
+      "bytes": 5173
+    },
+    "src/lib.rs": {
+      "sha256": "f2b496bedd382a65a9ca2417e6a123c3402fa649112037bd5254ddcd6128c07f",
+      "bytes": 24234
+    }
+  },
+  "license_source": "polkadot/LICENSE",
+  "license_sha256": "d62f065830aa3739cc031156b9690805c7b2e811b4a178c8b4acd8725d561c94",
+  "materialized_upstream_manifest_sha256": "dacd0e4a24b888a5677db960b8a1c4fb5b96b8c43a99866c794b4d51d8948678",
+  "local_manifest_sha256": "d363b73a6040fcc9d18aa8418b2a5ebdd3a2285e136f4d598e8a304bee391dfe",
+  "rust_source_changes": false
+}

@@ -1,0 +1,74 @@
+[
+  {
+    "crypto_type": 1,
+    "method": "uri",
+    "input": "//Alice",
+    "public_key": "d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+    "address": "cnWHXYTKQwMV96ZuTKbqTA23FuPcmWjrDyLNzCXYL92G9tmtm",
+    "message": "534f5241204e6578757320646570656e64656e6379206d6967726174696f6e2072656772657373696f6e",
+    "signature": "5cdf5d88e8fdd24a167baf5eed0c23feab9fe85e96772e5a2136a337c23696517be547ed3851fa24ebd90ea4d57df0c7a335ca11fd875566d191e641bcfe1184"
+  },
+  {
+    "crypto_type": 1,
+    "method": "uri",
+    "input": "//Bob",
+    "public_key": "8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48",
+    "address": "cnUiNGP9GodVEwZQwtfsWQg8HoYbt4CStUWEf9AQf53Lv7nRs",
+    "message": "534f5241204e6578757320646570656e64656e6379206d6967726174696f6e2072656772657373696f6e",
+    "signature": "e8c87998bcd350163ead187e5ef59d4b5ab9e4c36b2dc1fc44f790b73e519c4199ec299f58c68089b96236690fcae22fc4854bd1b81fec7eb4c116c2052a6985"
+  },
+  {
+    "crypto_type": 1,
+    "method": "uri",
+    "input": "//Alice/soft//123",
+    "public_key": "547bf4ec875ab0aef14fe4cddccd9f9225e64b1e35daed61d794822fa8bb1c35",
+    "address": "cnTQ4KZwKM4KNHwFQZe8FeuqnePD3Tco9X7Y57AxGWqdMs94E",
+    "message": "534f5241204e6578757320646570656e64656e6379206d6967726174696f6e2072656772657373696f6e",
+    "signature": "5e8254339ccc1ba979e5ee88fa5e699f83ff736e66ed0afac8d8935735b64b56c70ca4f3d7f8eb40c948eece15f7bb45c8cdb37b86e52452f446a1068ec98a88"
+  },
+  {
+    "crypto_type": 1,
+    "method": "seed",
+    "input": "0x0101010101010101010101010101010101010101010101010101010101010101",
+    "public_key": "189dac29296d31814dc8c56cf3d36a0543372bba7538fa322a4aebfebc39e056",
+    "address": "cnS3ZTqcxAGa8HG3t6fhiR2vpZJKgeVWZoFcTAzDtRKV3uV5s",
+    "message": "534f5241204e6578757320646570656e64656e6379206d6967726174696f6e2072656772657373696f6e",
+    "signature": "9281aa2e41b34235f37e43d1f1d036eafb610f7ea589c4332f686957ece7a342420a928f4e78de65d3fc879260a3b95350a43fe046b266dd8358e5330e27ef8f"
+  },
+  {
+    "crypto_type": 1,
+    "method": "mnemonic",
+    "input": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    "public_key": "66933bd1f37070ef87bd1198af3dacceb095237f803f3d32b173e6b425ed7972",
+    "address": "cnTon6cV8Ze8ATHT1tZdHregCc3wBc8vfg7P5o2TtwdUoRf4m",
+    "message": "534f5241204e6578757320646570656e64656e6379206d6967726174696f6e2072656772657373696f6e",
+    "signature": "8efe608852be289eb3654e7ae5f3988b0eb0aa01150d506ee705cc9d6cb1cf7f2b1246b03ca3a28b4adfdcd8d15bcae42559dc0b7a39cf56fdbfadbd65df5486"
+  },
+  {
+    "crypto_type": 0,
+    "method": "seed",
+    "input": "0x0101010101010101010101010101010101010101010101010101010101010101",
+    "public_key": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+    "address": "cnUcvkP1RB2HYVGRDcrkC624vne2Zvb6pupaESjbuAGyAz4g4",
+    "message": "534f5241204e6578757320646570656e64656e6379206d6967726174696f6e2072656772657373696f6e",
+    "signature": "f17daffb921b8e648949a5cd11ba1d2e6a4f17192eaced6ab09b25a491f5e48117562fa9521089bb5fedd8062dd1c78819088a4ccafbc615739ea7962e18a10c"
+  },
+  {
+    "crypto_type": 0,
+    "method": "mnemonic",
+    "input": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    "public_key": "9125f505bdef2cb5825b9931769316d3e2f22150786489a04f39b434ec9fb294",
+    "address": "cnUmbhFDT8FYAw7nvxFdJm7ZrTJAN6KqGguJaYrUmn8ZAihcQ",
+    "message": "534f5241204e6578757320646570656e64656e6379206d6967726174696f6e2072656772657373696f6e",
+    "signature": "3fc8e2fd937fc68c4405fa4ca4095667b0f809bf845f7f1eb5595750463a8eef144a8d2da95b5c8f21436d7613b059a85ea8855f419d3bfb08285a513789a00b"
+  },
+  {
+    "crypto_type": 2,
+    "method": "mnemonic",
+    "input": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    "public_key": "9858effd232b4033e47d90003d41ec34ecaeda94",
+    "address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+    "message": "534f5241204e6578757320646570656e64656e6379206d6967726174696f6e2072656772657373696f6e",
+    "signature": "db42e15d5dfe3cd77088bf814e15c346b45e7fb2e9d0e59a9b596c6efaa9c6cd27accba5b77a8b990f4b4345883d78feee22455eca004c5eed06d9e95907f02e01"
+  }
+]

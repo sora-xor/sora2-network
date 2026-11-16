@@ -183,6 +183,8 @@ pub mod pallet {
         ApprovalNotPending,
         PendingApprovalAlreadyExists,
         PeerRegisteredInOtherNetwork,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
     }
 
     /// Peers
@@ -224,12 +226,16 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_network())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_network()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             let peers = Self::canonicalize_peers(peers, true)?;
             Self::ensure_no_substrate_peer_overlap(network_id, peers.iter())?;
@@ -249,13 +255,21 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::approve())]
+        #[pallet::weight((<T as Config>::WeightInfo::approve()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn approve(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             data: H256,
             signature: ecdsa::Signature,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::commitment_quarantined(network_id, data),
+                Error::<T>::RecoveryHalted
+            );
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_none(origin)?;
             let peers = Peers::<T>::get(network_id).ok_or(Error::<T>::PalletNotInitialized)?;
             ensure!(
@@ -272,7 +286,7 @@ pub mod pallet {
                 fail!(Error::<T>::SignatureAlreadyExists);
             }
             approvals
-                .try_insert(public, signature.clone())
+                .try_insert(public, signature)
                 .map_err(|_| Error::<T>::TooMuchApprovals)?;
             Approvals::<T>::insert(network_id, data, &approvals);
             let peers_len = peers.len() as u32;
@@ -298,12 +312,16 @@ pub mod pallet {
 
         #[pallet::call_index(2)]
         #[transactional]
-        #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::add_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn add_peer(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 !PendingPeerUpdate::<T>::get(network_id),
@@ -337,12 +355,16 @@ pub mod pallet {
 
         #[pallet::call_index(3)]
         #[transactional]
-        #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::remove_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn remove_peer(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 !PendingPeerUpdate::<T>::get(network_id),
@@ -368,11 +390,15 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::finish_remove_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::finish_remove_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn finish_remove_peer(
             origin: OriginFor<T>,
             peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin)?;
             let network_id: GenericNetworkId = network_id.into();
             ensure!(
@@ -398,11 +424,15 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::finish_add_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::finish_add_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn finish_add_peer(
             origin: OriginFor<T>,
             _peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin)?;
             let network_id: GenericNetworkId = network_id.into();
             ensure!(
@@ -414,12 +444,16 @@ pub mod pallet {
         }
 
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::force_set_peers())]
+        #[pallet::weight((<T as Config>::WeightInfo::force_set_peers()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn force_set_peers(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             let peers = Self::canonicalize_peers(peers, false)?;
             Self::ensure_no_substrate_peer_overlap(network_id, peers.iter())?;
@@ -434,12 +468,20 @@ pub mod pallet {
         }
 
         #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_pending_approval())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_pending_approval()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn register_pending_approval(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             data: H256,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::commitment_quarantined(network_id, data),
+                Error::<T>::RecoveryHalted
+            );
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 Peers::<T>::contains_key(network_id),
@@ -457,12 +499,16 @@ pub mod pallet {
         }
 
         #[pallet::call_index(8)]
-        #[pallet::weight(<T as Config>::WeightInfo::clear_pending_approval())]
+        #[pallet::weight((<T as Config>::WeightInfo::clear_pending_approval()).saturating_add(bridge_types::recovery::completion_weight::<T>(2)))]
         pub fn clear_pending_approval(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             data: H256,
         ) -> DispatchResultWithPostInfo {
+            ensure!(
+                !bridge_types::recovery::commitment_quarantined(network_id, data),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 PendingApprovals::<T>::get(network_id, data),
@@ -475,9 +521,14 @@ pub mod pallet {
         }
     }
 
+    #[cfg(test)]
+    mod boundary_tests {
+        include!("boundary_tests.rs");
+    }
+
     impl<T: Config> Pallet<T> {
         fn canonicalize_peers(
-            peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
+            peers: impl IntoIterator<Item = ecdsa::Public>,
             require_minimum: bool,
         ) -> Result<BoundedBTreeSet<ecdsa::Public, T::MaxPeers>, DispatchError> {
             let unique_peers = peers.into_iter().collect::<BTreeSet<_>>();
@@ -496,7 +547,7 @@ pub mod pallet {
         }
 
         fn peers_to_vec(
-            peers: &BoundedBTreeSet<ecdsa::Public, T::MaxPeers>,
+            peers: &BTreeSet<ecdsa::Public>,
         ) -> Result<BoundedVec<ecdsa::Public, T::MaxPeers>, DispatchError> {
             peers
                 .iter()
@@ -547,17 +598,27 @@ pub mod pallet {
         }
     }
 
+    // Keep the deployed bridge worker wire format and fee policy during this SDK migration.
+    // The FRAME macro recognizes this exact attribute when retaining legacy admission.
+    #[allow(deprecated)]
     #[pallet::validate_unsigned]
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;
         // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+            if bridge_types::recovery::recovery_in_progress() {
+                return InvalidTransaction::Call.into();
+            }
             if let Call::approve {
                 network_id,
                 data,
                 signature,
             } = call
             {
+                ensure!(
+                    !bridge_types::recovery::commitment_quarantined(*network_id, *data),
+                    InvalidTransaction::Stale
+                );
                 let peers = Peers::<T>::get(network_id).ok_or(InvalidTransaction::BadSigner)?;
                 ensure!(
                     PendingApprovals::<T>::get(network_id, *data),

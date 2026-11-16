@@ -120,6 +120,7 @@ pub fn create_benchmark_extrinsic(
     let period = runtime::BlockHashCount::get() as u64;
     let charge_tx_payment = runtime::charge_tx_payment_extension();
     let extra: runtime::SignedExtra = (
+        frame_system::AuthorizeCall::<runtime::Runtime>::new(),
         frame_system::CheckSpecVersion::<runtime::Runtime>::new(),
         frame_system::CheckTxVersion::<runtime::Runtime>::new(),
         frame_system::CheckGenesis::<runtime::Runtime>::new(),
@@ -135,6 +136,7 @@ pub fn create_benchmark_extrinsic(
         call.clone(),
         extra.clone(),
         (
+            (),
             runtime::VERSION.spec_version,
             runtime::VERSION.transaction_version,
             genesis_hash,

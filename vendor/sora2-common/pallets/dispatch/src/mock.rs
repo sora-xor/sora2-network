@@ -61,7 +61,10 @@ impl Contains<RuntimeCall> for CallFilter {
     fn contains(call: &RuntimeCall) -> bool {
         matches!(
             call,
-            RuntimeCall::System(frame_system::pallet::Call::<Test>::remark { .. })
+            RuntimeCall::System(
+                frame_system::pallet::Call::<Test>::remark { .. }
+                    | frame_system::pallet::Call::<Test>::remark_with_event { .. }
+            )
         )
     }
 }

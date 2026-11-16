@@ -94,6 +94,11 @@ where
         Default::default()
     }
 
+    /// The encoded tip, for transaction-extension adapters that must preserve payment policy.
+    pub fn tip(&self) -> BalanceOf<T> {
+        self.tip
+    }
+
     #[allow(clippy::type_complexity)] // This function can only be called in this module
     fn can_withdraw_fee(
         &self,

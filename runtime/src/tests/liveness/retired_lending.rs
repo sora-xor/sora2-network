@@ -38,6 +38,7 @@ fn setup() -> sr25519::Pair {
 fn signed(call: RuntimeCall, signer: &sr25519::Pair) -> UncheckedExtrinsic {
     let who = AccountId::from(signer.public());
     let extra: SignedExtra = (
+        frame_system::AuthorizeCall::new(),
         frame_system::CheckSpecVersion::new(),
         frame_system::CheckTxVersion::new(),
         frame_system::CheckGenesis::new(),

@@ -1,0 +1,13 @@
+{
+  "call": {
+    "call_index": 2,
+    "pallet_index": 0,
+    "variant": "set_code"
+  },
+  "call_bytes_file": "runtime.preimage.call",
+  "proposal_hash": "0x31d3bee4e348dc89b97d2fde74f3d49be846c4127b75d640f513b747066bc36c",
+  "proposal_len": 1959175,
+  "wasm_blake2_256": "0x1b5d5366f3f72542da23a6ee7558068bc117ab4cec22d219c79fca51e1c38622",
+  "wasm_len": 1959169,
+  "wasm_path": "sora-nexus-runtime-137.compact.compressed.wasm"
+}

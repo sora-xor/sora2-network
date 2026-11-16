@@ -1,3 +1,10 @@
+[env]
+# The SDK emits host-function declarations without wasm_import_module.
+# Rust >= 1.96 no longer imports undefined functions implicitly. Import them
+# explicitly, while still rejecting undefined data symbols (unlike allow-undefined).
+# Remove after updating the SDK's host-interface declarations.
+WASM_BUILD_RUSTFLAGS = { value = "-C link-arg=--import-undefined", force = false }
+
 [profile.dev]
 debug = false
 

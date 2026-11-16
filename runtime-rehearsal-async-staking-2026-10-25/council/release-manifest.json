@@ -1,0 +1,38 @@
+{
+  "title": "SORA Nexus runtime 137 council handoff",
+  "preparedAt": "2026-10-25T14:15:44.370256+00:00",
+  "status": "prepared-for-council-review",
+  "runtime": {
+    "file": "sora-nexus-runtime-137.compact.compressed.wasm",
+    "specVersion": 137,
+    "transactionVersion": 133,
+    "stateVersion": 0,
+    "bytes": 1959169,
+    "sha256": "535b6499c78769a62701520d0bdf17ef65f07319450ca69a5264e99410e1910f",
+    "blake2_256": "0x1b5d5366f3f72542da23a6ee7558068bc117ab4cec22d219c79fca51e1c38622"
+  },
+  "upgrade": {
+    "call": "System.set_code",
+    "proposalHash": "0x31d3bee4e348dc89b97d2fde74f3d49be846c4127b75d640f513b747066bc36c",
+    "proposalLen": 1959175
+  },
+  "source": {
+    "baseGitHead": "7fe885f651e682bde75f77f1ecbbc542d202a7b6",
+    "includesUncommittedChanges": true,
+    "sourceAggregateSha256": "dbcaa1324c3e6ec4b2114da9148d24398f00db115037e3e4378fe9daa056a94d",
+    "fileCount": 4806
+  },
+  "originalVerificationSummarySha256": "6e34a7276e1ca733d9069bfacc1edeb1b42ae0bcbe320f4fdb348b05238dd379",
+  "liveCheckedAt": "2026-10-25T14:13:43.441Z",
+  "liveBlock": 28191490,
+  "liveRuntimeSpec": 134,
+  "liveTransactionVersion": 131,
+  "transactionsSubmitted": 0,
+  "deploymentPerformed": false,
+  "remainingActivationGates": [
+    "Final Linux node images and integration/security verification",
+    "Operator rollout and readiness",
+    "Fresh state-dependent migration admission preflight",
+    "Governance timing and client metadata coordination"
+  ]
+}

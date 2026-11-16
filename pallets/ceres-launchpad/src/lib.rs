@@ -1403,7 +1403,7 @@ pub mod pallet {
 
                 let team_vesting_amount = one - team_vesting_first_release_percent;
                 if team_vesting_first_release_percent != one
-                    && team_vesting_amount % team_vesting_percent != 0
+                    && !team_vesting_amount.is_multiple_of(team_vesting_percent)
                 {
                     return Err(Error::<T>::InvalidTeamVestingPercent.into());
                 }
@@ -1427,7 +1427,7 @@ pub mod pallet {
             }
 
             let vesting_amount = one - first_release_percent;
-            if first_release_percent != one && vesting_amount % vesting_percent != 0 {
+            if first_release_percent != one && !vesting_amount.is_multiple_of(vesting_percent) {
                 return Err(Error::<T>::InvalidVestingPercent.into());
             }
 

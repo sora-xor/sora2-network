@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 
 from scalecodec.types import GenericCall
-from substrateinterface import Keypair, SubstrateInterface
-from substrateinterface.exceptions import SubstrateRequestException
+from vendor.substrateinterface import Keypair, SubstrateInterface
+from vendor.substrateinterface.exceptions import SubstrateRequestException
 
 SS58_FORMAT = 69
 DEFAULT_NODE_URL = "wss://ws.mof.sora.org"

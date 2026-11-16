@@ -38,6 +38,7 @@ fn setup(pair: &sr25519::Pair) {
 fn signed(call: RuntimeCall, pair: &sr25519::Pair) -> UncheckedExtrinsic {
     let who = account(pair);
     let extra: SignedExtra = (
+        frame_system::AuthorizeCall::new(),
         frame_system::CheckSpecVersion::<Runtime>::new(),
         frame_system::CheckTxVersion::<Runtime>::new(),
         frame_system::CheckGenesis::<Runtime>::new(),
@@ -299,7 +300,7 @@ fn unauthorized_rewards_updates_keep_nonzero_fees() {
                     false
                 )
                 .unwrap_err(),
-                frame_support::error::BadOrigin.into()
+                sp_runtime::traits::BadOrigin.into()
             );
         }
     });

@@ -41,6 +41,140 @@ pub struct Cli {
     /// Disable BEEFY gadget. Enabled by default
     #[clap(long)]
     pub disable_beefy: bool,
+
+    /// Directory of public recovery inherent payloads named by parent hash.
+    #[clap(long)]
+    pub recovery_inherent_dir: Option<std::path::PathBuf>,
+
+    /// Fresh evidence directory for a passive recovery verification node.
+    #[clap(long)]
+    pub recovery_evidence_dir: Option<std::path::PathBuf>,
+
+    /// Public local HASHI witness requests/results; never signs or submits transactions.
+    #[clap(long, requires = "recovery_hashi_release_sha256")]
+    pub recovery_hashi_witness_dir: Option<std::path::PathBuf>,
+
+    /// Independently admitted outer release-manifest SHA-256 (0x-prefixed).
+    #[clap(long, requires = "recovery_hashi_witness_dir")]
+    pub recovery_hashi_release_sha256: Option<sp_core::H256>,
+
+    /// Legacy numeric check for an already acknowledged guardian halt.
+    ///
+    /// This never releases a pending halt. Use the exact observed-halt digest
+    /// printed by the node for a new manual release, including after a reorg.
+    #[clap(long, value_name = "NUMBER")]
+    pub bridge_resume_after_halt: Option<u32>,
+
+    /// Release this node's exact durable observed-halt epoch after review.
+    ///
+    /// Best and finalized guardian state must agree. A new signal, disappearance
+    /// or rewind requires a new digest; keeping an old flag cannot acknowledge it.
+    /// This only changes local acknowledgement and never enables worker mode.
+    #[clap(long, value_name = "CONTEXT_HASH")]
+    pub bridge_resume_after_observed_halt: Option<sp_core::H256>,
+
+    /// Acknowledge this node's completed recovery context before HASHI signing.
+    ///
+    /// Pass the exact 0x-prefixed context digest shown by this node. Best and
+    /// finalized state must agree. This writes a local acknowledgement only;
+    /// guardian halts and --offchain-worker mode remain independent.
+    #[clap(long, value_name = "CONTEXT_HASH")]
+    pub bridge_resume_after_recovery: Option<sp_core::H256>,
+}
+
+impl Cli {
+    /// Retained validator keys alone must not opt a recovery node into bridge bootstrap.
+    pub(crate) fn bridge_worker_options(
+        &self,
+    ) -> crate::bridge_bootstrap_policy::BridgeWorkerOptions {
+        crate::bridge_bootstrap_policy::BridgeWorkerOptions {
+            recovery_bootstrap: matches!(
+                self.run.offchain_worker_params.enabled,
+                sc_cli::OffchainWorkerEnabled::Always
+            ),
+            resume_after_halt: self.bridge_resume_after_halt,
+            resume_after_observed_halt: self.bridge_resume_after_observed_halt,
+            resume_after_recovery: self.bridge_resume_after_recovery,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::Parser;
+
+    #[test]
+    fn recovery_bridge_bootstrap_requires_explicit_always() {
+        for arguments in [
+            vec!["framenode"],
+            vec!["framenode", "--validator"],
+            vec![
+                "framenode",
+                "--validator",
+                "--offchain-worker",
+                "when-authority",
+            ],
+            vec!["framenode", "--validator", "--offchain-worker", "never"],
+        ] {
+            let cli = Cli::try_parse_from(arguments).expect("valid node arguments");
+            assert!(!cli.bridge_worker_options().recovery_bootstrap);
+        }
+        for arguments in [
+            vec!["framenode", "--offchain-worker", "always"],
+            vec!["framenode", "--validator", "--offchain-worker=always"],
+        ] {
+            let cli = Cli::try_parse_from(arguments).expect("valid bridge peer arguments");
+            assert!(cli.bridge_worker_options().recovery_bootstrap);
+        }
+    }
+
+    #[test]
+    fn observed_halt_cli_requires_exact_digest_without_enabling_workers() {
+        assert!(Cli::try_parse_from(["framenode", "--bridge-resume-after-observed-halt"]).is_err());
+        assert!(
+            Cli::try_parse_from(["framenode", "--bridge-resume-after-observed-halt", "1"]).is_err()
+        );
+        let digest = format!("{:#x}", sp_core::H256::repeat_byte(7));
+        let cli = Cli::try_parse_from([
+            "framenode",
+            "--offchain-worker=never",
+            "--bridge-resume-after-observed-halt",
+            &digest,
+        ])
+        .unwrap();
+        let options = cli.bridge_worker_options();
+        assert_eq!(
+            options.resume_after_observed_halt,
+            Some(sp_core::H256::repeat_byte(7))
+        );
+        assert_eq!(options.resume_after_halt, None);
+        assert_eq!(options.resume_after_recovery, None);
+        assert!(!options.recovery_bootstrap);
+    }
+
+    #[test]
+    fn recovery_acknowledgement_cli_requires_digest_and_does_not_enable_workers() {
+        assert!(Cli::try_parse_from(["framenode", "--bridge-resume-after-recovery"]).is_err());
+        assert!(
+            Cli::try_parse_from(["framenode", "--bridge-resume-after-recovery", "true"]).is_err()
+        );
+        let digest = format!("{:#x}", sp_core::H256::repeat_byte(7));
+        let cli = Cli::try_parse_from([
+            "framenode",
+            "--offchain-worker=never",
+            "--bridge-resume-after-recovery",
+            &digest,
+        ])
+        .unwrap();
+        let options = cli.bridge_worker_options();
+        assert_eq!(
+            options.resume_after_recovery,
+            Some(sp_core::H256::repeat_byte(7))
+        );
+        assert_eq!(options.resume_after_halt, None);
+        assert!(!options.recovery_bootstrap);
+    }
 }
 
 #[derive(Debug, clap::Subcommand)]
@@ -50,6 +184,12 @@ pub enum Subcommand {
     Key(sc_cli::KeySubcommand),
     /// Build a chain specification.
     BuildSpec(sc_cli::BuildSpecCmd),
+
+    /// Prepare a separate, manifest-bound recovery specification offline.
+    PrepareRecoverySpec(crate::recovery::PrepareRecoverySpecCmd),
+
+    /// Verify persisted recovery state and finality in a stopped owned database copy.
+    VerifyRecoveryDatabase(crate::recovery_evidence::VerifyRecoveryDatabaseCmd),
 
     /// Validate blocks.
     CheckBlock(sc_cli::CheckBlockCmd),

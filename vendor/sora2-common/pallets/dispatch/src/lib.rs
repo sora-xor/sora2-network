@@ -54,21 +54,22 @@ use bridge_types::H256;
 use codec::{Decode, DecodeAll, Encode};
 
 #[cfg(feature = "runtime-benchmarks")]
+pub type BenchmarkDispatchContext<OriginOutput> = (
+    <OriginOutput as traits::BridgeOriginOutput>::NetworkId,
+    <OriginOutput as traits::BridgeOriginOutput>::Additional,
+    Vec<u8>,
+);
+
+#[cfg(feature = "runtime-benchmarks")]
 pub trait BenchmarkHelper<T: pallet::Config<I>, I: 'static = ()> {
-    fn successful_dispatch_context() -> (
-        <<T as pallet::Config<I>>::OriginOutput as traits::BridgeOriginOutput>::NetworkId,
-        <<T as pallet::Config<I>>::OriginOutput as traits::BridgeOriginOutput>::Additional,
-        Vec<u8>,
-    );
+    fn successful_dispatch_context(
+    ) -> BenchmarkDispatchContext<<T as pallet::Config<I>>::OriginOutput>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
 impl<T: pallet::Config<I>, I: 'static> BenchmarkHelper<T, I> for () {
-    fn successful_dispatch_context() -> (
-        <<T as pallet::Config<I>>::OriginOutput as traits::BridgeOriginOutput>::NetworkId,
-        <<T as pallet::Config<I>>::OriginOutput as traits::BridgeOriginOutput>::Additional,
-        Vec<u8>,
-    ) {
+    fn successful_dispatch_context(
+    ) -> BenchmarkDispatchContext<<T as pallet::Config<I>>::OriginOutput> {
         unimplemented!("benchmark helper is not configured for this mock runtime")
     }
 }

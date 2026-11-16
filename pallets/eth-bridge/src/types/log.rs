@@ -178,6 +178,7 @@ impl FilterBuilder {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use crate::types::log::{Bytes, Log};
     use crate::types::{EthAddress, H160, H256};

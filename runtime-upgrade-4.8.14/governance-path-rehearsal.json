@@ -1,0 +1,215 @@
+{
+  "endpoint": "wss://mof2.sora.org",
+  "checks": [
+    {
+      "name": "fork runs the candidate runtime 141",
+      "ok": true,
+      "detail": {
+        "block": 28315360
+      }
+    },
+    {
+      "name": "Root's recovery latch is set before the governance run",
+      "ok": true,
+      "detail": "0x01"
+    },
+    {
+      "name": "a non-member council.propose is refused before inclusion",
+      "ok": true,
+      "detail": "{\"invalid\":{\"badSigner\":null}}"
+    },
+    {
+      "name": "a council member proposes the latch removal",
+      "ok": true,
+      "detail": [
+        "council.Proposed"
+      ]
+    },
+    {
+      "name": "a non-member council.vote is refused before inclusion",
+      "ok": true,
+      "detail": "{\"invalid\":{\"badSigner\":null}}"
+    },
+    {
+      "name": "council aye from cnTM74CwjtgqZYaSoGx27SdMibN3X5TpL5R9wroyHUZMB3Dx8 is included",
+      "ok": true,
+      "detail": [
+        "council.Voted"
+      ]
+    },
+    {
+      "name": "council aye from cnUGD6KnZ4HsamuDRDwRHsMytEaYWcYfywcTprNyKypQZYBij is included",
+      "ok": true,
+      "detail": [
+        "council.Voted"
+      ]
+    },
+    {
+      "name": "council aye from cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq is included",
+      "ok": true,
+      "detail": [
+        "council.Voted"
+      ]
+    },
+    {
+      "name": "a council.close that cannot succeed yet is refused before inclusion",
+      "ok": true,
+      "detail": "{\"invalid\":{\"call\":null}}"
+    },
+    {
+      "name": "the deciding council aye and the close in one batchAll execute the motion",
+      "ok": true,
+      "detail": [
+        "council.Voted",
+        "utility.ItemCompleted",
+        "council.Closed",
+        "council.Approved",
+        "utility.ItemCompleted",
+        "utility.ItemCompleted",
+        "utility.BatchCompleted",
+        "council.Executed",
+        "utility.ItemCompleted",
+        "utility.BatchCompleted"
+      ]
+    },
+    {
+      "name": "democracy.nextExternal holds the latch removal as a simple-majority proposal",
+      "ok": true,
+      "detail": [
+        {
+          "inline": "0x0005048c3a736f72612d6e657875733a7265636f766572793a6272696467652d68616c743a7631"
+        },
+        "SimpleMajority"
+      ]
+    },
+    {
+      "name": "a non-member technicalCommittee.propose is refused before inclusion",
+      "ok": true,
+      "detail": "{\"invalid\":{\"badSigner\":null}}"
+    },
+    {
+      "name": "a technical committee member proposes the fast-track",
+      "ok": true,
+      "detail": [
+        "technicalCommittee.Proposed"
+      ]
+    },
+    {
+      "name": "technical committee aye from cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc is included",
+      "ok": true,
+      "detail": [
+        "technicalCommittee.Voted"
+      ]
+    },
+    {
+      "name": "technical committee aye from cnW7voz8dzsEb961QFqQC2RZE82wWhYbWfjcmaaCSfixC6wDw is included",
+      "ok": true,
+      "detail": [
+        "technicalCommittee.Voted"
+      ]
+    },
+    {
+      "name": "technical committee aye from cnXC9NAHCwcgmd6NWUFZ6rak6avn4fVKZVchXUFcRPTEi6Jza is included",
+      "ok": true,
+      "detail": [
+        "technicalCommittee.Voted"
+      ]
+    },
+    {
+      "name": "a non-member closes the decided committee motion and the referendum starts",
+      "ok": true,
+      "detail": [
+        "technicalCommittee.Closed",
+        "technicalCommittee.Approved",
+        "democracy.Started",
+        "technicalCommittee.Executed"
+      ]
+    },
+    {
+      "name": "an aye vote on the referendum is included",
+      "ok": true,
+      "detail": [
+        "democracy.Voted"
+      ]
+    },
+    {
+      "name": "the referendum runs the fast-track period with no enactment delay",
+      "ok": true,
+      "detail": {
+        "end": 28317171,
+        "delay": 0,
+        "threshold": "SimpleMajority"
+      }
+    },
+    {
+      "name": "the referendum passes",
+      "ok": true,
+      "detail": [
+        "democracy.Passed",
+        "scheduler.Scheduled",
+        "scheduler.Dispatched"
+      ]
+    },
+    {
+      "name": "the scheduler dispatches the Root call with Ok",
+      "ok": true,
+      "detail": {
+        "task": [
+          "28,315,374",
+          "0"
+        ],
+        "id": "0x64656d6f63726163210300000000000000000000000000000000000000000000",
+        "result": "Ok"
+      }
+    },
+    {
+      "name": "Root's recovery latch is removed on runtime 141",
+      "ok": true,
+      "detail": "undefined"
+    },
+    {
+      "name": "the recovery policy commitment is untouched",
+      "ok": true
+    },
+    {
+      "name": "a runtime-sized preimage is noted on the candidate runtime",
+      "ok": true,
+      "detail": {
+        "bytes": 2151965,
+        "events": [
+          "preimage.Noted"
+        ]
+      }
+    }
+  ],
+  "candidate": {
+    "path": "runtime-upgrade-4.8.14/framenode-runtime-4.8.14.compact.compressed.wasm",
+    "bytes": 2151959,
+    "sha256": "125e6582db89251a9b0ebe3f3549548d9addc7f4b83531d17239bc9e99403b9f",
+    "specVersion": 141
+  },
+  "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "base": {
+    "hash": "0x4d9d2c1660361839978c14c7355b589fb52d40f810fe596ebb959141d1c7620d",
+    "number": 28315359
+  },
+  "deployed": {
+    "specVersion": 138,
+    "codeSha256": "dcd4e4bf4e0a60ac8203ebfb9fc29f51d050f2f5c665bf1197c3ede871a93ee6",
+    "policyCommitment": "0x1f4e11427a9c0a61a4868af40c9e0bdf263bb44a9ee59886a537c52164f3cdbb"
+  },
+  "council": {
+    "members": 8,
+    "threshold": 4
+  },
+  "technicalCommittee": {
+    "members": 4,
+    "threshold": 3
+  },
+  "localShortcut": {
+    "referendum": 801,
+    "recordedEnd": 28317171,
+    "movedTo": 28315373
+  },
+  "ok": true
+}

@@ -31,9 +31,7 @@ use bridge_types::H256;
 use codec::{Decode, Encode};
 use scale_info::prelude::{vec, vec::Vec};
 
-#[derive(
-    Encode, Decode, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
-)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo)]
 pub struct Proof<T> {
     pub order: u64,
     pub items: Vec<T>,
@@ -144,7 +142,7 @@ fn left_peak_height_pos(mmr_size: u64) -> (u32, u64) {
     (height - 1, prev_pos)
 }
 
-fn calculate_merkle_proof_order<T>(leave: u64, proof: &Vec<T>) -> u64 {
+fn calculate_merkle_proof_order<T>(leave: u64, proof: &[T]) -> u64 {
     let mut order = 0u64;
     let mut tree_pos = leave;
 
@@ -245,6 +243,7 @@ pub fn hasher(a: H256, b: H256) -> H256 {
     H256::from_slice(Keccak256::hash(&res).as_bytes())
 }
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
     use bridge_types::H256;

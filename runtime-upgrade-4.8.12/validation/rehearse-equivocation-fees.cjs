@@ -17,6 +17,7 @@ const opts = {
   wasm: resolve(option('--wasm', resolve(__dirname, '../framenode-runtime-4.8.12.compact.compressed.wasm'))),
   snapshot: resolve(option('--snapshot', resolve(__dirname, 'snapshot.json'))),
   cache: resolve(option('--cache', resolve(__dirname, '.public-read-cache.json.gz'))),
+  syntheticFixtures: args.includes('--synthetic-fixtures'),
   output: resolve(option('--output', resolve(__dirname, 'equivocation-fee-wasm-rehearsal.json'))),
 };
 const snapshot = JSON.parse(readFileSync(opts.snapshot));
@@ -24,12 +25,13 @@ const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const fakeSignature = new Uint8Array(64).fill(0xcd); fakeSignature.set([0xde, 0xad, 0xbe, 0xef]);
 const report = { status: 'running', startedAt: new Date().toISOString(), localOnly: true,
   endpoint: opts.endpoint, pinnedBlockHash: snapshot.blockHash, pinnedBlockNumber: snapshot.blockNumber,
-  executor: '@acala-network/chopsticks-core@1.5.1', mockSignatureHost: true, allowUnresolvedImports: true,
+  executor: '@acala-network/chopsticks-core@1.5.2', mockSignatureHost: true, allowUnresolvedImports: true,
   offchainWorker: false, submittedTransactions: 0, privateKeysRead: 0, realSignatures: 0, remoteRpcMethods: {},
   unsignedChecks: [], signedChecks: [], localOnlySyntheticEvidence: true,
+  syntheticFixturesEnabled: opts.syntheticFixtures, fixtureOverrides: [],
   constraints: [
     'Only enumerated read-only public RPC supplies block-hash-pinned state.',
-    'Only :code is replaced locally. Upgrade hooks and report fees execute the exact candidate Wasm.',
+    'Only :code is replaced before upgrade initialization. Explicit --synthetic-fixtures may subsequently fund a local payer when the bounded public-account search has insufficient spendable XOR; every account and issuance write is disclosed.',
     'Synthetic headers, reports, and extrinsics use the mocked signature host. Real cryptographic verification is covered by native tests; consensus block validity and governance enactment are outside this rehearsal.',
     'Every transaction branch starts from the same initialized local state; slashing/offence changes remain inside its local branch.',
   ] };
@@ -183,25 +185,85 @@ function signedExtrinsic(registry, call, block, account) {
   tx.signature.set(fakeSignature);
   return tx;
 }
-async function chooseSigner(block, fixture) {
+async function chooseSigner(block, fixtures) {
   const registry = await block.registry;
+  const spendable = candidate => {
+    const frozen = candidate.data.frozen?.toBigInt() ?? candidate.data.feeFrozen?.toBigInt() ?? 0n;
+    return candidate.data.free.toBigInt() > frozen ? candidate.data.free.toBigInt() - frozen : 0n;
+  };
   report.signer = { address: snapshot.feePayerCandidates[0] };
   const account = await rawQuery(block, 'system', 'account', [report.signer.address]);
-  const tx = signedExtrinsic(registry, fixture, block, account);
-  const feeResponse = await block.call('TransactionPaymentApi_query_info', [tx.toHex(), u8aToHex(registry.createType('u32', tx.encodedLength).toU8a())]);
-  const info = registry.createType('RuntimeDispatchInfo', feeResponse.result);
-  assert(info.partialFee.toBigInt() > 0n);
-  const minimum = info.partialFee.toBigInt() * 2n + 10n ** 18n;
-  report.signerSelection = { estimatedReportFee: info.partialFee.toString(), minimumFree: minimum.toString() }; save();
-  for (const address of snapshot.feePayerCandidates) {
-    const candidate = await rawQuery(block, 'system', 'account', [address]);
-    if (candidate.data.free.toBigInt() > minimum) {
-      report.signer = { address, free: candidate.data.free.toString(), minimumFree: minimum.toString(),
-        selectedFromPublicAccounts: true, storageOverrides: [] };
-      return;
-    }
+  let largestFee = 0n;
+  for (const [, fixture] of fixtures) {
+    const tx = signedExtrinsic(registry, fixture, block, account);
+    const feeResponse = await block.call('TransactionPaymentApi_query_info', [tx.toHex(), u8aToHex(registry.createType('u32', tx.encodedLength).toU8a())]);
+    const fee = registry.createType('RuntimeDispatchInfo', feeResponse.result).partialFee.toBigInt();
+    assert(fee > 0n); if (fee > largestFee) largestFee = fee;
   }
-  throw new Error('Public fee payer candidates lack funding for the report fee');
+  const minimum = largestFee * 2n + 10n ** 18n;
+  report.signerSelection = { largestEstimatedReportFee: largestFee.toString(), reportQuotes: fixtures.length,
+    minimumSpendable: minimum.toString() }; save();
+  const select = async address => {
+    const candidate = await rawQuery(block, 'system', 'account', [address]);
+    if (spendable(candidate) <= minimum) return false;
+    report.signer = { address, free: candidate.data.free.toString(), spendable: spendable(candidate).toString(),
+      minimumSpendable: minimum.toString(), selectedFromPublicAccounts: true, storageOverrides: [] };
+    return true;
+  };
+  for (const address of snapshot.feePayerCandidates) {
+    if (await select(address)) return block;
+  }
+  // The public validators/council may have enough free XOR but insufficient
+  // spendable XOR after staking locks. Search a bounded public page at the same
+  // pinned block without funding or otherwise changing any account.
+  const meta = await block.meta;
+  const prefix = meta.query.system.account.keyPrefix().toHex();
+  const keys = await chain.api.getKeysPaged(prefix, 256, prefix, snapshot.blockHash);
+  report.signerSelection.publicAccountScan = { pinnedBlockHash: snapshot.blockHash,
+    maximumAccountsExamined: 256, cachePrefetchLimit: 1000, returnedKeys: keys.length, examined: 0 };
+  for (const key of keys) {
+    assert.equal(key.length, prefix.length + 32 + 64, 'System account key must have Blake2_128Concat AccountId32 layout');
+    const address = registry.createType('AccountId', '0x' + key.slice(-64)).toString();
+    report.signerSelection.publicAccountScan.examined++;
+    if (await select(address)) return block;
+  }
+  assert(opts.syntheticFixtures, 'Bounded public payers lack spendable funding; rerun with --synthetic-fixtures for disclosed local-only funding');
+  assert(report.initialize.nativeXorIssuancePreserved, 'Synthetic funding must follow the unmodified upgrade preservation checks');
+  const address = snapshot.feePayerCandidates[0];
+  const before = await rawQuery(block, 'system', 'account', [address]);
+  const after = before.toJSON();
+  const added = minimum + 10n ** 18n;
+  after.data.free = (before.data.free.toBigInt() + added).toString();
+  const oldIssuance = (await rawQuery(block, 'balances', 'totalIssuance')).toBigInt();
+  const rows = [
+    ['system', 'account', [address], after],
+    ['balances', 'totalIssuance', [], (oldIssuance + added).toString()],
+  ];
+  const writes = [];
+  for (const [pallet, name, params, json] of rows) {
+    const key = storageKey(meta, pallet, name, params);
+    const value = u8aToHex(registry.createType(key.outputType, json).toU8a());
+    writes.push([key.toHex(), value]);
+    report.fixtureOverrides.push({ kind: 'equivocationPayerFunding', fixtureOnly: true, pallet, name,
+      key: key.toHex(), value, parentStateBefore: await block.get(key.toHex()) ?? null });
+  }
+  const funded = new Block(chain, block.number, block.hash, block, {
+    header: await block.header, extrinsics: [], storage: block.storage,
+  });
+  funded.pushStorageLayer().setAll(writes);
+  const fundedAccount = await rawQuery(funded, 'system', 'account', [address]);
+  const restored = fundedAccount.toJSON(); restored.data.free = before.toJSON().data.free;
+  assert.deepEqual(restored, before.toJSON(), 'Funding changes only free balance, preserving nonce, locks and account references');
+  assert.equal((await rawQuery(funded, 'balances', 'totalIssuance')).toBigInt() - oldIssuance, added);
+  assert(spendable(fundedAccount) > minimum);
+  report.signer = { address, free: fundedAccount.data.free.toString(), spendable: spendable(fundedAccount).toString(),
+    minimumSpendable: minimum.toString(), selectedFromPublicAccounts: true, syntheticFunding: true,
+    storageOverrides: writes.map(([key]) => key) };
+  report.syntheticPayerFunding = { passed: true, fixtureOnly: true, afterUpgradePreservationChecks: true,
+    account: address, before: before.toJSON(), after: fundedAccount.toJSON(), added: added.toString(),
+    issuanceBefore: oldIssuance.toString(), issuanceAfter: (oldIssuance + added).toString(),
+    nonceFrozenAndReferencesPreserved: true, issuanceDeltaMatchesFunding: true };
+  save(); return funded;
 }
 async function unsignedCheck(block, label, call) {
   const registry = await block.registry;
@@ -232,7 +294,12 @@ async function signedCheck(block, label, call, expectSuccess = true) {
   assert(quote.partialFee.toBigInt() > 0n, label + ' signed fee query must be positive');
   const response = await block.call('BlockBuilder_apply_extrinsic', [tx.toHex()]);
   const applied = registry.createType('ApplyExtrinsicResult', response.result);
-  assert(applied.isOk, label + ' funded signed extrinsic must pass transaction validity');
+  if (applied.isErr) {
+    report.failedSignedAdmission = { method: label, outcome: applied.toJSON(),
+      quotedFee: quote.partialFee.toString(), signerBefore: before.toJSON() };
+    save();
+  }
+  assert(applied.isOk, label + ' funded signed extrinsic must pass transaction validity: ' + JSON.stringify(applied.toJSON()));
   const shadow = new Block(chain, block.number, block.hash, block, { header: await block.header,
     extrinsics: [], storage: block.storage, storageDiff: Object.fromEntries(response.storageDiff) });
   const after = await rawQuery(shadow, 'system', 'account', [report.signer.address]);
@@ -280,10 +347,10 @@ async function main() {
   deployed.setWasm(u8aToHex(wasm)); report.candidate.runtimeVersion = await deployed.runtimeVersion;
   assert.equal(report.candidate.runtimeVersion.specVersion, 134);
   assert.equal(report.candidate.runtimeVersion.transactionVersion, 131);
-  const initialized = await initializeUpgrade(deployed);
+  let initialized = await initializeUpgrade(deployed);
   progress('Generating synthetic report fixtures using real current-session ownership proofs');
   const fixtures = await reportFixtures(initialized);
-  await chooseSigner(initialized, fixtures[0][1]);
+  initialized = await chooseSigner(initialized, fixtures);
   for (const [label, call] of fixtures) {
     progress('Charging signed ' + label); const applied = await signedCheck(initialized, label, call);
     progress('Charging duplicate ' + label); await signedCheck(applied, label + ' duplicate', call, false);

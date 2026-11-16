@@ -33,7 +33,7 @@ use crate::{Config, Error, MomentOf};
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{AccountIdOf, Balance, BoundedString};
-use derivative::Derivative;
+use derive_where::derive_where;
 use frame_support::ensure;
 use frame_support::traits::Time;
 use frame_support::DebugNoBound;
@@ -102,8 +102,8 @@ impl<T: Config> Request<T> {
     }
 }
 
-#[derive(DebugNoBound, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
-#[derivative(Clone, PartialEq, Eq)]
+#[derive(DebugNoBound, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive_where(Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct DepositRequest<T: Config> {
     pub owner: AccountIdOf<T>,
@@ -152,8 +152,8 @@ impl<T: Config> DepositRequest<T> {
     }
 }
 
-#[derive(DebugNoBound, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
-#[derivative(Clone, PartialEq, Eq)]
+#[derive(DebugNoBound, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive_where(Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct WithdrawRequest<T: Config> {
     pub owner: AccountIdOf<T>,

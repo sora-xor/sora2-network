@@ -29,9 +29,11 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 pub mod channel_abi;
 pub mod evm;
+pub mod recovery;
 pub mod substrate;
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
@@ -40,13 +42,16 @@ pub mod traits;
 pub mod types;
 pub mod utils;
 
+#[cfg(test)]
+mod coverage_tests;
+
 use codec::{Decode, Encode};
-use derivative::Derivative;
+use derive_where::derive_where;
 pub use ethereum_types::{H128, H64};
 pub use log::Log;
 use serde::{Deserialize, Serialize};
+use sp_core::Get;
 pub use sp_core::{H160, H256, H512, U256};
-use sp_core::{Get};
 use staging_xcm as xcm;
 use ton::{TonAddress, TonBalance, TonNetworkId, TonTransactionId};
 
@@ -107,15 +112,7 @@ pub enum SubNetworkId {
 }
 
 #[derive(
-    Encode,
-    Decode,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Debug,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Encode, Decode, Copy, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
@@ -224,14 +221,9 @@ pub enum GenericTimepoint {
     TON(TonTransactionId),
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub enum GenericCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
@@ -262,15 +254,7 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages,
 
 #[allow(clippy::large_enum_variant)]
 #[derive(
-    Encode,
-    Decode,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Debug,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Encode, Decode, Clone, Copy, PartialEq, Eq, Debug, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum GenericAssetId {
@@ -320,17 +304,11 @@ pub type MainnetAccountId = sp_runtime::AccountId32;
 pub type MainnetBalance = u128;
 
 #[derive(
-    Encode,
-    Decode,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Debug,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Encode, Decode, Clone, Copy, PartialEq, Eq, Debug, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+// The asset-locker bound requires serde in Wasm builds as well. Serde is
+// already available with alloc and no default features; SCALE is unchanged.
+#[derive(Serialize, Deserialize)]
 pub enum LiberlandAssetId {
     LLD,
     Asset(u32),
@@ -342,14 +320,9 @@ impl From<u32> for LiberlandAssetId {
     }
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub enum GenericBridgeMessage<MaxPayload: Get<u32>> {

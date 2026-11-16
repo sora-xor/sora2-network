@@ -56,9 +56,9 @@ export CLIPPY_TEST_ROOT="$repo_root"
 cd "$test_dir"
 "$runner" > "$test_dir/output"
 cat > "$test_dir/expected" <<'EXPECTED'
-clippy --locked --all-targets -p framenode -p framenode-runtime -p eth-bridge -- -D warnings
-clippy --locked --all-targets -p framenode -p framenode-runtime -p eth-bridge --features try-runtime -- -D warnings
-clippy --locked --all-targets --workspace --features private-net,stage,wip,runtime-benchmarks -- -D warnings
+clippy --locked --keep-going --all-targets -p framenode -p framenode-runtime -p eth-bridge -- -D warnings
+clippy --locked --keep-going --all-targets -p framenode -p framenode-runtime -p eth-bridge --features try-runtime -- -D warnings
+clippy --locked --keep-going --all-targets --workspace --features private-net,stage,wip,runtime-benchmarks -- -D warnings
 EXPECTED
 diff -u "$test_dir/expected" "$CLIPPY_TEST_LOG"
 cat > "$test_dir/expected" <<'EXPECTED'
@@ -82,7 +82,7 @@ for mode in mainnet try-runtime extended; do
             features=' --features private-net,stage,wip,runtime-benchmarks'
             ;;
     esac
-    printf 'clippy --locked --all-targets %s%s --message-format=json -- -D warnings\n' \
+    printf 'clippy --locked --keep-going --all-targets %s%s --message-format=json -- -D warnings\n' \
         "$packages" "$features" > "$test_dir/expected"
     diff -u "$test_dir/expected" "$CLIPPY_TEST_LOG"
 done

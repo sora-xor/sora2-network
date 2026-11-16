@@ -61,6 +61,7 @@ pub mod test_utils;
 
 pub mod alt;
 mod balance_unit;
+pub mod bridge_halt;
 pub mod cache_storage;
 pub mod eth;
 mod fixed_wrapper;
@@ -70,6 +71,7 @@ pub mod migrations;
 mod outcome_fee;
 pub mod permissions;
 mod primitives;
+pub mod recovery;
 pub mod serialization;
 pub mod storage;
 mod swap_amount;

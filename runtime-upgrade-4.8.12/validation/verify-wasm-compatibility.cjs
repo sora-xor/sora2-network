@@ -139,6 +139,25 @@ try {
     '--new', report.inputs.candidate.metadataPath, '--output', metadataReportPath]));
   const metadata = JSON.parse(readFileSync(metadataReportPath));
   assert.equal(metadata.compatibleExistingScaleEncoding, true, 'Existing SCALE encoding must be compatible');
+  // Batch pricing changes execution policy only. Preserve every encoding and
+  // constant of the sealed lending-retirement candidate, including runtime version.
+  const preBatchPath = resolve(__dirname, 'pre-batch-candidate-metadata.json');
+  const preBatchMetadataSha256 = sha256(readFileSync(preBatchPath));
+  assert.equal(preBatchMetadataSha256, '2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f');
+  const preBatchReportPath = join(outputDir, 'payout-batch-metadata-compatibility.json');
+  run('python3', [comparator, '--old', preBatchPath, '--new', report.inputs.candidate.metadataPath,
+    '--output', preBatchReportPath]);
+  const preBatchComparison = JSON.parse(readFileSync(preBatchReportPath));
+  assert.equal(preBatchComparison.compatibleExistingScaleEncoding, true);
+  assert.deepEqual(preBatchComparison.additions, [], 'Batch pricing must add no ABI');
+  assert.deepEqual(preBatchComparison.constantValueChanges, [], 'Batch pricing must preserve constants');
+  report.payoutBatchMetadataComparison = {
+    previousMetadataFile: 'pre-batch-candidate-metadata.json', previousMetadataSha256: preBatchMetadataSha256,
+    previousCandidateSha256: 'de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221',
+    candidateMetadataSha256: report.inputs.candidate.metadataSha256,
+    reportFile: 'payout-batch-metadata-compatibility.json', reportSha256: sha256(readFileSync(preBatchReportPath)),
+    allEncodingsAndConstantsPreserved: true, noAbiAdditions: true,
+  };
   // Lending retirement preserves the sealed paid-migration ABI and adds only
   // the reviewed mode constants, appended errors and deferred-interest balance map.
   const previousMetadataPath = resolve(__dirname, 'previous-candidate-metadata.json');
@@ -216,6 +235,7 @@ try {
     assert.deepEqual(newVersion[key], oldVersion[key], 'Unchanged runtime version field: ' + key);
   }
   report.checks = { existingScaleEncodingCompatible: true, metadataAdditionsRecorded: true,
+    payoutBatchPreservesAllEncodingsAndConstants: true,
     previous4812EncodingsPreserved: true, onlyDeclaredRetirementAdditions: true, allOtherAbiAndConstantsPreserved: true, capacityAbiRetained: true,
     onlyRuntimeVersionConstantChanged: true, hostImportNamesKindsAndOrderUnchanged: true,
     hostFunctionSignaturesUnchanged: true, importedMemoryLimitsCompatible: true, memoryGrowthCompatibleWithPinnedSdkDefaultAllocation: true,

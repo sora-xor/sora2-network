@@ -1,0 +1,5 @@
+error: Invalid pallet::call, dispatchable function must be public: `pub fn`
+  --> tests/pallet_ui/call_invalid_vis.rs:37:3
+   |
+37 |         fn foo(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+   |         ^^

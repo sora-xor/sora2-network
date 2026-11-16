@@ -78,7 +78,7 @@ type Block = frame_system::mocking::MockBlock<Runtime>;
 pub const SMALL_REFERENCE_AMOUNT: Balance = balance!(0.7);
 pub const PRICE_XOR_DAI: Balance = balance!(800);
 pub fn account_from_str(s: &str) -> AccountId {
-    sp_core::blake2_256(s.as_bytes()).into()
+    sp_io::hashing::blake2_256(s.as_bytes()).into()
 }
 
 parameter_types! {

@@ -61,6 +61,14 @@ mod benchmarking;
 pub mod weights;
 pub use weights::WeightInfo;
 
+/// Exact, authenticated peer acknowledgements retained while recovery halts all
+/// outbound commitments. No worker consumes this journal automatically.
+pub fn recovery_peer_ack_key(network: bridge_types::SubNetworkId, id: H256) -> Vec<u8> {
+    let mut key = b":sora-nexus:recovery:peer-ack:v1:".to_vec();
+    key.extend((network, id).encode());
+    key
+}
+
 #[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct Proof {
     pub digest: AuxiliaryDigest,
@@ -148,6 +156,8 @@ pub mod pallet {
         DuplicatedPeer,
         NotEnoughPeers,
         PeerRegisteredInOtherNetwork,
+        RecoveryHalted,
+        RecoveryAcknowledgementExists,
     }
 
     #[pallet::hooks]
@@ -156,7 +166,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::initialize())]
+        #[pallet::weight((<T as Config>::WeightInfo::initialize()).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -172,7 +182,7 @@ pub mod pallet {
 
         #[pallet::call_index(1)]
         #[transactional]
-        #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::add_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn add_peer(origin: OriginFor<T>, peer: ecdsa::Public) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
             info!("Call add_peer {:?} by {:?}", peer, output);
@@ -191,11 +201,10 @@ pub mod pallet {
                 }
                 Ok(())
             })?;
-            T::OutboundChannel::submit(
+            Self::submit_peer_ack(
                 output.network_id,
-                &frame_system::RawOrigin::Root,
-                &bridge_types::substrate::DataSignerCall::AddPeer { peer }.prepare_message(),
-                (),
+                output.message_id,
+                bridge_types::substrate::DataSignerCall::AddPeer { peer },
             )?;
             Self::deposit_event(Event::PeerAdded(peer));
             Ok(().into())
@@ -203,7 +212,7 @@ pub mod pallet {
 
         #[pallet::call_index(2)]
         #[transactional]
-        #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
+        #[pallet::weight((<T as Config>::WeightInfo::remove_peer()).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn remove_peer(
             origin: OriginFor<T>,
             peer: ecdsa::Public,
@@ -229,11 +238,10 @@ pub mod pallet {
                 },
             )?;
 
-            T::OutboundChannel::submit(
+            Self::submit_peer_ack(
                 output.network_id,
-                &frame_system::RawOrigin::Root,
-                &bridge_types::substrate::DataSignerCall::RemovePeer { peer }.prepare_message(),
-                (),
+                output.message_id,
+                bridge_types::substrate::DataSignerCall::RemovePeer { peer },
             )?;
 
             Self::deposit_event(Event::PeerRemoved(peer));
@@ -241,7 +249,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::force_set_peers())]
+        #[pallet::weight((<T as Config>::WeightInfo::force_set_peers()).saturating_add(bridge_types::recovery::completion_weight::<T>(4)))]
         pub fn force_set_peers(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -258,6 +266,36 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        fn submit_peer_ack(
+            network: SubNetworkId,
+            id: H256,
+            acknowledgement: bridge_types::substrate::DataSignerCall,
+        ) -> DispatchResult {
+            if !bridge_types::recovery::recovery_in_progress() {
+                return T::OutboundChannel::submit(
+                    network,
+                    &frame_system::RawOrigin::Root,
+                    &acknowledgement.prepare_message(),
+                    (),
+                )
+                .map(drop);
+            }
+            ensure!(
+                frame_system::Pallet::<T>::block_number()
+                    .try_into()
+                    .ok()
+                    .is_some_and(bridge_types::recovery::maintenance_inbound_active),
+                Error::<T>::RecoveryHalted
+            );
+            let key = recovery_peer_ack_key(network, id);
+            ensure!(
+                !sp_io::storage::exists(&key),
+                Error::<T>::RecoveryAcknowledgementExists
+            );
+            sp_io::storage::set(&key, &acknowledgement.encode());
+            Ok(())
+        }
+
         fn canonicalize_peers(
             peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
             require_minimum: bool,
@@ -330,6 +368,14 @@ pub mod pallet {
                 fail!(Error::<T>::NetworkNotInitialized)
             };
 
+            // A valid proof contains unique current peers. Reject impossible
+            // counts before doing any public-key recovery.
+            let threshold = bridge_types::utils::threshold(peers.len() as u32);
+            ensure!(
+                signatures.len() >= threshold as usize && signatures.len() <= peers.len(),
+                Error::<T>::InvalidNumberOfSignatures
+            );
+
             let mut unique_peers = BTreeSet::new();
 
             // Insure that every sighnature exists in the storage
@@ -351,12 +397,11 @@ pub mod pallet {
             }
 
             let len = unique_peers.len() as u32;
-            let treshold = bridge_types::utils::threshold(peers.len() as u32);
-            ensure!(len >= treshold, {
+            ensure!(len >= threshold, {
                 log::error!(
                     "verify_signatures: invalid number of signatures: {:?} < {:?}",
                     len,
-                    treshold
+                    threshold
                 );
                 Error::<T>::InvalidNumberOfSignatures
             });
@@ -377,8 +422,6 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
         proof: &Self::Proof,
     ) -> DispatchResult {
         let this_network_id = T::ThisNetworkId::get();
-        let digest_hash = Keccak256::hash_of(&proof.digest);
-        Self::verify_signatures(network_id, digest_hash, &proof.proof)?;
         let count = proof
             .digest
             .logs
@@ -392,10 +435,11 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
                 }
                 false
             })
+            .take(2)
             .count();
         ensure!(count == 1, Error::<T>::CommitmentNotFoundInDigest);
-
-        Ok(())
+        let digest_hash = Keccak256::hash_of(&proof.digest);
+        Self::verify_signatures(network_id, digest_hash, &proof.proof)
     }
 
     fn verify_weight(proof: &Self::Proof) -> Weight {

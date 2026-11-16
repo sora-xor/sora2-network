@@ -1,0 +1,1532 @@
+// Copyright 2023 litep2p developers
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the "Software"),
+// to deal in the Software without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense,
+// and/or sell copies of the Software, and to permit persons to whom the
+// Software is furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
+use crate::{
+    error::{Error, SubstreamError},
+    multistream_select::{
+        webrtc_listener_negotiate, HandshakeResult, ListenerSelectResult, NegotiationError,
+        WebRtcDialerState,
+    },
+    protocol::{Direction, Permit, ProtocolCommand, ProtocolSet, SubstreamKeepAlive},
+    substream::Substream,
+    transport::{
+        webrtc::{
+            schema::webrtc::message::Flag,
+            socket::WebRtcSocket,
+            substream::{Message, Substream as WebRtcSubstream, SubstreamHandle},
+            util::{extract_framed_message, WebRtcMessage},
+            AddressPair,
+        },
+        Endpoint, SUBSTREAM_OPEN_TIMEOUT,
+    },
+    types::{protocol::ProtocolName, SubstreamId},
+    PeerId,
+};
+
+use bytes::{Bytes, BytesMut};
+use futures::{task::AtomicWaker, Stream, StreamExt};
+use indexmap::IndexMap;
+use str0m::{
+    channel::{Channel, ChannelConfig, ChannelId, Reliability},
+    net::{Protocol as Str0mProtocol, Receive},
+    Event, IceConnectionState, Input, Output, Rtc,
+};
+use tokio::sync::mpsc::Receiver;
+
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+    time::Instant,
+};
+
+/// Logging target for the file.
+const LOG_TARGET: &str = "litep2p::webrtc::connection";
+
+/// Threshold under which str0m emits Event::ChannelBufferedAmountLow.
+const BACKPRESSURE_THRESHOLD: usize = 16 * (1 << 10); // 16 KB
+
+/// Maximum number of pending messages supported per channel.
+const MAX_PENDING_PER_CHANNEL: usize = 16;
+
+/// Opening channel context.
+#[derive(Debug)]
+struct ChannelContext {
+    /// Protocol name.
+    protocol: ProtocolName,
+
+    /// Fallback names.
+    fallback_names: Vec<ProtocolName>,
+
+    /// Substream ID.
+    substream_id: SubstreamId,
+
+    /// Permit which keeps the connection open while we are opening a substream. Must be returned
+    /// to [`TransportService`](crate::protocol::TransportService), where it can be safely dropped
+    /// after upgrading the connection.
+    opening_permit: Permit,
+
+    /// Whether this substream should keep the connection alive while it exists, i.e., whether it
+    /// should store the permit entioned above for the lifetime of the substream.
+    keep_alive: SubstreamKeepAlive,
+}
+
+/// Set of [`SubstreamHandle`]s.
+struct SubstreamHandleSet {
+    /// Current index.
+    index: usize,
+
+    /// Substream handles.
+    handles: IndexMap<ChannelId, SubstreamHandle>,
+
+    /// Substreams that have pending messages.
+    pending: HashSet<ChannelId>,
+
+    /// Waker used to drive the stream when no handle can make progress.
+    waker: AtomicWaker,
+}
+
+impl SubstreamHandleSet {
+    /// Create new [`SubstreamHandleSet`].
+    pub fn new() -> Self {
+        Self {
+            index: 0usize,
+            handles: IndexMap::new(),
+            pending: HashSet::new(),
+            waker: AtomicWaker::new(),
+        }
+    }
+
+    /// Get mutable access to `SubstreamHandle`.
+    pub fn get_mut(&mut self, key: &ChannelId) -> Option<&mut SubstreamHandle> {
+        self.handles.get_mut(key)
+    }
+
+    /// Insert new handle to [`SubstreamHandleSet`].
+    pub fn insert(&mut self, key: ChannelId, handle: SubstreamHandle) {
+        assert!(self.handles.insert(key, handle).is_none());
+        self.waker.wake();
+    }
+
+    /// Remove handle from [`SubstreamHandleSet`].
+    pub fn remove(&mut self, key: &ChannelId) -> Option<SubstreamHandle> {
+        self.pending.remove(key);
+        self.handles.swap_remove(key)
+    }
+
+    /// Mark channel as having pending messages.
+    pub fn add_pending(&mut self, key: ChannelId) {
+        self.pending.insert(key);
+    }
+
+    /// Unmark channel as having pending messages.
+    pub fn clear_pending(&mut self, key: &ChannelId) {
+        if self.pending.remove(key) {
+            self.waker.wake();
+        }
+    }
+}
+
+impl Stream for SubstreamHandleSet {
+    type Item = (ChannelId, Option<Message>);
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let len = match self.handles.len() {
+            0 => {
+                self.waker.register(cx.waker());
+                return Poll::Pending;
+            }
+            len => len,
+        };
+        let start_index = self.index;
+
+        loop {
+            let index = self.index % len;
+            self.index += 1;
+
+            let Some((key, _)) = self.handles.get_index(index) else {
+                tracing::debug!(
+                    target: LOG_TARGET,
+                    index,
+                    num_handles = self.handles.len(),
+                    "substream handles index out of bounds",
+                );
+                return Poll::Ready(None);
+            };
+
+            // A backpressured (pending) channel must not produce new outbound payload,
+            // but its state machine is still driven.
+            let pull_payload = !self.pending.contains(key);
+
+            let Some((key, stream)) = self.handles.get_index_mut(index) else {
+                tracing::debug!(
+                    target: LOG_TARGET,
+                    index,
+                    num_handles = self.handles.len(),
+                    "substream handles index out of bounds",
+                );
+                return Poll::Ready(None);
+            };
+
+            match stream.poll_progress(cx, pull_payload) {
+                Poll::Pending => {}
+                Poll::Ready(event) => return Poll::Ready(Some((*key, event))),
+            }
+
+            if self.index == start_index + len {
+                self.waker.register(cx.waker());
+                break Poll::Pending;
+            }
+        }
+    }
+}
+
+/// Channel state.
+#[derive(Debug)]
+enum ChannelState {
+    /// Channel is closing.
+    Closing,
+
+    /// Inbound channel is opening.
+    InboundOpening {
+        /// Whether the multistream-select header has already been received/sent.
+        header_received: bool,
+    },
+
+    /// Outbound channel is opening.
+    OutboundOpening {
+        /// Channel context.
+        context: ChannelContext,
+
+        /// `multistream-select` dialer state.
+        dialer_state: WebRtcDialerState,
+    },
+
+    /// Channel is open.
+    Open {
+        /// Substream ID.
+        substream_id: SubstreamId,
+
+        /// Channel ID.
+        channel_id: ChannelId,
+
+        /// Connection permit if this substream needs to keep connection open.
+        lifetime_permit: Option<Permit>,
+    },
+}
+
+/// WebRTC connection.
+pub struct WebRtcConnection {
+    /// `str0m` WebRTC object.
+    rtc: Rtc,
+
+    /// Protocol set.
+    protocol_set: ProtocolSet,
+
+    /// Remote peer ID.
+    peer: PeerId,
+
+    /// Endpoint.
+    endpoint: Endpoint,
+
+    /// Addresses of the session.
+    addrs: AddressPair,
+
+    /// Transport socket.
+    socket: Arc<WebRtcSocket>,
+
+    /// RX channel for receiving datagrams from the transport.
+    dgram_rx: Receiver<Vec<u8>>,
+
+    /// Pending outbound channels.
+    pending_outbound: HashMap<ChannelId, ChannelContext>,
+
+    /// Pending outbound messages,
+    /// at most [`MAX_PENDING_PER_CHANNEL`] per channel.
+    pending_messages: HashMap<ChannelId, VecDeque<Vec<u8>>>,
+
+    /// Deadlines of the opening phase of channels.
+    opening_deadlines: VecDeque<(ChannelId, Instant)>,
+
+    /// Channels closed by time out.
+    ///
+    /// Need by [`Self::on_channel_closed`], so that
+    /// `NegotiationError::Timeout` can be reported as error.
+    opening_timed_out: HashSet<ChannelId>,
+
+    /// Open channels.
+    channels: HashMap<ChannelId, ChannelState>,
+
+    /// Substream handles.
+    handles: SubstreamHandleSet,
+
+    /// Inbound data channel byte buffer for reassembling full protobuf frames.
+    ///
+    /// The libp2p-go msgio implementation issues two separate `Write` calls:
+    ///  - variant length
+    ///  - protobuf body
+    ///
+    /// These will become two distinct SCTP messages on the data channel.
+    ///
+    /// Accumulate raw bytes here and only attempt protobuf decode once a
+    /// full `varint length ++ body` frame is available.
+    recv_buffers: HashMap<ChannelId, BytesMut>,
+}
+
+impl WebRtcConnection {
+    /// Create new [`WebRtcConnection`].
+    pub fn new(
+        rtc: Rtc,
+        peer: PeerId,
+        addrs: AddressPair,
+        socket: Arc<WebRtcSocket>,
+        protocol_set: ProtocolSet,
+        endpoint: Endpoint,
+        dgram_rx: Receiver<Vec<u8>>,
+    ) -> Self {
+        Self {
+            rtc,
+            protocol_set,
+            peer,
+            addrs,
+            socket,
+            endpoint,
+            dgram_rx,
+            pending_outbound: HashMap::new(),
+            pending_messages: HashMap::new(),
+            opening_deadlines: VecDeque::new(),
+            opening_timed_out: HashSet::new(),
+            channels: HashMap::new(),
+            handles: SubstreamHandleSet::new(),
+            recv_buffers: HashMap::new(),
+        }
+    }
+
+    /// Handle opened channel.
+    ///
+    /// If the channel is inbound, nothing is done because we have to wait for data
+    /// `multistream-select` handshake to be received from remote peer before anything
+    /// else can be done.
+    ///
+    /// If the channel is outbound, send `multistream-select` handshake to remote peer.
+    async fn on_channel_opened(
+        &mut self,
+        channel_id: ChannelId,
+        channel_name: String,
+    ) -> crate::Result<()> {
+        tracing::trace!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            ?channel_id,
+            ?channel_name,
+            "channel opened",
+        );
+
+        if let Some(mut channel) = self.rtc.channel(channel_id) {
+            channel.set_buffered_amount_low_threshold(BACKPRESSURE_THRESHOLD);
+        }
+
+        let Some(mut context) = self.pending_outbound.remove(&channel_id) else {
+            tracing::trace!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                "inbound channel opened, wait for `multistream-select` message",
+            );
+
+            self.add_opening_deadline(channel_id);
+            self.channels.insert(
+                channel_id,
+                ChannelState::InboundOpening {
+                    header_received: false,
+                },
+            );
+            return Ok(());
+        };
+
+        let fallback_names = std::mem::take(&mut context.fallback_names);
+        let res = match WebRtcDialerState::propose(context.protocol.clone(), fallback_names) {
+            Ok((dialer_state, message)) => self
+                .write(channel_id, WebRtcMessage::encode(message, None))
+                .map(|()| dialer_state),
+            Err(error) => Err(error),
+        };
+
+        let dialer_state = match res {
+            Ok(dialer_state) => dialer_state,
+            Err(error) => {
+                tracing::debug!(
+                    target: LOG_TARGET,
+                    peer = ?self.peer,
+                    ?channel_id,
+                    ?error,
+                    "failed to open outbound substream",
+                );
+
+                // The substream open failure must be reported and the channel closed,
+                // otherwise the protocol waits out its own timeout and the channel is
+                // left open until the connection dies.
+                let _ = self
+                    .protocol_set
+                    .report_substream_open_failure(
+                        context.protocol,
+                        context.substream_id,
+                        SubstreamError::WriteFailure(Some(context.substream_id)),
+                    )
+                    .await;
+
+                self.rtc.direct_api().close_data_channel(channel_id);
+                self.channels.insert(channel_id, ChannelState::Closing);
+
+                return Err(error);
+            }
+        };
+
+        self.channels.insert(
+            channel_id,
+            ChannelState::OutboundOpening {
+                context,
+                dialer_state,
+            },
+        );
+
+        Ok(())
+    }
+
+    // Attempt to write a message over the specified channel,
+    // save the message as pending if `WebRtcConnection` didn't have
+    // enough space.
+    fn write(&mut self, channel_id: ChannelId, message: Vec<u8>) -> Result<(), Error> {
+        let Some(mut channel) = self.rtc.channel(channel_id) else {
+            tracing::trace!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                "protocol rejected received for non-existing channel",
+            );
+            return Err(Error::ChannelDoesntExist);
+        };
+
+        match self.pending_messages.get_mut(&channel_id) {
+            Some(messages) if !messages.is_empty() => {
+                if messages.len() >= MAX_PENDING_PER_CHANNEL {
+                    return Err(Error::ChannelClogged);
+                }
+
+                messages.push_back(message);
+                return Ok(());
+            }
+            _ => (),
+        }
+
+        let succeeded = Self::channel_write(&mut channel, channel_id, &message, self.peer)?;
+
+        if !succeeded {
+            let pending_messages = self.pending_messages.entry(channel_id).or_default();
+            if pending_messages.len() >= MAX_PENDING_PER_CHANNEL {
+                return Err(Error::ChannelClogged);
+            }
+
+            pending_messages.push_back(message);
+            self.handles.add_pending(channel_id);
+            return Ok(());
+        }
+
+        Ok(())
+    }
+
+    fn channel_write(
+        channel: &mut Channel<'_>,
+        channel_id: ChannelId,
+        message: &[u8],
+        peer: PeerId,
+    ) -> Result<bool, Error> {
+        match channel.write(true, message) {
+            Ok(succeeded) => Ok(succeeded),
+            Err(e) => {
+                tracing::trace!(
+                    target: LOG_TARGET,
+                    peer = ?peer,
+                    ?channel_id,
+                    ?e,
+                    "failed to write message to webrtc channel",
+                );
+                Err(Error::WebRtc(e))
+            }
+        }
+    }
+
+    // Attempt to write all pending messages of the specified ChannelId.
+    // Returns whether all messages have been sent or not.
+    fn write_pending(&mut self, channel_id: ChannelId) -> Result<bool, Error> {
+        let Some(mut channel) = self.rtc.channel(channel_id) else {
+            tracing::trace!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                "protocol rejected received for non-existing channel",
+            );
+            return Err(Error::ChannelDoesntExist);
+        };
+
+        loop {
+            let Some(pending_messages) = self.pending_messages.get_mut(&channel_id) else {
+                // This should never happen, `write_pending` should be called
+                // for only the channel with pending messages. Treat as a no-op
+                // instead of panicking to stay defensive.
+                self.handles.clear_pending(&channel_id);
+                return Ok(true);
+            };
+
+            let Some(message) = pending_messages.front() else {
+                self.pending_messages.remove(&channel_id);
+                self.handles.clear_pending(&channel_id);
+                break Ok(true);
+            };
+
+            let succeeded = Self::channel_write(&mut channel, channel_id, message, self.peer)?;
+            if succeeded {
+                self.pending_messages
+                    .get_mut(&channel_id)
+                    .and_then(|messages| messages.pop_front());
+            } else {
+                break Ok(false);
+            }
+        }
+    }
+
+    /// Handle closed channel.
+    async fn on_channel_closed(&mut self, channel_id: ChannelId) -> crate::Result<()> {
+        tracing::trace!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            ?channel_id,
+            "channel closed",
+        );
+
+        let opening_timed_out = self.opening_timed_out.remove(&channel_id);
+        let substream_error = || {
+            if opening_timed_out {
+                SubstreamError::NegotiationError(crate::error::NegotiationError::Timeout)
+            } else {
+                SubstreamError::ConnectionClosed
+            }
+        };
+
+        // If this was a pending outbound channel (waiting for DCEP ACK from remote),
+        // report the failure so the protocol handler can retry.
+        if let Some(context) = self.pending_outbound.remove(&channel_id) {
+            tracing::debug!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                protocol = %context.protocol,
+                substream_id = ?context.substream_id,
+                "outbound channel closed before opening, reporting failure",
+            );
+
+            let _ = self
+                .protocol_set
+                .report_substream_open_failure(
+                    context.protocol,
+                    context.substream_id,
+                    substream_error(),
+                )
+                .await;
+        }
+
+        if let Some(ChannelState::OutboundOpening { context, .. }) =
+            self.channels.remove(&channel_id)
+        {
+            tracing::debug!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                protocol = %context.protocol,
+                substream_id = ?context.substream_id,
+                "outbound channel closed during negotiation, reporting failure",
+            );
+
+            let _ = self
+                .protocol_set
+                .report_substream_open_failure(
+                    context.protocol,
+                    context.substream_id,
+                    substream_error(),
+                )
+                .await;
+        }
+
+        self.pending_messages.remove(&channel_id);
+        self.handles.remove(&channel_id);
+        self.recv_buffers.remove(&channel_id);
+
+        Ok(())
+    }
+
+    /// Handle data received to an opening inbound channel.
+    ///
+    /// The first message received over an inbound channel is the `multistream-select` handshake.
+    /// This handshake contains the protocol the remote peer wants to use for this channel. Parse
+    /// the handshake and check whether the proposed protocol is supported by the local node.
+    /// If not, send rejection to remote peer and but keep the channel open so that the peer can
+    /// propose a fallback. If the local node support the protocol, send confirmation for the
+    /// protocol to remote peer and report an opened substream to the selected protocol.
+    ///
+    /// Returns `Ok(Some(...))` if the protocol was accepted and the substream opened,
+    /// `Ok(None)` if the proposed protocol was rejected (the `na` response has been sent
+    /// and the channel should remain in [`ChannelState::InboundOpening`] so the dialer can
+    /// propose another protocol per back-and-forth multistream-select negotiation),
+    /// or `Err(...)` on a fatal error (channel should be closed).
+    async fn on_inbound_opening_channel_data(
+        &mut self,
+        channel_id: ChannelId,
+        data: Bytes,
+        header_received: bool,
+    ) -> crate::Result<Option<(SubstreamId, SubstreamHandle, Option<Permit>)>> {
+        tracing::trace!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            ?channel_id,
+            "handle opening inbound substream",
+        );
+
+        // Decode errors are not recoverable.
+        let WebRtcMessage {
+            payload: Some(payload),
+            flag: None,
+        } = WebRtcMessage::decode(&data)
+            .map_err(|err| SubstreamError::NegotiationError(err.into()))?
+        else {
+            tracing::debug!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                "non-payload frame during inbound opening, closing channel"
+            );
+            return Err(Error::ConnectionClosed);
+        };
+
+        let protocols = self.protocol_set.protocols_with_keep_alives();
+        let protocol_names = protocols.keys().cloned().collect();
+        let (response, negotiated) =
+            match webrtc_listener_negotiate(protocol_names, payload.into(), header_received)? {
+                ListenerSelectResult::Accepted { protocol, message } => (message, Some(protocol)),
+                ListenerSelectResult::Rejected { message }
+                | ListenerSelectResult::PendingProtocol { message } => (message, None),
+            };
+
+        let message = WebRtcMessage::encode(response.to_vec(), None);
+        self.write(channel_id, message)?;
+
+        let Some(protocol) = negotiated else {
+            tracing::trace!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                "inbound protocol rejected, keeping channel open for back-and-forth negotiation",
+            );
+            return Ok(None);
+        };
+
+        let substream_id = self.protocol_set.next_substream_id();
+        let codec = self.protocol_set.protocol_codec(&protocol);
+        let opening_permit = self.protocol_set.try_get_permit().ok_or(Error::ConnectionClosed)?;
+        let (substream, handle) = WebRtcSubstream::new();
+        let substream = Substream::new_webrtc(self.peer, substream_id, substream, codec);
+        let keep_alive = protocols
+            .get(&protocol)
+            .ok_or(Error::ProtocolNotSupported(protocol.to_string()))?;
+        let lifetime_permit = keep_alive.then(|| opening_permit.clone());
+
+        tracing::trace!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            ?channel_id,
+            ?substream_id,
+            ?protocol,
+            "inbound substream opened",
+        );
+
+        self.protocol_set
+            .report_substream_open(
+                self.peer,
+                protocol.clone(),
+                Direction::Inbound,
+                substream,
+                opening_permit,
+            )
+            .await
+            .map(|_| Some((substream_id, handle, lifetime_permit)))
+            .map_err(Into::into)
+    }
+
+    /// Handle data received to an opening outbound channel.
+    ///
+    /// When an outbound channel is opened, the first message the local node sends it the
+    /// `multistream-select` handshake which contains the protocol (and any fallbacks for that
+    /// protocol) that the local node wants to use to negotiate for the channel. When a message is
+    /// received from a remote peer for a channel in state [`ChannelState::OutboundOpening`], parse
+    /// the `multistream-select` handshake response. The response either contains a rejection which
+    /// causes the substream to be closed, a partial response, or a full response. If a partial
+    /// response is heard, e.g., only the header line is received, the handshake cannot be concluded
+    /// and the channel is placed back in the [`ChannelState::OutboundOpening`] state to wait for
+    /// the rest of the handshake. If a full response is received (or rest of the partial response),
+    /// the protocol confirmation is verified and the substream is reported to the protocol.
+    ///
+    /// If the substream fails to open for whatever reason, since this is an outbound substream,
+    /// the protocol is notified of the failure.
+    async fn on_outbound_opening_channel_data(
+        &mut self,
+        channel_id: ChannelId,
+        data: Bytes,
+        mut dialer_state: WebRtcDialerState,
+        context: ChannelContext,
+    ) -> Result<Option<(SubstreamId, SubstreamHandle)>, SubstreamError> {
+        tracing::trace!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            ?channel_id,
+            data_len = ?data.len(),
+            "handle opening outbound substream",
+        );
+
+        // Decode errors are not recoverable.
+        let WebRtcMessage {
+            payload: Some(message),
+            flag: None,
+        } = WebRtcMessage::decode(&data)
+            .map_err(|err| SubstreamError::NegotiationError(err.into()))?
+        else {
+            tracing::debug!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                "non-payload frame during outbound opening, closing channel"
+            );
+            return Err(SubstreamError::ConnectionClosed);
+        };
+
+        let protocol = match dialer_state.register_response(message)? {
+            HandshakeResult::Succeeded(protocol) => protocol,
+            HandshakeResult::NotReady => {
+                tracing::trace!(
+                    target: LOG_TARGET,
+                    peer = ?self.peer,
+                    ?channel_id,
+                    "multistream-select handshake not ready",
+                );
+
+                self.channels.insert(
+                    channel_id,
+                    ChannelState::OutboundOpening {
+                        context,
+                        dialer_state,
+                    },
+                );
+
+                return Ok(None);
+            }
+            HandshakeResult::Rejected => match dialer_state.propose_next_fallback() {
+                Ok(Some(message)) => {
+                    tracing::trace!(
+                        target: LOG_TARGET,
+                        peer = ?self.peer,
+                        ?channel_id,
+                        "protocol rejected, trying next fallback",
+                    );
+
+                    let message = WebRtcMessage::encode(message, None);
+
+                    self.write(channel_id, message).map_err(|_| {
+                        SubstreamError::NegotiationError(NegotiationError::Failed.into())
+                    })?;
+
+                    self.channels.insert(
+                        channel_id,
+                        ChannelState::OutboundOpening {
+                            context,
+                            dialer_state,
+                        },
+                    );
+
+                    return Ok(None);
+                }
+                Ok(None) => {
+                    tracing::debug!(
+                        target: LOG_TARGET,
+                        peer = ?self.peer,
+                        ?channel_id,
+                        "all protocols rejected by remote peer",
+                    );
+
+                    return Err(SubstreamError::NegotiationError(
+                        NegotiationError::Failed.into(),
+                    ));
+                }
+                Err(e) => {
+                    tracing::trace!(
+                        target: LOG_TARGET,
+                        peer = ?self.peer,
+                        ?channel_id,
+                        ?e,
+                        "dialer failed proposing next fallback",
+                    );
+
+                    return Err(SubstreamError::NegotiationError(
+                        NegotiationError::Failed.into(),
+                    ));
+                }
+            },
+        };
+
+        let ChannelContext {
+            substream_id,
+            opening_permit,
+            ..
+        } = context;
+        let codec = self.protocol_set.protocol_codec(&protocol);
+        let (substream, handle) = WebRtcSubstream::new();
+        let substream = Substream::new_webrtc(self.peer, substream_id, substream, codec);
+
+        tracing::trace!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            ?channel_id,
+            ?substream_id,
+            ?protocol,
+            "outbound substream opened",
+        );
+
+        self.protocol_set
+            .report_substream_open(
+                self.peer,
+                protocol.clone(),
+                Direction::Outbound(substream_id),
+                substream,
+                opening_permit,
+            )
+            .await
+            .map(|_| Some((substream_id, handle)))
+    }
+
+    /// Handle data received from an open channel.
+    async fn on_open_channel_data(
+        &mut self,
+        channel_id: ChannelId,
+        data: Bytes,
+    ) -> crate::Result<()> {
+        // Decode errors are not recoverable.
+        let message = WebRtcMessage::decode(&data)?;
+
+        tracing::debug!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            ?channel_id,
+            flag = ?message.flag,
+            data_len = message.payload.as_ref().map_or(0usize, |payload| payload.len()),
+            "handle inbound message on open channel",
+        );
+
+        self.handles
+            .get_mut(&channel_id)
+            .ok_or_else(|| {
+                tracing::warn!(
+                    target: LOG_TARGET,
+                    peer = ?self.peer,
+                    ?channel_id,
+                    "data received from an unknown channel",
+                );
+                Error::InvalidState
+            })?
+            .on_message(message)
+            .await
+    }
+
+    /// Handle data received from a channel.
+    ///
+    /// Bytes are accumulated in a per-channel buffer and only handed to the per-state
+    /// dispatcher once a complete `varint length ++ protobuf body` frame is available.
+    ///
+    /// This handles peers (go-libp2p's pbio writer) that split varint and body
+    /// across two SCTP messages, while remaining a no-op for peers that send the whole
+    /// frame in one message (smoldot).
+    async fn on_inbound_data(&mut self, channel_id: ChannelId, data: Vec<u8>) -> crate::Result<()> {
+        tracing::debug!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            ?channel_id,
+            data_len = data.len(),
+            channel_state = ?self.channels.get(&channel_id),
+            "received channel data",
+        );
+
+        // Data for an unknown channel must not create a `recv_buffers` entry.
+        if !self.channels.contains_key(&channel_id) {
+            tracing::warn!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                data_len = data.len(),
+                "data received over a channel that doesn't exist",
+            );
+            return Err(Error::InvalidState);
+        }
+
+        self.recv_buffers.entry(channel_id).or_default().extend_from_slice(&data);
+
+        loop {
+            let Some(buffer) = self.recv_buffers.get_mut(&channel_id) else {
+                return Ok(());
+            };
+
+            let Some(body) = extract_framed_message(buffer)? else {
+                return Ok(());
+            };
+
+            self.dispatch_framed_message(channel_id, body).await?;
+            // If the channel was closed/removed during dispatch, stop draining its buffer.
+            if !self.channels.contains_key(&channel_id) {
+                return Ok(());
+            }
+        }
+    }
+
+    /// Dispatch a single reassembled protobuf body to the per-channel-state handler.
+    async fn dispatch_framed_message(
+        &mut self,
+        channel_id: ChannelId,
+        data: Bytes,
+    ) -> crate::Result<()> {
+        let Some(state) = self.channels.remove(&channel_id) else {
+            tracing::warn!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                "data received over a channel that doesn't exist",
+            );
+            return Err(Error::InvalidState);
+        };
+
+        match state {
+            ChannelState::InboundOpening { header_received } => {
+                match self.on_inbound_opening_channel_data(channel_id, data, header_received).await
+                {
+                    Ok(Some((substream_id, handle, lifetime_permit))) => {
+                        self.handles.insert(channel_id, handle);
+                        self.channels.insert(
+                            channel_id,
+                            ChannelState::Open {
+                                substream_id,
+                                channel_id,
+                                lifetime_permit,
+                            },
+                        );
+                    }
+                    Ok(None) => {
+                        // Header has been exchanged after any successful round.
+                        self.channels.insert(
+                            channel_id,
+                            ChannelState::InboundOpening {
+                                header_received: true,
+                            },
+                        );
+                    }
+                    Err(error) => {
+                        tracing::debug!(
+                            target: LOG_TARGET,
+                            peer = ?self.peer,
+                            ?channel_id,
+                            ?error,
+                            "failed to handle opening inbound substream",
+                        );
+
+                        self.channels.insert(channel_id, ChannelState::Closing);
+                        self.rtc.direct_api().close_data_channel(channel_id);
+                    }
+                }
+            }
+            ChannelState::OutboundOpening {
+                context,
+                dialer_state,
+            } => {
+                let protocol = context.protocol.clone();
+                let substream_id = context.substream_id;
+                let lifetime_permit = context.keep_alive.then(|| context.opening_permit.clone());
+
+                match self
+                    .on_outbound_opening_channel_data(channel_id, data, dialer_state, context)
+                    .await
+                {
+                    Ok(Some((substream_id, handle))) => {
+                        self.handles.insert(channel_id, handle);
+                        self.channels.insert(
+                            channel_id,
+                            ChannelState::Open {
+                                substream_id,
+                                channel_id,
+                                lifetime_permit,
+                            },
+                        );
+                    }
+                    Ok(None) => {}
+                    Err(error) => {
+                        tracing::debug!(
+                            target: LOG_TARGET,
+                            peer = ?self.peer,
+                            ?channel_id,
+                            ?error,
+                            "failed to handle opening outbound substream",
+                        );
+
+                        let _ = self
+                            .protocol_set
+                            .report_substream_open_failure(protocol, substream_id, error)
+                            .await;
+
+                        self.rtc.direct_api().close_data_channel(channel_id);
+                        self.channels.insert(channel_id, ChannelState::Closing);
+                    }
+                }
+            }
+            ChannelState::Open {
+                substream_id,
+                channel_id,
+                lifetime_permit,
+            } => match self.on_open_channel_data(channel_id, data).await {
+                Ok(()) => {
+                    self.channels.insert(
+                        channel_id,
+                        ChannelState::Open {
+                            substream_id,
+                            channel_id,
+                            lifetime_permit,
+                        },
+                    );
+                }
+                Err(error) => {
+                    tracing::debug!(
+                        target: LOG_TARGET,
+                        peer = ?self.peer,
+                        ?channel_id,
+                        ?error,
+                        "failed to handle data for an open channel",
+                    );
+
+                    self.rtc.direct_api().close_data_channel(channel_id);
+                    self.channels.insert(channel_id, ChannelState::Closing);
+                    self.handles.remove(&channel_id);
+                }
+            },
+            ChannelState::Closing => {
+                tracing::debug!(
+                    target: LOG_TARGET,
+                    peer = ?self.peer,
+                    ?channel_id,
+                    "channel closing, discarding received data",
+                );
+                self.channels.insert(channel_id, ChannelState::Closing);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Handle outbound data with optional flag.
+    fn on_outbound_data(
+        &mut self,
+        channel_id: ChannelId,
+        data: Vec<u8>,
+        flag: Option<Flag>,
+    ) -> crate::Result<()> {
+        tracing::trace!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            ?channel_id,
+            data_len = ?data.len(),
+            ?flag,
+            "send data",
+        );
+
+        let message = WebRtcMessage::encode(data, flag);
+        self.write(channel_id, message)
+    }
+
+    /// Open outbound substream.
+    fn on_open_substream(
+        &mut self,
+        protocol: ProtocolName,
+        fallback_names: Vec<ProtocolName>,
+        substream_id: SubstreamId,
+        opening_permit: Permit,
+        keep_alive: SubstreamKeepAlive,
+    ) {
+        let channel_id = self.rtc.direct_api().create_data_channel(ChannelConfig {
+            label: "".to_string(),
+            ordered: true,
+            reliability: Reliability::Reliable,
+            negotiated: None,
+            protocol: protocol.to_string(),
+        });
+
+        tracing::trace!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            ?channel_id,
+            ?substream_id,
+            ?protocol,
+            ?fallback_names,
+            "open data channel",
+        );
+
+        self.add_opening_deadline(channel_id);
+        self.pending_outbound.insert(
+            channel_id,
+            ChannelContext {
+                protocol,
+                fallback_names,
+                substream_id,
+                opening_permit,
+                keep_alive,
+            },
+        );
+    }
+
+    /// Connection to peer has been closed.
+    async fn on_connection_closed(&mut self) {
+        tracing::trace!(
+            target: LOG_TARGET,
+            peer = ?self.peer,
+            "connection closed",
+        );
+
+        let mut report_failure = async |context: &ChannelContext| {
+            let _ = self
+                .protocol_set
+                .report_substream_open_failure(
+                    context.protocol.clone(),
+                    context.substream_id,
+                    SubstreamError::ConnectionClosed,
+                )
+                .await;
+        };
+
+        // Drain pending outbound opens (data channel not yet acked).
+        for (_, context) in self.pending_outbound.drain() {
+            report_failure(&context).await;
+        }
+
+        // Drain channels still in OutboundOpening (multistream-select in flight).
+        for (_, state) in self.channels.drain() {
+            if let ChannelState::OutboundOpening { context, .. } = state {
+                report_failure(&context).await;
+            }
+        }
+
+        let _ = self
+            .protocol_set
+            .report_connection_closed(self.peer, self.endpoint.connection_id())
+            .await;
+    }
+
+    /// Start the connection event loop without notifying protocols.
+    pub async fn run_event_loop(mut self) {
+        loop {
+            // poll output until we get a timeout
+            let output = match self.rtc.poll_output() {
+                Ok(output) => output,
+                Err(error) => {
+                    tracing::debug!(
+                        target: LOG_TARGET,
+                        peer = ?self.peer,
+                        ?error,
+                        "poll_output failed, closing connection",
+                    );
+                    return self.on_connection_closed().await;
+                }
+            };
+            let mut timeout = match output {
+                Output::Timeout(v) => v,
+                Output::Transmit(v) => {
+                    tracing::trace!(
+                        target: LOG_TARGET,
+                        peer = ?self.peer,
+                        datagram_len = ?v.contents.len(),
+                        "transmit data",
+                    );
+
+                    if let Err(error) =
+                        self.socket.try_send_to(&v.contents, v.destination, self.addrs.local.ip())
+                    {
+                        if error.kind() == std::io::ErrorKind::WouldBlock {
+                            tracing::trace!(
+                                target: LOG_TARGET,
+                                peer = ?self.peer,
+                                destination = ?v.destination,
+                                "UDP send buffer full, dropping datagram (str0m will retransmit)",
+                            );
+                        } else {
+                            tracing::debug!(
+                                target: LOG_TARGET,
+                                peer = ?self.peer,
+                                destination = ?v.destination,
+                                ?error,
+                                "failed to send datagram, closing connection",
+                            );
+                            return self.on_connection_closed().await;
+                        }
+                    }
+
+                    continue;
+                }
+                Output::Event(v) => match v {
+                    Event::IceConnectionStateChange(IceConnectionState::Disconnected) => {
+                        tracing::trace!(
+                            target: LOG_TARGET,
+                            peer = ?self.peer,
+                            "ice connection state changed to closed",
+                        );
+                        return self.on_connection_closed().await;
+                    }
+                    Event::ChannelOpen(channel_id, name) => {
+                        if let Err(error) = self.on_channel_opened(channel_id, name).await {
+                            tracing::debug!(
+                                target: LOG_TARGET,
+                                peer = ?self.peer,
+                                ?channel_id,
+                                ?error,
+                                "failed to handle opened channel",
+                            );
+                        }
+
+                        continue;
+                    }
+                    Event::ChannelClose(channel_id) => {
+                        // This event is emitted once the rtc instance
+                        // completes the call to `close_data_channel(channel_id)`.
+                        if let Err(error) = self.on_channel_closed(channel_id).await {
+                            tracing::debug!(
+                                target: LOG_TARGET,
+                                peer = ?self.peer,
+                                ?channel_id,
+                                ?error,
+                                "failed to handle closed channel",
+                            );
+                        }
+
+                        continue;
+                    }
+                    Event::ChannelData(info) => {
+                        if let Err(error) = self.on_inbound_data(info.id, info.data).await {
+                            tracing::debug!(
+                                target: LOG_TARGET,
+                                peer = ?self.peer,
+                                channel_id = ?info.id,
+                                ?error,
+                                "failed to handle channel data",
+                            );
+                        }
+
+                        continue;
+                    }
+                    Event::ChannelBufferedAmountLow(_channel_id) => {
+                        let channel_ids: Vec<_> = self.pending_messages.keys().cloned().collect();
+                        for channel_id in channel_ids {
+                            if let Err(error) = self.write_pending(channel_id) {
+                                tracing::debug!(
+                                    target: LOG_TARGET,
+                                    peer = ?self.peer,
+                                    ?channel_id,
+                                    ?error,
+                                    "failed to flush pending messages, closing channel",
+                                );
+
+                                self.rtc.direct_api().close_data_channel(channel_id);
+
+                                if let Some(ChannelState::OutboundOpening { context, .. }) =
+                                    self.channels.insert(channel_id, ChannelState::Closing)
+                                {
+                                    let _ = self
+                                        .protocol_set
+                                        .report_substream_open_failure(
+                                            context.protocol,
+                                            context.substream_id,
+                                            SubstreamError::WriteFailure(Some(
+                                                context.substream_id,
+                                            )),
+                                        )
+                                        .await;
+                                }
+
+                                self.handles.remove(&channel_id);
+                                self.pending_messages.remove(&channel_id);
+                            }
+                        }
+                        continue;
+                    }
+                    Event::Closed => {
+                        tracing::debug!(
+                            target: LOG_TARGET,
+                            peer = ?self.peer,
+                            "connection has been closed",
+                        );
+                        return self.on_connection_closed().await;
+                    }
+                    event => {
+                        tracing::debug!(
+                            target: LOG_TARGET,
+                            peer = ?self.peer,
+                            ?event,
+                            "unhandled event",
+                        );
+                        continue;
+                    }
+                },
+            };
+
+            // If nothing has expired yet, this is a no-op.
+            self.drain_opening_deadlines().await;
+
+            // Update the timeout by comparing it against the next opening-channel deadline.
+            // This way, the next iteration will drain the next deadline.
+            timeout = self
+                .opening_deadlines
+                .front()
+                .map_or(timeout, |(_, deadline)| std::cmp::min(timeout, *deadline));
+
+            tokio::select! {
+                biased;
+                datagram = self.dgram_rx.recv() => match datagram {
+                    Some(datagram) => {
+                        let contents = match datagram.as_slice().try_into() {
+                            Ok(contents) => contents,
+                            Err(error) => {
+                                tracing::debug!(
+                                    target: LOG_TARGET,
+                                    peer = ?self.peer,
+                                    ?error,
+                                    datagram_len = datagram.len(),
+                                    "failed to parse inbound datagram, closing connection",
+                                );
+
+                                return self.on_connection_closed().await;
+                            }
+                        };
+
+                        let input = Input::Receive(
+                            Instant::now(),
+                            Receive {
+                                proto: Str0mProtocol::Udp,
+                                source: self.addrs.remote,
+                                destination: self.addrs.local,
+                                contents,
+                            },
+                        );
+
+                        if let Err(error) = self.rtc.handle_input(input) {
+                            tracing::debug!(
+                                target: LOG_TARGET,
+                                peer = ?self.peer,
+                                ?error,
+                                "str0m rejected inbound datagram, closing connection",
+                            );
+                            return self.on_connection_closed().await;
+                        }
+                    }
+                    None => {
+                        tracing::trace!(
+                            target: LOG_TARGET,
+                            peer = ?self.peer,
+                            "read `None` from `dgram_rx`",
+                        );
+                        return self.on_connection_closed().await;
+                    }
+                },
+                event = self.handles.next() => match event {
+                    None => {
+                        tracing::warn!(
+                            target: LOG_TARGET, peer = ?self.peer, "substream handle set unexpectedly terminated"
+                        );
+                        return self.on_connection_closed().await;
+                    },
+                    Some((channel_id, None)) => {
+                        tracing::trace!(
+                            target: LOG_TARGET,
+                            peer = ?self.peer,
+                            ?channel_id,
+                            "channel closed",
+                        );
+
+                        self.rtc.direct_api().close_data_channel(channel_id);
+                        self.channels.insert(channel_id, ChannelState::Closing);
+                        self.handles.remove(&channel_id);
+                    }
+                    Some((channel_id, Some(Message { payload, flag }))) => {
+                        if let Err(error) = self.on_outbound_data(channel_id, payload, flag) {
+                            tracing::debug!(
+                                target: LOG_TARGET,
+                                ?channel_id,
+                                ?flag,
+                                ?error,
+                                "failed to send data to remote peer",
+                            );
+
+                            self.rtc.direct_api().close_data_channel(channel_id);
+                            self.channels.insert(channel_id, ChannelState::Closing);
+                            self.handles.remove(&channel_id);
+                        }
+                    }
+                },
+                command = self.protocol_set.next() => match command {
+                    None | Some(ProtocolCommand::ForceClose) => {
+                        tracing::trace!(
+                            target: LOG_TARGET,
+                            peer = ?self.peer,
+                            ?command,
+                            "`ProtocolSet` instructed to close connection",
+                        );
+                        return self.on_connection_closed().await;
+                    }
+                    Some(ProtocolCommand::OpenSubstream {
+                        protocol,
+                        fallback_names,
+                        substream_id,
+                        permit,
+                        keep_alive,
+                        connection_id: _,
+                    }) => {
+                        // Check if the connection is still healthy before opening new substreams.
+                        // This prevents panics when trying to open channels on a shutting-down
+                        // SCTP association.
+                        if !self.rtc.is_alive() || !self.rtc.is_connected() {
+                            tracing::debug!(
+                                target: LOG_TARGET,
+                                peer = ?self.peer,
+                                ?protocol,
+                                is_alive = self.rtc.is_alive(),
+                                is_connected = self.rtc.is_connected(),
+                                "rejecting substream open: connection not healthy",
+                            );
+
+                            // This substream isn't tracked in `pending_outbound`/`channels` yet, so report
+                            // the failure here. Other in-flight substreams are reported during connection close.
+                            let _ = self
+                                .protocol_set
+                                .report_substream_open_failure(
+                                    protocol,
+                                    substream_id,
+                                    SubstreamError::ConnectionClosed,
+                                )
+                                .await;
+                            return self.on_connection_closed().await;
+                        }
+                        self.on_open_substream(
+                            protocol,
+                            fallback_names,
+                            substream_id,
+                            permit,
+                            keep_alive,
+                        );
+                    }
+                },
+                _ = tokio::time::sleep(timeout.saturating_duration_since(Instant::now())) => {
+                    if let Err(error) = self.rtc.handle_input(Input::Timeout(Instant::now())) {
+                        tracing::debug!(
+                            target: LOG_TARGET,
+                            peer = ?self.peer,
+                            ?error,
+                            "str0m rejected timeout input, closing connection",
+                        );
+
+                        return self.on_connection_closed().await;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Register an opening-phase deadline for `channel_id`.
+    fn add_opening_deadline(&mut self, channel_id: ChannelId) {
+        self.opening_deadlines
+            .push_back((channel_id, Instant::now() + SUBSTREAM_OPEN_TIMEOUT));
+    }
+
+    /// Close channels whose opening phase exceeded [`SUBSTREAM_OPEN_TIMEOUT`],
+    /// lazily dropping entries for channels that already opened or closed.
+    ///
+    /// If the channel has an SCTP stream, its state is deliberately left untouched so
+    /// the next `on_channel_closed` call will properly handle it.
+    async fn drain_opening_deadlines(&mut self) {
+        loop {
+            let channel_id = match self.opening_deadlines.front() {
+                Some((channel_id, deadline)) if Instant::now() >= *deadline => *channel_id,
+                _ => break,
+            };
+
+            self.opening_deadlines.pop_front();
+            if !self.pending_outbound.contains_key(&channel_id)
+                && !matches!(
+                    self.channels.get(&channel_id),
+                    Some(ChannelState::InboundOpening { .. })
+                        | Some(ChannelState::OutboundOpening { .. })
+                )
+            {
+                continue;
+            };
+
+            tracing::debug!(
+                target: LOG_TARGET,
+                peer = ?self.peer,
+                ?channel_id,
+                "opening substream reached deadline, shutting down",
+            );
+
+            self.opening_timed_out.insert(channel_id);
+            self.rtc.direct_api().close_data_channel(channel_id);
+
+            if let Some(ChannelState::OutboundOpening { context, .. }) =
+                self.channels.insert(channel_id, ChannelState::Closing)
+            {
+                // This requires to be done eagerly becase the state is being update
+                // to discard each message that will arrive to this channel between
+                // now and its closure, but still higher layers needs to be updated
+                // with the closure of the protocol.
+                tracing::debug!(
+                    target: LOG_TARGET,
+                    peer = ?self.peer,
+                    ?channel_id,
+                    protocol = %context.protocol,
+                    substream_id = ?context.substream_id,
+                    "outbound channel closed during negotiation, reporting failure",
+                );
+
+                let _ = self
+                    .protocol_set
+                    .report_substream_open_failure(
+                        context.protocol,
+                        context.substream_id,
+                        SubstreamError::NegotiationError(crate::error::NegotiationError::Timeout),
+                    )
+                    .await;
+            }
+        }
+    }
+}

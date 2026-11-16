@@ -44,6 +44,7 @@
 //!
 //! - `burn`: Burn an ERC20 token balance.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
@@ -308,6 +309,8 @@ pub mod pallet {
         BaseFeeIsNotAvailable,
         InvalidBaseFeeUpdate,
         DeprecatedTokenAddress,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
     }
 
     #[pallet::genesis_config]
@@ -352,7 +355,7 @@ pub mod pallet {
         // DON'T CHANGE ORDER
 
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        #[pallet::weight((<T as Config>::WeightInfo::mint()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn mint(
             origin: OriginFor<T>,
             token: H160,
@@ -369,6 +372,10 @@ pub mod pallet {
             else {
                 frame_support::fail!(DispatchError::BadOrigin);
             };
+            ensure!(
+                !bridge_types::recovery::message_quarantined(network_id.into(), message_id),
+                Error::<T>::RecoveryHalted
+            );
             Self::ensure_token_address_allowed(network_id, token)?;
             let asset_id = AssetsByAddresses::<T>::get(network_id, token)
                 // should never return this error, because called from Ethereum
@@ -420,12 +427,16 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_asset_internal())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_asset_internal()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_asset_internal(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
             contract: H160,
         ) -> DispatchResult {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             let CallOriginOutput {
                 network_id: GenericNetworkId::EVM(network_id),
                 additional: GenericAdditionalInboundData::EVM(additional),
@@ -456,7 +467,7 @@ pub mod pallet {
         // Common exstrinsics
 
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        #[pallet::weight((<T as Config>::WeightInfo::burn()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn burn(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -472,7 +483,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_sidechain_asset()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -481,6 +492,10 @@ pub mod pallet {
             name: AssetNameOf<T>,
             decimals: u8,
         ) -> DispatchResult {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 !AssetsByAddresses::<T>::contains_key(network_id, address),
@@ -518,7 +533,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_existing_sidechain_asset()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -526,6 +541,10 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             decimals: u8,
         ) -> DispatchResult {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 !AssetsByAddresses::<T>::contains_key(network_id, address),
@@ -561,12 +580,16 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_thischain_asset()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_thischain_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             ensure!(
                 !TokenAddresses::<T>::contains_key(network_id, &asset_id),
@@ -595,7 +618,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_native_app()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -604,6 +627,10 @@ pub mod pallet {
             name: AssetNameOf<T>,
             sidechain_precision: u8,
         ) -> DispatchResult {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             Self::ensure_token_address_allowed(network_id, contract)?;
             ensure!(
@@ -624,7 +651,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_existing_native_app())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_existing_native_app()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn register_network_with_existing_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -632,6 +659,10 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             sidechain_precision: u8,
         ) -> DispatchResult {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure_root(origin)?;
             Self::ensure_token_address_allowed(network_id, contract)?;
             ensure!(
@@ -651,13 +682,17 @@ pub mod pallet {
         }
 
         #[pallet::call_index(8)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
+        #[pallet::weight((<T as Config>::WeightInfo::register_native_app()).saturating_add(bridge_types::recovery::completion_weight::<T>(6)))]
         pub fn claim_relayer_fees(
             origin: OriginFor<T>,
             network_id: EVMChainId,
             relayer: H160,
             signature: sp_core::ecdsa::Signature,
         ) -> DispatchResult {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             let who = ensure_signed(origin)?;
             Self::ensure_can_claim_relayer_fees(&who, network_id, relayer, signature)?;
             let spent_fees = SpentFees::<T>::get(network_id, relayer);
@@ -775,6 +810,10 @@ pub mod pallet {
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let target =
@@ -845,6 +884,10 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
+            ensure!(
+                !bridge_types::recovery::recovery_in_progress(),
+                Error::<T>::RecoveryHalted
+            );
             ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
 
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
@@ -891,11 +934,15 @@ pub mod pallet {
 
         fn refund(
             network_id: GenericNetworkId,
-            _message_id: H256,
+            message_id: H256,
             recipient: T::AccountId,
             asset_id: AssetIdOf<T>,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
+            ensure!(
+                !bridge_types::recovery::message_quarantined(network_id, message_id),
+                Error::<T>::RecoveryHalted
+            );
             let network_id = network_id.evm().ok_or(Error::<T>::InvalidNetwork)?;
             Pallet::<T>::refund_inner(network_id, recipient, asset_id, amount)
         }

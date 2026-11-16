@@ -29,12 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use derivative::Derivative;
+use derive_where::derive_where;
 use serde::{Deserialize, Serialize};
 use sp_core::{Get, H256};
 use sp_runtime::{traits::Hash, BoundedVec};
 
-use crate::{H128, MainnetAssetId, MainnetBalance};
+use crate::{MainnetAssetId, MainnetBalance, H128};
 
 #[derive(
     Encode,
@@ -129,16 +129,7 @@ impl TonAddress {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-    Default,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen, Default,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonTransactionId {
@@ -147,16 +138,7 @@ pub struct TonTransactionId {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-    Default,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen, Default,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonAddressWithPrefix {
@@ -201,15 +183,7 @@ pub struct AdditionalTONInboundData {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// Information about Jetton in TON network
@@ -223,29 +197,16 @@ pub struct TonAssetInfo {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonAppInfo {
     pub address: TonAddress,
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub enum Commitment<MaxPayload: Get<u32>> {
@@ -267,14 +228,9 @@ impl<MaxPayload: Get<u32>> Commitment<MaxPayload> {
     }
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct InboundCommitment<MaxPayload: Get<u32>> {
@@ -292,7 +248,7 @@ pub struct InboundCommitment<MaxPayload: Get<u32>> {
 
 impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
     pub fn hash(&self) -> H256 {
-        ("ton-inbound", self).using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
+        ("ton-inbound", self).using_encoded(sp_runtime::traits::Keccak256::hash)
     }
 }
 

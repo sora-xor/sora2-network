@@ -101,6 +101,7 @@ pub enum TransactionCondition {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::{CallRequest, EthAddress, TransactionCondition, TransactionRequest};
     use serde_json;

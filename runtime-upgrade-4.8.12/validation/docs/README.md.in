@@ -1,5 +1,7 @@
 # SORA 4.8.12 runtime upgrade
 
+**Validator payout batches now use 1% of the normal base-and-weight fee**, rounded up, with a floor of one existing direct-payout fee per submitted payout. Eligible calls are nonempty, flat `utility.batch`, `utility.batchAll` and `utility.forceBatch` containing only `staking.payoutStakers` or `staking.payoutStakersByPage`. Normal actual-weight refunds use the same formula. Length fees, tips, fee multipliers and full block-weight reservations remain intact. Mixed, nested, empty and XOR-less wrapped batches retain normal pricing. This changes real chain charges; it is not an API-only correction. The complete batch fee still depends on its size, execution weight and the live multiplier.
+
 Runtime spec **134**, transaction version **131**, closes transaction-fee bypasses
 while preserving useful order-cancellation refunds and zero-XOR bridge operation.
 

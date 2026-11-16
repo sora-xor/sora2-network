@@ -1,0 +1,76 @@
+{
+  "upstream_commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "source_path": "substrate/primitives/version",
+  "differences": [
+    {
+      "path": [
+        "dependencies",
+        "parity-wasm"
+      ],
+      "upstream": {
+        "version": "0.45.0",
+        "optional": true
+      },
+      "local": null
+    },
+    {
+      "path": [
+        "dependencies",
+        "wasm-encoder"
+      ],
+      "upstream": null,
+      "local": {
+        "version": "0.262.0",
+        "features": [
+          "wasmparser"
+        ],
+        "optional": true
+      }
+    },
+    {
+      "path": [
+        "dependencies",
+        "wasmparser"
+      ],
+      "upstream": null,
+      "local": {
+        "version": "0.262.0",
+        "default-features": false,
+        "features": [
+          "std",
+          "features"
+        ],
+        "optional": true
+      }
+    },
+    {
+      "path": [
+        "features",
+        "std"
+      ],
+      "upstream": [
+        "codec/std",
+        "impl-serde/std",
+        "parity-wasm",
+        "scale-info/std",
+        "serde/std",
+        "sp-core/std",
+        "sp-runtime/std",
+        "sp-std/std",
+        "thiserror"
+      ],
+      "local": [
+        "codec/std",
+        "impl-serde/std",
+        "scale-info/std",
+        "serde/std",
+        "sp-core/std",
+        "sp-runtime/std",
+        "sp-std/std",
+        "thiserror",
+        "dep:wasmparser",
+        "dep:wasm-encoder"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1912 @@
+{
+  "review_date": "2026-10-24",
+  "tool": "cargo-audit 0.22.1",
+  "advisory_database": "https://github.com/RustSec/advisory-db",
+  "advisory_database_commit": "21d909e4c8bd4e14c7aea58bf980c881a0053ab1",
+  "lockfile": "Cargo.lock",
+  "lockfile_sha256": "486493ff039e24d7d1dff8b98dcdf788d7ee000002afa5100ef0fe0ebd56a49f",
+  "before": {
+    "vulnerability_matches": 50,
+    "vulnerabilities": [
+      {
+        "package": "crossbeam-epoch",
+        "version": "0.9.18",
+        "id": "RUSTSEC-2026-0204",
+        "title": "Invalid pointer dereference in `fmt::Pointer` impl for `Atomic` and `Shared` when the underlying pointer is invalid",
+        "patched": [
+          ">=0.9.20"
+        ]
+      },
+      {
+        "package": "crypto-bigint",
+        "version": "0.5.5",
+        "id": "RUSTSEC-2026-0387",
+        "title": "Multiple timing variability issues in operations intended to be constant-time",
+        "patched": [
+          ">=0.7.6"
+        ]
+      },
+      {
+        "package": "curve25519-dalek",
+        "version": "3.2.0",
+        "id": "RUSTSEC-2024-0344",
+        "title": "Timing variability in `curve25519-dalek`'s `Scalar29::sub`/`Scalar52::sub`",
+        "patched": [
+          ">=4.1.3"
+        ]
+      },
+      {
+        "package": "h2",
+        "version": "0.3.27",
+        "id": "RUSTSEC-2026-0258",
+        "title": "h2 unbounded empty DATA frames",
+        "patched": [
+          ">=0.4.16"
+        ]
+      },
+      {
+        "package": "h2",
+        "version": "0.4.13",
+        "id": "RUSTSEC-2026-0258",
+        "title": "h2 unbounded empty DATA frames",
+        "patched": [
+          ">=0.4.16"
+        ]
+      },
+      {
+        "package": "hickory-proto",
+        "version": "0.24.4",
+        "id": "RUSTSEC-2026-0119",
+        "title": "CPU exhaustion during message encoding due to O(n\u00b2) name compression",
+        "patched": [
+          ">=0.26.1"
+        ]
+      },
+      {
+        "package": "hickory-proto",
+        "version": "0.25.2",
+        "id": "RUSTSEC-2026-0119",
+        "title": "CPU exhaustion during message encoding due to O(n\u00b2) name compression",
+        "patched": [
+          ">=0.26.1"
+        ]
+      },
+      {
+        "package": "hickory-proto",
+        "version": "0.25.2",
+        "id": "RUSTSEC-2026-0118",
+        "title": "NSEC3 closest-encloser proof validation enters unbounded loop on cross-zone responses",
+        "patched": []
+      },
+      {
+        "package": "quinn-proto",
+        "version": "0.11.14",
+        "id": "RUSTSEC-2026-0342",
+        "title": "Zero-length DATAGRAM frames bypass the receive buffer limit in quinn-proto",
+        "patched": [
+          ">=0.11.17"
+        ]
+      },
+      {
+        "package": "quinn-proto",
+        "version": "0.11.14",
+        "id": "RUSTSEC-2026-0339",
+        "title": "Unbounded growth of pending connection ID retirements in quinn-proto",
+        "patched": [
+          ">=0.11.17"
+        ]
+      },
+      {
+        "package": "quinn-proto",
+        "version": "0.11.14",
+        "id": "RUSTSEC-2026-0338",
+        "title": "Remote peer can panic quinn-proto with zero-length STREAM frames during unordered reads",
+        "patched": [
+          ">=0.11.18"
+        ]
+      },
+      {
+        "package": "quinn-proto",
+        "version": "0.11.14",
+        "id": "RUSTSEC-2026-0340",
+        "title": "Peer minimum ACK delay can panic quinn-proto when ACK_FREQUENCY transmission is enabled",
+        "patched": [
+          ">=0.11.18"
+        ]
+      },
+      {
+        "package": "quinn-proto",
+        "version": "0.11.14",
+        "id": "RUSTSEC-2026-0185",
+        "title": " Remote memory exhaustion in quinn-proto from unbounded out-of-order stream reassembly",
+        "patched": [
+          ">=0.11.15"
+        ]
+      },
+      {
+        "package": "ring",
+        "version": "0.16.20",
+        "id": "RUSTSEC-2025-0009",
+        "title": "Some AES functions may panic when overflow checking is enabled.",
+        "patched": [
+          ">=0.17.12"
+        ]
+      },
+      {
+        "package": "ruint",
+        "version": "1.17.2",
+        "id": "RUSTSEC-2026-0220",
+        "title": "Uint shift operations: incorrect overflow flags and truncated shift amounts",
+        "patched": [
+          ">=1.20.0"
+        ]
+      },
+      {
+        "package": "rustls",
+        "version": "0.23.37",
+        "id": "RUSTSEC-2026-0346",
+        "title": "`Debug` impls for client session values expose TLS secrets",
+        "patched": [
+          ">=0.23.46"
+        ]
+      },
+      {
+        "package": "rustls",
+        "version": "0.23.37",
+        "id": "RUSTSEC-2026-0285",
+        "title": "TLS 1.3 handshake messages incorrectly accepted across encryption level boundaries",
+        "patched": [
+          ">=0.23.45"
+        ]
+      },
+      {
+        "package": "rustls",
+        "version": "0.23.37",
+        "id": "RUSTSEC-2026-0348",
+        "title": "Brotli certificate decompression can allocate up to 1 GiB before authentication",
+        "patched": [
+          ">=0.23.46"
+        ]
+      },
+      {
+        "package": "rustls",
+        "version": "0.23.37",
+        "id": "RUSTSEC-2026-0349",
+        "title": "Unauthenticated ServerHello can downgrade later connections to classical key exchange",
+        "patched": [
+          ">=0.23.46"
+        ]
+      },
+      {
+        "package": "rustls-webpki",
+        "version": "0.101.7",
+        "id": "RUSTSEC-2026-0104",
+        "title": "Reachable panic in certificate revocation list parsing",
+        "patched": [
+          ">=0.103.13, <0.104.0-alpha.1",
+          ">=0.104.0-alpha.7"
+        ]
+      },
+      {
+        "package": "rustls-webpki",
+        "version": "0.101.7",
+        "id": "RUSTSEC-2026-0098",
+        "title": "Name constraints for URI names were incorrectly accepted",
+        "patched": [
+          ">=0.103.12, <0.104.0-alpha.1",
+          ">=0.104.0-alpha.6"
+        ]
+      },
+      {
+        "package": "rustls-webpki",
+        "version": "0.101.7",
+        "id": "RUSTSEC-2026-0099",
+        "title": "Name constraints were accepted for certificates asserting a wildcard name",
+        "patched": [
+          ">=0.103.12, <0.104.0-alpha.1",
+          ">=0.104.0-alpha.6"
+        ]
+      },
+      {
+        "package": "rustls-webpki",
+        "version": "0.101.7",
+        "id": "RUSTSEC-2026-0382",
+        "title": "Certificate verification may accept distrusted intermediates",
+        "patched": [
+          ">=0.103.16, <0.104.0-alpha.1",
+          ">=0.104.0-alpha.8"
+        ]
+      },
+      {
+        "package": "rustls-webpki",
+        "version": "0.103.13",
+        "id": "RUSTSEC-2026-0382",
+        "title": "Certificate verification may accept distrusted intermediates",
+        "patched": [
+          ">=0.103.16, <0.104.0-alpha.1",
+          ">=0.104.0-alpha.8"
+        ]
+      },
+      {
+        "package": "ruzstd",
+        "version": "0.8.2",
+        "id": "RUSTSEC-2026-0344",
+        "title": "Decompression bomb in `ruzstd`: a tiny input can exhaust memory (OOM)",
+        "patched": [
+          ">=0.9.1"
+        ]
+      },
+      {
+        "package": "tracing-subscriber",
+        "version": "0.3.19",
+        "id": "RUSTSEC-2025-0055",
+        "title": "Logging user input may result in poisoning logs with ANSI escape sequences",
+        "patched": [
+          ">=0.3.20"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0086",
+        "title": "Host data leakage with 64-bit tables and Winch",
+        "patched": [
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0096",
+        "title": "Miscompiled guest heap access enables sandbox escape on aarch64 Cranelift",
+        "patched": [
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0222",
+        "title": "Stores can mix up type indices between engines",
+        "patched": [
+          ">=24.0.12, <25.0.0",
+          ">=36.0.13, <37.0.0",
+          ">=46.0.2, <47.0.0",
+          ">=47.0.3"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0020",
+        "title": "Guest-controlled resource exhaustion in WASI implementations",
+        "patched": [
+          ">=24.0.6, <25.0.0",
+          ">=36.0.6, <37.0.0",
+          ">=40.0.4, <41.0.0",
+          ">=41.0.4"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0092",
+        "title": "Panic when transcoding misaligned component model UTF-16 strings",
+        "patched": [
+          ">=24.0.7, <25.0.0",
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0021",
+        "title": "Panic adding excessive fields to a `wasi:http/types.fields` instance",
+        "patched": [
+          ">=24.0.6, <25.0.0",
+          ">=36.0.6, <37.0.0",
+          ">=40.0.4, <41.0.0",
+          ">=41.0.4"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0114",
+        "title": "Panic when allocating a table exceeding the size of the host's address space",
+        "patched": [
+          ">=36.0.8, <37.0.0",
+          ">=43.0.2, <44.0.0",
+          ">=44.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0093",
+        "title": "Heap OOB read in component model UTF-16 to latin1+utf16 string transcoding",
+        "patched": [
+          ">=24.0.7, <25.0.0",
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0380",
+        "title": "Bit-packing in Cranelift compiler causes silent overflow and miscompilation",
+        "patched": [
+          ">=36.0.19, <37.0.0",
+          ">=43.0.0"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0316",
+        "title": "Dynamic record lifting can allocate beyond the hostcall fuel limit",
+        "patched": [
+          ">=36.0.16, <37.0.0",
+          ">=48.0.3, <49.0.0",
+          ">=49.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0087",
+        "title": "Wasmtime segfault or unused out-of-sandbox load with `f64x2.splat` operator on Cranelift x86-64",
+        "patched": [
+          ">=24.0.7, <25.0.0",
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0363",
+        "title": "Component-model handle tables are capped only per instance and charged to no limit",
+        "patched": [
+          ">=36.0.18, <37.0.0",
+          ">=48.0.6, <49.0.0",
+          ">=49.0.3"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0269",
+        "title": "Filesystem sandbox escape when paths or symlinks contain trailing slashes",
+        "patched": [
+          ">=24.0.13, <25.0.0",
+          ">=36.0.14, <37.0.0",
+          ">=46.0.3, <47.0.0",
+          ">=47.0.4"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0088",
+        "title": "Data leakage between pooling allocator instances",
+        "patched": [
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0089",
+        "title": "Host panic when Winch compiler executes `table.fill`",
+        "patched": [
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0379",
+        "title": "Cranelift backend on aarch64 can jump to incorrect target on large Wasm `br_table` instruction",
+        "patched": [
+          ">=36.0.19, <37.0.0",
+          ">=48.0.7, <49.0.0",
+          ">=49.0.4"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0006",
+        "title": "Wasmtime segfault or unused out-of-sandbox load with `f64.copysign` operator on x86-64",
+        "patched": [
+          ">=41.0.1",
+          ">=40.0.3, <41.0.0",
+          ">=36.0.5, <37.0.0",
+          "<29.0.0"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0094",
+        "title": "Improperly masked return value from `table.grow` with Winch compiler backend",
+        "patched": [
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0085",
+        "title": "Panic when lifting `flags` component value",
+        "patched": [
+          ">=24.0.7, <25.0.0",
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0095",
+        "title": "Wasmtime with Winch compiler backend may allow a sandbox-escaping memory access",
+        "patched": [
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2025-0118",
+        "title": "Unsound API access to a WebAssembly shared linear memory",
+        "patched": [
+          ">=38.0.4",
+          ">=37.0.3, <38.0.0",
+          ">=36.0.3, <37.0.0",
+          ">=24.0.5, <25.0.0"
+        ]
+      },
+      {
+        "package": "wasmtime",
+        "version": "35.0.0",
+        "id": "RUSTSEC-2026-0091",
+        "title": "Out-of-bounds write or crash when transcoding component model strings",
+        "patched": [
+          ">=24.0.7, <25.0.0",
+          ">=36.0.7, <37.0.0",
+          ">=42.0.2, <43.0.0",
+          ">=43.0.1"
+        ]
+      },
+      {
+        "package": "webpki-root-certs",
+        "version": "1.0.6",
+        "id": "RUSTSEC-2026-0383",
+        "title": "Bundled root certificates allow trust in distrusted emSign intermediates",
+        "patched": [
+          ">=1.0.10"
+        ]
+      },
+      {
+        "package": "webpki-roots",
+        "version": "0.25.4",
+        "id": "RUSTSEC-2026-0381",
+        "title": "Bundled root certificates allow trust in distrusted emSign intermediates",
+        "patched": [
+          ">=1.0.10"
+        ]
+      }
+    ],
+    "warnings": {
+      "unmaintained": [
+        {
+          "package": "async-std",
+          "version": "1.13.2",
+          "id": "RUSTSEC-2025-0052",
+          "title": "async-std has been discontinued"
+        },
+        {
+          "package": "core2",
+          "version": "0.4.0",
+          "id": "RUSTSEC-2026-0105",
+          "title": "core2 is unmaintained, all versions yanked"
+        },
+        {
+          "package": "derivative",
+          "version": "2.2.0",
+          "id": "RUSTSEC-2024-0388",
+          "title": "`derivative` is unmaintained; consider using an alternative"
+        },
+        {
+          "package": "fxhash",
+          "version": "0.2.1",
+          "id": "RUSTSEC-2025-0057",
+          "title": "fxhash - no longer maintained"
+        },
+        {
+          "package": "instant",
+          "version": "0.1.13",
+          "id": "RUSTSEC-2024-0384",
+          "title": "`instant` is unmaintained"
+        },
+        {
+          "package": "libsecp256k1",
+          "version": "0.7.2",
+          "id": "RUSTSEC-2025-0161",
+          "title": "libsecp256k1 is unmaintained"
+        },
+        {
+          "package": "number_prefix",
+          "version": "0.4.0",
+          "id": "RUSTSEC-2025-0119",
+          "title": "number_prefix crate is unmaintained"
+        },
+        {
+          "package": "parity-util-mem",
+          "version": "0.12.0",
+          "id": "RUSTSEC-2022-0080",
+          "title": "parity-util-mem Unmaintained"
+        },
+        {
+          "package": "parity-wasm",
+          "version": "0.45.0",
+          "id": "RUSTSEC-2022-0061",
+          "title": "Crate `parity-wasm` deprecated by the author"
+        },
+        {
+          "package": "paste",
+          "version": "1.0.15",
+          "id": "RUSTSEC-2024-0436",
+          "title": "paste - no longer maintained"
+        },
+        {
+          "package": "proc-macro-error",
+          "version": "1.0.4",
+          "id": "RUSTSEC-2024-0370",
+          "title": "proc-macro-error is unmaintained"
+        },
+        {
+          "package": "proc-macro-error2",
+          "version": "2.0.1",
+          "id": "RUSTSEC-2026-0173",
+          "title": "proc-macro-error2 is unmaintained"
+        },
+        {
+          "package": "ring",
+          "version": "0.16.20",
+          "id": "RUSTSEC-2025-0010",
+          "title": "Versions of *ring* prior to 0.17 are unmaintained."
+        }
+      ],
+      "unsound": [
+        {
+          "package": "anyhow",
+          "version": "1.0.99",
+          "id": "RUSTSEC-2026-0190",
+          "title": "Unsoundness in `Error::downcast_mut()`"
+        },
+        {
+          "package": "cxx",
+          "version": "1.0.129",
+          "id": "RUSTSEC-2026-0202",
+          "title": "`let_cxx_string!` uses uninitialized value due to exception safety violations"
+        },
+        {
+          "package": "event-listener",
+          "version": "5.4.1",
+          "id": "RUSTSEC-2026-0221",
+          "title": "`event-listener` allows `!Send` tags to cross thread boundaries via `StackSlot`"
+        },
+        {
+          "package": "lru",
+          "version": "0.7.8",
+          "id": "RUSTSEC-2026-0253",
+          "title": "Potential use-after-free due to lack of panic safety in `LruCache::pop()`"
+        },
+        {
+          "package": "lru",
+          "version": "0.12.5",
+          "id": "RUSTSEC-2026-0253",
+          "title": "Potential use-after-free due to lack of panic safety in `LruCache::pop()`"
+        },
+        {
+          "package": "lru",
+          "version": "0.12.5",
+          "id": "RUSTSEC-2026-0002",
+          "title": "`IterMut` violates Stacked Borrows by invalidating internal pointer"
+        },
+        {
+          "package": "memmap2",
+          "version": "0.5.10",
+          "id": "RUSTSEC-2026-0186",
+          "title": "Unchecked pointer offset in crate `memmap2`"
+        },
+        {
+          "package": "memmap2",
+          "version": "0.9.10",
+          "id": "RUSTSEC-2026-0186",
+          "title": "Unchecked pointer offset in crate `memmap2`"
+        },
+        {
+          "package": "tokio",
+          "version": "1.50.0",
+          "id": "RUSTSEC-2026-0386",
+          "title": "`AsyncFd::new` and related constructors violate I/O safety"
+        }
+      ],
+      "yanked": [
+        {
+          "package": "core2",
+          "version": "0.4.0",
+          "id": null,
+          "title": null
+        },
+        {
+          "package": "spin",
+          "version": "0.9.8",
+          "id": null,
+          "title": null
+        }
+      ]
+    },
+    "warning_counts": {
+      "unsound": 9,
+      "unmaintained": 13,
+      "yanked": 2
+    }
+  },
+  "after": {
+    "lockfile_sha256": "486493ff039e24d7d1dff8b98dcdf788d7ee000002afa5100ef0fe0ebd56a49f",
+    "audit_evidence_sha256": "860cff863f47074c4a2400beff178221971d27cd1cb1389bc7a367b1cafe7a90",
+    "dependency_count": 1420,
+    "vulnerability_matches": 0,
+    "vulnerabilities": [],
+    "warning_counts": {
+      "unsound": 0,
+      "unmaintained": 0,
+      "yanked": 0
+    },
+    "warnings": {}
+  },
+  "scope": "Full lockfile, including optional and target-specific packages; package matches are not proof of production exploitability. Source review and build/test validation are documented separately.",
+  "validation": {
+    "status": "Completed dependency and maintenance remediation, Docker connectivity repair, and focused verification. All eleven Cargo audits, five npm audits, Python installed-distribution audit, canonical Linux Wasm reproducibility checks and documented compatibility/build tests passed.",
+    "completed": [
+      "Eleven maintained Cargo lockfiles: zero vulnerabilities and zero warnings under --deny warnings; current hashes and raw audit responses recorded.",
+      "Five complete operational npm graphs: zero vulnerabilities and no deprecated packages; fresh installation with lifecycle scripts disabled passes.",
+      "Locked native node check and native runtime check passed; fresh release-profile runtime Wasm generation passed.",
+      "Integrated common: 137 tests, Iroha migration: 20 tests, rewards: 18 tests, and secp adapter: 6 tests passed.",
+      "Wasm metadata: 3 tests, Wasm builder: 9 tests, executor memory/stack: 11 tests passed.",
+      "Wasmtime executor: 33 tests passed; one pre-existing upstream long-running debug stress test ignored.",
+      "Runtime migration fee: 5 tests passed.",
+      "Secp256k1 adapter: 14,094 differential checks including 1,024 byte-identical deterministic signatures passed.",
+      "Stack metering: 255 byte-identical module comparisons and matching execution/trap results; full current runtime metered output is byte-identical.",
+      "Network and utility migrations: 87 focused tests/doctests passed, with no-std checks.",
+      "Macro migrations: 126 Arkworks, 11 Aquamarine, 4 multihash-derive tests and 4 Subxt compiler-diagnostic checks passed.",
+      "Polkadot crypto source: 50 native tests passed; final raw Wasm and installed facade each passed 2,928 differential and 2,619 offline checks covering all 32 public exports.",
+      "Final Linux x86_64 JavaScript Wasm packages: independent checkout, Cargo home and target paths reproduce all 32 assets byte-for-byte; the documented read-only container check passes. Source/asset provenance verified: crypto 17/18 and executor 161/14.",
+      "Installed Node 24 graph: 7 crypto/provider integration, 6 schema, 3 fetch-blob and 3 frontend reproduction tests passed; strict TypeScript compatibility passed.",
+      "Executor CJS/ESM proof, decompression-limit, malformed-input, callback and actual Wasm execution smoke passed.",
+      "Fresh compressed and uncompressed current runtime metadata and Core_version execution passed through the rebuilt installed executor.",
+      "Linux container: 149 offline tests passed; final runtime image repeated 39 governance/binding tests; pip check, CLI help, non-root/no-build-tool checks and strict audit of 30 installed distributions passed.",
+      "Persistent Docker profile DNS repair survived restart; final container verification passed; VM restored to stopped and default Docker context unchanged.",
+      "Final Cargo formatting, diff whitespace checks, Actionlint, five first-party lint-policy tests, Clippy runner tests and stable-SDK guard passed.",
+      "Final guard: seven staging regression tests passed, including removal/replacement of canonical pins; all five actual npm graphs restaged and audited clean again.",
+      "Final locked node check repeated after the Wasm-builder source/lock update and passed; standalone crypto and executor formatting checks passed.",
+      "Final lock inventory: all eleven Cargo.lock files audited clean. TiKV allocator standalone lock refreshed to pastey; locked all-feature library check passed.",
+      "Final Linux-built assets freshly installed: Node 24 provider/schema/fetch-blob/crypto/executor/frontend/current-runtime checks all passed; seven provider/integration tests also passed on Node 26."
+    ],
+    "pending": [],
+    "previous_validation": "Prior migration and Python checks retained under phase2; not all are repeated for this maintenance phase.",
+    "commands": {
+      "audit": "cargo audit --db /tmp/sora2-rustsec-advisory-db --no-fetch --deny warnings --file Cargo.lock",
+      "node": "SKIP_WASM_BUILD=1 scripts/with_llvm_env.sh cargo check --locked -p framenode --bin framenode",
+      "runtime_wasm": "env -u SKIP_WASM_BUILD WASM_BUILD_TYPE=release WASM_BUILD_NO_COLOR=1 scripts/with_llvm_env.sh cargo check --locked -p framenode-runtime --lib --features build-wasm-binary",
+      "adapter": "cargo test --locked -p sora-secp256k1-compat --test compatibility",
+      "executor": "cargo test --locked -p sc-executor-wasmtime --lib",
+      "runtime_fees": "SKIP_WASM_BUILD=1 cargo test --locked -p framenode-runtime --lib migration_fees",
+      "wasm_bundles": "SORA_WASM_DOCKER_CONTEXT=colima-sora-release-verify misc/dependency_security/rebuild_wasm_in_container.sh --check (requires the selected Docker profile to be running)"
+    },
+    "not_run": [
+      "Full warnings-as-errors Clippy gate.",
+      "Production chain rehearsals and promotion or recertification of archived release artifacts."
+    ],
+    "release_evidence": "Fresh current-source runtime Wasm was built and executed separately. Existing archived release Wasm, snapshots and rehearsal outputs were preserved; they do not certify this dependency graph.",
+    "test_environment": "Logging tests run with RUST_LOG unset; executor tests use generated Wasm. Local Rust checks use LLVM 22 environment. Existing compiler deprecation warnings remain.",
+    "completed_at_utc": "2026-10-24T14:52:58.050496+00:00"
+  },
+  "advisory_database_last_updated": "2026-10-24T10:30:13+02:00",
+  "initial_scan": {
+    "advisory_database_commit": "84d943a6deeb8cc6c6f632531aaf4f1c62275239",
+    "vulnerability_matches": 49,
+    "note": "Final comparison rescanned original HEAD Cargo.lock with the refreshed database; crypto-bigint advisory was added during the review."
+  },
+  "other_cargo_locks": {
+    "misc/farming_snapshot/convert/Cargo.lock": {
+      "lockfile_sha256": "fe0fa790bf389910f6669ecbcbf091d8d1fabdbe1d866cc5d3a67b7e92d88116",
+      "audit_evidence_sha256": "2c9ffe82232eeacf4bd8606160666c5b205f2fa82cd7bf1b3a7f02d36fd38a29",
+      "dependency_count": 242,
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 0,
+        "yanked": 0
+      },
+      "warnings": {}
+    },
+    "misc/rewards_snapshot/get_lp_tokens/Cargo.lock": {
+      "lockfile_sha256": "754fd576afce602af8f4d1b33a93caa59947bdc7328adc8979e27db3bae43175",
+      "audit_evidence_sha256": "ec8dd3e76a9f5dbf14c705d163fb1d8eac03d209675d324cf7ae70b2197b4a70",
+      "dependency_count": 180,
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 0,
+        "yanked": 0
+      },
+      "warnings": {}
+    },
+    "vendor/sora2-common/Cargo.lock": {
+      "lockfile_sha256": "8fcb449a892ce5dba82f4bcfa3aa0d949c2f802f093b5f17cb31686c6af48d24",
+      "audit_evidence_sha256": "0ef98b31ce9553ed9545e25f815969f90f425c4c4ac6b566f8c9ceaa86342201",
+      "dependency_count": 507,
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 0,
+        "yanked": 0
+      },
+      "warnings": {}
+    },
+    "misc/runtime_upgrade/vendor/native/py-bip39-bindings/Cargo.lock": {
+      "lockfile_sha256": "e426344ea7809223cccf32dfafc18543c5b9b897372f47ba591e3b598a01978b",
+      "audit_evidence_sha256": "07e3fcc314e7e7132a4a21c41d74db173f674d6465306232592f9cdd60a8699a",
+      "dependency_count": 50,
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 0,
+        "yanked": 0
+      },
+      "warnings": {}
+    },
+    "misc/runtime_upgrade/vendor/native/py-ed25519-zebra-bindings/Cargo.lock": {
+      "lockfile_sha256": "65d84a5a23dddf54019fdca8f8245431752dd01fda976b056d314efc5869f8a6",
+      "audit_evidence_sha256": "6e60e72d25db2cbbd0382b9f44a36b235b65dcf9a8f31db1c4b4ea2cc35ccd09",
+      "dependency_count": 36,
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 0,
+        "yanked": 0
+      },
+      "warnings": {}
+    },
+    "misc/runtime_upgrade/vendor/native/py-sr25519-bindings/Cargo.lock": {
+      "lockfile_sha256": "f1e7837d57a582717c1418af1bd1ca450eaf1121aeaf7b28054c77a81ded85bf",
+      "audit_evidence_sha256": "56077036594cb743e3f6444f1f9dc13c9a2ef74f763043e6ebd42afa3c5cd132",
+      "dependency_count": 54,
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 0,
+        "yanked": 0
+      },
+      "warnings": {}
+    },
+    "misc/runtime_upgrade/vendor/native/pydantic-core/Cargo.lock": {
+      "lockfile_sha256": "e9f18888c4ab4e38bbfcceb7760c58786bd966fda9964d3f10af654f4e685777",
+      "audit_evidence_sha256": "eb143b86585e348a1e65e4e9c2c44deb0a635f07642f85450425d8a91756e5fc",
+      "dependency_count": 99,
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 0,
+        "yanked": 0
+      },
+      "warnings": {}
+    },
+    "vendor/chopsticks-executor/Cargo.lock": {
+      "lockfile_sha256": "cbdf80db91af71a4d13366b086f4c71d3de69638f3d3263cfea14c5cb983d7f5",
+      "audit_evidence_sha256": "fe28628ecd4bda05ce1ef3644121a3831be08fd43c4da9012ab52f1c02607d69",
+      "dependency_count": 322,
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 0,
+        "yanked": 0
+      },
+      "warnings": {}
+    },
+    "vendor/polkadot-wasm-crypto/Cargo.lock": {
+      "lockfile_sha256": "b823a26da7a4c0ab9e9b7a4042059712596531366de54dadbbfac12b8857ab91",
+      "audit_evidence_sha256": "695fc0cc6c376d5d3d8526638001c64337622001593a569f81c9ff3cbfc93edc",
+      "dependency_count": 115,
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 0,
+        "yanked": 0
+      },
+      "warnings": {}
+    },
+    "vendor/tikv-jemalloc-ctl-0.6.1/Cargo.lock": {
+      "lockfile_sha256": "09a8b44510139edae0213e44d2bd0eb5792787da4f26ae9ccec3d063378fb82c",
+      "audit_evidence_sha256": "5a856f0afa664124c468d02fdabd24dbdcb4f4c179c4efc0114997cd7475f39e",
+      "dependency_count": 8,
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 0,
+        "yanked": 0
+      },
+      "warnings": {}
+    }
+  },
+  "phase1": {
+    "description": "Initial compatible updates before the required upstream migrations. These tests were not all rerun on the final graph.",
+    "after": {
+      "vulnerability_matches": 12,
+      "vulnerabilities": [
+        {
+          "package": "crypto-bigint",
+          "version": "0.5.5",
+          "id": "RUSTSEC-2026-0387",
+          "title": "Multiple timing variability issues in operations intended to be constant-time",
+          "patched": [
+            ">=0.7.6"
+          ]
+        },
+        {
+          "package": "curve25519-dalek",
+          "version": "3.2.0",
+          "id": "RUSTSEC-2024-0344",
+          "title": "Timing variability in `curve25519-dalek`'s `Scalar29::sub`/`Scalar52::sub`",
+          "patched": [
+            ">=4.1.3"
+          ]
+        },
+        {
+          "package": "h2",
+          "version": "0.3.27",
+          "id": "RUSTSEC-2026-0258",
+          "title": "h2 unbounded empty DATA frames",
+          "patched": [
+            ">=0.4.16"
+          ]
+        },
+        {
+          "package": "hickory-proto",
+          "version": "0.24.4",
+          "id": "RUSTSEC-2026-0119",
+          "title": "CPU exhaustion during message encoding due to O(n\u00b2) name compression",
+          "patched": [
+            ">=0.26.1"
+          ]
+        },
+        {
+          "package": "hickory-proto",
+          "version": "0.25.2",
+          "id": "RUSTSEC-2026-0119",
+          "title": "CPU exhaustion during message encoding due to O(n\u00b2) name compression",
+          "patched": [
+            ">=0.26.1"
+          ]
+        },
+        {
+          "package": "hickory-proto",
+          "version": "0.25.2",
+          "id": "RUSTSEC-2026-0118",
+          "title": "NSEC3 closest-encloser proof validation enters unbounded loop on cross-zone responses",
+          "patched": []
+        },
+        {
+          "package": "ring",
+          "version": "0.16.20",
+          "id": "RUSTSEC-2025-0009",
+          "title": "Some AES functions may panic when overflow checking is enabled.",
+          "patched": [
+            ">=0.17.12"
+          ]
+        },
+        {
+          "package": "rustls-webpki",
+          "version": "0.101.7",
+          "id": "RUSTSEC-2026-0104",
+          "title": "Reachable panic in certificate revocation list parsing",
+          "patched": [
+            ">=0.103.13, <0.104.0-alpha.1",
+            ">=0.104.0-alpha.7"
+          ]
+        },
+        {
+          "package": "rustls-webpki",
+          "version": "0.101.7",
+          "id": "RUSTSEC-2026-0098",
+          "title": "Name constraints for URI names were incorrectly accepted",
+          "patched": [
+            ">=0.103.12, <0.104.0-alpha.1",
+            ">=0.104.0-alpha.6"
+          ]
+        },
+        {
+          "package": "rustls-webpki",
+          "version": "0.101.7",
+          "id": "RUSTSEC-2026-0099",
+          "title": "Name constraints were accepted for certificates asserting a wildcard name",
+          "patched": [
+            ">=0.103.12, <0.104.0-alpha.1",
+            ">=0.104.0-alpha.6"
+          ]
+        },
+        {
+          "package": "rustls-webpki",
+          "version": "0.101.7",
+          "id": "RUSTSEC-2026-0382",
+          "title": "Certificate verification may accept distrusted intermediates",
+          "patched": [
+            ">=0.103.16, <0.104.0-alpha.1",
+            ">=0.104.0-alpha.8"
+          ]
+        },
+        {
+          "package": "ruzstd",
+          "version": "0.8.2",
+          "id": "RUSTSEC-2026-0344",
+          "title": "Decompression bomb in `ruzstd`: a tiny input can exhaust memory (OOM)",
+          "patched": [
+            ">=0.9.1"
+          ]
+        }
+      ],
+      "warnings": {
+        "unmaintained": [
+          {
+            "package": "async-std",
+            "version": "1.13.2",
+            "id": "RUSTSEC-2025-0052",
+            "title": "async-std has been discontinued"
+          },
+          {
+            "package": "core2",
+            "version": "0.4.0",
+            "id": "RUSTSEC-2026-0105",
+            "title": "core2 is unmaintained, all versions yanked"
+          },
+          {
+            "package": "derivative",
+            "version": "2.2.0",
+            "id": "RUSTSEC-2024-0388",
+            "title": "`derivative` is unmaintained; consider using an alternative"
+          },
+          {
+            "package": "fxhash",
+            "version": "0.2.1",
+            "id": "RUSTSEC-2025-0057",
+            "title": "fxhash - no longer maintained"
+          },
+          {
+            "package": "instant",
+            "version": "0.1.13",
+            "id": "RUSTSEC-2024-0384",
+            "title": "`instant` is unmaintained"
+          },
+          {
+            "package": "libsecp256k1",
+            "version": "0.7.2",
+            "id": "RUSTSEC-2025-0161",
+            "title": "libsecp256k1 is unmaintained"
+          },
+          {
+            "package": "number_prefix",
+            "version": "0.4.0",
+            "id": "RUSTSEC-2025-0119",
+            "title": "number_prefix crate is unmaintained"
+          },
+          {
+            "package": "parity-util-mem",
+            "version": "0.12.0",
+            "id": "RUSTSEC-2022-0080",
+            "title": "parity-util-mem Unmaintained"
+          },
+          {
+            "package": "parity-wasm",
+            "version": "0.45.0",
+            "id": "RUSTSEC-2022-0061",
+            "title": "Crate `parity-wasm` deprecated by the author"
+          },
+          {
+            "package": "paste",
+            "version": "1.0.15",
+            "id": "RUSTSEC-2024-0436",
+            "title": "paste - no longer maintained"
+          },
+          {
+            "package": "proc-macro-error",
+            "version": "1.0.4",
+            "id": "RUSTSEC-2024-0370",
+            "title": "proc-macro-error is unmaintained"
+          },
+          {
+            "package": "proc-macro-error2",
+            "version": "2.0.1",
+            "id": "RUSTSEC-2026-0173",
+            "title": "proc-macro-error2 is unmaintained"
+          },
+          {
+            "package": "ring",
+            "version": "0.16.20",
+            "id": "RUSTSEC-2025-0010",
+            "title": "Versions of *ring* prior to 0.17 are unmaintained."
+          }
+        ],
+        "unsound": [
+          {
+            "package": "lru",
+            "version": "0.7.8",
+            "id": "RUSTSEC-2026-0253",
+            "title": "Potential use-after-free due to lack of panic safety in `LruCache::pop()`"
+          },
+          {
+            "package": "lru",
+            "version": "0.12.5",
+            "id": "RUSTSEC-2026-0253",
+            "title": "Potential use-after-free due to lack of panic safety in `LruCache::pop()`"
+          },
+          {
+            "package": "lru",
+            "version": "0.12.5",
+            "id": "RUSTSEC-2026-0002",
+            "title": "`IterMut` violates Stacked Borrows by invalidating internal pointer"
+          }
+        ],
+        "yanked": [
+          {
+            "package": "core2",
+            "version": "0.4.0",
+            "id": null,
+            "title": null
+          }
+        ]
+      }
+    },
+    "validation": {
+      "status": "focused validation complete; unresolved audit findings remain",
+      "completed": [
+        "Standalone snapshot utility locked check and metadata; RustSec zero vulnerabilities and warnings",
+        "Python clean install, pip check, offline SR25519 verification, SS58 and SCALE smoke checks",
+        "Three historical pinned frontend reproduction tests",
+        "WebSocket trust-store regression test",
+        "cargo fmt --all --check",
+        "Five first-party lint-policy tests",
+        "Lint-runner shell tests",
+        "Actionlint workflow validation",
+        "Common library check and 137 common unit tests",
+        "Executor native/Wasm tests: 33 passed, 1 upstream ignored",
+        "Tracing suites including real logger injection test: 19 passed",
+        "Wasm interface tests: 2 passed",
+        "Parity DB tests: 33 passed",
+        "Locked framenode binary and native runtime check with SKIP_WASM_BUILD=1"
+      ],
+      "pending": [],
+      "release_evidence": "Existing runtime release artifacts were not rebuilt or recertified.",
+      "rust_tests": [
+        {
+          "suite": "common",
+          "results": [
+            {
+              "status": "ok",
+              "passed": 137,
+              "failed": 0,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "suite": "executor",
+          "results": [
+            {
+              "status": "ok",
+              "passed": 33,
+              "failed": 0,
+              "ignored": 1
+            }
+          ]
+        },
+        {
+          "suite": "tracing_and_wasm_interface",
+          "results": [
+            {
+              "status": "ok",
+              "passed": 17,
+              "failed": 0,
+              "ignored": 0
+            },
+            {
+              "status": "ok",
+              "passed": 1,
+              "failed": 0,
+              "ignored": 0
+            },
+            {
+              "status": "ok",
+              "passed": 0,
+              "failed": 0,
+              "ignored": 0
+            },
+            {
+              "status": "ok",
+              "passed": 1,
+              "failed": 0,
+              "ignored": 0
+            },
+            {
+              "status": "ok",
+              "passed": 2,
+              "failed": 0,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "suite": "websocket_trust_store",
+          "results": [
+            {
+              "status": "ok",
+              "passed": 1,
+              "failed": 0,
+              "ignored": 0
+            }
+          ]
+        },
+        {
+          "suite": "parity_db",
+          "results": [
+            {
+              "status": "ok",
+              "passed": 33,
+              "failed": 0,
+              "ignored": 0
+            }
+          ]
+        }
+      ],
+      "test_environment": "Logging tests run with RUST_LOG unset; the machine default warn filter suppresses upstream tests intended to exercise info logs. Executor tests use actual generated Wasm, not SKIP_WASM_BUILD.",
+      "commands": {
+        "common": "SKIP_WASM_BUILD=1 cargo check --locked -p common --lib; cargo test --locked -p common --lib",
+        "executor": "env -u SKIP_WASM_BUILD cargo test --locked -p sc-executor-wasmtime --lib",
+        "logging": "env -u RUST_LOG SKIP_WASM_BUILD=1 cargo test --locked -p sp-wasm-interface -p sp-tracing -p sc-tracing --lib --tests",
+        "websocket": "cargo test --locked -p libp2p-websocket --lib trust_store_tests",
+        "database": "cargo test --locked -p parity-db --lib",
+        "formatting": "cargo fmt --all --check",
+        "policy": "python3 housekeeping/test_lint_policy.py; housekeeping/test-clippy.sh; .github/scripts/check_stable_deps_no_rc.sh",
+        "audit": "cargo audit --db /tmp/sora2-rustsec-advisory-db --no-fetch --deny unsound --json",
+        "node": "SKIP_WASM_BUILD=1 LIBRARY_PATH=/opt/homebrew/opt/llvm@22/lib LIBCLANG_PATH=/opt/homebrew/opt/llvm@22/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@22/bin/llvm-config scripts/with_llvm_env.sh cargo check --locked -p framenode --bin framenode"
+      },
+      "not_run": [
+        "Full warnings-as-errors Clippy gate",
+        "Production runtime release Wasm and chain rehearsals"
+      ]
+    }
+  },
+  "dependency_count": 1420,
+  "audit_evidence": {
+    "root_audit_file_at_review": "misc/dependency_security/cargo-audit-2026-10-24.json#/locks/Cargo.lock/audit",
+    "root_audit_sha256": "860cff863f47074c4a2400beff178221971d27cd1cb1389bc7a367b1cafe7a90",
+    "advisory_count": 1352,
+    "ignore": [],
+    "note": "cargo-audit 0.22.1 was used for the before/after comparison against the same refreshed RustSec checkout. Git/path consumer patches were reviewed and tested separately; scanner source-filter changes are not counted as remediation.",
+    "all_cargo_audits": "misc/dependency_security/cargo-audit-2026-10-24.json",
+    "all_cargo_audits_sha256": "a9d3e328cca7145da3de1f265a4927ea5961097c68d846eb7f6e32369a899781",
+    "strict_warning_policy": "--deny warnings"
+  },
+  "python": {
+    "dependencies": 29,
+    "vulnerability_matches": 0,
+    "audit_evidence": "misc/runtime_upgrade/python_dependency_remediation_audit_2026-10-24.json",
+    "audit_evidence_sha256": "e0e0540063baafb9424c872690addaec54f17300d89d170fcbdbb1ed550ff72d",
+    "requirements_sha256": "a67fb6f006d3f249586239e1f19e68a61b0616e9d2938537d9b39fba950fdf5a",
+    "source_provenance": "misc/runtime_upgrade/vendor/substrate-interface-source.json",
+    "native_dependency_review": "misc/runtime_upgrade/vendor/native-dependency-review.json",
+    "tests_passed": 24,
+    "native_closure_status": "Four audited native source builds pass on macOS CPython 3.12/3.13 and Linux arm64 CPython 3.13. Linux wheel tests: 149 passed; final runtime image repeated 39 governance/binding tests, passed pip check and CLI help, and audited 30 installed distributions with zero vulnerabilities. No Rust/C build tools remain in the final image.",
+    "remediation": "Vendored substrate-interface 1.8.1 uses coincurve 21.0.0 for BIP32/ECDSA; removed Python ecdsa and unused smoldot-light native extension. HTTP/WebSocket governance RPC retained; light-client transport explicitly unsupported. Use a fresh virtual environment to avoid retaining removed distributions. Four native packages are built from local sources with patched PyO3, rand, keccak and LRU. The installer enforces --locked before Maturin metadata generation.",
+    "audited_distributions_including_pip": 30,
+    "native_tests_passed": 274,
+    "tests_per_interpreter": 12,
+    "interpreters": [
+      "3.12.15",
+      "3.13.17"
+    ],
+    "total_project_and_upstream_tests_passed": 298,
+    "native_dependency_evidence_sha256": "903ca1916cecaee167b27e9e05bf145e35e9609fd3abb246633b7329fb7f62b3",
+    "linux_container_validation": {
+      "checked_at": "2026-10-24",
+      "python_image": "python:3.13.17-slim-trixie@sha256:d98cc29d3266e535dd9da1099688d9cb3ca4753813571e071763d17725460962",
+      "rust_builder_image": "rust:1.99.1-slim-trixie@sha256:aab42391a986424e22d6a3ec14f37bc6dd3dacff4d457ca7cccd781e02297cc6",
+      "build_status": "wheel-builder and complete runtime image built successfully",
+      "platform": "linux/arm64",
+      "final_image_tag": "sora-runtime-upgrade:security-20261024",
+      "final_image_digest": "sha256:09a16962d2de598592fa65ba59e7d20405c784ba14319b216105a1e247019765",
+      "runtime_wasm_source": "target/debug/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm",
+      "runtime_wasm_provenance": "Generated from the current source by the runtime build, then copied into a temporary Docker context; no archived or placeholder Wasm used.",
+      "container_checks": {
+        "wasm_sha256": "82b5e49cc810af6a44d9f640a9a81872dfe103190f9544aef52728fa95e9d237",
+        "uid": 1000,
+        "build_tools_absent": true,
+        "binaries": {
+          "bip39": {
+            "sha256": "b616ae8eef7dfbeb2eb31f495d2fb796628dcf4ef74dc45d95d880a3e349b9c8",
+            "detected_versions": {
+              "pyo3": "0.29.3",
+              "rand": "0.8.8"
+            }
+          },
+          "ed25519_zebra": {
+            "sha256": "278b440fb9799151c8596a574d823ef18a6eadb330aac13a61e2e58c3ee8fb01",
+            "detected_versions": {
+              "pyo3": "0.29.3",
+              "curve25519-dalek": "4.1.3"
+            }
+          },
+          "sr25519": {
+            "sha256": "234f9e3ab1f1b8eb515f271223eda64f7473f1ae1ed3aa9cc4103b320e706b3c",
+            "detected_versions": {
+              "pyo3": "0.29.3",
+              "curve25519-dalek": "4.1.3",
+              "keccak": "0.1.6",
+              "rand": "0.8.8"
+            }
+          },
+          "pydantic_core": {
+            "sha256": "99d404d4e218f9187b1c8c46567877b433526800dba0f227dcfe4e18eefff8d0",
+            "detected_versions": {
+              "pyo3": "0.29.3",
+              "lru": "0.19.0"
+            }
+          }
+        }
+      },
+      "cli_help": "passed",
+      "pip_check": "passed",
+      "installed_distribution_audit": {
+        "tool": "pip-audit2.10.1",
+        "command": "pip-audit --strict --path /usr/local/lib/python3.13/site-packages --format=json",
+        "runtime_distributions": 29,
+        "total_including_pip": 30,
+        "vulnerabilities": 0,
+        "audit_environment": "Separate temporary virtual environment inside the disposable final-image container"
+      },
+      "offline_tests": {
+        "network": "disabled",
+        "compatibility_and_governance": 12,
+        "upstream_cryptographic_bindings": 27,
+        "pydantic_string_and_regex": 110,
+        "total": 149,
+        "final_runtime_image_repeat": {
+          "compatibility_and_governance": 12,
+          "upstream_cryptographic_bindings": 27,
+          "packaged_main_and_vendor_imports_verified": true
+        }
+      },
+      "native_wheel_sha256": {
+        "py_bip39_bindings-0.3.0-cp313-cp313-linux_aarch64.whl": "c02bd26b1916277b66651bc1186863c06848a3b92427b5c13f74f063b183b85f",
+        "py_ed25519_zebra_bindings-1.3.0-cp313-cp313-linux_aarch64.whl": "66ae2762e12288dd78a3c94af65b13dd634eecf68e550009d43421bfb36c9a63",
+        "py_sr25519_bindings-0.2.4-cp313-cp313-linux_aarch64.whl": "6014aecca5b39a2e7bc135d9c64d5fc326baa6f445b0e6fec3d2c07c74696f66",
+        "pydantic_core-2.50.1-cp313-cp313-linux_aarch64.whl": "e9dc72fe161a3e8c0e832132bad09e2682b4bece1dc619552d09dc96e3f4b352"
+      },
+      "native_cargo_locks_unchanged": {
+        "misc/runtime_upgrade/vendor/native/py-ed25519-zebra-bindings/Cargo.lock": "65d84a5a23dddf54019fdca8f8245431752dd01fda976b056d314efc5869f8a6",
+        "misc/runtime_upgrade/vendor/native/pydantic-core/Cargo.lock": "e9f18888c4ab4e38bbfcceb7760c58786bd966fda9964d3f10af654f4e685777",
+        "misc/runtime_upgrade/vendor/native/py-bip39-bindings/Cargo.lock": "e426344ea7809223cccf32dfafc18543c5b9b897372f47ba591e3b598a01978b",
+        "misc/runtime_upgrade/vendor/native/py-sr25519-bindings/Cargo.lock": "f1e7837d57a582717c1418af1bd1ca450eaf1121aeaf7b28054c77a81ded85bf"
+      },
+      "dns_repair": {
+        "profile": "sora-release-verify",
+        "docker_context": "colima-sora-release-verify",
+        "global_docker_context": "default (unchanged)",
+        "colima_version": "0.10.3",
+        "upstream_issue": "https://github.com/abiosoft/colima/issues/1611",
+        "repair": "Persisted profile DNS and an idempotent after-boot hook restoring dnsmasq from current systemd-networkd DNS/address state; fixes both skipped setup with pending dnsmasq updates and stale listen address. Reboot validation passed.",
+        "configured_upstreams": [
+          "192.168.5.2",
+          "1.1.1.1"
+        ]
+      },
+      "logs": {
+        "wheel-builder": "/tmp/sora2-maintenance-wheel-builder.log",
+        "runtime-image": "/tmp/sora2-maintenance-runtime-image-refresh.log",
+        "linux-tests": "/tmp/sora2-maintenance-linux-tests.log",
+        "final-offline-tests": "/tmp/sora2-maintenance-final-offline-tests-refresh.log",
+        "final-container-check": "/tmp/sora2-maintenance-final-container-check-refresh.log",
+        "container-audit": "/tmp/sora2-maintenance-container-audit-refresh.log",
+        "dns-after-reboot": "/tmp/sora2-maintenance-dns-after-reboot.log",
+        "dns-persistence": "/tmp/sora2-maintenance-dns-persistence.log",
+        "dns_refresh": "/tmp/sora2-maintenance-dns-refresh.log"
+      },
+      "scope": "No signing, governance submission, deployment or release publication was performed.",
+      "lifecycle": {
+        "profile_state": "stopped after successful verification",
+        "preserved": [
+          "built Docker images",
+          "profile DNS settings",
+          "after-boot DNS repair hook"
+        ],
+        "global_docker_context": "default (unchanged)",
+        "stop_log": "/tmp/sora2-maintenance-docker-refresh-stop.log"
+      },
+      "runtime_wasm_size": 1901085,
+      "refresh_validation": "Refreshed final image with the latest current-source Wasm. Python/Rust native source, manifests and requirements match the previously tested build context, and installed native binary hashes are identical; the 149-test Linux suite remains applicable. Repeated39 final-image offline tests, CLIhelp, pipcheck, nonroot/no-buildtool checks and30-package installed-path audit all pass."
+    }
+  },
+  "migrations": [
+    {
+      "family": "RustCrypto",
+      "versions": {
+        "k256": "0.14.0",
+        "p256": "0.14.0 (tested optional feature)",
+        "elliptic-curve": "0.14.1",
+        "crypto-bigint": "0.7.6",
+        "bip32": "0.6.0"
+      },
+      "provenance": [
+        "vendor/polkadot-sdk/primitives/core/SORA-PATCH.md",
+        "vendor/polkadot-sdk/frame/support/SORA-PATCH.md",
+        "vendor/libp2p-identity/SORA-PATCH.md",
+        "vendor/alloy-consensus/SORA-PATCH.md",
+        "vendor/alloy-primitives/SORA-PATCH.md",
+        "vendor/alloy-eip7702/SORA-PATCH.md",
+        "vendor/subxt-signer/SORA-PATCH.md"
+      ],
+      "compatibility": "Fixed signatures, SEC1/DER encodings, high-S libp2p acceptance, recoverable signatures and wallet derivations retained."
+    },
+    {
+      "family": "Iroha SHA3 signature verifier",
+      "versions": {
+        "ed25519-dalek": "2.2.0",
+        "curve25519-dalek": "4.1.3"
+      },
+      "source": "pallets/iroha-migration/src/lib.rs",
+      "compatibility": "raw_verify<Sha3_512> over the existing Sha3_256 message. 768 byte-identical signature fixtures and 49,172 differential verification cases checked; 20 pallet tests passed. Production verifier module compiled no_std to Wasm and accepted the historical fixture while rejecting an altered message and a noncanonical scalar."
+    },
+    {
+      "family": "Networking",
+      "versions": {
+        "hickory-proto": "0.26.3",
+        "hickory-resolver": "0.26.3",
+        "hickory-net": "0.26.3",
+        "rcgen": "0.14.10",
+        "ring": "0.17.14",
+        "rustls-webpki": "0.103.16",
+        "h2": "0.4.20"
+      },
+      "provenance": [
+        "vendor/libp2p-dns/SORA-PATCH.md",
+        "vendor/libp2p-mdns/SORA-PATCH.md",
+        "vendor/litep2p/SORA-PATCH.md",
+        "vendor/libp2p-tls/SORA-PATCH.md",
+        "vendor/libp2p-upnp/SORA-PATCH.md"
+      ],
+      "validation": "28 DNS, mDNS, certificate and authenticated transport tests passed."
+    },
+    {
+      "family": "Memory safety and decompression",
+      "versions": {
+        "lru": "0.19.0",
+        "ruzstd": "0.9.1",
+        "tracing-log benchmark criterion": "0.8.2"
+      },
+      "provenance": [
+        "vendor/tracing-log/SORA-PATCH.md",
+        "vendor/libp2p-swarm/SORA-PATCH.md",
+        "vendor/libp2p-identify/SORA-PATCH.md",
+        "vendor/smoldot/SORA-PATCH.md",
+        "vendor/smoldot-light/SORA-PATCH.md"
+      ],
+      "validation": "Six decompression regressions passed, including excessive history-window allocation and final-block output-limit bypass. Tracing/LRU tests passed after the final Criterion upgrade (14 tests); benchmark compilation passed."
+    },
+    {
+      "family": "Standalone maintained locks",
+      "changes": "Farming convert uses the migrated sp-core; sora2-common uses security patches and jsonrpsee 0.24.11. The bundled tikv-jemalloc-ctl standalone lock now matches its maintained pastey consumer manifest. All eleven maintained locks, including four Python native bindings and two JavaScript Wasm bundles, have zero vulnerabilities or warnings."
+    }
+  ],
+  "remaining_maintenance": {
+    "root_unmaintained_packages": [],
+    "yanked_packages": [],
+    "note": "All eleven maintained Cargo graphs pass cargo audit --deny warnings; maintenance consumers were migrated, with no advisory exclusions. Historical fixtures remain outside production dependency graphs."
+  },
+  "python_native_evidence": "vendor/native-dependency-review.json",
+  "phase2": {
+    "root_lockfile_sha256": "ba3a9f6991920736faf9fb820d2a8d9324951703d036690e4351ff7ed289c87a",
+    "after": {
+      "vulnerability_matches": 0,
+      "vulnerabilities": [],
+      "warning_counts": {
+        "unsound": 0,
+        "unmaintained": 12,
+        "yanked": 1
+      },
+      "warnings": {
+        "unmaintained": [
+          {
+            "package": "async-std",
+            "version": "1.13.2",
+            "id": "RUSTSEC-2025-0052",
+            "title": "async-std has been discontinued",
+            "patched": []
+          },
+          {
+            "package": "core2",
+            "version": "0.4.0",
+            "id": "RUSTSEC-2026-0105",
+            "title": "core2 is unmaintained, all versions yanked",
+            "patched": []
+          },
+          {
+            "package": "derivative",
+            "version": "2.2.0",
+            "id": "RUSTSEC-2024-0388",
+            "title": "`derivative` is unmaintained; consider using an alternative",
+            "patched": []
+          },
+          {
+            "package": "fxhash",
+            "version": "0.2.1",
+            "id": "RUSTSEC-2025-0057",
+            "title": "fxhash - no longer maintained",
+            "patched": []
+          },
+          {
+            "package": "instant",
+            "version": "0.1.13",
+            "id": "RUSTSEC-2024-0384",
+            "title": "`instant` is unmaintained",
+            "patched": []
+          },
+          {
+            "package": "libsecp256k1",
+            "version": "0.7.2",
+            "id": "RUSTSEC-2025-0161",
+            "title": "libsecp256k1 is unmaintained",
+            "patched": []
+          },
+          {
+            "package": "number_prefix",
+            "version": "0.4.0",
+            "id": "RUSTSEC-2025-0119",
+            "title": "number_prefix crate is unmaintained",
+            "patched": []
+          },
+          {
+            "package": "parity-util-mem",
+            "version": "0.12.0",
+            "id": "RUSTSEC-2022-0080",
+            "title": "parity-util-mem Unmaintained",
+            "patched": []
+          },
+          {
+            "package": "parity-wasm",
+            "version": "0.45.0",
+            "id": "RUSTSEC-2022-0061",
+            "title": "Crate `parity-wasm` deprecated by the author",
+            "patched": []
+          },
+          {
+            "package": "paste",
+            "version": "1.0.15",
+            "id": "RUSTSEC-2024-0436",
+            "title": "paste - no longer maintained",
+            "patched": []
+          },
+          {
+            "package": "proc-macro-error",
+            "version": "1.0.4",
+            "id": "RUSTSEC-2024-0370",
+            "title": "proc-macro-error is unmaintained",
+            "patched": []
+          },
+          {
+            "package": "proc-macro-error2",
+            "version": "2.0.1",
+            "id": "RUSTSEC-2026-0173",
+            "title": "proc-macro-error2 is unmaintained",
+            "patched": []
+          }
+        ],
+        "yanked": [
+          {
+            "package": "core2",
+            "version": "0.4.0",
+            "id": null,
+            "title": null
+          }
+        ]
+      }
+    },
+    "other_cargo_locks": {
+      "misc/rewards_snapshot/get_lp_tokens/Cargo.lock": {
+        "vulnerability_matches": 0,
+        "vulnerabilities": [],
+        "warning_counts": {
+          "unsound": 0,
+          "unmaintained": 0,
+          "yanked": 0
+        },
+        "warnings": {},
+        "lockfile_sha256": "754fd576afce602af8f4d1b33a93caa59947bdc7328adc8979e27db3bae43175",
+        "audit_evidence_sha256": "ec8dd3e76a9f5dbf14c705d163fb1d8eac03d209675d324cf7ae70b2197b4a70"
+      },
+      "misc/farming_snapshot/convert/Cargo.lock": {
+        "vulnerability_matches": 0,
+        "vulnerabilities": [],
+        "warning_counts": {
+          "unsound": 0,
+          "unmaintained": 0,
+          "yanked": 0
+        },
+        "warnings": {},
+        "lockfile_sha256": "fe0fa790bf389910f6669ecbcbf091d8d1fabdbe1d866cc5d3a67b7e92d88116",
+        "audit_evidence_sha256": "2c9ffe82232eeacf4bd8606160666c5b205f2fa82cd7bf1b3a7f02d36fd38a29"
+      },
+      "vendor/sora2-common/Cargo.lock": {
+        "vulnerability_matches": 0,
+        "vulnerabilities": [],
+        "warning_counts": {
+          "unsound": 0,
+          "unmaintained": 0,
+          "yanked": 0
+        },
+        "warnings": {},
+        "lockfile_sha256": "8fcb449a892ce5dba82f4bcfa3aa0d949c2f802f093b5f17cb31686c6af48d24",
+        "audit_evidence_sha256": "0ef98b31ce9553ed9545e25f815969f90f425c4c4ac6b566f8c9ceaa86342201"
+      },
+      "misc/runtime_upgrade/vendor/native/py-bip39-bindings/Cargo.lock": {
+        "vulnerability_matches": 0,
+        "vulnerabilities": [],
+        "warning_counts": {
+          "unsound": 0,
+          "unmaintained": 0,
+          "yanked": 0
+        },
+        "warnings": {},
+        "lockfile_sha256": "e426344ea7809223cccf32dfafc18543c5b9b897372f47ba591e3b598a01978b",
+        "audit_evidence_sha256": "07e3fcc314e7e7132a4a21c41d74db173f674d6465306232592f9cdd60a8699a"
+      },
+      "misc/runtime_upgrade/vendor/native/py-ed25519-zebra-bindings/Cargo.lock": {
+        "vulnerability_matches": 0,
+        "vulnerabilities": [],
+        "warning_counts": {
+          "unsound": 0,
+          "unmaintained": 0,
+          "yanked": 0
+        },
+        "warnings": {},
+        "lockfile_sha256": "65d84a5a23dddf54019fdca8f8245431752dd01fda976b056d314efc5869f8a6",
+        "audit_evidence_sha256": "6e60e72d25db2cbbd0382b9f44a36b235b65dcf9a8f31db1c4b4ea2cc35ccd09"
+      },
+      "misc/runtime_upgrade/vendor/native/py-sr25519-bindings/Cargo.lock": {
+        "vulnerability_matches": 0,
+        "vulnerabilities": [],
+        "warning_counts": {
+          "unsound": 0,
+          "unmaintained": 0,
+          "yanked": 0
+        },
+        "warnings": {},
+        "lockfile_sha256": "f1e7837d57a582717c1418af1bd1ca450eaf1121aeaf7b28054c77a81ded85bf",
+        "audit_evidence_sha256": "56077036594cb743e3f6444f1f9dc13c9a2ef74f763043e6ebd42afa3c5cd132"
+      },
+      "misc/runtime_upgrade/vendor/native/pydantic-core/Cargo.lock": {
+        "vulnerability_matches": 0,
+        "vulnerabilities": [],
+        "warning_counts": {
+          "unsound": 0,
+          "unmaintained": 0,
+          "yanked": 0
+        },
+        "warnings": {},
+        "lockfile_sha256": "e9f18888c4ab4e38bbfcceb7760c58786bd966fda9964d3f10af654f4e685777",
+        "audit_evidence_sha256": "eb143b86585e348a1e65e4e9c2c44deb0a635f07642f85450425d8a91756e5fc"
+      }
+    },
+    "validation": {
+      "status": "Required dependency migrations and focused validation complete; maintained Cargo graphs and installed Python environment are free of known vulnerability and memory-safety advisory matches. Maintenance warnings and container validation limitations remain documented.",
+      "completed": [
+        "Eight maintained Cargo lockfiles: zero vulnerability matches and zero unsound warnings",
+        "RustCrypto consumer compatibility tests: 48 passed across libp2p identity, Alloy and Subxt",
+        "SDK sp-core and frame-support ECDSA tests: 23 passed",
+        "sp-core no-default-features/full_crypto check passed",
+        "Alloy consensus no-default-features/k256 check passed",
+        "Iroha SHA3 verifier: 768 byte-identical signatures, 49,172 differential verification cases, 20 pallet tests passed",
+        "Networking migration: 28 tests passed",
+        "Smoldot decompression: 6 tests passed",
+        "Final locked node binary and native runtime check passed",
+        "Production Iroha verifier compiled no_std to Wasm and executed: historical signature accepted, altered message and noncanonical scalar rejected",
+        "Locked farming converter check against migrated SDK core passed",
+        "Runtime Iroha migration fee tests: 5 passed",
+        "Tracing/LRU tests with Criterion 0.8.2: 14 passed; benchmark compilation passed",
+        "sp-core no-std/full_crypto Wasm compilation passed",
+        "Formatting, lint-policy/runner checks and stable-SDK guard passed after migration",
+        "Complete framenode-runtime no-default-features Wasm compilation check passed",
+        "All four source-built Python extension Cargo locks independently audited: zero vulnerabilities, unsoundness and maintenance warnings",
+        "Four native extensions rebuilt on CPython 3.12 and 3.13; 274 upstream binding/Pydantic tests passed",
+        "Fresh CPython 3.12 source installation: 29 runtime packages, pip consistency, 12 governance/crypto tests and CLI help passed",
+        "Strict installed-package pip audit: zero findings across 30 distributions including pip",
+        "Native binary-version inspection and four native Cargo audits: zero vulnerabilities or warnings",
+        "Stale native Cargo.lock is rejected before modification using explicit Maturin PEP 517 --locked argument",
+        "Final frame-support Ethereum-address test passed after integrated-feature type disambiguation",
+        "Fresh CPython 3.13 environment: exact 29 runtime packages, pip consistency, 12 governance/crypto tests and CLI help passed; combined Python validation is 298 tests"
+      ],
+      "pending": [],
+      "rust_tests": [
+        {
+          "suite": "rustcrypto_consumers",
+          "passed": 48,
+          "failed": 0,
+          "scope": "Isolated compatibility workspace using vendored sources and the compatible root lock versions"
+        },
+        {
+          "suite": "sdk_ecdsa",
+          "passed": 23,
+          "failed": 0
+        },
+        {
+          "suite": "iroha_migration",
+          "passed": 20,
+          "failed": 0
+        },
+        {
+          "suite": "network_migration",
+          "passed": 28,
+          "failed": 0
+        },
+        {
+          "suite": "smoldot_zstd",
+          "passed": 6,
+          "failed": 0
+        },
+        {
+          "suite": "runtime_migration_fees",
+          "passed": 5,
+          "failed": 0
+        },
+        {
+          "suite": "tracing_lru_final",
+          "passed": 14,
+          "failed": 0
+        }
+      ],
+      "phase1_tests": "225 Rust tests passed and one upstream test was ignored before the required upstream migrations. Details retained under phase1; do not treat them as rerun on the final graph.",
+      "release_evidence": "Existing runtime release artifacts were not rebuilt or recertified.",
+      "test_environment": "Logging tests run with RUST_LOG unset; the machine default warn filter suppresses upstream tests intended to exercise info logs. Executor tests use actual generated Wasm, not SKIP_WASM_BUILD.",
+      "commands": {
+        "audit": "cargo audit --db /tmp/sora2-rustsec-advisory-db --no-fetch --deny unsound --file Cargo.lock",
+        "python": "python misc/runtime_upgrade/install_dependencies.py; python -m unittest discover -s misc/runtime_upgrade/tests -v",
+        "node": "SKIP_WASM_BUILD=1 LIBRARY_PATH=/opt/homebrew/opt/llvm@22/lib LIBCLANG_PATH=/opt/homebrew/opt/llvm@22/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@22/bin/llvm-config scripts/with_llvm_env.sh cargo check --locked -p framenode --bin framenode",
+        "runtime_wasm": "SKIP_WASM_BUILD=1 cargo check --locked -p framenode-runtime --lib --target wasm32-unknown-unknown --no-default-features",
+        "frame_ecdsa_final": "SKIP_WASM_BUILD=1 cargo test --locked -p frame-support --lib crypto::ecdsa"
+      },
+      "not_run": [
+        "Full warnings-as-errors Clippy gate",
+        "Production runtime release Wasm and chain rehearsals",
+        "Linux container builder: existing local validation VM could not reach Docker Hub; its original DNS and stopped state were restored"
+      ]
+    }
+  },
+  "maintenance_migrations": {
+    "retired": {
+      "unmaintained": [
+        {
+          "package": "async-std",
+          "version": "1.13.2",
+          "id": "RUSTSEC-2025-0052",
+          "title": "async-std has been discontinued",
+          "patched": []
+        },
+        {
+          "package": "core2",
+          "version": "0.4.0",
+          "id": "RUSTSEC-2026-0105",
+          "title": "core2 is unmaintained, all versions yanked",
+          "patched": []
+        },
+        {
+          "package": "derivative",
+          "version": "2.2.0",
+          "id": "RUSTSEC-2024-0388",
+          "title": "`derivative` is unmaintained; consider using an alternative",
+          "patched": []
+        },
+        {
+          "package": "fxhash",
+          "version": "0.2.1",
+          "id": "RUSTSEC-2025-0057",
+          "title": "fxhash - no longer maintained",
+          "patched": []
+        },
+        {
+          "package": "instant",
+          "version": "0.1.13",
+          "id": "RUSTSEC-2024-0384",
+          "title": "`instant` is unmaintained",
+          "patched": []
+        },
+        {
+          "package": "libsecp256k1",
+          "version": "0.7.2",
+          "id": "RUSTSEC-2025-0161",
+          "title": "libsecp256k1 is unmaintained",
+          "patched": []
+        },
+        {
+          "package": "number_prefix",
+          "version": "0.4.0",
+          "id": "RUSTSEC-2025-0119",
+          "title": "number_prefix crate is unmaintained",
+          "patched": []
+        },
+        {
+          "package": "parity-util-mem",
+          "version": "0.12.0",
+          "id": "RUSTSEC-2022-0080",
+          "title": "parity-util-mem Unmaintained",
+          "patched": []
+        },
+        {
+          "package": "parity-wasm",
+          "version": "0.45.0",
+          "id": "RUSTSEC-2022-0061",
+          "title": "Crate `parity-wasm` deprecated by the author",
+          "patched": []
+        },
+        {
+          "package": "paste",
+          "version": "1.0.15",
+          "id": "RUSTSEC-2024-0436",
+          "title": "paste - no longer maintained",
+          "patched": []
+        },
+        {
+          "package": "proc-macro-error",
+          "version": "1.0.4",
+          "id": "RUSTSEC-2024-0370",
+          "title": "proc-macro-error is unmaintained",
+          "patched": []
+        },
+        {
+          "package": "proc-macro-error2",
+          "version": "2.0.1",
+          "id": "RUSTSEC-2026-0173",
+          "title": "proc-macro-error2 is unmaintained",
+          "patched": []
+        }
+      ],
+      "yanked": [
+        {
+          "package": "core2",
+          "version": "0.4.0",
+          "id": null,
+          "title": null
+        }
+      ]
+    },
+    "stack_metering_evidence": "../../vendor/polkadot-sdk/client/executor/common/STACK-METERING.md",
+    "secp256k1_evidence": "../../vendor/sora-secp256k1-compat/README.md",
+    "generated_runtime_wasm": {
+      "path": "target/debug/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm",
+      "sha256": "82b5e49cc810af6a44d9f640a9a81872dfe103190f9544aef52728fa95e9d237",
+      "archived_release_artifacts_modified": false,
+      "bytes": 1901085
+    },
+    "current_runtime_execution": {
+      "evidence": "misc/dependency_security/current-runtime-executor-smoke-2026-10-24.json",
+      "spec_version": 134,
+      "transaction_version": 131,
+      "compressed_and_uncompressed_metadata_and_core_version_execution": "passed",
+      "evidence_sha256": "f056db4b8670169d0939407e9b02bb1a1eb882090ad6d5d3e492b68aa38ecbe5"
+    },
+    "stack_metering_final": {
+      "input_bytes": 15242233,
+      "input_sha256": "10df94e3ddc2f1a87cd1f8ff98dea259fe4002c48d2959ad8d904713b389f4e3",
+      "old_and_new_output_bytes": 18064352,
+      "old_and_new_output_sha256": "212e56ae630194e034cb67b938de11d20f4832fd5fbc070e0d7c35a98e570cc9",
+      "byte_identical": true
+    }
+  },
+  "maintained_cargo_lockfile_count": 11,
+  "javascript": {
+    "evidence": "misc/dependency_security/npm-audit-2026-10-24.json",
+    "evidence_sha256": "07475f63b34c59d849ce505645c00a30d28a2222e6b3da60e1b39a12d3457aa2",
+    "operational_graph_count": 5,
+    "vulnerability_matches": 0,
+    "retired_packages": [
+      "@substrate/connect",
+      "smoldot",
+      "@polkadot/wasm-crypto-asmjs",
+      "@polkadot/wasm-crypto-init",
+      "@polkadot/wasm-bridge",
+      "node-domexception"
+    ],
+    "remaining_upstream_deprecations": [],
+    "reviewed_native_bundles": {
+      "executor": {
+        "wasm_sha256": "e58f725beeb705f1b79234046ea2f12b5b6a73f9b8851980b0d7895252c41966",
+        "wasm_bytes": 2723362,
+        "cargo_lock": "vendor/chopsticks-executor/Cargo.lock",
+        "canonical_host": "x86_64-unknown-linux-gnu",
+        "rustc_commit": "7189d39d9ce936881b8132c6addeaf3e295cd455"
+      },
+      "crypto": {
+        "wasm_sha256": "7f08ea9227b0d72df0953194994c54a56a34a7135a43690eb6c3f4867a4c316f",
+        "wasm_bytes": 676030,
+        "cargo_lock": "vendor/polkadot-wasm-crypto/Cargo.lock",
+        "canonical_host": "x86_64-unknown-linux-gnu",
+        "rustc_commit": "7189d39d9ce936881b8132c6addeaf3e295cd455"
+      }
+    },
+    "validation": {
+      "audit_staging_unit_tests": 7,
+      "installed_schema_and_rpc_tests": 6,
+      "installed_crypto_provider_tests": 7,
+      "installed_fetch_blob_tests": 3,
+      "frontend_reproductions": 3,
+      "typescript_declarations": "strict compilation passed, including original injected substrate-connect interface",
+      "provider_javascript": "All 40 runtime JavaScript files are byte-identical to published 16.5.6.",
+      "npm_ci": "passed, scripts disabled, no deprecation notices",
+      "installed_native_assets": "All 14 executor and 18 crypto assets are byte-identical to the final canonical Linux x86_64 builds.",
+      "executor_source_inputs": 161,
+      "crypto_source_inputs": 17,
+      "copied_checkout_rebuild": "Canonical Linux x86_64 independent checkout, Cargo cache and target: all 14 executor and 18 crypto assets reproduced byte-for-byte; the documented read-only container helper --check also passed.",
+      "executor_smoke": "passed CJS and ESM state roots, proofs, malformed input and decompression-bomb rejection, callback, Core_version and arithmetic execution",
+      "current_runtime": "compressed and uncompressed metadata and executed Core_version pass, spec_version134/transaction_version131, no storage writes or RPC",
+      "crypto_differential_assertions": 2928,
+      "crypto_offline_security_assertions": 2619,
+      "crypto_public_functions": 32,
+      "crypto_compatibility_evidence": "../../vendor/polkadot-wasm-crypto/tests/compatibility-evidence.json",
+      "crypto_compatibility_evidence_sha256": "02b7049c0aa0a547b74c45500cdc46fedc5daa81c0ab7a259cbae059f8fd9e12",
+      "reviewed_package_guard": "Operational project paths require exact canonical direct pins and installed endpoints; removed/registry pins, missing/duplicate packages, wrong local paths and retired bundles are rejected.",
+      "guard_source_sha256": "831766d961313b2aadb0edfe6244b508d78a12b6609f71f86440998990025bd5",
+      "guard_tests_sha256": "1ef50f72b04c242d83193b293dd09b5ebb94430d291c775fd4de7940bf169262",
+      "integration_execution_nodes": [
+        "24.22.1",
+        "26.12.1"
+      ],
+      "frontend_final_assets": "Fresh Node.js 24 installation: all 18 crypto assets match canonical Linux Wasm 7f08ea9227b0d72df0953194994c54a56a34a7135a43690eb6c3f4867a4c316f; all 3 reproductions pass.",
+      "canonical_wasm_rebuild_evidence": "wasm-rebuild-2026-10-24.json",
+      "canonical_wasm_rebuild_evidence_sha256": "f0b875cf7c1fc1d9cbddf06f6550280b1614dd94fc44f09d916bbe9aecb9ef89"
+    },
+    "canonical_rebuild_evidence": "misc/dependency_security/wasm-rebuild-2026-10-24.json",
+    "canonical_rebuild_evidence_sha256": "f0b875cf7c1fc1d9cbddf06f6550280b1614dd94fc44f09d916bbe9aecb9ef89",
+    "canonical_build_host": "Linux x86_64",
+    "execution_host": "macOS aarch64, executing canonical Linux-built portable Wasm under Node.js 24.22.1"
+  }
+}
