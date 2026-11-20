@@ -23,7 +23,7 @@
 }
 
 body[data-state="clear"] {
-  --lamp: var(--ok);
+  --lamp: #a5b4c9;
 }
 
 body[data-state="recorded"] {
@@ -220,6 +220,24 @@ code {
 .panel-status::before,
 .panel-halt::before {
   --c: var(--lamp);
+}
+
+#availability-state {
+  margin: 10px 0 4px;
+  font-size: clamp(1.25rem, 4vw, 1.65rem);
+  font-weight: 700;
+}
+
+.availability[data-condition="down"] #availability-state {
+  color: #ff9ca5;
+}
+
+.availability[data-condition="down"]::before {
+  --c: var(--alarm);
+}
+
+#signer-report {
+  margin: 0 0 8px;
 }
 
 .row {

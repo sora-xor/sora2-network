@@ -101,6 +101,16 @@ A recorded signal stays visible regardless of age. The page shows the block heig
 Worker stops and operator acknowledgements are local to each node. Only runtimes before spec 142
 show the legacy recovery latch, in a separate field.
 
+The Ethereum availability panel reads the timestamped operator count in `bridge-status.json`
+and refreshes it each minute. Update this file with an observed active-signer count and the
+registered peer count and ordinary withdrawal threshold verified at that time. Publish only
+those three counts and the UTC observation time. Keep peer addresses and locations private. A report
+expires after one hour. Its original timestamp stays visible. A changed on-chain threshold
+or peer count also requires a fresh observation. The panel independently checks the network
+0 peer set and pending membership change at finalized blocks on spec 142. Recheck the
+threshold rule before enabling this calculation for another runtime. A full reported
+signer quorum alone cannot establish end-to-end transfer availability.
+
 ## For devops
 
 Manage guardians with a technical-committee motion (more than 2/3) or Root:
@@ -268,12 +278,11 @@ workers by itself, change chain storage, install keys or acknowledge a guardian 
 
 When there is also an outstanding guardian halt, use its separate
 `--bridge-resume-after-observed-halt <digest>` acknowledgement after finality. The next guardian
-halt stops signing and submission again. Leave Germany and Canada configured with
-`--offchain-worker never`; acknowledging France must not alter their configuration.
-Keep the seven-request node quarantine in place. One France signature can complete
+halt stops signing and submission again. Leave the other peers configured with
+`--offchain-worker never`. Keep the seven-request node quarantine in place. One signature can complete
 previously collected approvals, so one enabled worker is not a no-settlement guarantee.
 
-The old France test watcher requires the historical latch to remain set, the guardian
+The original single-peer test watcher requires the historical latch to remain set, the guardian
 record to remain absent, and activity/cursor metrics to stay fixed. It must be replaced
 as part of operational activation; otherwise it deliberately disables OCW when work
 begins. Preserve its fail-closed response to changed binary, configuration or node

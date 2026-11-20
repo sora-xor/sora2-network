@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src wss://ws.mof.sora.org wss://mof2.sora.org ws://127.0.0.1:* ws://localhost:*; base-uri 'none'; form-action 'none'"
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self' wss://ws.mof.sora.org wss://mof2.sora.org ws://127.0.0.1:* ws://localhost:*; base-uri 'none'; form-action 'none'"
     />
     <meta name="referrer" content="no-referrer" />
     <title>SORA Bridge Halt</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=quorum1" />
   </head>
   <body data-state="unknown">
     <div class="alarm-glow" aria-hidden="true"></div>
@@ -24,11 +24,19 @@
         </p>
       </header>
 
+      <section id="availability" class="card availability" aria-labelledby="availability-title">
+        <h2 id="availability-title">Ethereum bridge availability</h2>
+        <p id="availability-state" role="status">Availability unverified</p>
+        <p id="signer-report">Checking the latest operator report…</p>
+        <p id="report-time" class="hint"></p>
+        <p id="chain-quorum" class="hint">Checking the Ethereum withdrawal quorum on chain…</p>
+      </section>
+
       <section class="card panel-status" aria-labelledby="status-title">
         <div class="row">
           <h2 id="status-title">Guardian halt status</h2>
           <label class="endpoint">
-            <span>Node</span>
+            <span>Public chain RPC</span>
             <select id="endpoint"></select>
           </label>
         </div>
@@ -54,7 +62,7 @@
           <div><dt>Runtime</dt><dd id="runtime">–</dd></div>
           <div id="legacy-recovery" hidden><dt>Legacy recovery latch</dt><dd id="legacy-value"></dd></div>
         </dl>
-        <p class="hint">Worker signing and restart status are local to each bridge node. The public chain reports the guardian signal only.</p>
+        <p class="hint">This signal records a guardian’s emergency action. A bridge can lose signing quorum even when no guardian has sent a halt.</p>
         <div id="last-halt" class="last-halt" hidden>
           <h3>Last halt</h3>
           <dl class="facts">
@@ -156,6 +164,6 @@
     <script src="shim.js"></script>
     <script src="vendor/bundle-polkadot-api.js"></script>
     <script src="config.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=quorum1"></script>
   </body>
 </html>

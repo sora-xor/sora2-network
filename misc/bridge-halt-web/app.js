@@ -81,6 +81,89 @@
     stopWatch: null, // stops status reporting for the latest halt attempt
   };
 
+  // The chain has no online/offline flag for a HASHI signer. Keep the operator
+  // observation and the finalized withdrawal threshold separate from the guardian signal.
+  const REPORT_MAX_AGE_MS = 60 * 60 * 1000;
+  let signerReport = null;
+  let ethereumQuorum = null;
+
+  function validSignerReport(report) {
+    return report && Number.isFinite(Date.parse(report.reportedAt)) &&
+      Number.isSafeInteger(report.registeredPeers) && report.registeredPeers > 0 &&
+      Number.isSafeInteger(report.activeSigners) && report.activeSigners >= 0 &&
+      report.activeSigners <= report.registeredPeers &&
+      Number.isSafeInteger(report.requiredSignatures) && report.requiredSignatures > 0 &&
+      report.requiredSignatures <= report.registeredPeers + 1;
+  }
+
+  function renderAvailability() {
+    const title = $('availability-state');
+    const detail = $('signer-report');
+    const time = $('report-time');
+    const quorum = ethereumQuorum;
+    $('chain-quorum').textContent = quorum
+      ? `Finalized block #${quorum.block.toLocaleString('en-US')} · ${quorum.peers} registered peers · ${quorum.required} signatures required for a new withdrawal.`
+      : 'Current withdrawal quorum unavailable from the selected node.';
+    title.textContent = 'Availability unverified';
+    $('availability').dataset.condition = 'unknown';
+    time.textContent = '';
+    if (!signerReport || Date.parse(signerReport.reportedAt) > Date.now()) {
+      detail.textContent = 'No verified signer count is available.';
+      return;
+    }
+    const { reportedAt, activeSigners, requiredSignatures, registeredPeers } = signerReport;
+    const down = activeSigners < requiredSignatures;
+    const age = Date.now() - Date.parse(reportedAt);
+    const changed = quorum && (quorum.peers !== registeredPeers || quorum.required !== requiredSignatures);
+    time.textContent = 'Operator report · ' + new Date(reportedAt).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+    detail.textContent = `${activeSigners} of ${registeredPeers} signers reported active. New withdrawals required ${requiredSignatures} signatures at that time.`;
+    if (age >= REPORT_MAX_AGE_MS || changed) {
+      if (down) title.textContent = 'Last reported down · current availability unverified';
+    } else if (down) {
+      title.textContent = 'Down · signing quorum unavailable';
+      $('availability').dataset.condition = 'down';
+    } else {
+      title.textContent = 'Signing quorum reported · transfers unverified';
+    }
+  }
+
+  async function pollSignerReport() {
+    try {
+      const minute = Math.floor(Date.now() / 60000);
+      const response = await fetch(`bridge-status.json?minute=${minute}`, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw new Error('Status report unavailable');
+      const report = await response.json();
+      signerReport = validSignerReport(report) ? report : null;
+    } catch {
+      // Keep the timestamp of the last successful observation while the feed is unreachable.
+    }
+    renderAvailability();
+    window.setTimeout(pollSignerReport, 60000);
+  }
+
+  async function readEthereumQuorum(at, block, current) {
+    let next = null;
+    try {
+      // Spec 142 EthBridge uses network 0 for Ethereum. Ordinary withdrawals
+      // need an extra signature while a peer change is pending.
+      if (at.runtimeVersion.specVersion.toNumber() === 142 && at.query.ethBridge) {
+        const { peers, pendingPeer } = at.query.ethBridge;
+        const [members, pending] = await Promise.all([peers(0), pendingPeer(0)]);
+        const count = members.length ?? members.size;
+        if (Number.isSafeInteger(count) && count > 0) {
+          const required = count - Math.floor((count - 1) / 3) + Number(pending.isSome);
+          next = { block, peers: count, required };
+        }
+      }
+    } catch {
+      // A failed status read must never interfere with sending a guardian halt.
+    }
+    if (current() && (!ethereumQuorum || block >= ethereumQuorum.block)) {
+      ethereumQuorum = next;
+      renderAvailability();
+    }
+  }
+
   // ---------- helpers ----------
 
   const sora = (key) => encodeAddress(hexToU8a(key), SS58_PREFIX);
@@ -414,6 +497,8 @@
   }
 
   function resetChainView() {
+    ethereumQuorum = null;
+    renderAvailability();
     state.lastBlock = 0;
     state.supported = false;
     state.lastHalt = null;
@@ -466,6 +551,8 @@
       connectionEpoch++;
       if (current() && state.api) {
         setStatus('unknown', 'Connection lost', 'Waiting for a new finalized block.');
+        ethereumQuorum = null;
+        renderAvailability();
         state.supported = false;
         render();
       }
@@ -514,6 +601,9 @@
     const number = header.number.toNumber();
     const hash = header.hash.toHex();
     const at = await api.at(hash);
+    if (api.genesisHash.toHex() === CONFIG.genesisHash) {
+      void readEthereumQuorum(at, number, current);
+    }
     const version = at.runtimeVersion;
     const trusted = trustedChain(api);
     const supported = Boolean(
@@ -926,6 +1016,7 @@
       document.body.textContent = 'This page does not run inside a frame. Open it directly.';
       return;
     }
+    void pollSignerReport();
     const select = $('endpoint');
     for (const endpoint of endpoints()) {
       const option = document.createElement('option');
