@@ -96,8 +96,10 @@ If two guardians press within a minute, the first halt stands and the second is 
 as outdated. A press after that records the next halt number and stops every worker
 again, including any that devops restarted in between.
 
-The status shows a halt as current for 24 hours. The chain does not record when devops
-restart the workers, so after that the page shows only when the last halt was.
+The status compares the last guardian record and the raw HASHI signal at the same finalized block.
+A recorded signal stays visible regardless of age. The page shows the block height and UTC time.
+Worker stops and operator acknowledgements are local to each node. Only runtimes before spec 142
+show the legacy recovery latch, in a separate field.
 
 ## For devops
 

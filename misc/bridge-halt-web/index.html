@@ -19,16 +19,14 @@
         <p class="eyebrow">Guardian console · SORA network</p>
         <h1>SORA bridge emergency halt</h1>
         <p class="lede">
-          Guardians use this page to stop the SORA bridge workers during an attack. The halt is
-          written on chain and costs guardians no fee. The chain rejects it from any other
-          account, so for them the button does nothing. Every bridge node stops its workers when
-          it sees the halt, and devops restart them on their servers. No Root call is needed.
+          A guardian can send a fee-free emergency halt. Each HASHI worker stops signing
+          withdrawals and importing deposits when it observes the signal.
         </p>
       </header>
 
       <section class="card panel-status" aria-labelledby="status-title">
         <div class="row">
-          <h2 id="status-title">Bridge status</h2>
+          <h2 id="status-title">Guardian halt status</h2>
           <label class="endpoint">
             <span>Node</span>
             <select id="endpoint"></select>
@@ -41,47 +39,22 @@
             <div class="beacon-bezel">
               <div class="beacon-glass"><div class="beacon-reflector"></div></div>
             </div>
-            <span class="beacon-plate">Status</span>
+            <span class="beacon-plate">Signal</span>
           </div>
           <div class="readout">
             <p id="status" class="status status-unknown" role="status" aria-live="polite">Connecting…</p>
             <p id="status-detail" class="status-detail"></p>
-            <svg class="links" viewBox="0 0 360 132" aria-hidden="true" focusable="false">
-              <path class="conduit" d="M64 66 C 150 66, 190 22, 280 22" />
-              <path class="conduit" d="M64 66 L 280 66" />
-              <path class="conduit" d="M64 66 C 150 66, 190 110, 280 110" />
-              <path class="flow" d="M64 66 C 150 66, 190 22, 280 22" />
-              <path class="flow" d="M64 66 L 280 66" />
-              <path class="flow" d="M64 66 C 150 66, 190 110, 280 110" />
-              <g class="lock" transform="translate(210 31)">
-                <path class="lock-shackle" d="M-4.5 0 v-4.5 a4.5 4.5 0 0 1 9 0 v4.5" />
-                <rect class="lock-body" x="-7" y="-0.5" width="14" height="11" rx="2" />
-              </g>
-              <g class="lock" transform="translate(210 65.5)">
-                <path class="lock-shackle" d="M-4.5 0 v-4.5 a4.5 4.5 0 0 1 9 0 v4.5" />
-                <rect class="lock-body" x="-7" y="-0.5" width="14" height="11" rx="2" />
-              </g>
-              <g class="lock" transform="translate(210 100)">
-                <path class="lock-shackle" d="M-4.5 0 v-4.5 a4.5 4.5 0 0 1 9 0 v4.5" />
-                <rect class="lock-body" x="-7" y="-0.5" width="14" height="11" rx="2" />
-              </g>
-              <circle class="node core" cx="40" cy="66" r="26" />
-              <text class="node-label core-label" x="40" y="70">SORA</text>
-              <rect class="node" x="280" y="10" width="76" height="24" rx="6" />
-              <text class="node-label" x="318" y="25.5">ETHEREUM</text>
-              <rect class="node" x="280" y="54" width="76" height="24" rx="6" />
-              <text class="node-label" x="318" y="69.5">TON</text>
-              <rect class="node" x="280" y="98" width="76" height="24" rx="6" />
-              <text class="node-label" x="318" y="113.5">LIBERLAND</text>
-            </svg>
           </div>
         </div>
 
         <dl class="facts">
           <div><dt>Chain</dt><dd id="chain">–</dd></div>
-          <div><dt>Block</dt><dd id="block">–</dd></div>
+          <div><dt>Finalized block</dt><dd id="block">–</dd></div>
+          <div><dt>Block time</dt><dd id="block-time">–</dd></div>
           <div><dt>Runtime</dt><dd id="runtime">–</dd></div>
+          <div id="legacy-recovery" hidden><dt>Legacy recovery latch</dt><dd id="legacy-value"></dd></div>
         </dl>
+        <p class="hint">Worker signing and restart status are local to each bridge node. The public chain reports the guardian signal only.</p>
         <div id="last-halt" class="last-halt" hidden>
           <h3>Last halt</h3>
           <dl class="facts">
@@ -147,7 +120,7 @@
         </div>
 
         <div id="confirm" class="confirm" hidden>
-          <p><strong>Stop the bridge workers now?</strong> HASHI stops signing and importing transfers on every bridge node until devops restart the workers.</p>
+          <p><strong>Stop the bridge workers now?</strong> Each HASHI worker stops when it observes this signal and stays stopped until its operator acknowledges it.</p>
           <div class="row">
             <button id="confirm-yes" type="button" class="halt small">Yes, halt</button>
             <button id="confirm-no" type="button" class="secondary">Cancel</button>
@@ -166,13 +139,11 @@
       <section class="card" aria-labelledby="about-title">
         <h2 id="about-title">What a halt does</h2>
         <ul class="about">
-          <li>Writes a numbered halt on chain. The HASHI offchain worker on every bridge node stops as soon as it sees the halt: it signs no withdrawals and imports no deposits.</li>
-          <li>The workers stay stopped until devops restart each node with <code>--bridge-resume-after-halt</code> and the halt's number. No Root call or vote is needed, and guardians cannot restart anything.</li>
-          <li>The relayers for the EVM, TON and Liberland bridges do not read the halt yet. Devops stop those relayers on their servers.</li>
-          <li>Does not make the chain refuse bridge calls: transfers sent during a halt wait for the workers. Root's recovery latch still does that when governance sets it.</li>
-          <li>Does not pause contracts on Ethereum, TON or Liberland. Withdrawals already signed by the bridge can still be redeemed there; pause those contracts separately.</li>
-          <li>Has no effect from accounts that are not guardians: the chain rejects the transaction before it reaches a block, so nothing is written and no fee is charged.</li>
-          <li>Within a minute of a halt the chain refuses another one, so guardians who react together send a single halt.</li>
+          <li>Each accepted halt writes a new numbered signal. A worker that has already resumed stops again when it observes the new signal.</li>
+          <li>To resume a stopped worker, its operator must acknowledge the exact digest reported by that node with <code>--bridge-resume-after-observed-halt</code>. Elapsed time and ordinary restarts do not clear the local stop.</li>
+          <li>The guardian signal leaves on-chain bridge calls available. Approvals already submitted can still count toward a quorum, and signed withdrawals can still be redeemed.</li>
+          <li>External contracts and separate relayers have their own stop controls. Check those systems independently.</li>
+          <li>Only guardians can send a halt. The chain enforces a cooldown between accepted signals.</li>
         </ul>
       </section>
     </main>

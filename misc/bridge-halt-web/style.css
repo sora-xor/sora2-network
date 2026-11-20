@@ -1,5 +1,5 @@
 /* SORA bridge halt: emergency console. Plain CSS, no external assets.
-   app.js sets body[data-state] to running, halted or unknown, and body.arming
+   app.js sets body[data-state] to clear, recorded or unknown, and body.arming
    while the halt confirmation is open. Flashing stays below 1 Hz, and
    prefers-reduced-motion turns every animation off. */
 
@@ -22,11 +22,11 @@
   --stripes: linear-gradient(135deg, var(--hazard) 25%, #0d0d0d 25% 50%, var(--hazard) 50% 75%, #0d0d0d 75%);
 }
 
-body[data-state="running"] {
+body[data-state="clear"] {
   --lamp: var(--ok);
 }
 
-body[data-state="halted"] {
+body[data-state="recorded"] {
   --lamp: var(--alarm);
 }
 
@@ -50,7 +50,7 @@ body {
     var(--bg);
 }
 
-body[data-state="halted"] {
+body[data-state="recorded"] {
   background:
     radial-gradient(ellipse at 50% -10%, rgba(255, 43, 58, 0.16), transparent 60%),
     linear-gradient(rgba(255, 60, 70, 0.035) 1px, transparent 1px) 0 0 / 32px 32px,
@@ -68,7 +68,7 @@ body::after {
   background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px);
 }
 
-/* Red alarm light washing in from the screen edges while halted. */
+/* Red alarm light washing in from the screen edges for a recorded signal. */
 .alarm-glow {
   position: fixed;
   inset: 0;
@@ -79,7 +79,7 @@ body::after {
   transition: opacity 0.6s;
 }
 
-body[data-state="halted"] .alarm-glow {
+body[data-state="recorded"] .alarm-glow {
   opacity: 1;
   animation: alarm-wash 1.6s ease-in-out infinite alternate;
 }
@@ -100,7 +100,7 @@ main {
   box-shadow: 0 0 14px rgba(242, 194, 0, 0.25);
 }
 
-body[data-state="halted"] .hazard-band {
+body[data-state="recorded"] .hazard-band {
   animation: hazard-crawl 1.2s linear infinite;
   box-shadow: 0 0 18px rgba(255, 43, 58, 0.55);
 }
@@ -114,7 +114,7 @@ body[data-state="halted"] .hazard-band {
   color: var(--accent);
 }
 
-body[data-state="halted"] .eyebrow {
+body[data-state="recorded"] .eyebrow {
   color: #ff8a94;
 }
 
@@ -129,7 +129,7 @@ h1 {
   animation: power-on 2.4s linear 1;
 }
 
-body[data-state="halted"] h1 {
+body[data-state="recorded"] h1 {
   color: #ffe1e3;
   text-shadow: 0 0 8px rgba(255, 43, 58, 0.7), 0 0 28px rgba(255, 43, 58, 0.35);
 }
@@ -452,12 +452,12 @@ a:focus-visible {
   );
 }
 
-body[data-state="halted"] .beacon-reflector {
+body[data-state="recorded"] .beacon-reflector {
   opacity: 1;
   animation: spin 1.5s linear infinite;
 }
 
-body[data-state="halted"] .beacon-halo {
+body[data-state="recorded"] .beacon-halo {
   animation-duration: 1.5s;
 }
 
@@ -506,7 +506,7 @@ body[data-state="unknown"] .beacon-glass {
   box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
-body[data-state="halted"] .status {
+body[data-state="recorded"] .status {
   animation: readout-pulse 0.9s ease-in-out infinite alternate;
 }
 
@@ -523,84 +523,6 @@ body[data-state="halted"] .status {
 
 .status-detail:empty {
   display: none;
-}
-
-/* Bridge link diagram. */
-.links {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.links .conduit {
-  fill: none;
-  stroke: #26324b;
-  stroke-width: 6;
-  stroke-linecap: round;
-}
-
-.links .flow {
-  fill: none;
-  stroke: var(--lamp);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-dasharray: 1 13;
-  opacity: 0;
-}
-
-body[data-state="running"] .links .flow {
-  opacity: 0.95;
-  animation: flow 1.1s linear infinite;
-}
-
-body[data-state="halted"] .links .conduit {
-  stroke-dasharray: 10 8;
-  animation: severed 1.6s ease-in-out infinite alternate;
-}
-
-.links .lock {
-  opacity: 0;
-  transition: opacity 0.4s;
-}
-
-body[data-state="halted"] .links .lock {
-  opacity: 1;
-}
-
-.links .lock-shackle {
-  fill: none;
-  stroke: #ffd2d6;
-  stroke-width: 2;
-}
-
-.links .lock-body {
-  fill: var(--alarm);
-  stroke: #ffd2d6;
-  stroke-width: 1;
-}
-
-.links .node {
-  fill: #0a1220;
-  stroke: var(--lamp);
-  stroke-width: 2;
-}
-
-.links .core {
-  stroke-width: 3;
-}
-
-.links .node-label {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  text-anchor: middle;
-  fill: var(--text);
-}
-
-.links .core-label {
-  font-size: 11px;
-  font-weight: 700;
-  fill: #fff;
 }
 
 /* Instrument readouts. */
@@ -1161,21 +1083,6 @@ body.arming .estop-cover {
   }
   to {
     opacity: 1;
-  }
-}
-
-@keyframes flow {
-  to {
-    stroke-dashoffset: -14;
-  }
-}
-
-@keyframes severed {
-  from {
-    stroke: #3a0c12;
-  }
-  to {
-    stroke: #b3101f;
   }
 }
 

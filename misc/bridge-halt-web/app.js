@@ -10,12 +10,9 @@
 
   const CONFIG = window.BRIDGE_HALT_CONFIG || {};
   const SS58_PREFIX = 69; // SORA addresses start with "cn".
-  // Root's recovery latch. While it exists the bridge pallets refuse calls; only a
-  // Root call removes it. A guardian halt does not set it.
-  const HALT_KEY = u8aToHex(stringToU8a(':sora-nexus:recovery:bridge-halt:v1'));
-  // How long after a guardian halt the console keeps showing it as current. The
-  // chain does not record when devops restart the workers.
-  const RECENT_HALT_MS = 24 * 60 * 60 * 1000;
+  const GUARDIAN_SIGNAL_KEY = u8aToHex(stringToU8a(':sora-nexus:bridge-halt:latest:v1'));
+  const LEGACY_RECOVERY_KEY = u8aToHex(stringToU8a(':sora-nexus:recovery:bridge-halt:v1'));
+  const OCW_ONLY_RECOVERY_SPEC = 142;
   // BridgeHalt is pallet 122 in construct_runtime and halt is its call 0. The page
   // signs only these bytes, so a node serving forged metadata cannot swap the call.
   const HALT_CALL_PREFIX = new Uint8Array([122, 0]);
@@ -69,7 +66,6 @@
     endpoint: null,
     generation: 0,
     supported: false,
-    halted: null, // Root's latch is set
     lastHalt: null, // { number, block, guardian, reason } of the newest guardian halt
     blockMs: 6000, // expected block time
     cooldown: 10, // blocks after a halt before the next one is accepted
@@ -125,7 +121,7 @@
     element.className = `status status-${kind}`;
     element.textContent = text;
     $('status-detail').textContent = detail;
-    // The console styling (beacon, link diagram, alarm glow) follows this state.
+    // The console styling (beacon and alarm glow) follows this state.
     document.body.dataset.state = kind;
   }
 
@@ -144,13 +140,6 @@
   function cooldownLeft() {
     if (!state.lastHalt) return 0;
     return Math.max(0, state.lastHalt.block + state.cooldown - (state.lastBlock + 1));
-  }
-
-  function recentHalt() {
-    return (
-      Boolean(state.lastHalt) &&
-      (state.lastBlock - state.lastHalt.block) * state.blockMs < RECENT_HALT_MS
-    );
   }
 
   function log(text, kind) {
@@ -240,7 +229,7 @@
     const waiting = state.supported && cooldownLeft() > 0;
     button.textContent = waiting
       ? 'HALT JUST SENT'
-      : state.supported && recentHalt()
+      : state.supported && state.lastHalt
         ? 'HALT AGAIN'
         : 'HALT BRIDGE WORKERS';
     button.disabled =
@@ -427,12 +416,13 @@
   function resetChainView() {
     state.lastBlock = 0;
     state.supported = false;
-    state.halted = null;
     state.lastHalt = null;
     state.guardians = new Set();
     $('chain').textContent = '–';
     $('block').textContent = '–';
     $('runtime').textContent = '–';
+    $('block-time').textContent = '–';
+    $('legacy-recovery').hidden = true;
     $('last-halt').hidden = true;
     $('unsupported').hidden = true;
     renderGuardians();
@@ -468,11 +458,17 @@
     const provider = new WsProvider(endpoint, 3000);
     state.provider = provider;
     const current = () => generation === state.generation;
+    let connectionEpoch = 0;
     provider.on('error', () => {
       if (current() && !state.api) setStatus('unknown', `Cannot reach ${endpoint}. Retrying…`);
     });
     provider.on('disconnected', () => {
-      if (current() && state.api) setStatus('unknown', 'Connection lost. Reconnecting…');
+      connectionEpoch++;
+      if (current() && state.api) {
+        setStatus('unknown', 'Connection lost', 'Waiting for a new finalized block.');
+        state.supported = false;
+        render();
+      }
     });
 
     let api;
@@ -493,9 +489,17 @@
     const chain = await api.rpc.system.chain();
     if (!current()) return;
     $('chain').textContent = chain.toString();
-    state.unsubHeads = await api.rpc.chain.subscribeNewHeads((header) => {
-      refresh(api, provider, header, generation).catch((error) => {
-        if (current()) setStatus('unknown', `Could not read the chain: ${error.message || error}`);
+    state.unsubHeads = await api.rpc.chain.subscribeFinalizedHeads((header) => {
+      const epoch = connectionEpoch;
+      const isCurrent = () =>
+        current() &&
+        epoch === connectionEpoch &&
+        provider.isConnected &&
+        header.number.toNumber() >= state.lastBlock;
+      refresh(api, provider, header, isCurrent).catch((error) => {
+        if (isCurrent()) {
+          setStatus('unknown', 'Guardian signal unavailable', String(error.message || error));
+        }
       });
     });
     if (devMode() && !state.wallet) {
@@ -506,24 +510,28 @@
     }
   }
 
-  async function refresh(api, provider, header, generation) {
+  async function refresh(api, provider, header, current) {
     const number = header.number.toNumber();
-    // Reads for consecutive heads can finish out of order; keep the newest.
-    const current = () => generation === state.generation && number >= state.lastBlock;
     const hash = header.hash.toHex();
-    // Raw read: null means absent. Any value, even empty, halts the bridges.
-    const latch = await provider.send('state_getStorage', [HALT_KEY, hash]);
-    const version = api.runtimeVersion;
+    const at = await api.at(hash);
+    const version = at.runtimeVersion;
+    const trusted = trustedChain(api);
     const supported = Boolean(
-      trustedChain(api) && api.tx.bridgeHalt && api.tx.bridgeHalt.halt && api.query.bridgeHalt,
+      trusted && api.tx.bridgeHalt?.halt && at.query.bridgeHalt?.lastHalt && at.query.bridgeHalt?.guardians,
     );
+    const legacy = trusted && version.specVersion.toNumber() < OCW_ONLY_RECOVERY_SPEC;
+    const [blockTime, legacyLatch] = await Promise.all([
+      at.query.timestamp.now(),
+      legacy ? provider.send('state_getStorage', [LEGACY_RECOVERY_KEY, hash]) : null,
+    ]);
     let guardians = new Set();
     let last = null;
+    let consistent = true;
     if (supported) {
-      const at = await api.at(hash);
-      const [set, record] = await Promise.all([
+      const [set, record, signal] = await Promise.all([
         at.query.bridgeHalt.guardians(),
         at.query.bridgeHalt.lastHalt(),
+        provider.send('state_getStorage', [GUARDIAN_SIGNAL_KEY, hash]),
       ]);
       guardians = new Set([...set].map((account) => account.toHex()));
       if (record.isSome) {
@@ -535,21 +543,25 @@
           reason: u8aToString(value.reason.toU8a(true)),
         };
       }
-      const consts = api.consts.bridgeHalt || {};
-      if (consts.maxReasonLength) state.maxReason = consts.maxReasonLength.toNumber();
-      if (consts.haltCooldown) state.cooldown = consts.haltCooldown.toNumber();
-      if (api.consts.babe && api.consts.babe.expectedBlockTime) {
-        state.blockMs = api.consts.babe.expectedBlockTime.toNumber();
-      }
+      // HASHI observes the raw tuple. Both entries are written by the same guardian call.
+      const expected = last
+        ? at.registry.createType('(u32,u32)', [last.number, last.block]).toHex()
+        : null;
+      consistent = signal === expected;
     }
     if (!current()) return;
+    if (supported) {
+      const consts = at.consts.bridgeHalt;
+      state.maxReason = consts.maxReasonLength.toNumber();
+      state.cooldown = consts.haltCooldown.toNumber();
+      if (at.consts.babe?.expectedBlockTime) state.blockMs = at.consts.babe.expectedBlockTime.toNumber();
+    }
 
     // Rebuild the lists only when they change, so an open dropdown is not reset every block.
     const listChanged =
       supported !== state.supported ||
       [...guardians].sort().join() !== [...state.guardians].sort().join();
     state.lastBlock = number;
-    state.halted = latch !== null && latch !== undefined;
     state.lastHalt = last;
     state.supported = supported;
     state.guardians = guardians;
@@ -562,28 +574,21 @@
       block.classList.add('tick');
     }
     $('runtime').textContent = `${version.specName.toString()} ${version.specVersion.toNumber()}`;
-    if (state.halted) {
-      setStatus(
-        'halted',
-        'Bridges are HALTED',
-        "Root's recovery latch is set: the bridge pallets refuse calls until a Root call removes it.",
-      );
-    } else if (last && recentHalt()) {
-      setStatus(
-        'halted',
-        `Halt #${last.number} sent`,
-        `${ago(number - last.block)}. Bridge workers stop on it and stay stopped until devops ` +
-          `restart each node with --bridge-resume-after-halt ${last.number}.`,
-      );
+    $('block-time').textContent = new Date(blockTime.toNumber()).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+    $('legacy-recovery').hidden = !legacy;
+    if (legacy) $('legacy-value').textContent = legacyLatch === null ? 'Clear' : 'Set';
+    if (!supported) {
+      setStatus('unknown', 'Guardian signal unavailable');
+    } else if (!consistent) {
+      setStatus('unknown', 'Guardian records disagree', 'The finalized halt record and the signal read by HASHI differ.');
     } else if (last) {
       setStatus(
-        'running',
-        'No recent halt',
-        `Last halt #${last.number}, ${ago(number - last.block)}. The chain does not show ` +
-          'whether devops have restarted the workers since.',
+        'recorded',
+        `Guardian halt #${last.number} recorded`,
+        `Finalized in block #${last.block.toLocaleString('en-US')}.`,
       );
     } else {
-      setStatus('running', 'Bridges are running', supported ? 'No guardian halt so far.' : '');
+      setStatus('clear', 'No guardian halt recorded');
     }
 
     const notice = $('unsupported');
@@ -881,7 +886,7 @@
           return;
         }
         log(
-          `Included in block ${block}: the halt is on chain, and the bridge workers stop on it. Waiting for finality…`,
+          `Guardian signal included in block ${block}. Waiting for finality…`,
           'success',
         );
         idle(); // Keep watching for finality, but free the page.
@@ -892,7 +897,7 @@
         close();
       } else if (status.isFinalityTimeout) {
         log(
-          'The including block has not been finalized; finality may be stalled. The status at the top shows whether the halt is on chain.',
+          'The including block has not been finalized; finality may be stalled. The guardian status shows the latest finalized block.',
           'error',
         );
         close();
