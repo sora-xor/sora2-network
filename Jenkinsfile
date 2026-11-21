@@ -4,8 +4,8 @@
 class PublishOnlyRustPipeline extends org.rust.AppPipeline {
   @Override
   public void pushDockerImage() {
-    if (steps.env.TAG_NAME == '4.8.15') {
-      steps.echo('SORA Nexus 4.8.15 images are published by the separate verified-artifact process; skipping legacy Jenkins image publication.')
+    if (steps.env.TAG_NAME in ['4.8.15', '4.8.16']) {
+      steps.echo("SORA Nexus ${steps.env.TAG_NAME} images use the verified-artifact publication process.")
       return
     }
     super.pushDockerImage()

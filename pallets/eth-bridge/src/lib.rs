@@ -231,6 +231,10 @@ pub const OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT: &str =
 pub const DEPOSIT_TOPIC: H256 = H256(hex!(
     "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
 ));
+/// Contract's `Withdrawal(bytes32)` event topic. The data is the outgoing request hash.
+pub const WITHDRAWAL_TOPIC: H256 = H256(hex!(
+    "0ce781a18c10c8289803c7c4cfd532d797113c4b41c9701ffad7d0a632ac555b"
+));
 pub const LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS: EthAddress =
     H160(hex!("40fd72257597aa14c7231a7b1aaa29fce868f677"));
 pub const LEGACY_ETHEREUM_XOR_MASTER_CONTRACT_ADDRESS: EthAddress =

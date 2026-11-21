@@ -612,15 +612,7 @@ impl<T: Config> Pallet<T> {
         );
         if let Some(observed) = observed_log {
             ensure!(
-                observed.address == log.address
-                    && observed.topics == log.topics
-                    && observed.data == log.data
-                    && observed.transaction_hash == log.transaction_hash
-                    && observed.block_number == log.block_number
-                    && observed.block_hash == log.block_hash
-                    && observed.transaction_index == log.transaction_index
-                    && observed.log_index == log.log_index
-                    && !observed.removed.unwrap_or(true),
+                observed.same_event(log) && !observed.removed.unwrap_or(true),
                 inconsistent()
             );
         }

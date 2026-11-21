@@ -38,7 +38,7 @@ use crate::requests::{
     IncomingTransactionRequestKind, LoadIncomingMetaRequest, LoadIncomingRequest,
     LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest,
 };
-use crate::types::SubstrateBlockLimited;
+use crate::types::{Log, SubstrateBlockLimited};
 use crate::{
     Call, Config, Error, Pallet, RequestApprovals, RequestStatuses, Requests, RequestsQueue,
     CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES, MAX_GET_LOGS_ITEMS,
@@ -96,6 +96,17 @@ mod coverage_faults;
 #[cfg(test)]
 #[path = "../tests/attacker_attribution.rs"]
 mod attacker_attribution;
+
+#[cfg(test)]
+#[path = "../tests/withdrawal_logs.rs"]
+mod withdrawal_logs;
+
+#[path = "withdrawal_backfill.rs"]
+mod withdrawal_backfill;
+
+#[cfg(test)]
+#[path = "../tests/withdrawal_backfill.rs"]
+mod withdrawal_backfill_tests;
 
 #[cfg(test)]
 #[path = "../ocw_only_failed_queue_tests.rs"]
@@ -600,8 +611,170 @@ impl<T: Config> Pallet<T> {
         .transpose()
     }
 
-    /// Parses the logs emitted on the Sidechain's contract to an `IncomingRequest` and imports it
-    /// to Thischain.
+    fn log_timepoint(log: &Log) -> Result<(u64, crate::Timepoint<T>), Error<T>> {
+        let at_height = log
+            .block_number
+            .ok_or(Error::<T>::EthTransactionIsPending)?
+            .as_u64();
+        let transaction_index = log
+            .transaction_index
+            .ok_or(Error::<T>::EthTransactionIsPending)?
+            .as_u64();
+        let transaction_index =
+            u32::try_from(transaction_index).map_err(|_| Error::<T>::InvalidUint)?;
+        let timepoint =
+            bridge_multisig::Pallet::<T>::sidechain_timepoint(at_height, transaction_index);
+        Ok((at_height, timepoint))
+    }
+
+    fn import_deposit_log(
+        log: &Log,
+        network_id: T::NetworkId,
+        attribute_sender: bool,
+        imported_deposits: &mut BTreeSet<H256>,
+    ) -> Result<Option<u64>, Error<T>> {
+        if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
+            return Ok(None);
+        }
+        let event = match Self::parse_deposit_event_from_known_contract(network_id, log) {
+            Ok(v) => v,
+            Err(e) => {
+                info!("Skipped {:?}, error: {:?}", log, e);
+                return Ok(None);
+            }
+        };
+        let tx_hash = H256(
+            log.transaction_hash
+                .ok_or(Error::<T>::EthTransactionIsPending)?
+                .0,
+        );
+        if attribute_sender && !imported_deposits.insert(tx_hash) {
+            // All deposits in a receipt share one replay identity.
+            return Ok(None);
+        }
+        if !Self::should_import_sidechain_transaction(network_id, tx_hash) {
+            // Public pending/failed load hints cannot suppress the canonical
+            // deposit; authenticated attempts and their tombstones still do.
+            trace!("Skipped already submitted request: {:?}", tx_hash);
+            return Ok(None);
+        }
+        let (at_height, timepoint) = Self::log_timepoint(log)?;
+        info!("Got log [{}], {:?}", at_height, log);
+        let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
+            event.destination.clone(),
+            tx_hash,
+            timepoint,
+            IncomingTransactionRequestKind::Transfer,
+            network_id,
+        );
+        let inc_request_result = if attribute_sender {
+            // Fetch and bind the full receipt before publishing any import.
+            // A stale/mismatched log or unavailable receipt leaves the cursor
+            // unchanged and must never create a failed-import tombstone.
+            let receipt = Self::load_transfer_receipt(tx_hash, network_id)?;
+            Self::attributed_deposit_log(&receipt, &load_incoming_transaction_request, Some(log))?;
+            // Canonical economic errors retain native failed-import handling
+            // so an unsupported token/amount cannot stop all later deposits.
+            IncomingRequest::try_from_contract_event(
+                ContractEvent::Deposit(event),
+                load_incoming_transaction_request.clone(),
+                at_height,
+            )
+            .map(|mut request| {
+                if let IncomingRequest::Transfer(transfer) = &mut request {
+                    transfer.from = receipt.from.0.into();
+                }
+                request
+            })
+        } else {
+            // Preserve the original request bytes on pre-recovery chains.
+            IncomingRequest::try_from_contract_event(
+                ContractEvent::Deposit(event),
+                load_incoming_transaction_request.clone(),
+                at_height,
+            )
+        };
+        Self::send_import_incoming_request(
+            LoadIncomingRequest::Transaction(load_incoming_transaction_request),
+            inc_request_result.map_err(|e| e.into()),
+            network_id,
+        )?;
+        Ok(Some(at_height))
+    }
+
+    fn import_withdrawal_log(
+        log: &Log,
+        network_id: T::NetworkId,
+        confirmed_range: core::ops::RangeInclusive<u64>,
+        imported_withdrawals: &mut BTreeSet<H256>,
+    ) -> Result<Option<u64>, Error<T>> {
+        if log.is_removed() || log.address.0 != Self::bridge_contract_address(network_id).0 {
+            return Ok(None);
+        }
+        let Ok(bytes) = <[u8; 32]>::try_from(log.data.0.as_slice()) else {
+            return Ok(None);
+        };
+        // Hashi emits the native outgoing hash as the sole non-indexed argument.
+        let outgoing_hash = H256(bytes);
+        if !imported_withdrawals.insert(outgoing_hash) {
+            return Ok(None);
+        }
+        let Some(OffchainRequest::Outgoing(OutgoingRequest::Transfer(transfer), _)) =
+            Requests::<T>::get(network_id, outgoing_hash)
+        else {
+            return Ok(None);
+        };
+        let (at_height, timepoint) = Self::log_timepoint(log)?;
+        let meta = LoadIncomingMetaRequest::new(
+            transfer.from.clone(),
+            outgoing_hash,
+            timepoint,
+            IncomingMetaRequestKind::MarkAsDone,
+            network_id,
+        );
+        let OffchainRequest::LoadIncoming(load) = OffchainRequest::load_incoming_meta(meta) else {
+            unreachable!("load_incoming_meta constructs a LoadIncoming request")
+        };
+        // Manual and scanned acknowledgements share eligibility and recovery checks.
+        if load.validate().is_err() || RequestStatuses::<T>::contains_key(network_id, load.hash()) {
+            return Ok(None);
+        }
+
+        let tx_hash = log
+            .transaction_hash
+            .ok_or(Error::<T>::EthTransactionIsPending)?;
+        ensure!(
+            confirmed_range.contains(&at_height),
+            Error::<T>::JsonDeserializationError
+        );
+        let receipt = Self::load_transfer_receipt(H256(tx_hash.0), network_id)?;
+        ensure!(
+            receipt.status == Some(1u64.into())
+                && log.block_hash.is_some()
+                && log.log_index.is_some()
+                && receipt.block_hash == log.block_hash
+                && receipt.block_number == log.block_number
+                && Some(receipt.transaction_index) == log.transaction_index
+                && receipt
+                    .logs
+                    .iter()
+                    .any(|event| !event.is_removed() && event.same_event(log)),
+            Error::<T>::JsonDeserializationError
+        );
+
+        let incoming = IncomingRequest::MarkAsDone(IncomingMarkAsDoneRequest {
+            outgoing_request_hash: outgoing_hash,
+            initial_request_hash: load.hash(),
+            author: transfer.from,
+            at_height,
+            timepoint,
+            network_id,
+        });
+        Self::send_import_incoming_request(load, Ok(incoming), network_id)?;
+        Ok(Some(at_height))
+    }
+
+    /// Import deposits and acknowledge completed outgoing transfers from confirmed bridge logs.
     fn handle_logs(
         from_block: u64,
         to_block: u64,
@@ -610,98 +783,30 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), Error<T>> {
         let logs = Self::load_transfers_logs(network_id, from_block, to_block)?;
         let attribute_sender = sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY);
-        let mut imported_hashes = BTreeSet::new();
+        let mut imported_deposits = BTreeSet::new();
+        let mut imported_withdrawals = BTreeSet::new();
         for log in logs {
-            // Check address to be sure what it came from our contract
-            if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
-                continue;
-            }
-            // We assume that all events issued by our contracts are valid and, therefore, ignore
-            // the invalid ones.
-            let event = match Self::parse_deposit_event_from_known_contract(network_id, &log) {
-                Ok(v) => v,
-                Err(e) => {
-                    info!("Skipped {:?}, error: {:?}", log, e);
-                    continue;
-                }
+            let imported_height = match log.topics.as_slice() {
+                [topic] if topic.0 == crate::DEPOSIT_TOPIC.0 => Self::import_deposit_log(
+                    &log,
+                    network_id,
+                    attribute_sender,
+                    &mut imported_deposits,
+                )?,
+                [topic] if topic.0 == crate::WITHDRAWAL_TOPIC.0 => Self::import_withdrawal_log(
+                    &log,
+                    network_id,
+                    from_block..=to_block,
+                    &mut imported_withdrawals,
+                )?,
+                _ => continue,
             };
-            let tx_hash = H256(
-                log.transaction_hash
-                    .ok_or(Error::<T>::EthTransactionIsPending)?
-                    .0,
-            );
-            if attribute_sender && !imported_hashes.insert(tx_hash) {
-                // HASHI has one replay identity per transaction, not per log.
-                // Later Deposit logs from the same receipt cannot create another
-                // request or pin this pass while the first import is in the pool.
+            let Some(at_height) = imported_height else {
                 continue;
-            }
-            if !Self::should_import_sidechain_transaction(network_id, tx_hash) {
-                // Public pending/failed load hints cannot suppress the canonical
-                // deposit; authenticated attempts and their tombstones still do.
-                trace!("Skipped already submitted request: {:?}", tx_hash);
-                continue;
-            }
-            let at_height = log
-                .block_number
-                .ok_or(Error::<T>::EthTransactionIsPending)?
-                .as_u64();
-            let transaction_index = log
-                .transaction_index
-                .ok_or(Error::<T>::EthTransactionIsPending)?
-                .as_u64();
-            let transaction_index =
-                u32::try_from(transaction_index).map_err(|_| Error::<T>::InvalidUint)?;
-            let timepoint =
-                bridge_multisig::Pallet::<T>::sidechain_timepoint(at_height, transaction_index);
-            info!("Got log [{}], {:?}", at_height, log);
-            let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
-                event.destination.clone(),
-                tx_hash,
-                timepoint,
-                IncomingTransactionRequestKind::Transfer,
-                network_id,
-            );
-            let inc_request_result = if attribute_sender {
-                // Fetch and bind the full receipt before publishing any import.
-                // A stale/mismatched log or unavailable receipt leaves the cursor
-                // unchanged and must never create a failed-import tombstone.
-                let receipt = Self::load_transfer_receipt(tx_hash, network_id)?;
-                Self::attributed_deposit_log(
-                    &receipt,
-                    &load_incoming_transaction_request,
-                    Some(&log),
-                )?;
-                // Canonical economic errors retain native failed-import handling
-                // so an unsupported token/amount cannot stop all later deposits.
-                IncomingRequest::try_from_contract_event(
-                    ContractEvent::Deposit(event),
-                    load_incoming_transaction_request.clone(),
-                    at_height,
-                )
-                .map(|mut request| {
-                    if let IncomingRequest::Transfer(transfer) = &mut request {
-                        transfer.from = receipt.from.0.into();
-                    }
-                    request
-                })
-            } else {
-                // Preserve the original request bytes on pre-recovery chains.
-                IncomingRequest::try_from_contract_event(
-                    ContractEvent::Deposit(event),
-                    load_incoming_transaction_request.clone(),
-                    at_height,
-                )
             };
-            Self::send_import_incoming_request(
-                LoadIncomingRequest::Transaction(load_incoming_transaction_request),
-                inc_request_result.map_err(|e| e.into()),
-                network_id,
-            )?;
-            // Update 'handled height' value when all logs at `at_height` were processed.
             if at_height > *new_to_handle_height {
+                // Revisit this block next time to finish any other transfers it contains.
                 *new_to_handle_height = at_height;
-                // Return to not overload the node.
                 return Ok(());
             }
         }
@@ -895,6 +1000,9 @@ impl<T: Config> Pallet<T> {
             .clamp(1, MAX_GET_LOGS_ITEMS);
         if skip_log_request {
             return Ok((current_eth_height, false));
+        }
+        if Self::backfill_withdrawals(network_id, from_block, current_eth_height) {
+            return Ok((current_eth_height, true));
         }
         let range_limit_key = format!("eth-bridge-ocw::eth-log-range-limit-v1-{:?}", network_id);
         let mut s_log_range_limit = StorageValueRef::persistent(range_limit_key.as_bytes());
