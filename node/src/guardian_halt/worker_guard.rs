@@ -53,12 +53,14 @@ impl BridgeGuard for WorkerGuard {
             // HASHI signing/submission until its behavior is reviewed.
             let code_key = StorageKey(b":code".to_vec());
             let genesis = self.client.info().genesis_hash;
-            for hash in [Some(best), self.execution_block].into_iter().flatten() {
-                let code = self.client.storage_hash(hash, &code_key).ok()?;
-                if !crate::bridge_local_quarantine::reviewed_code(genesis, code) {
-                    log::error!("SORA Nexus local request quarantine: unreviewed runtime; HASHI signing/submission refused");
-                    return None;
-                }
+            let best_code = self.client.storage_hash(best, &code_key).ok()?;
+            let worker_code = match self.execution_block {
+                Some(block) if block != best => self.client.storage_hash(block, &code_key).ok()?,
+                _ => best_code,
+            };
+            if !crate::bridge_local_quarantine::reviewed_worker_code(genesis, best_code, worker_code) {
+                log::error!("SORA Nexus local request quarantine: HASHI worker requires the same reviewed runtime as the live chain");
+                return None;
             }
             let latest = halt_at(&self.client, best).ok()?;
             let storage = self.backend.offchain_storage()?;

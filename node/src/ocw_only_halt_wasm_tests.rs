@@ -4,7 +4,10 @@
 
 use codec::{DecodeAll, Encode};
 use common::{recovery, AssetInfoProvider, PSWAP};
-use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequest, RequestStatus};
+use eth_bridge::requests::{
+    AssetKind, IncomingMarkAsDoneRequest, IncomingMetaRequestKind, IncomingRequest,
+    LoadIncomingMetaRequest, OffchainRequest, OutgoingRequest, RequestStatus,
+};
 use frame_support::{dispatch::GetDispatchInfo, storage::storage_prefix, traits::Currency};
 use framenode_runtime::{
     eth_bridge, AccountId, Assets, Balances, BridgeMultisig, Runtime, RuntimeCall, Signature,
@@ -255,6 +258,45 @@ fn approval(request: &OutgoingRequest<Runtime>, hash: H256, peer: &ecdsa::Pair) 
     })
 }
 
+fn withdrawal_acknowledgement(
+    bridge: &AccountId,
+    author: &AccountId,
+    outgoing: H256,
+) -> RuntimeCall {
+    let timepoint = BridgeMultisig::sidechain_timepoint(26_000_000, 9);
+    let OffchainRequest::LoadIncoming(load) =
+        OffchainRequest::<Runtime>::load_incoming_meta(LoadIncomingMetaRequest::new(
+            author.clone(),
+            outgoing,
+            timepoint,
+            IncomingMetaRequestKind::MarkAsDone,
+            0,
+        ))
+    else {
+        unreachable!("load_incoming_meta produces a load")
+    };
+    let mark = IncomingRequest::MarkAsDone(IncomingMarkAsDoneRequest {
+        outgoing_request_hash: outgoing,
+        initial_request_hash: load.hash(),
+        author: author.clone(),
+        at_height: 26_000_000,
+        timepoint,
+        network_id: 0,
+    });
+    let inner = RuntimeCall::EthBridge(eth_bridge::Call::import_incoming_request {
+        load_incoming_request: load,
+        incoming_request_result: Ok(mark),
+    });
+    type MultisigCall = frame_support::dispatch::CallableCallFor<BridgeMultisig, Runtime>;
+    RuntimeCall::BridgeMultisig(MultisigCall::as_multi {
+        id: bridge.clone(),
+        maybe_timepoint: Some(timepoint),
+        max_weight: inner.get_dispatch_info().total_weight(),
+        call: inner.encode(),
+        store_call: true,
+    })
+}
+
 #[test]
 fn ocw_only_halt_wasm_accepts_signed_operations_without_unhalt_and_keeps_seven_blocked() {
     let wasm =
@@ -376,6 +418,20 @@ fn ocw_only_halt_wasm_accepts_signed_operations_without_unhalt_and_keeps_seven_b
         });
     }
 
+    let bridge = ext.execute_with(|| eth_bridge::BridgeAccount::<Runtime>::get(0).unwrap());
+    let acknowledgement = withdrawal_acknowledgement(&bridge, &account(&user), request_hash);
+    for peer in &peers {
+        let tx = ext.execute_with(|| signed(acknowledgement.clone(), peer, peer));
+        assert_eq!(apply(&executor, &wasm, &mut ext, tx), Ok(Ok(())));
+    }
+    ext.execute_with(|| {
+        assert_eq!(
+            eth_bridge::RequestStatuses::<Runtime>::get(0, request_hash),
+            Some(RequestStatus::Done)
+        );
+        assert_eq!(Assets::free_balance(&PSWAP, &account(&user)).unwrap(), 900);
+    });
+
     // Disposable aliases model retained requests at the seven exact policy
     // hashes. No chain quarantine markers are created for the local-only test.
     let blocked: Vec<_> = crate::bridge_local_quarantine::REQUESTS
@@ -402,9 +458,35 @@ fn ocw_only_halt_wasm_accepts_signed_operations_without_unhalt_and_keeps_seven_b
         )
     });
     assert!(validate(&executor, &wasm, &mut ext, first).is_ok());
+    // Confirm the exact scanner import is eligible before enabling the local
+    // policy, so a rejection cannot be explained by the request's status.
+    let blocked_withdrawal = blocked[0];
+    let blocked_ack = withdrawal_acknowledgement(&bridge, &account(&user), blocked_withdrawal);
+    ext.execute_with(|| {
+        eth_bridge::RequestStatuses::<Runtime>::insert(
+            0,
+            blocked_withdrawal,
+            RequestStatus::ApprovalsReady,
+        );
+    });
+    let tx = ext.execute_with(|| signed(blocked_ack.clone(), &peers[0], &peers[0]));
+    assert!(validate(&executor, &wasm, &mut ext, tx).is_ok());
     ext.register_extension(crate::bridge_local_quarantine::extension());
     let (offchain, _) = TestOffchainExt::new();
     ext.register_extension(OffchainWorkerExt::new(offchain));
+    let tx = ext.execute_with(|| signed(blocked_ack, &peers[0], &peers[0]));
+    assert!(validate(&executor, &wasm, &mut ext, tx).is_err());
+    ext.execute_with(|| {
+        assert_eq!(
+            eth_bridge::RequestStatuses::<Runtime>::get(0, blocked_withdrawal),
+            Some(RequestStatus::ApprovalsReady)
+        );
+        eth_bridge::RequestStatuses::<Runtime>::insert(
+            0,
+            blocked_withdrawal,
+            RequestStatus::Pending,
+        );
+    });
     for hash in blocked {
         let tx =
             ext.execute_with(|| signed(approval(&request, hash, &peers[0]), &peers[0], &peers[0]));

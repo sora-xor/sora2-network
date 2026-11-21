@@ -22,7 +22,11 @@ pub(crate) const REQUESTS: [&str; 7] = [
 ];
 const PREFIX: &[u8] = b":sora-nexus:recovery:outgoing-hashi:v1:";
 const GENESIS: &str = "7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5";
-const REVIEWED_CODE: &str = "d601b781566850086b9341552bcde75b43902665a01fc94897da2adf3cac9a26";
+// Admit the published spec 142 and the withdrawal-scanner spec 143 during rollout.
+const REVIEWED_CODES: [&str; 2] = [
+    "d601b781566850086b9341552bcde75b43902665a01fc94897da2adf3cac9a26",
+    "c4633932066e1d36ce307c476f76ce8a9833f2c8bc9ea97837febf52ed90da68",
+];
 
 sp_externalities::decl_extension! {
     /// Installed only by the node's offchain-worker runner; Wasm cannot create it.
@@ -35,7 +39,16 @@ pub(crate) fn extension() -> Box<dyn sp_externalities::Extension> {
 
 pub(crate) fn reviewed_code(genesis: H256, code: Option<H256>) -> bool {
     format!("{genesis:x}") == GENESIS
-        && code.is_some_and(|hash| format!("{hash:x}") == REVIEWED_CODE)
+        && code.is_some_and(|hash| REVIEWED_CODES.contains(&format!("{hash:x}").as_str()))
+}
+
+/// Key access requires the worker's runtime to match the currently reviewed best-chain code.
+pub(crate) fn reviewed_worker_code(
+    genesis: H256,
+    best: Option<H256>,
+    worker: Option<H256>,
+) -> bool {
+    best == worker && reviewed_code(genesis, best)
 }
 
 fn blocked_key(key: &[u8]) -> bool {
@@ -130,13 +143,22 @@ mod tests {
     }
 
     #[test]
-    fn unknown_or_unreadable_runtime_and_wrong_chain_are_not_authorized() {
+    fn worker_uses_the_live_runtime_during_the_rolling_upgrade() {
         let genesis = H256::from_str(GENESIS).unwrap();
-        let code = H256::from_str(REVIEWED_CODE).unwrap();
-        assert!(reviewed_code(genesis, Some(code)));
-        assert!(!reviewed_code(genesis, None));
-        assert!(!reviewed_code(genesis, Some(H256::zero())));
-        assert!(!reviewed_code(H256::zero(), Some(code)));
+        let [previous, current] = REVIEWED_CODES.map(|hash| Some(H256::from_str(hash).unwrap()));
+        let unknown = Some(H256::repeat_byte(1));
+        assert_ne!(previous, current);
+        for code in [previous, current] {
+            assert!(reviewed_worker_code(genesis, code, code));
+            assert!(!reviewed_worker_code(H256::zero(), code, code));
+            assert!(!reviewed_worker_code(genesis, code, None));
+            assert!(!reviewed_worker_code(genesis, None, code));
+            assert!(!reviewed_worker_code(genesis, code, unknown));
+        }
+        assert!(!reviewed_worker_code(genesis, previous, current));
+        assert!(!reviewed_worker_code(genesis, current, previous));
+        assert!(!reviewed_worker_code(genesis, None, None));
+        assert!(!reviewed_worker_code(genesis, unknown, unknown));
     }
 
     #[test]
