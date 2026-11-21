@@ -8,7 +8,7 @@ const LIVE_PASSES: u8 = 7;
 const MAX_RANGE: u64 = 4096;
 const PAGES_BEFORE_GROWTH: u8 = 32;
 
-#[derive(Decode, Encode)]
+#[derive(codec::Decode, Encode)]
 struct Backfill {
     // None is a durable completion marker, including for a live scan starting at genesis.
     next_block: Option<u64>,
