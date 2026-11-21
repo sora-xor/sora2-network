@@ -1194,7 +1194,7 @@ fn outgoing_protocol_admission_rejects_bad_signatures_duplicates_and_approval_ov
             Error::RequestIsNotReady
         );
         crate::RequestStatuses::<Runtime>::insert(0, hash, RequestStatus::Pending);
-        sp_io::storage::set(crate::recovery::HALT_KEY, &[]);
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         assert_err!(
             EthBridge::validate_peer_protocol_call(peer, &call(signature)),
             Error::RecoveryHalted
@@ -1229,7 +1229,7 @@ fn recovery_import_reuses_only_an_exact_unique_pending_load() {
         }
         .into();
         let incoming_hash = OffchainRequest::incoming(incoming.clone()).hash();
-        sp_io::storage::set(crate::recovery::HALT_KEY, &[]);
+        common::recovery::bridge_admission_fixtures::incomplete([1; 32]);
         assert_err!(
             EthBridge::import_incoming_request(
                 RuntimeOrigin::signed(bridge.clone()),
@@ -1239,7 +1239,7 @@ fn recovery_import_reuses_only_an_exact_unique_pending_load() {
             Error::RecoveryHalted
         );
         let block = System::block_number() as u32;
-        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &block.encode());
+        common::recovery::bridge_admission_fixtures::applying([1; 32], block);
         assert_eq!(EthBridge::retained_recovery_load(&load), Ok(true));
         let mut different = load.clone();
         if let LoadIncomingRequest::Transaction(value) = &mut different {
@@ -1429,7 +1429,7 @@ fn receipt_cancellation_preserves_signed_peer_addition_and_its_reference() {
 #[test]
 fn recovery_transfer_resolution_excludes_custody_or_credits_only_its_committed_beneficiary() {
     use super::mock::{EthBridge, System};
-    use crate::recovery::{HashiResolution, HALT_KEY, HASHI_RESOLUTION_KEY, INBOUND_CONTEXT_KEY};
+    use crate::recovery::{HashiResolution, HASHI_RESOLUTION_KEY};
     use common::{AssetInfoProvider, AssetName, AssetSymbol};
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -1445,10 +1445,9 @@ fn recovery_transfer_resolution_excludes_custody_or_credits_only_its_committed_b
             0,
         )
         .unwrap();
-        sp_io::storage::set(HALT_KEY, &[]);
-        sp_io::storage::set(
-            INBOUND_CONTEXT_KEY,
-            &(System::block_number() as u32).encode(),
+        common::recovery::bridge_admission_fixtures::applying(
+            [1; 32],
+            System::block_number() as u32,
         );
         for (asset_id, asset_kind, excluded) in [
             (common::VAL, AssetKind::SidechainOwned, true),
@@ -1504,9 +1503,9 @@ fn recovery_transfer_resolution_excludes_custody_or_credits_only_its_committed_b
             );
             assert_err!(request.finalize(), Error::RecoveryHalted);
         }
-        sp_io::storage::clear(HALT_KEY);
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
         let mut charged = IncomingTransfer::<Runtime> {
-            from: EthAddress::zero(),
+            from: EthAddress::repeat_byte(0xcd),
             to: recipient,
             asset_id: common::VAL,
             asset_kind: AssetKind::SidechainOwned,
@@ -2236,7 +2235,7 @@ fn approval_admission_rejects_waiting_peer_removals_and_retired_transfers() {
 #[test]
 fn recovery_finalization_failure_preserves_pending_work_and_unconsumed_resolution() {
     use super::mock::{EthBridge, System};
-    use crate::recovery::{HashiResolution, HALT_KEY, HASHI_RESOLUTION_KEY, INBOUND_CONTEXT_KEY};
+    use crate::recovery::{HashiResolution, HASHI_RESOLUTION_KEY};
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
         let transfer = IncomingTransfer::<Runtime> {
@@ -2264,8 +2263,7 @@ fn recovery_finalization_failure_preserves_pending_work_and_unconsumed_resolutio
             excluded: false,
             consumed: false,
         };
-        sp_io::storage::set(HALT_KEY, &[]);
-        sp_io::storage::set(INBOUND_CONTEXT_KEY, &block.encode());
+        common::recovery::bridge_admission_fixtures::applying([1; 32], block);
         sp_io::storage::set(HASHI_RESOLUTION_KEY, &resolution.encode());
         let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
         assert_err!(

@@ -1536,8 +1536,7 @@ fn permanent_quarantine_blocks_referenced_incoming_work_and_legacy_aggregate_bur
             H256::repeat_byte(22),
         );
         sp_io::storage::set(&bridge_types::recovery::hashi_key(network, id), &[1]);
-        sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1; 32]);
-        common::recovery::bridge_admission_fixtures::clear_state();
+        common::recovery::bridge_admission_fixtures::complete([1; 32]);
         sp_io::storage::clear(crate::recovery::HALT_KEY);
         let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
         assert_err!(

@@ -249,6 +249,7 @@ fn cancellation_parser_requires_failed_mined_transaction_and_request_owner() {
 #[test]
 fn recovery_resolution_is_block_bound_exact_and_single_use() {
     use crate::recovery::*;
+    use common::recovery::bridge_admission_fixtures as fixtures;
     let (mut ext, _) = ExtBuilder::default().build();
     ext.execute_with(|| {
         System::set_block_number(10);
@@ -266,12 +267,13 @@ fn recovery_resolution_is_block_bound_exact_and_single_use() {
             should_take_fee: false,
         };
         assert!(transfer_resolution::<Runtime>(&request).unwrap().is_none());
-        sp_io::storage::set(HALT_KEY, &[]);
+        let policy = [1; 32];
+        fixtures::incomplete(policy);
         assert_eq!(
             transfer_resolution::<Runtime>(&request).err(),
             Some(Error::RecoveryHalted.into())
         );
-        sp_io::storage::set(INBOUND_CONTEXT_KEY, &10u32.encode());
+        fixtures::applying(policy, 10);
         assert_eq!(
             transfer_resolution::<Runtime>(&request).err(),
             Some(Error::RecoveryHalted.into())
@@ -321,8 +323,7 @@ fn recovery_resolution_is_block_bound_exact_and_single_use() {
             resolution_weight::<Runtime>(),
             frame_support::weights::Weight::zero()
         );
-        sp_io::storage::clear(HALT_KEY);
-        sp_io::storage::set(b":sora-nexus:recovery:policy:v1", &[]);
+        fixtures::complete(policy);
         assert!(resolution_weight::<Runtime>().ref_time() >= 50_000_000);
     });
 }

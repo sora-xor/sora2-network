@@ -36,7 +36,7 @@ fn load(hash: H256) -> LoadIncomingTransactionRequest<Runtime> {
 }
 
 fn enable_policy() {
-    sp_io::storage::set(common::recovery::POLICY_STORAGE_KEY, &[1]);
+    common::recovery::bridge_admission_fixtures::complete([1; 32]);
 }
 
 fn transfer(request: IncomingRequest<Runtime>) -> IncomingTransfer<Runtime> {

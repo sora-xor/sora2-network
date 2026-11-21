@@ -450,16 +450,32 @@ fn retry_batch_limit_preserves_deferred_transactions_for_the_next_block() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
         System::set_block_number(20);
+        let bridge = EthBridge::bridge_account(0).unwrap();
+        let proposer = EthBridge::peers(0).into_iter().next().unwrap();
         let pending = (1..=MAX_SUCCESSFUL_SENT_SIGNED_TX_PER_ONCE + 1)
             .map(|index| {
                 let hash = H256::repeat_byte(index);
+                let timepoint =
+                    bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(10, index.into());
+                bridge_multisig::Multisigs::<Runtime>::insert(
+                    &bridge,
+                    hash.0,
+                    bridge_multisig::Multisig {
+                        when: timepoint,
+                        deposit: 0,
+                        depositor: proposer.clone(),
+                        approvals: vec![proposer.clone()],
+                    },
+                );
                 (
                     hash,
                     SignedTransactionData::<Runtime>::new(
                         hash,
                         None,
-                        frame_system::Call::<Runtime>::remark {
-                            remark: vec![index],
+                        Call::<Runtime>::cancel_pending_multisig {
+                            network_id: 0,
+                            call_hash: hash.0,
+                            timepoint,
                         },
                     ),
                 )

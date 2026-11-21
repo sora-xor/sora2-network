@@ -323,7 +323,7 @@ fn legacy_seed_marker_bootstraps_but_worker_respects_lock_and_halt() {
             b"eth-bridge-ocw::lock",
             sp_core::offchain::Duration::from_millis(100000),
         );
-        let _guard = lock.try_lock().unwrap();
+        let guard = lock.try_lock().unwrap();
         <EthBridge as Hooks<BlockNumber>>::offchain_worker(1);
         assert_eq!(
             StorageValueRef::persistent(crate::STORAGE_BOOTSTRAP_READY_KEY)
@@ -332,9 +332,21 @@ fn legacy_seed_marker_bootstraps_but_worker_respects_lock_and_halt() {
             Some(1)
         );
         assert!(state.http_requests().is_empty());
-        sp_io::storage::set(crate::recovery::HALT_KEY, &[]);
+        drop(guard);
+        let halt = common::bridge_halt::GuardianHalt {
+            number: 1,
+            block: 2,
+        };
+        sp_io::storage::set(
+            common::bridge_halt::GUARDIAN_HALT_STORAGE_KEY,
+            &halt.encode(),
+        );
         <EthBridge as Hooks<BlockNumber>>::offchain_worker(2);
         EthBridge::offchain();
+        assert_eq!(
+            state.storage_read::<u64>(crate::STORAGE_GUARDIAN_HALT_STOPPED_KEY),
+            Some(1)
+        );
         assert!(state.http_requests().is_empty());
     });
 }
