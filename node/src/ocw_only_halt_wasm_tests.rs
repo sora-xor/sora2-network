@@ -419,7 +419,8 @@ fn ocw_only_halt_wasm_accepts_signed_operations_without_unhalt_and_keeps_seven_b
     }
 
     let bridge = ext.execute_with(|| eth_bridge::BridgeAccount::<Runtime>::get(0).unwrap());
-    let acknowledgement = withdrawal_acknowledgement(&bridge, &account(&user), request_hash);
+    let acknowledgement =
+        ext.execute_with(|| withdrawal_acknowledgement(&bridge, &account(&user), request_hash));
     for peer in &peers {
         let tx = ext.execute_with(|| signed(acknowledgement.clone(), peer, peer));
         assert_eq!(apply(&executor, &wasm, &mut ext, tx), Ok(Ok(())));
@@ -461,7 +462,8 @@ fn ocw_only_halt_wasm_accepts_signed_operations_without_unhalt_and_keeps_seven_b
     // Confirm the exact scanner import is eligible before enabling the local
     // policy, so a rejection cannot be explained by the request's status.
     let blocked_withdrawal = blocked[0];
-    let blocked_ack = withdrawal_acknowledgement(&bridge, &account(&user), blocked_withdrawal);
+    let blocked_ack = ext
+        .execute_with(|| withdrawal_acknowledgement(&bridge, &account(&user), blocked_withdrawal));
     ext.execute_with(|| {
         eth_bridge::RequestStatuses::<Runtime>::insert(
             0,
