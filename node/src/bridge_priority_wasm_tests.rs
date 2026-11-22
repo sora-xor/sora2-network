@@ -43,11 +43,40 @@ fn response(url: &str, method: &str, params: Value, result: Value) -> PendingReq
 fn spec142_priority_pass_checks_the_receipt_and_submits_a_canonical_import_only_to_the_test_pool() {
     let _ = sc_cli::LoggerBuilder::new("").init();
     for history_offset in [-1_000, 1_000] {
-        check_canonical_import(history_offset);
+        check_canonical_import(history_offset, ScanCase::Point);
     }
 }
 
-fn check_canonical_import(history_offset: i64) {
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum ScanCase {
+    Point,
+    Confirmed,
+    BeforeConfirmations,
+    ReplacedReceipt,
+    RegressedEthereumHead,
+    ProviderCooldown,
+    ProviderProbe,
+    LargeProviderProbe,
+}
+
+#[test]
+#[ignore = "requires a pinned public receipt/storage fixture and published spec 142 Wasm"]
+fn spec142_continuation_obeys_confirmations_and_rejects_a_replaced_receipt() {
+    let _ = sc_cli::LoggerBuilder::new("").init();
+    for case in [
+        ScanCase::BeforeConfirmations,
+        ScanCase::RegressedEthereumHead,
+        ScanCase::ReplacedReceipt,
+        ScanCase::Confirmed,
+        ScanCase::ProviderCooldown,
+        ScanCase::ProviderProbe,
+        ScanCase::LargeProviderProbe,
+    ] {
+        check_canonical_import(-1000, case);
+    }
+}
+
+fn check_canonical_import(history_offset: i64, case: ScanCase) {
     let path =
         std::env::var("SORA_HASHI_PRIORITY_FIXTURE").expect("path to reviewed offline fixture");
     let data = std::fs::read(path).unwrap();
@@ -187,9 +216,52 @@ fn check_canonical_import(history_offset: i64) {
         db.set(STORAGE_PREFIX, key, &value);
     }
 
-    let plan =
-        crate::bridge_priority_scan::PriorityScanPlan::new(H256::repeat_byte(7), vec![target])
-            .unwrap();
+    let (points, boundary) = if case == ScanCase::Point {
+        (vec![target], None)
+    } else {
+        (Vec::new(), Some(target - 1))
+    };
+    let plan = crate::bridge_priority_scan::PriorityScanPlan::from_manifest(
+        H256::repeat_byte(7),
+        points,
+        boundary,
+    )
+    .unwrap();
+    let requested = match case {
+        ScanCase::ProviderCooldown => 2u64,
+        ScanCase::ProviderProbe => 4,
+        ScanCase::LargeProviderProbe => 30,
+        _ => 1,
+    };
+    if matches!(
+        case,
+        ScanCase::ProviderCooldown | ScanCase::ProviderProbe | ScanCase::LargeProviderProbe
+    ) {
+        // Model the scoped state produced by an earlier runtime provider-limit response.
+        // A fresh Wasm invocation must use the small span before the deadline and
+        // perform exactly one doubled probe when its own retry timer expires.
+        let old = plan.begin(&mut db, history).unwrap().unwrap();
+        let ceiling = if case == ScanCase::LargeProviderProbe {
+            15
+        } else {
+            2
+        };
+        let retry_after = if case != ScanCase::ProviderCooldown {
+            0
+        } else {
+            u64::MAX
+        };
+        plan.finish_continuous(
+            &mut db,
+            &old,
+            None,
+            Some(ceiling),
+            Some(Some((ceiling, retry_after))),
+        )
+        .unwrap();
+        assert!(plan.begin(&mut db, history).unwrap().is_none());
+    }
+    let observation = plan.clone();
     let progress_key = plan.progress_key().to_vec();
     let passes = crate::guardian_halt::worker_guard::WorkerPasses::new(Some(plan));
     let (offchain, state) = TestOffchainExt::new();
@@ -202,8 +274,17 @@ fn check_canonical_import(history_offset: i64) {
     let log = &fixture["log"];
     let receipt = &fixture["receipt"];
     assert_eq!(receipt["transactionHash"], log["transactionHash"]);
-    let filter = json!([{"address":log["address"],"fromBlock":log["blockNumber"],"toBlock":log["blockNumber"],"topics":log["topics"]}]);
-    for expected in [
+    let eth_height = match case {
+        ScanCase::Point => target + 10_000,
+        ScanCase::BeforeConfirmations => target + 29,
+        ScanCase::RegressedEthereumHead => target - 1,
+        ScanCase::ProviderCooldown | ScanCase::ProviderProbe | ScanCase::LargeProviderProbe => {
+            target + 70
+        }
+        _ => target + 30,
+    };
+    let filter = json!([{"address":log["address"],"fromBlock":log["blockNumber"],"toBlock":format!("{:#x}",target + requested - 1),"topics":log["topics"]}]);
+    let mut expected = vec![
         response(
             native_url,
             "chain_getFinalizedHead",
@@ -220,17 +301,24 @@ fn check_canonical_import(history_offset: i64) {
             ethereum_url,
             "eth_blockNumber",
             Value::Null,
-            json!(format!("{:#x}", target + 10_000)),
+            json!(format!("{eth_height:#x}")),
         ),
-        response(ethereum_url, "eth_getLogs", filter, json!([log])),
-        response(
+    ];
+    if eth_height >= target + 30 {
+        let mut observed = receipt.clone();
+        if case == ScanCase::ReplacedReceipt {
+            observed["blockHash"] = json!(H256::repeat_byte(97));
+        }
+        expected.push(response(ethereum_url, "eth_getLogs", filter, json!([log])));
+        expected.push(response(
             ethereum_url,
             "eth_getTransactionReceipt",
             json!([log["transactionHash"]]),
-            receipt.clone(),
-        ),
-    ] {
-        state.write().expect_request(expected);
+            observed,
+        ));
+    }
+    for request in expected {
+        state.write().expect_request(request);
     }
 
     let executor = sc_executor::WasmExecutor::<crate::service::HostFunctions>::builder().build();
@@ -259,10 +347,27 @@ fn check_canonical_import(history_offset: i64) {
         Some(1),
         "fixture marker, membership and primary cursor"
     );
-    assert!(
-        OffchainStorage::get(&db, STORAGE_PREFIX, &progress_key).is_some(),
-        "worker passed recovery and guardian checks and reserved target"
-    );
+    if case == ScanCase::Point {
+        assert!(OffchainStorage::get(&db, STORAGE_PREFIX, &progress_key).is_some());
+    } else {
+        assert_eq!(
+            observation.continuation_height(&db),
+            Some(
+                target
+                    + if matches!(
+                        case,
+                        ScanCase::Confirmed
+                            | ScanCase::ProviderCooldown
+                            | ScanCase::ProviderProbe
+                            | ScanCase::LargeProviderProbe
+                    ) {
+                        requested
+                    } else {
+                        0
+                    }
+            )
+        );
+    }
     assert_eq!(
         metric(b"eth-bridge-ocw::local-peer-ready-0"),
         Some(1),
@@ -270,12 +375,23 @@ fn check_canonical_import(history_offset: i64) {
     );
     assert_eq!(
         metric(b"eth-bridge-ocw::eth-height-0"),
-        Some(target + 10_000),
+        Some(eth_height),
         "Ethereum height HTTP"
     );
     drop(ext);
     drop(state); // SDK reports any expected HTTP calls that the runtime did not make.
     let pending = pool_state.read();
+    if !matches!(
+        case,
+        ScanCase::Point
+            | ScanCase::Confirmed
+            | ScanCase::ProviderCooldown
+            | ScanCase::ProviderProbe
+            | ScanCase::LargeProviderProbe
+    ) {
+        assert!(pending.transactions.is_empty());
+        return;
+    }
     assert_eq!(pending.transactions.len(), 1);
     let xt = UncheckedExtrinsic::decode_all(&mut &pending.transactions[0][..]).unwrap();
     let RuntimeCall::BridgeMultisig(bridge_multisig::Call::as_multi { call, .. }) = xt.function

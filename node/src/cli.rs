@@ -81,7 +81,7 @@ pub struct Cli {
     #[clap(long, value_name = "CONTEXT_HASH")]
     pub bridge_resume_after_recovery: Option<sp_core::H256>,
 
-    /// Review specific Ethereum deposit blocks alongside the normal historical scan.
+    /// Schedule deposit blocks and optionally follow new deposits alongside historical replay.
     /// SHA-256 of bridge/priority-scan.json. Requires an explicitly enabled worker.
     /// While armed, HASHI signing/retries require the pinned contract and spec 142.
     /// Retire a stale plan by removing this option on a reviewed worker restart.

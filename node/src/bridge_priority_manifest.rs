@@ -22,6 +22,8 @@ struct Manifest {
     ethereum_chain_id: u64,
     bridge_contract: H160,
     blocks: Vec<u64>,
+    #[serde(default)]
+    reconciled_through: Option<u64>,
 }
 
 pub(crate) fn load(
@@ -54,8 +56,10 @@ fn decode(
     }
     let manifest: Manifest = serde_json::from_slice(bytes)
         .map_err(|e| format!("Invalid priority scan manifest: {e}"))?;
-    if manifest.format != "eth-deposit-priority-blocks-v1"
-        || manifest.genesis_hash != genesis
+    if !matches!(
+        (manifest.format.as_str(), manifest.reconciled_through),
+        ("eth-deposit-priority-blocks-v1", None) | ("eth-deposit-priority-follow-v1", Some(_))
+    ) || manifest.genesis_hash != genesis
         || manifest.network_id != 0
         || manifest.ethereum_chain_id != 1
         || manifest.bridge_contract.0 != MAINNET_DEPOSIT_CONTRACT
@@ -64,7 +68,7 @@ fn decode(
     {
         return Err("Priority scan manifest does not match the reviewed mainnet bridge".into());
     }
-    PriorityScanPlan::new(expected, manifest.blocks)
+    PriorityScanPlan::from_manifest(expected, manifest.blocks, manifest.reconciled_through)
 }
 
 #[cfg(test)]
@@ -88,6 +92,26 @@ mod tests {
         let bytes = serde_json::to_vec(&manifest).unwrap();
         let digest = H256::from(sp_io::hashing::sha2_256(&bytes));
         assert!(decode(&bytes, digest, genesis, code, Some(contract.as_bytes())).is_ok());
+        let mut follow = manifest.clone();
+        follow["format"] = serde_json::json!("eth-deposit-priority-follow-v1");
+        let decode_follow = |doc: &serde_json::Value| {
+            let bytes = serde_json::to_vec(doc).unwrap();
+            let pin = H256::from(sp_io::hashing::sha2_256(&bytes));
+            decode(&bytes, pin, genesis, code, Some(contract.as_bytes()))
+        };
+        assert!(decode_follow(&follow).is_err());
+        for boundary in [u64::MAX - 1, u64::MAX] {
+            follow["reconciledThrough"] = serde_json::json!(boundary);
+            assert!(decode_follow(&follow).is_err());
+        }
+        for boundary in [0, 40] {
+            follow["reconciledThrough"] = serde_json::json!(boundary);
+            assert!(decode_follow(&follow).is_ok());
+        }
+        follow["blocks"] = serde_json::json!([]);
+        assert!(decode_follow(&follow).is_ok());
+        follow["format"] = manifest["format"].clone();
+        assert!(decode_follow(&follow).is_err());
         for (pin, chain, runtime, addr) in [
             (H256::zero(), genesis, code, Some(contract.as_bytes())),
             (digest, H256::zero(), code, Some(contract.as_bytes())),

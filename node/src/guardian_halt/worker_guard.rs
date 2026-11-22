@@ -152,6 +152,8 @@ impl PassLock {
 struct PriorityAttempt {
     lease: PriorityLease,
     write: CursorWrite,
+    learned_range: Option<u64>,
+    changed_limit: Option<Option<(u64, u64)>>,
 }
 
 enum CursorWrite {
@@ -177,9 +179,15 @@ impl PriorityAttempt {
                 CursorWrite::Advanced(next) => next.encode(),
                 _ => self.lease.height().encode(),
             }),
-            ETH_RANGE_SIZE => Some(1u64.encode()),
-            // Suppress the normal scanner's adaptive range probe for this pass.
-            ETH_RANGE_LIMIT => None,
+            ETH_RANGE_SIZE => Some(
+                self.learned_range
+                    .unwrap_or_else(|| self.lease.span())
+                    .encode(),
+            ),
+            ETH_RANGE_LIMIT => self
+                .changed_limit
+                .unwrap_or_else(|| self.lease.range_limit())
+                .map(|limit| limit.encode()),
             _ => unreachable!("only network-0 scan keys are scoped"),
         }
     }
@@ -189,12 +197,30 @@ impl PriorityAttempt {
             let height = bytes.and_then(|mut b| u64::decode_all(&mut b).ok());
             self.write = match height {
                 Some(n)
-                    if Some(n) == self.lease.height().checked_add(1)
-                        && !matches!(self.write, CursorWrite::Unexpected) =>
+                    if self.lease.accepts(n) && !matches!(self.write, CursorWrite::Unexpected) =>
                 {
                     CursorWrite::Advanced(n)
                 }
                 _ => CursorWrite::Unexpected,
+            };
+        } else if key == ETH_RANGE_SIZE && self.lease.continuous() {
+            // Spec 142 writes its reduced range on a provider limit and grows it on
+            // success. Scope this to the continuation, including errors with no cursor write.
+            self.learned_range = bytes
+                .and_then(|mut b| u64::decode_all(&mut b).ok())
+                .filter(|range| (1..=50).contains(range));
+        } else if key == ETH_RANGE_LIMIT && self.lease.continuous() {
+            self.changed_limit = match bytes {
+                None => Some(None),
+                Some(mut raw) => match <(u64, u64)>::decode_all(&mut raw) {
+                    Ok(limit) if crate::bridge_priority_scan::valid_continuous_ceiling(limit.0) => {
+                        Some(Some(limit))
+                    }
+                    _ => {
+                        self.write = CursorWrite::Unexpected;
+                        None
+                    }
+                },
             };
         }
     }
@@ -303,6 +329,8 @@ impl<S: OffchainStorage> WorkerStorage<S> {
                 Ok(lease) => lease.map(|lease| PriorityAttempt {
                     lease,
                     write: CursorWrite::Pending,
+                    learned_range: None,
+                    changed_limit: None,
                 }),
                 Err(e) => {
                     log::warn!(
@@ -329,16 +357,35 @@ impl<S: OffchainStorage> WorkerStorage<S> {
             return;
         }
         let priority = slot.take().and_then(|pass| pass.priority);
-        // A trapped invocation never completes a target. A clean release needs
-        // the reviewed scanner's exact one-block cursor advancement as well.
+        // The owner must release cleanly before its cursor or range changes persist.
+        // A Wasm trap therefore retries the same uncommitted interval.
         if let (Some(plan), Some(attempt)) = (&self.passes.plan, priority) {
-            if let CursorWrite::Advanced(next) = attempt.write {
-                let result = guarded_scan(self.guard.as_ref(), || {
+            let next = match attempt.write {
+                CursorWrite::Advanced(next) => Some(next),
+                CursorWrite::Pending => None,
+                CursorWrite::Unexpected => return,
+            };
+            if next.is_none() && attempt.learned_range.is_none() && attempt.changed_limit.is_none()
+            {
+                return;
+            }
+            let result = guarded_scan(self.guard.as_ref(), || {
+                if attempt.lease.continuous() {
+                    plan.finish_continuous(
+                        &mut self.inner,
+                        &attempt.lease,
+                        next,
+                        attempt.learned_range,
+                        attempt.changed_limit,
+                    )
+                } else if let Some(next) = next {
                     plan.complete(&mut self.inner, &attempt.lease, next)
-                });
-                if let Some(Err(e)) = result {
-                    log::warn!("Bridge priority scan progress was not recorded: {e}");
+                } else {
+                    Ok(())
                 }
+            });
+            if let Some(Err(e)) = result {
+                log::warn!("Bridge priority scan progress was not recorded: {e}");
             }
         }
     }
@@ -442,7 +489,11 @@ impl<S: OffchainStorage> OffchainStorage for WorkerStorage<S> {
                 false,
                 |attempt| {
                     // The reviewed runtime advances the cursor with set, never CAS.
-                    attempt.record_write(key, None);
+                    if attempt.lease.continuous() {
+                        attempt.write = CursorWrite::Unexpected;
+                    } else {
+                        attempt.record_write(key, None);
+                    }
                     false
                 },
                 |db| db.compare_and_set(prefix, key, old, new),
