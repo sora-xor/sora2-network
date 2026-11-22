@@ -41,7 +41,7 @@ fn network_key(item: &[u8]) -> Vec<u8> {
     .concat()
 }
 
-fn setup(wasm: &[u8]) -> (sp_io::TestExternalities, Vec<ecdsa::Pair>, ecdsa::Pair) {
+pub(super) fn setup(wasm: &[u8]) -> (sp_io::TestExternalities, Vec<ecdsa::Pair>, ecdsa::Pair) {
     let mut storage = framenode_chain_spec::main_net_coded()
         .build_storage()
         .expect("offline mainnet genesis fixture");
@@ -181,7 +181,7 @@ fn signed(call: RuntimeCall, who: &ecdsa::Pair, signer: &ecdsa::Pair) -> Uncheck
     UncheckedExtrinsic::new_signed(call, account(who), Signature::Ecdsa(signature), extra)
 }
 
-fn execute(
+pub(super) fn execute(
     executor: &WasmExecutor<crate::service::HostFunctions>,
     wasm: &[u8],
     ext: &mut sp_io::TestExternalities,

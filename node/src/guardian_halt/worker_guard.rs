@@ -6,6 +6,7 @@
 //! and consult the node's current best state at the point of each operation.
 
 use super::halt_at;
+use crate::bridge_priority_scan::{is_priority_storage_key, PriorityLease, PriorityScanPlan};
 use crate::service::{FullBackend, FullClient};
 use codec::{DecodeAll, Encode};
 use common::bridge_halt::{workers_may_run, GuardianHalt};
@@ -33,14 +34,41 @@ pub(crate) struct WorkerGuard {
     pub backend: Arc<FullBackend>,
     /// The Wasm context using this key. None is used only by the shared pool.
     pub execution_block: Option<H256>,
+    pub priority_plan_armed: bool,
     pub guardian_monitor: Arc<super::observed::Monitor>,
 }
 
 pub(crate) trait BridgeGuard: Send + Sync {
     fn while_open<R>(&self, action: impl FnOnce() -> R) -> Option<R>;
+
+    fn for_submission_at(&self, _at: H256) -> Self
+    where
+        Self: Sized + Clone,
+    {
+        self.clone()
+    }
+}
+
+fn priority_domain_allows(
+    armed: bool,
+    genesis: H256,
+    code: Option<H256>,
+    current_contracts_match: impl FnOnce() -> bool,
+) -> bool {
+    !armed
+        || (crate::bridge_local_quarantine::reviewed_priority_code(genesis, code)
+            && current_contracts_match())
 }
 
 impl BridgeGuard for WorkerGuard {
+    fn for_submission_at(&self, at: H256) -> Self {
+        let mut guard = self.clone();
+        if guard.priority_plan_armed {
+            guard.execution_block = Some(at);
+        }
+        guard
+    }
+
     fn while_open<R>(&self, action: impl FnOnce() -> R) -> Option<R> {
         // The OCW already occupies a Wasm instance. Yield to an active or queued
         // importer instead of waiting for the lock while holding that instance.
@@ -62,6 +90,16 @@ impl BridgeGuard for WorkerGuard {
                 log::error!("SORA Nexus local request quarantine: HASHI worker requires the same reviewed runtime as the live chain");
                 return None;
             }
+            // Pending/failed imports can outlive the invocation that discovered them.
+            // Enforce the pinned domain on every HASHI sign and pool poll while this
+            // plan is installed, including chronological retries of cached bytes.
+            if !priority_domain_allows(self.priority_plan_armed, genesis, worker_code, || {
+                let key = StorageKey(crate::bridge_scan_cursor::contract_storage_key(0));
+                let matches = |at| self.client.storage(at, &key).ok().flatten().is_some_and(|value| {
+                    value.0.as_slice() == crate::bridge_priority_manifest::MAINNET_DEPOSIT_CONTRACT
+                });
+                matches(best) && self.execution_block.is_none_or(|at| at == best || matches(at))
+            }) { return None; }
             let latest = halt_at(&self.client, best).ok()?;
             let storage = self.backend.offchain_storage()?;
             let confirmed = storage
@@ -94,33 +132,101 @@ impl BridgeGuard for WorkerGuard {
 /// Shared by every invocation, unlike the token assigned to each OCW extension.
 /// The weak owner expires even if Wasm traps and never drops its StorageLockGuard.
 #[derive(Clone, Default)]
-pub(crate) struct WorkerPasses(Arc<Mutex<Option<PassLock>>>);
+pub(crate) struct WorkerPasses {
+    slot: Arc<Mutex<Option<PassLock>>>,
+    plan: Option<Arc<PriorityScanPlan>>,
+}
 
 struct PassLock {
     owner: Weak<()>,
     deadline: Vec<u8>,
+    priority: Option<PriorityAttempt>,
+}
+
+impl PassLock {
+    fn owned_by(&self, invocation: &Arc<()>) -> bool {
+        self.owner.ptr_eq(&Arc::downgrade(invocation))
+    }
+}
+
+struct PriorityAttempt {
+    lease: PriorityLease,
+    write: CursorWrite,
+}
+
+enum CursorWrite {
+    Pending,
+    Advanced(u64),
+    Unexpected,
+}
+
+// These three network-0 keys alone receive a temporary view. Retry maps,
+// other networks, Ethereum height and signing APIs keep their normal behavior.
+const ETH_CURSOR: &[u8] = b"eth-bridge-ocw::eth-to-handle-from-height-0";
+const ETH_RANGE_SIZE: &[u8] = b"eth-bridge-ocw::eth-log-range-size-0";
+const ETH_RANGE_LIMIT: &[u8] = b"eth-bridge-ocw::eth-log-range-limit-v1-0";
+
+fn scan_key(key: &[u8]) -> bool {
+    matches!(key, ETH_CURSOR | ETH_RANGE_SIZE | ETH_RANGE_LIMIT)
+}
+
+impl PriorityAttempt {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        match key {
+            ETH_CURSOR => Some(match self.write {
+                CursorWrite::Advanced(next) => next.encode(),
+                _ => self.lease.height().encode(),
+            }),
+            ETH_RANGE_SIZE => Some(1u64.encode()),
+            // Suppress the normal scanner's adaptive range probe for this pass.
+            ETH_RANGE_LIMIT => None,
+            _ => unreachable!("only network-0 scan keys are scoped"),
+        }
+    }
+
+    fn record_write(&mut self, key: &[u8], bytes: Option<&[u8]>) {
+        if key == ETH_CURSOR {
+            let height = bytes.and_then(|mut b| u64::decode_all(&mut b).ok());
+            self.write = match height {
+                Some(n)
+                    if Some(n) == self.lease.height().checked_add(1)
+                        && !matches!(self.write, CursorWrite::Unexpected) =>
+                {
+                    CursorWrite::Advanced(n)
+                }
+                _ => CursorWrite::Unexpected,
+            };
+        }
+    }
 }
 
 impl WorkerPasses {
+    pub(crate) fn new(plan: Option<PriorityScanPlan>) -> Self {
+        Self {
+            plan: plan.map(Arc::new),
+            ..Self::default()
+        }
+    }
+
     fn storage<S>(&self, inner: S) -> WorkerStorage<S> {
         WorkerStorage {
             inner,
             passes: self.clone(),
             invocation: Arc::new(()),
-            guardian_monitor: None,
+            guard: None,
         }
     }
 
     pub(crate) fn extension<S: OffchainStorage + 'static>(
         &self,
         inner: S,
-        guardian_monitor: Arc<super::observed::Monitor>,
+        guard: WorkerGuard,
     ) -> Box<dyn sp_externalities::Extension> {
-        self.extension_inner(inner, Some(guardian_monitor))
+        self.extension_inner(inner, Some(guard))
     }
 
     #[cfg(test)]
-    fn test_extension<S: OffchainStorage + 'static>(
+    pub(crate) fn test_extension<S: OffchainStorage + 'static>(
         &self,
         inner: S,
     ) -> Box<dyn sp_externalities::Extension> {
@@ -130,11 +236,11 @@ impl WorkerPasses {
     fn extension_inner<S: OffchainStorage + 'static>(
         &self,
         inner: S,
-        guardian_monitor: Option<Arc<super::observed::Monitor>>,
+        guard: Option<WorkerGuard>,
     ) -> Box<dyn sp_externalities::Extension> {
         use sp_core::offchain::{Capabilities, LimitedExternalities, OffchainDbExt};
         let mut storage = self.storage(inner);
-        storage.guardian_monitor = guardian_monitor;
+        storage.guard = guard;
         Box::new(OffchainDbExt::new(LimitedExternalities::new(
             Capabilities::all(),
             sc_offchain::OffchainDb::new(storage),
@@ -147,7 +253,7 @@ struct WorkerStorage<S> {
     inner: S,
     passes: WorkerPasses,
     invocation: Arc<()>,
-    guardian_monitor: Option<Arc<super::observed::Monitor>>,
+    guard: Option<WorkerGuard>,
 }
 
 fn guard_capability(key: &[u8]) -> bool {
@@ -157,25 +263,105 @@ fn guard_capability(key: &[u8]) -> bool {
 
 fn worker_write_protected(key: &[u8]) -> bool {
     guard_capability(key)
+        || is_priority_storage_key(key)
         || key == bridge_types::recovery::RECOVERY_ACK_STORAGE_KEY
         || key == super::observed::STORAGE_KEY
         || key == eth_bridge::STORAGE_RESUMED_AFTER_HALT_KEY
 }
 
+fn guarded_scan<R>(guard: Option<&WorkerGuard>, action: impl FnOnce() -> R) -> Option<R> {
+    match guard {
+        Some(guard) => guard.while_open(action),
+        None if cfg!(test) => Some(action()),
+        None => None,
+    }
+}
+
 impl<S: OffchainStorage> WorkerStorage<S> {
-    fn acquire(&self, old: Option<&[u8]>, new: &[u8]) -> bool {
-        let mut slot = self.passes.0.lock().expect("HASHI worker pass lock");
-        let active = slot.as_ref().filter(|pass| pass.owner.strong_count() != 0);
-        if active.map(|pass| pass.deadline.as_slice()) != old
-            || active.is_some_and(|pass| !pass.owner.ptr_eq(&Arc::downgrade(&self.invocation)))
-        {
+    fn acquire(&mut self, old: Option<&[u8]>, new: &[u8]) -> bool {
+        let mut slot = self.passes.slot.lock().expect("HASHI worker pass lock");
+        let active = slot.as_mut().filter(|pass| pass.owner.strong_count() != 0);
+        if active.as_ref().map(|pass| pass.deadline.as_slice()) != old {
             return false;
         }
+        if let Some(pass) = active {
+            if !pass.owned_by(&self.invocation) {
+                return false;
+            }
+            // A renewal retains its lane and consumes no scheduling opportunity.
+            pass.deadline = new.to_vec();
+            return true;
+        }
+        // Bootstrap reads before the lock and competing invocations see real
+        // history. Only a new, exclusive worker can select a priority block.
+        let priority = self.passes.plan.as_ref().and_then(|plan| {
+            let bytes = self.inner.get(STORAGE_PREFIX, ETH_CURSOR)?;
+            let history = u64::decode_all(&mut &bytes[..]).ok()?;
+            let result =
+                guarded_scan(self.guard.as_ref(), || plan.begin(&mut self.inner, history))?;
+            match result {
+                Ok(lease) => lease.map(|lease| PriorityAttempt {
+                    lease,
+                    write: CursorWrite::Pending,
+                }),
+                Err(e) => {
+                    log::warn!(
+                        "Bridge priority scan unavailable, continuing chronological replay: {e}"
+                    );
+                    None
+                }
+            }
+        });
         *slot = Some(PassLock {
             owner: Arc::downgrade(&self.invocation),
             deadline: new.to_vec(),
+            priority,
         });
         true
+    }
+
+    fn release(&mut self) {
+        let mut slot = self.passes.slot.lock().expect("HASHI worker pass lock");
+        if !slot
+            .as_ref()
+            .is_some_and(|pass| pass.owned_by(&self.invocation))
+        {
+            return;
+        }
+        let priority = slot.take().and_then(|pass| pass.priority);
+        // A trapped invocation never completes a target. A clean release needs
+        // the reviewed scanner's exact one-block cursor advancement as well.
+        if let (Some(plan), Some(attempt)) = (&self.passes.plan, priority) {
+            if let CursorWrite::Advanced(next) = attempt.write {
+                let result = guarded_scan(self.guard.as_ref(), || {
+                    plan.complete(&mut self.inner, &attempt.lease, next)
+                });
+                if let Some(Err(e)) = result {
+                    log::warn!("Bridge priority scan progress was not recorded: {e}");
+                }
+            }
+        }
+    }
+
+    fn edit_scan_key<R>(
+        &mut self,
+        prefix: &[u8],
+        key: &[u8],
+        denied: R,
+        scoped: impl FnOnce(&mut PriorityAttempt) -> R,
+        ordinary: impl FnOnce(&mut S) -> R,
+    ) -> R {
+        if prefix == STORAGE_PREFIX && self.passes.plan.is_some() && scan_key(key) {
+            let mut slot = self.passes.slot.lock().expect("HASHI worker pass lock");
+            let Some(pass) = slot.as_mut().filter(|p| p.owned_by(&self.invocation)) else {
+                return denied;
+            };
+            return match &mut pass.priority {
+                Some(attempt) => scoped(attempt),
+                None => ordinary(&mut self.inner),
+            };
+        }
+        ordinary(&mut self.inner)
     }
 }
 
@@ -183,20 +369,30 @@ impl<S: OffchainStorage> OffchainStorage for WorkerStorage<S> {
     fn get(&self, prefix: &[u8], key: &[u8]) -> Option<Vec<u8>> {
         if prefix == STORAGE_PREFIX && guard_capability(key) {
             return self
-                .guardian_monitor
+                .guard
                 .as_ref()
-                .map_or(true, |monitor| monitor.is_open_now())
+                .map_or(true, |g| g.guardian_monitor.is_open_now())
                 .then(|| vec![1]);
         }
         if prefix == STORAGE_PREFIX && key == eth_bridge::STORAGE_WORKER_LOCK_KEY {
             return self
                 .passes
-                .0
+                .slot
                 .lock()
                 .expect("HASHI worker pass lock")
                 .as_ref()
                 .filter(|pass| pass.owner.strong_count() != 0)
                 .map(|pass| pass.deadline.clone());
+        }
+        if prefix == STORAGE_PREFIX && self.passes.plan.is_some() && scan_key(key) {
+            let slot = self.passes.slot.lock().expect("HASHI worker pass lock");
+            if let Some(attempt) = slot
+                .as_ref()
+                .filter(|p| p.owned_by(&self.invocation))
+                .and_then(|p| p.priority.as_ref())
+            {
+                return attempt.read(key);
+            }
         }
         self.inner.get(prefix, key)
     }
@@ -205,21 +401,27 @@ impl<S: OffchainStorage> OffchainStorage for WorkerStorage<S> {
         if prefix != STORAGE_PREFIX
             || (!worker_write_protected(key) && key != eth_bridge::STORAGE_WORKER_LOCK_KEY)
         {
-            self.inner.set(prefix, key, value);
+            self.edit_scan_key(
+                prefix,
+                key,
+                (),
+                |attempt| attempt.record_write(key, Some(value)),
+                |db| db.set(prefix, key, value),
+            );
         }
     }
 
     fn remove(&mut self, prefix: &[u8], key: &[u8]) {
         if prefix == STORAGE_PREFIX && key == eth_bridge::STORAGE_WORKER_LOCK_KEY {
-            let mut slot = self.passes.0.lock().expect("HASHI worker pass lock");
-            if slot
-                .as_ref()
-                .is_some_and(|pass| pass.owner.ptr_eq(&Arc::downgrade(&self.invocation)))
-            {
-                *slot = None;
-            }
+            self.release();
         } else if prefix != STORAGE_PREFIX || !worker_write_protected(key) {
-            self.inner.remove(prefix, key);
+            self.edit_scan_key(
+                prefix,
+                key,
+                (),
+                |attempt| attempt.record_write(key, None),
+                |db| db.remove(prefix, key),
+            );
         }
     }
 
@@ -234,7 +436,17 @@ impl<S: OffchainStorage> OffchainStorage for WorkerStorage<S> {
             return self.acquire(old, new);
         }
         (prefix != STORAGE_PREFIX || !worker_write_protected(key))
-            && self.inner.compare_and_set(prefix, key, old, new)
+            && self.edit_scan_key(
+                prefix,
+                key,
+                false,
+                |attempt| {
+                    // The reviewed runtime advances the cursor with set, never CAS.
+                    attempt.record_write(key, None);
+                    false
+                },
+                |db| db.compare_and_set(prefix, key, old, new),
+            )
     }
 }
 
@@ -336,7 +548,7 @@ fn submit_while_open<R, E: From<PoolError>>(
 
 impl<P, G> LocalTransactionPool for WorkerPool<P, G>
 where
-    G: BridgeGuard,
+    G: BridgeGuard + Clone,
     P: LocalTransactionPool<Block = Block>
         + TransactionPool<
             Block = Block,
@@ -353,7 +565,7 @@ where
             return self.inner.submit_local(at, xt);
         }
         submit_while_open(
-            &self.guard,
+            &self.guard.for_submission_at(at),
             self.inner.submit_one(at, TransactionSource::Local, xt),
         )
     }
@@ -375,6 +587,97 @@ mod tests {
         fn while_open<R>(&self, action: impl FnOnce() -> R) -> Option<R> {
             let latest = self.0.read().unwrap();
             workers_may_run(&Ok(*latest), None).then(action)
+        }
+    }
+
+    #[test]
+    fn armed_plan_rechecks_its_domain_for_signatures_delayed_retries_and_each_pool_poll() {
+        use std::str::FromStr;
+        let spec142 =
+            H256::from_str("d601b781566850086b9341552bcde75b43902665a01fc94897da2adf3cac9a26")
+                .unwrap();
+        let spec143 =
+            H256::from_str("c4633932066e1d36ce307c476f76ce8a9833f2c8bc9ea97837febf52ed90da68")
+                .unwrap();
+        let pinned = crate::bridge_priority_manifest::MAINNET_DEPOSIT_CONTRACT;
+
+        #[derive(Clone)]
+        struct DomainGuard {
+            armed: bool,
+            state: Arc<RwLock<(H256, [u8; 20])>>,
+        }
+        impl BridgeGuard for DomainGuard {
+            fn while_open<R>(&self, action: impl FnOnce() -> R) -> Option<R> {
+                let (code, contract) = *self.state.read().unwrap();
+                priority_domain_allows(
+                    self.armed,
+                    H256(common::recovery::GENESIS_HASH),
+                    Some(code),
+                    || contract == crate::bridge_priority_manifest::MAINNET_DEPOSIT_CONTRACT,
+                )
+                .then(action)
+            }
+        }
+        for changed in [(spec142, [77; 20]), (spec143, pinned)] {
+            let stable = Arc::new(RwLock::new((spec142, pinned)));
+            let guard = DomainGuard {
+                armed: true,
+                state: stable.clone(),
+            };
+            let store = WorkerKeystore {
+                inner: Arc::new(MemoryKeystore::new()),
+                guard: guard.clone(),
+            };
+            let peer = store
+                .ecdsa_generate_new(eth_bridge::KEY_TYPE, Some("//Alice"))
+                .unwrap();
+            let unrelated = KeyTypeId(*b"test");
+            let other = store.ecdsa_generate_new(unrelated, Some("//Bob")).unwrap();
+            assert!(store
+                .ecdsa_sign(eth_bridge::KEY_TYPE, &peer, b"before")
+                .unwrap()
+                .is_some());
+            let mut polls = 0;
+            let result: Result<(), PoolError> = submit_while_open(
+                &guard,
+                poll_fn(|cx| {
+                    polls += 1;
+                    *stable.write().unwrap() = changed;
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }),
+            );
+            assert!(matches!(result, Err(PoolError::TemporarilyBanned)));
+            assert_eq!(polls, 1);
+            assert!(store
+                .ecdsa_sign(eth_bridge::KEY_TYPE, &peer, b"after")
+                .unwrap()
+                .is_none());
+            assert!(store
+                .ecdsa_sign_prehashed(eth_bridge::KEY_TYPE, &peer, &[1; 32])
+                .unwrap()
+                .is_none());
+            let delayed: Result<(), PoolError> = submit_while_open(&guard, async { Ok(()) });
+            assert!(matches!(delayed, Err(PoolError::TemporarilyBanned)));
+            assert!(store
+                .ecdsa_sign(unrelated, &other, b"unrelated")
+                .unwrap()
+                .is_some());
+
+            // Removing the optional plan restores the release guard on either reviewed runtime.
+            let ordinary = DomainGuard {
+                armed: false,
+                state: stable,
+            };
+            let normal = WorkerKeystore {
+                inner: store.inner,
+                guard: ordinary.clone(),
+            };
+            assert!(normal
+                .ecdsa_sign(eth_bridge::KEY_TYPE, &peer, b"ordinary")
+                .unwrap()
+                .is_some());
+            assert!(submit_while_open(&ordinary, async { Ok::<_, PoolError>(()) }).is_ok());
         }
     }
 
@@ -474,6 +777,129 @@ mod tests {
             wake_tx.send(()).unwrap();
             assert!(job.join().unwrap().is_err());
         });
+    }
+
+    #[test]
+    fn priority_scan_isolates_the_owner_and_uses_the_ordinary_retry_storage() {
+        use sp_core::offchain::testing::TestPersistentOffchainDB;
+        let prefix = STORAGE_PREFIX;
+        let lock = eth_bridge::STORAGE_WORKER_LOCK_KEY;
+        let plan = PriorityScanPlan::new(H256::repeat_byte(1), vec![100, 140]).unwrap();
+        let state = plan.progress_key().to_vec();
+        let passes = WorkerPasses::new(Some(plan));
+        let mut db = TestPersistentOffchainDB::new();
+        assert_eq!(ETH_CURSOR, eth_bridge::eth_scan_cursor_key(0u32));
+        db.set(prefix, ETH_CURSOR, &20u64.encode());
+        db.set(prefix, ETH_RANGE_SIZE, &32u64.encode());
+        db.set(prefix, ETH_RANGE_LIMIT, &(16u64, 0u64).encode());
+        let mut a = passes.storage(db.clone());
+        let mut b = passes.storage(db.clone());
+        assert_eq!(a.get(prefix, ETH_CURSOR), Some(20u64.encode()));
+        assert!(!a.compare_and_set(prefix, ETH_CURSOR, Some(&20u64.encode()), &99u64.encode()));
+        assert!(a.compare_and_set(prefix, lock, None, &[1]));
+        let reservation = OffchainStorage::get(&db, prefix, &state).unwrap();
+        assert_eq!(a.get(prefix, ETH_CURSOR), Some(100u64.encode()));
+        assert_eq!(a.get(prefix, ETH_RANGE_SIZE), Some(1u64.encode()));
+        assert_eq!(a.get(prefix, ETH_RANGE_LIMIT), None);
+        assert_eq!(b.get(prefix, ETH_CURSOR), Some(20u64.encode()));
+        assert!(!b.compare_and_set(prefix, lock, Some(&[1]), &[2]));
+        assert!(a.compare_and_set(prefix, lock, Some(&[1]), &[3]));
+        assert_eq!(a.get(prefix, ETH_CURSOR), Some(100u64.encode()));
+        b.set(prefix, ETH_CURSOR, &900u64.encode());
+        b.remove(prefix, lock);
+        a.set(prefix, ETH_RANGE_SIZE, &2u64.encode());
+        a.remove(prefix, ETH_RANGE_LIMIT);
+        a.set(prefix, &state, b"forged");
+        a.remove(prefix, &state);
+        assert!(!a.compare_and_set(prefix, &state, Some(&reservation), b"forged"));
+        assert_eq!(a.get(prefix, ETH_RANGE_SIZE), Some(1u64.encode()));
+        let other_network = eth_bridge::eth_scan_cursor_key(1u32);
+        a.set(prefix, &other_network, &800u64.encode());
+        for key in [
+            eth_bridge::STORAGE_PENDING_TRANSACTIONS_KEY,
+            eth_bridge::STORAGE_FAILED_PENDING_TRANSACTIONS_KEY,
+        ] {
+            a.set(prefix, key, b"retained");
+            assert_eq!(b.get(prefix, key).as_deref(), Some(&b"retained"[..]));
+        }
+        a.set(prefix, ETH_CURSOR, &101u64.encode());
+        assert_eq!(
+            OffchainStorage::get(&db, prefix, &state),
+            Some(reservation.clone())
+        );
+        a.remove(prefix, lock);
+        assert_ne!(OffchainStorage::get(&db, prefix, &state), Some(reservation));
+        assert_eq!(b.get(prefix, ETH_CURSOR), Some(20u64.encode()));
+        assert_eq!(b.get(prefix, ETH_RANGE_SIZE), Some(32u64.encode()));
+        assert_eq!(b.get(prefix, ETH_RANGE_LIMIT), Some((16u64, 0u64).encode()));
+        assert_eq!(b.get(prefix, &other_network), Some(800u64.encode()));
+        assert!(b.compare_and_set(prefix, lock, None, &[4]));
+        assert_eq!(b.get(prefix, ETH_CURSOR), Some(20u64.encode()));
+        b.set(prefix, ETH_CURSOR, &25u64.encode());
+        b.remove(prefix, lock);
+        assert_eq!(b.get(prefix, ETH_CURSOR), Some(25u64.encode()));
+    }
+
+    #[test]
+    fn priority_completion_requires_an_exact_write_and_a_clean_owner_release() {
+        use sp_core::offchain::testing::TestPersistentOffchainDB;
+        let prefix = STORAGE_PREFIX;
+        let lock = eth_bridge::STORAGE_WORKER_LOCK_KEY;
+        for (writes, trap) in [
+            (vec![], false),
+            (vec![99u64], false),
+            (vec![102, 101], false),
+            (vec![101], true),
+            (vec![101], false),
+        ] {
+            let plan = PriorityScanPlan::new(H256::repeat_byte(1), vec![100]).unwrap();
+            let state = plan.progress_key().to_vec();
+            let passes = WorkerPasses::new(Some(plan));
+            let mut db = TestPersistentOffchainDB::new();
+            db.set(prefix, ETH_CURSOR, &20u64.encode());
+            let mut worker = passes.storage(db.clone());
+            assert!(worker.compare_and_set(prefix, lock, None, &[1]));
+            let reserved = OffchainStorage::get(&db, prefix, &state).unwrap();
+            for height in &writes {
+                worker.set(prefix, ETH_CURSOR, &height.encode());
+            }
+            if !trap {
+                worker.remove(prefix, lock);
+            }
+            drop(worker);
+            let changed = OffchainStorage::get(&db, prefix, &state) != Some(reserved);
+            assert_eq!(changed, !trap && writes == [101]);
+            assert_eq!(
+                OffchainStorage::get(&db, prefix, ETH_CURSOR),
+                Some(20u64.encode())
+            );
+            let mut next = passes.storage(db);
+            assert!(next.compare_and_set(prefix, lock, None, &[2]));
+        }
+    }
+
+    #[test]
+    fn priority_never_substitutes_for_a_missing_or_malformed_bootstrap_cursor() {
+        use sp_core::offchain::testing::TestPersistentOffchainDB;
+        for value in [None, Some(vec![1u8; 7]), Some(vec![1u8; 9])] {
+            let plan = PriorityScanPlan::new(H256::repeat_byte(1), vec![100]).unwrap();
+            let state = plan.progress_key().to_vec();
+            let passes = WorkerPasses::new(Some(plan));
+            let mut db = TestPersistentOffchainDB::new();
+            if let Some(bytes) = value.as_ref() {
+                db.set(STORAGE_PREFIX, ETH_CURSOR, bytes);
+            }
+            let mut worker = passes.storage(db);
+            assert_eq!(worker.get(STORAGE_PREFIX, ETH_CURSOR), value);
+            assert!(worker.compare_and_set(
+                STORAGE_PREFIX,
+                eth_bridge::STORAGE_WORKER_LOCK_KEY,
+                None,
+                &[1]
+            ));
+            assert_eq!(worker.get(STORAGE_PREFIX, ETH_CURSOR), value);
+            assert_eq!(worker.get(STORAGE_PREFIX, &state), None);
+        }
     }
 
     #[test]

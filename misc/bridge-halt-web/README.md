@@ -247,6 +247,27 @@ Keep the node stopped until its storage and retained state have been checked.
 If the halt was not warranted (for example a guardian key was stolen), remove that
 guardian before restarting the workers, or it can halt again a minute later.
 
+### Prioritizing confirmed Ethereum deposits on spec 142
+
+On a SORA v2 peer with an initialized chronological cursor, put
+`priority-scan.json` beside `bridge/eth.json`. Set `format` to
+`eth-deposit-priority-blocks-v1`, `genesisHash` to the SORA v2 genesis hash,
+`networkId` to `0`, `ethereumChainId` to `1`, and `bridgeContract` to the
+network's main Hashi contract. The `blocks` array accepts 1–256 distinct positive
+Ethereum block numbers in increasing order. Select blocks whose confirmed
+main-contract Deposit logs and native disposition you have verified.
+
+Pass the SHA-256 of the exact JSON file bytes as `--bridge-priority-scan 0x<sha256>`
+on the peer's normal reviewed `--offchain-worker always` restart. Selected passes
+scan one block through the spec 142 worker's usual receipt, replay and peer
+multisig checks. Chronological passes continue from the peer's existing cursor.
+The completion log records a local scan. Check the finalized mapping and incoming
+transfer status to establish settlement.
+
+While the plan is armed, every Hashi signature and local pool submission,
+including later retries, requires the pinned runtime and contract. Retire a
+completed or stale plan by removing the option on a normal reviewed restart.
+
 ### Local restart after completed recovery
 
 The corrected node logs the completed recovery context digest while its HASHI worker

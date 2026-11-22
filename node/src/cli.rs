@@ -80,6 +80,13 @@ pub struct Cli {
     /// guardian halts and --offchain-worker mode remain independent.
     #[clap(long, value_name = "CONTEXT_HASH")]
     pub bridge_resume_after_recovery: Option<sp_core::H256>,
+
+    /// Review specific Ethereum deposit blocks alongside the normal historical scan.
+    /// SHA-256 of bridge/priority-scan.json. Requires an explicitly enabled worker.
+    /// While armed, HASHI signing/retries require the pinned contract and spec 142.
+    /// Retire a stale plan by removing this option on a reviewed worker restart.
+    #[clap(long, value_name = "SHA256")]
+    pub bridge_priority_scan: Option<sp_core::H256>,
 }
 
 impl Cli {
@@ -95,6 +102,7 @@ impl Cli {
             resume_after_halt: self.bridge_resume_after_halt,
             resume_after_observed_halt: self.bridge_resume_after_observed_halt,
             resume_after_recovery: self.bridge_resume_after_recovery,
+            priority_scan_sha256: self.bridge_priority_scan,
         }
     }
 }

@@ -5,6 +5,7 @@
 #[derive(Clone, Copy)]
 pub(crate) struct BridgeWorkerOptions {
     pub recovery_bootstrap: bool,
+    pub priority_scan_sha256: Option<sp_core::H256>,
     pub resume_after_halt: Option<u32>,
     pub resume_after_observed_halt: Option<sp_core::H256>,
     pub resume_after_recovery: Option<sp_core::H256>,

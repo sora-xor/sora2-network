@@ -859,6 +859,13 @@ pub fn new_full<FullNetwork>(
 where
     FullNetwork: NetworkBackend<Block, <Block as BlockT>::Hash> + 'static,
 {
+    if bridge_workers.priority_scan_sha256.is_some()
+        && !(bridge_workers.recovery_bootstrap && config.offchain_worker.enabled)
+    {
+        return Err(ServiceError::Other(
+            "--bridge-priority-scan requires --offchain-worker=always".into(),
+        ));
+    }
     if recovery_inherent_dir.is_some()
         && framenode_chain_spec::recovery::config(&*config.chain_spec).is_none()
     {
@@ -899,6 +906,36 @@ where
         recovery_evidence.clone(),
         bridge_workers.recovery_bootstrap,
     )?;
+    let priority_scan = if let Some(digest) = bridge_workers.priority_scan_sha256 {
+        let info = client.info();
+        let code_hash = client
+            .storage_hash(
+                info.finalized_hash,
+                &sp_core::storage::StorageKey(sp_core::storage::well_known_keys::CODE.to_vec()),
+            )
+            .map_err(|e| ServiceError::Other(format!("Cannot read finalized runtime hash: {e}")))?;
+        let contract = client
+            .storage(
+                info.finalized_hash,
+                &sp_core::storage::StorageKey(crate::bridge_scan_cursor::contract_storage_key(0)),
+            )
+            .map_err(|e| {
+                ServiceError::Other(format!("Cannot read finalized bridge contract: {e}"))
+            })?;
+        let path = bridge_config_path(&config)?.with_file_name("priority-scan.json");
+        Some(
+            crate::bridge_priority_manifest::load(
+                &path,
+                digest,
+                info.genesis_hash,
+                code_hash,
+                contract.as_ref().map(|value| value.0.as_slice()),
+            )
+            .map_err(ServiceError::Other)?,
+        )
+    } else {
+        None
+    };
     // Before any offchain worker runs, so a confirmed halt applies from the first block.
     let (guardian_monitor, guardian_observer) = crate::guardian_halt::on_startup(
         client.clone(),
@@ -1027,12 +1064,13 @@ where
             client: client.clone(),
             backend: backend.clone(),
             execution_block: None,
+            priority_plan_armed: priority_scan.is_some(),
             guardian_monitor: guardian_monitor.clone(),
         };
         let invocation_guard = guard.clone();
         let worker_keystore = keystore_container.keystore();
         let storage = backend.offchain_storage();
-        let passes = WorkerPasses::default();
+        let passes = WorkerPasses::new(priority_scan);
         let offchain_workers =
             sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
                 runtime_api_provider: client.clone(),
@@ -1052,14 +1090,14 @@ where
                     // Persist queued guardian observations before this invocation
                     // can see a halt and return without touching its signing guard.
                     guardian_monitor.refresh();
+                    let mut guard = invocation_guard.clone();
+                    guard.execution_block = Some(hash);
                     let mut extensions: Vec<Box<dyn sp_externalities::Extension>> = storage
                         .clone()
-                        .map(|db| passes.extension(db, guardian_monitor.clone()))
+                        .map(|db| passes.extension(db, guard.clone()))
                         .into_iter()
                         .collect();
                     extensions.push(crate::bridge_local_quarantine::extension());
-                    let mut guard = invocation_guard.clone();
-                    guard.execution_block = Some(hash);
                     extensions.push(Box::new(sp_keystore::KeystoreExt(Arc::new(
                         WorkerKeystore {
                             inner: worker_keystore.clone(),

@@ -23,8 +23,9 @@ pub(crate) const REQUESTS: [&str; 7] = [
 const PREFIX: &[u8] = b":sora-nexus:recovery:outgoing-hashi:v1:";
 const GENESIS: &str = "7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5";
 // Admit the published spec 142 and the withdrawal-scanner spec 143 during rollout.
+const SPEC_142_CODE: &str = "d601b781566850086b9341552bcde75b43902665a01fc94897da2adf3cac9a26";
 const REVIEWED_CODES: [&str; 2] = [
-    "d601b781566850086b9341552bcde75b43902665a01fc94897da2adf3cac9a26",
+    SPEC_142_CODE,
     "c4633932066e1d36ce307c476f76ce8a9833f2c8bc9ea97837febf52ed90da68",
 ];
 
@@ -40,6 +41,12 @@ pub(crate) fn extension() -> Box<dyn sp_externalities::Extension> {
 pub(crate) fn reviewed_code(genesis: H256, code: Option<H256>) -> bool {
     format!("{genesis:x}") == GENESIS
         && code.is_some_and(|hash| REVIEWED_CODES.contains(&format!("{hash:x}").as_str()))
+}
+
+/// The node-local deposit schedule uses the spec 142 scanner's three storage keys.
+pub(crate) fn reviewed_priority_code(genesis: H256, code: Option<H256>) -> bool {
+    format!("{genesis:x}") == GENESIS
+        && code.is_some_and(|hash| format!("{hash:x}") == SPEC_142_CODE)
 }
 
 /// Key access requires the worker's runtime to match the currently reviewed best-chain code.
