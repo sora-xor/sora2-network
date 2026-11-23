@@ -253,9 +253,9 @@ macro_rules! assert_approx_eq {
 #[macro_export]
 macro_rules! storage_remove_all {
     ($x:ty) => {{
-        let mut clear_result = <$x>::clear(u32::max_value(), None);
+        let mut clear_result = <$x>::clear(u32::MAX, None);
         while let Some(cursor) = &clear_result.maybe_cursor {
-            clear_result = <$x>::clear(u32::max_value(), Some(cursor));
+            clear_result = <$x>::clear(u32::MAX, Some(cursor));
         }
     }};
 }

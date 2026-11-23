@@ -1,0 +1,38 @@
+[build-system]
+requires = ["maturin==1.15.0"]
+build-backend = "maturin"
+
+[project]
+name = "py-sr25519-bindings"
+version = "0.2.4"
+description = "Python bindings for schnorrkel RUST crate"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {file = "LICENSE"}
+authors = [
+  {email = "info@polkascan.org"},
+  {name = "Polkascan Foundation"}
+]
+maintainers = [
+  {name = "JAMdot Technologies", email = "devops@jamdot.tech"}
+]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14"
+]
+
+[project.urls]
+repository = "https://github.com/polkascan/py-sr25519-bindings"
+homepage = "https://github.com/polkascan/py-sr25519-bindings"
+
+[tool.maturin]
+locked = true

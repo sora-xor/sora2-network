@@ -233,6 +233,12 @@ impl<AccountId, Recipient, AssetId, Balance> BridgeApp<AccountId, Recipient, Ass
 
 #[allow(clippy::too_many_arguments)]
 pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
+    /// Worst-case cost of one status update, including any refund it triggers.
+    /// No-op or externally accounted implementations may retain the default.
+    fn update_status_weight() -> Weight {
+        Weight::zero()
+    }
+
     fn update_status(
         network_id: GenericNetworkId,
         message_id: H256,
@@ -482,6 +488,19 @@ pub trait BridgeAssetLockChecker<AssetId, Balance> {
         asset_id: &AssetId,
         amount: &Balance,
     ) -> DispatchResult;
+
+    /// Undo accounting performed before an incoming unlock that is cancelled.
+    /// Implementations with outbound quotas should restore custody without
+    /// pricing or charging a new outgoing transfer. Existing checkers retain
+    /// their previous lock behavior unless they specialize this rollback hook.
+    fn cancel_asset_unlock(
+        network_id: GenericNetworkId,
+        asset_kind: AssetKind,
+        asset_id: &AssetId,
+        amount: &Balance,
+    ) -> DispatchResult {
+        Self::before_asset_lock(network_id, asset_kind, asset_id, amount)
+    }
 }
 
 impl<AssetId, Balance> BridgeAssetLockChecker<AssetId, Balance> for () {

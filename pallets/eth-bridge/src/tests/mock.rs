@@ -132,7 +132,9 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub const MaxRequestsPerQueueConst: u32 = 64;
-    pub const MaxRequestsPerAccountConst: u32 = 3;
+    pub static MaxRequestsPerAccountConst: u32 = 3;
+    /// Zero by default so existing worker tests sign on their first run.
+    pub static OutgoingApprovalDelayMsConst: u64 = 0;
     pub const ReservedBridgeQueueSlotsConst: u32 = 4;
     pub const MaxPendingLoadIncomingRequestsPerAccountConst: u32 = 16;
 }
@@ -202,6 +204,11 @@ where
         account: <Runtime as frame_system::Config>::AccountId,
         _index: <Runtime as frame_system::Config>::Nonce,
     ) -> Option<Self::Extrinsic> {
+        if !SIGNED_TRANSACTION_CREATION_RESULTS
+            .with(|results| results.borrow_mut().pop_front().unwrap_or(true))
+        {
+            return None;
+        }
         Some(TestExtrinsic::new_signed(call, account, (), ()))
     }
 }
@@ -267,10 +274,12 @@ impl Config for Runtime {
     type WeightToFee = WeightToFixedFee;
     type MessageStatusNotifier = ();
     type BridgeAssetLockChecker = ();
+    type IncomingAccountResolver = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type Denominator = TestDenominator;
     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
     type MaxRequestsPerAccount = MaxRequestsPerAccountConst;
+    type OutgoingApprovalDelayMs = OutgoingApprovalDelayMsConst;
 }
 
 construct_runtime!(
@@ -304,6 +313,26 @@ thread_local! {
     pub static SHOULD_FAIL_SEND_SIGNED_TRANSACTION: RefCell<bool> = const { RefCell::new(false) };
     static HTTP_REQUEST_BODIES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
     static HTTP_RESPONSE_STATUSES: RefCell<BTreeMap<HttpRequestId, u16>> = const { RefCell::new(BTreeMap::new()) };
+    static SIGNED_TRANSACTION_CREATION_RESULTS: RefCell<std::collections::VecDeque<bool>> = const { RefCell::new(std::collections::VecDeque::new()) };
+    static HTTP_FAULT: RefCell<Option<HttpFault>> = const { RefCell::new(None) };
+}
+
+/// Fail at the real offchain externality boundary, before bridge error handling.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum HttpFault {
+    Start,
+    Deadline,
+    ReadBody,
+}
+
+pub(crate) fn set_http_fault(fault: Option<HttpFault>) {
+    HTTP_FAULT.with(|value| *value.borrow_mut() = fault);
+}
+
+pub(crate) fn set_signed_transaction_creation_results(results: &[bool]) {
+    SIGNED_TRANSACTION_CREATION_RESULTS.with(|value| {
+        *value.borrow_mut() = results.iter().copied().collect();
+    });
 }
 
 fn push_response(data: Vec<u8>) {
@@ -347,6 +376,9 @@ impl OffchainExternalities for HttpStatusOffchainExt {
         uri: &str,
         meta: &[u8],
     ) -> Result<HttpRequestId, ()> {
+        if HTTP_FAULT.with(|fault| *fault.borrow() == Some(HttpFault::Start)) {
+            return Err(());
+        }
         let request_id = self.0.http_request_start(method, uri, meta)?;
         HTTP_RESPONSE_STATUSES.with(|statuses| statuses.borrow_mut().remove(&request_id));
         Ok(request_id)
@@ -375,6 +407,9 @@ impl OffchainExternalities for HttpStatusOffchainExt {
         ids: &[HttpRequestId],
         deadline: Option<Timestamp>,
     ) -> Vec<HttpRequestStatus> {
+        if HTTP_FAULT.with(|fault| *fault.borrow() == Some(HttpFault::Deadline)) {
+            return vec![HttpRequestStatus::DeadlineReached; ids.len()];
+        }
         let results = self.0.http_response_wait(ids, deadline);
         HTTP_RESPONSE_STATUSES.with(|statuses| {
             let statuses = statuses.borrow();
@@ -400,6 +435,9 @@ impl OffchainExternalities for HttpStatusOffchainExt {
         buffer: &mut [u8],
         deadline: Option<Timestamp>,
     ) -> Result<usize, HttpError> {
+        if HTTP_FAULT.with(|fault| *fault.borrow() == Some(HttpFault::ReadBody)) {
+            return Err(HttpError::IoError);
+        }
         self.0.http_response_read_body(request_id, buffer, deadline)
     }
 
@@ -808,6 +846,17 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> (TestExternalities, State) {
+        static TEST_LOGGER: std::sync::Once = std::sync::Once::new();
+        TEST_LOGGER.call_once(|| {
+            let _ = env_logger::Builder::new()
+                .filter_level(frame_support::__private::log::LevelFilter::Trace)
+                .is_test(true)
+                .try_init();
+        });
+        MaxRequestsPerAccountConst::set(3);
+        OutgoingApprovalDelayMsConst::set(0);
+        set_http_fault(None);
+        set_signed_transaction_creation_results(&[]);
         RESPONSES.with(|responses| responses.borrow_mut().clear());
         HTTP_REQUEST_BODIES.with(|requests| requests.borrow_mut().clear());
         HTTP_RESPONSE_STATUSES.with(|statuses| statuses.borrow_mut().clear());
@@ -840,15 +889,13 @@ impl ExtBuilder {
                 .encode(),
             );
             bridge_network_configs.push(ext_network.config.clone());
-            endowed_accounts.extend(ext_network.config.assets.iter().cloned().map(
-                |asset_config| {
-                    (
-                        ext_network.config.bridge_account_id.clone(),
-                        asset_config.asset_id().clone(),
-                        0,
-                    )
-                },
-            ));
+            endowed_accounts.extend(ext_network.config.assets.iter().map(|asset_config| {
+                (
+                    ext_network.config.bridge_account_id.clone(),
+                    asset_config.asset_id().clone(),
+                    0,
+                )
+            }));
             if self.endow_reserve_assets {
                 endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
                     |(asset_id, _balance)| {
@@ -878,6 +925,8 @@ impl ExtBuilder {
             MultiSigner::Ecdsa(pubkey) => pubkey.0.to_vec(),
             _ => unreachable!("only ecdsa bridge peers are expected in tests"),
         };
+        offchain_storage.set(b"", crate::STORAGE_LIVE_SIGNING_GUARD_KEY, &[1]);
+        offchain_storage.set(b"", crate::STORAGE_SERIAL_SIGNING_GUARD_KEY, &[1]);
         offchain_storage.set(b"", STORAGE_PEER_MARKER_KEY, &ocw_marker.encode());
         // Keep legacy key populated for backward-compatibility paths.
         offchain_storage.set(b"", STORAGE_PEER_SECRET_KEY, &ocw_marker.encode());

@@ -1,0 +1,5 @@
+error: Invalid pallet::call, must have at least origin arg
+  --> tests/pallet_ui/call_no_origin.rs:34:7
+   |
+34 |         pub fn foo() {}
+   |             ^^

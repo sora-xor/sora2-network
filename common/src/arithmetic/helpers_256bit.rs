@@ -442,8 +442,7 @@ mod tests {
     }
 
     fn random_u256(seed: u32) -> U256 {
-        U256::decode(&mut &seed.using_encoded(sp_core::hashing::twox_256)[..])
-            .unwrap_or(U256::zero())
+        U256::decode(&mut &seed.using_encoded(sp_io::hashing::twox_256)[..]).unwrap_or(U256::zero())
     }
 
     #[test]

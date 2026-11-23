@@ -1,0 +1,5 @@
+error: Invalid pallet::error, expected item enum
+  --> tests/pallet_ui/error_wrong_item.rs:36:2
+   |
+36 |     pub struct Foo;
+   |     ^^^

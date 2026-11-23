@@ -699,7 +699,7 @@ fn should_cleanup_on_expiring() {
         let agg_bids_before = OrderBookPallet::aggregated_bids(order_book_id);
         let price_volume_before = agg_bids_before.get(&price).cloned().unwrap_or_default();
         let user_orders_before =
-            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap_or_default();
+            OrderBookPallet::user_limit_orders(&caller, order_book_id).unwrap_or_default();
         let balance_before = free_balance::<Runtime>(&order_book_id.quote, &caller);
 
         assert_ok!(OrderBookPallet::place_limit_order(
@@ -755,7 +755,7 @@ fn should_cleanup_on_expiring() {
         let mut user_orders_with_order = user_orders_before.clone();
         assert_ok!(user_orders_with_order.try_push(order_id));
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&caller, order_book_id).unwrap(),
             user_orders_with_order
         );
 
@@ -782,7 +782,7 @@ fn should_cleanup_on_expiring() {
             agg_bids_with_order
         );
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap(),
+            OrderBookPallet::user_limit_orders(&caller, order_book_id).unwrap(),
             user_orders_with_order
         );
         assert_eq!(
@@ -805,7 +805,7 @@ fn should_cleanup_on_expiring() {
             agg_bids_before
         );
         assert_eq!(
-            OrderBookPallet::user_limit_orders(&caller, &order_book_id).unwrap_or_default(),
+            OrderBookPallet::user_limit_orders(&caller, order_book_id).unwrap_or_default(),
             user_orders_before
         );
         assert_eq!(

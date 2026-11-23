@@ -1,0 +1,12 @@
+# Canonical host matches the dependency-security CI job. Target output is wasm32.
+FROM --platform=linux/amd64 ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl xz-utils build-essential python3 && rm -rf /var/lib/apt/lists/*
+ENV RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/cargo
+RUN curl --fail --location https://static.rust-lang.org/rustup/archive/1.29.2/x86_64-unknown-linux-gnu/rustup-init -o /tmp/rustup-init && echo '5be191e8c70a5007074254cb74d78dbfdd25cd5a61c27de7b8e5410122ec24f4  /tmp/rustup-init' | sha256sum --check && chmod +x /tmp/rustup-init && /tmp/rustup-init -y --no-modify-path --profile minimal --default-toolchain nightly-2026-10-23 --target wasm32-unknown-unknown && rm /tmp/rustup-init
+RUN curl --fail --location https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-x64.tar.xz -o /tmp/node.tar.xz && echo '6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6  /tmp/node.tar.xz' | sha256sum --check && tar -xJf /tmp/node.tar.xz -C /opt && rm /tmp/node.tar.xz
+RUN curl --fail --location https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.129/wasm-bindgen-0.2.129-x86_64-unknown-linux-musl.tar.gz -o /tmp/bindgen.tar.gz && echo '82d12bb940e2d4e72e0d5605387fc1b8ca179044e012b620f0ce4e7440e8320e  /tmp/bindgen.tar.gz' | sha256sum --check && tar -xzf /tmp/bindgen.tar.gz -C /opt && rm /tmp/bindgen.tar.gz
+ENV PATH=/opt/cargo/bin:/opt/node-v24.22.1-linux-x64/bin:/opt/wasm-bindgen-0.2.129-x86_64-unknown-linux-musl:${PATH}
+RUN npm install --prefix /opt/build-tools --ignore-scripts --no-audit @swc/core@1.16.20 fflate@0.8.2
+ENV CARGO_HOME=/cache/cargo CARGO_TARGET_DIR=/cache/target
+WORKDIR /repo

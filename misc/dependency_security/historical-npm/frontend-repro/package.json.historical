@@ -1,0 +1,14 @@
+{
+  "name": "sora-payout-frontend-bug-reproductions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node paged-rewards.mjs && node mixed-validator-claims.mjs && node claim-refresh.mjs"
+  },
+  "dependencies": {
+    "@polkadot/api-derive": "16.5.6",
+    "@polkadot/types": "16.5.6",
+    "rxjs": "7.8.2"
+  }
+}

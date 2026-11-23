@@ -1261,25 +1261,41 @@ fn should_not_remove_thischain_asset_with_active_outgoing_transfer_request() {
 }
 
 #[test]
-fn should_register_removed_asset() {
+fn should_register_removed_bridge_owned_asset_with_explicit_remote_precision() {
     let (mut ext, _state) = ExtBuilder::default().build();
-
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
-        let token_address = RegisteredSidechainToken::<Runtime>::get(net_id, VAL).unwrap();
+        let token_address = EthAddress::repeat_byte(42);
+        let asset = EthBridge::register_sidechain_asset(
+            token_address,
+            6,
+            AssetSymbol(b"USDX".to_vec()),
+            AssetName(b"USDX Asset".to_vec()),
+            net_id,
+        )
+        .unwrap();
         assert_ok!(EthBridge::remove_sidechain_asset(
             RuntimeOrigin::root(),
-            VAL,
-            net_id,
+            asset,
+            net_id
         ));
-        assert!(EthBridge::registered_asset(net_id, VAL).is_none());
-        assert_ok!(EthBridge::register_existing_sidechain_asset(
+        assert!(EthBridge::registered_asset(net_id, asset).is_none());
+        assert_ok!(EthBridge::register_existing_sidechain_asset_with_precision(
             RuntimeOrigin::root(),
-            VAL,
+            asset,
             token_address,
+            6,
             net_id,
         ));
-        assert!(EthBridge::registered_asset(net_id, VAL).is_some());
+        assert_eq!(
+            EthBridge::registered_asset(net_id, asset),
+            Some(AssetKind::Sidechain)
+        );
+        assert_eq!(
+            crate::SidechainAssetPrecision::<Runtime>::get(net_id, asset),
+            6
+        );
+        assert_eq!(Assets::get_asset_info(&asset).2, DEFAULT_BALANCE_PRECISION);
     });
 }
 
@@ -1291,10 +1307,11 @@ fn should_not_register_existing_asset() {
         let net_id = ETH_NETWORK_ID;
         let token_address = RegisteredSidechainToken::<Runtime>::get(net_id, VAL).unwrap();
         assert_err!(
-            EthBridge::register_existing_sidechain_asset(
+            EthBridge::register_existing_sidechain_asset_with_precision(
                 RuntimeOrigin::root(),
                 VAL,
                 token_address,
+                DEFAULT_BALANCE_PRECISION,
                 net_id,
             ),
             Error::TokenIsAlreadyAdded
@@ -1335,10 +1352,11 @@ fn should_reject_legacy_ethereum_xor_token_address() {
             Error::DeprecatedLegacyXor
         );
         assert_err!(
-            EthBridge::register_existing_sidechain_asset(
+            EthBridge::register_existing_sidechain_asset_with_precision(
                 RuntimeOrigin::root(),
                 XOR,
                 LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
+                DEFAULT_BALANCE_PRECISION,
                 net_id,
             ),
             Error::DeprecatedLegacyXor
@@ -1351,30 +1369,27 @@ fn should_allow_legacy_xor_address_on_non_ethereum_network() {
     let mut builder = ExtBuilder::default();
     let net_id = builder.add_network(vec![], None, None, Default::default());
     let (mut ext, _state) = builder.build();
-
     ext.execute_with(|| {
-        assert_ok!(EthBridge::register_existing_sidechain_asset(
+        let asset = unregistered_bridge_owned_asset(net_id);
+        assert_ok!(EthBridge::register_existing_sidechain_asset_with_precision(
             RuntimeOrigin::root(),
-            XOR,
+            asset,
             LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
+            DEFAULT_BALANCE_PRECISION,
             net_id,
         ));
         assert_eq!(
-            RegisteredSidechainToken::<Runtime>::get(net_id, XOR),
+            RegisteredSidechainToken::<Runtime>::get(net_id, asset),
             Some(LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS)
         );
         assert_eq!(
             EthBridge::get_asset_by_raw_asset_id(
                 H256::zero(),
                 &LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
-                net_id,
+                net_id
             )
             .unwrap(),
-            Some((XOR.into(), AssetKind::Sidechain))
-        );
-        assert_eq!(
-            EthBridge::registered_asset(net_id, XOR),
-            Some(AssetKind::Sidechain)
+            Some((asset, AssetKind::Sidechain))
         );
     });
 }
@@ -1557,10 +1572,11 @@ fn should_reject_manually_deprecated_sidechain_token_before_other_errors() {
             Error::DeprecatedLegacyXor
         );
         assert_err!(
-            EthBridge::register_existing_sidechain_asset(
+            EthBridge::register_existing_sidechain_asset_with_precision(
                 RuntimeOrigin::root(),
                 VAL,
                 deprecated_token,
+                DEFAULT_BALANCE_PRECISION,
                 net_id,
             ),
             Error::DeprecatedLegacyXor
@@ -2329,13 +2345,20 @@ fn should_reject_cancel_for_legacy_xor_outgoing_after_decommission() {
 
         assert_noop!(incoming_cancel.prepare(), Error::DeprecatedLegacyXor);
         assert_noop!(incoming_cancel.finalize(), Error::DeprecatedLegacyXor);
+        let previous_status = crate::RequestStatuses::<Runtime>::get(net_id, request_hash);
         assert_ok!(incoming_cancel.cancel());
-        assert!(matches!(
+        assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, request_hash),
-            Some(RequestStatus::Failed(_))
-        ));
-        assert!(crate::RequestApprovals::<Runtime>::get(net_id, request_hash).is_empty());
-        assert!(crate::RequestApprovers::<Runtime>::get(net_id, request_hash).is_empty());
+            previous_status
+        );
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(net_id, request_hash).len(),
+            1
+        );
+        assert_eq!(
+            crate::RequestApprovers::<Runtime>::get(net_id, request_hash).len(),
+            1
+        );
     });
 }
 
@@ -2495,10 +2518,11 @@ fn should_allow_xor_transfer_after_thischain_reregistration() {
         crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
 
         assert_err!(
-            EthBridge::register_existing_sidechain_asset(
+            EthBridge::register_existing_sidechain_asset_with_precision(
                 RuntimeOrigin::root(),
                 XOR,
                 EthAddress::from([6; 20]),
+                DEFAULT_BALANCE_PRECISION,
                 net_id,
             ),
             Error::DeprecatedLegacyXor
@@ -3836,12 +3860,24 @@ fn should_not_decommission_non_ethereum_legacy_xor_like_state() {
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
-        assert_ok!(EthBridge::register_existing_sidechain_asset(
-            RuntimeOrigin::root(),
+        // Model retained legacy state; new registration cannot reclassify a
+        // native asset. The decommission migration must still leave this network alone.
+        RegisteredAsset::<Runtime>::insert(non_eth_net_id, XOR, AssetKind::Sidechain);
+        RegisteredSidechainToken::<Runtime>::insert(
+            non_eth_net_id,
             XOR,
             LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
+        );
+        RegisteredSidechainAsset::<Runtime>::insert(
             non_eth_net_id,
-        ));
+            LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
+            XOR,
+        );
+        crate::SidechainAssetPrecision::<Runtime>::insert(
+            non_eth_net_id,
+            XOR,
+            DEFAULT_BALANCE_PRECISION,
+        );
 
         let request =
             OffchainRequest::outgoing(OutgoingRequest::AddToken(OutgoingAddToken::<Runtime> {
@@ -3886,5 +3922,175 @@ fn should_not_decommission_non_ethereum_legacy_xor_like_state() {
         assert!(crate::RequestsQueue::<Runtime>::get(non_eth_net_id).contains(&request_hash));
         assert!(!crate::RequestApprovals::<Runtime>::get(non_eth_net_id, request_hash).is_empty());
         assert!(!crate::RequestApprovers::<Runtime>::get(non_eth_net_id, request_hash).is_empty());
+    });
+}
+
+fn unregistered_bridge_owned_asset(network_id: u32) -> AssetId {
+    let bridge = EthBridge::bridge_account(network_id).unwrap();
+    Assets::register_from(
+        &bridge,
+        AssetSymbol(b"BRG".to_vec()),
+        AssetName(b"Bridge Representation".to_vec()),
+        DEFAULT_BALANCE_PRECISION,
+        0,
+        true,
+        common::AssetType::Regular,
+        None,
+        None,
+    )
+    .unwrap()
+}
+
+#[test]
+fn legacy_existing_asset_registration_preserves_encoding_and_fails_closed() {
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let asset = unregistered_bridge_owned_asset(0);
+        let token = EthAddress::repeat_byte(42);
+        let call = crate::Call::<Runtime>::register_existing_sidechain_asset {
+            asset_id: asset,
+            token_address: token,
+            network_id: 0,
+        };
+        assert_eq!(call.encode(), (16u8, asset, token, 0u32).encode());
+        assert_noop!(
+            EthBridge::register_existing_sidechain_asset(RuntimeOrigin::root(), asset, token, 0),
+            Error::Unavailable
+        );
+        assert!(!RegisteredAsset::<Runtime>::contains_key(0, asset));
+        assert!(!RegisteredSidechainAsset::<Runtime>::contains_key(0, token));
+    });
+}
+
+#[test]
+fn explicit_registration_rejects_native_foreign_owned_and_unknown_network_assets() {
+    let mut builder = ExtBuilder::default();
+    let other_network = builder.add_network(vec![], None, None, Default::default());
+    let (mut ext, _) = builder.build();
+    ext.execute_with(|| {
+        let token = EthAddress::repeat_byte(42);
+        assert_noop!(
+            EthBridge::register_existing_sidechain_asset_with_precision(
+                RuntimeOrigin::root(),
+                common::PSWAP,
+                token,
+                18,
+                other_network,
+            ),
+            Error::TokenIsNotOwnedByTheAuthor
+        );
+        let asset = unregistered_bridge_owned_asset(0);
+        assert_noop!(
+            EthBridge::register_existing_sidechain_asset_with_precision(
+                RuntimeOrigin::root(),
+                asset,
+                token,
+                18,
+                other_network,
+            ),
+            Error::TokenIsNotOwnedByTheAuthor
+        );
+        assert_noop!(
+            EthBridge::register_existing_sidechain_asset_with_precision(
+                RuntimeOrigin::root(),
+                asset,
+                token,
+                18,
+                99,
+            ),
+            Error::UnknownNetwork
+        );
+        assert_noop!(
+            EthBridge::register_existing_sidechain_asset_with_precision(
+                RuntimeOrigin::signed(common::mock::alice()),
+                asset,
+                token,
+                18,
+                0,
+            ),
+            sp_runtime::DispatchError::BadOrigin
+        );
+    });
+}
+
+#[test]
+fn explicit_registration_never_overwrites_forward_reverse_or_partial_mappings() {
+    for scenario in 0..4 {
+        let (mut ext, _) = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let asset = unregistered_bridge_owned_asset(0);
+            let token = EthAddress::repeat_byte(42);
+            match scenario {
+                0 => RegisteredAsset::<Runtime>::insert(0, asset, AssetKind::Thischain),
+                1 => RegisteredSidechainToken::<Runtime>::insert(
+                    0,
+                    asset,
+                    EthAddress::repeat_byte(43),
+                ),
+                2 => RegisteredSidechainAsset::<Runtime>::insert(0, token, common::VAL),
+                3 => crate::SidechainAssetPrecision::<Runtime>::insert(0, asset, 6),
+                _ => unreachable!(),
+            }
+            assert_noop!(
+                EthBridge::register_existing_sidechain_asset_with_precision(
+                    RuntimeOrigin::root(),
+                    asset,
+                    token,
+                    18,
+                    0,
+                ),
+                Error::TokenIsAlreadyAdded
+            );
+        });
+    }
+}
+
+#[test]
+fn explicit_registration_validates_remote_precision_and_converts_independently_of_local_precision()
+{
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let asset = unregistered_bridge_owned_asset(0);
+        let token = EthAddress::repeat_byte(42);
+        assert_noop!(
+            EthBridge::register_existing_sidechain_asset_with_precision(
+                RuntimeOrigin::root(),
+                asset,
+                token,
+                DEFAULT_BALANCE_PRECISION + 1,
+                0,
+            ),
+            Error::UnsupportedAssetPrecision
+        );
+        assert_noop!(
+            EthBridge::register_existing_sidechain_asset_with_precision(
+                RuntimeOrigin::root(),
+                asset,
+                EthAddress::zero(),
+                6,
+                0,
+            ),
+            Error::InvalidAddress
+        );
+        assert_ok!(EthBridge::register_existing_sidechain_asset_with_precision(
+            RuntimeOrigin::root(),
+            asset,
+            token,
+            6,
+            0,
+        ));
+        assert_eq!(Assets::get_asset_info(&asset).2, 18);
+        assert_eq!(crate::SidechainAssetPrecision::<Runtime>::get(0, asset), 6);
+        let outgoing = OutgoingTransfer::<Runtime> {
+            from: common::mock::alice(),
+            to: EthAddress::repeat_byte(44),
+            asset_id: asset,
+            amount: balance!(1),
+            nonce: 0,
+            network_id: 0,
+            timepoint: Default::default(),
+        };
+        assert_eq!(outgoing.sidechain_amount().unwrap(), (1_000_000, 0));
+        assert_ok!(outgoing.validate());
     });
 }

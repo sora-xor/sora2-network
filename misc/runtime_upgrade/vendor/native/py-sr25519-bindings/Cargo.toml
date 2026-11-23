@@ -1,0 +1,27 @@
+[package]
+name = "py-sr25519-bindings"
+description = "Python bindings for schnorrkel RUST crate"
+authors = ["Polkascan Foundation"]
+version = "0.2.4"
+repository = "https://github.com/JAMdotTech/py-sr25519"
+homepage = "https://github.com/JAMdotTech/py-sr25519"
+license = "Apache-2.0"
+readme = "README.md"
+edition = "2018"
+
+[dependencies]
+schnorrkel = "0.11.4"
+
+[dev-dependencies]
+hex-literal = "0.4.1"
+
+[lib]
+name = "sr25519"
+crate-type = ["cdylib"]
+
+[dependencies.pyo3]
+version = "0.29.2"
+features = ["extension-module"]
+
+# These Python extensions build independently of the blockchain workspace.
+[workspace]

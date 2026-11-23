@@ -1,11 +1,11 @@
 use crate::MainnetAssetId;
 use crate::{H160, H256, U256};
 use codec::{Decode, Encode};
-use derivative::Derivative;
+use derive_where::derive_where;
 use ethabi::Token;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{Get};
+use sp_core::Get;
 use sp_runtime::{traits::Hash, BoundedVec};
 use sp_std::prelude::*;
 
@@ -19,15 +19,7 @@ fn to_ethabi_u256(value: U256) -> ethabi::ethereum_types::U256 {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// EVM contract kind
@@ -46,15 +38,7 @@ pub enum EVMAppKind {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EVMAppInfo {
@@ -98,15 +82,7 @@ pub struct AdditionalEVMInboundData {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// Information about ERC-20 asset in EVM network
@@ -122,15 +98,7 @@ pub struct EVMAssetInfo {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Clone, Copy, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 /// HASHI bridge asset info
@@ -147,14 +115,9 @@ pub struct EVMLegacyAssetInfo {
 }
 
 /// Wire-format for committed messages
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct Message<MaxPayload: Get<u32>> {
@@ -166,14 +129,9 @@ pub struct Message<MaxPayload: Get<u32>> {
     pub payload: BoundedVec<u8, MaxPayload>,
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub enum Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
@@ -208,14 +166,9 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPay
 }
 
 /// Wire-format for commitment
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct OutboundCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
@@ -254,14 +207,9 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> OutboundCommitment<MaxMessages
     }
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct InboundCommitment<MaxPayload: Get<u32>> {
@@ -280,19 +228,14 @@ pub struct InboundCommitment<MaxPayload: Get<u32>> {
 impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
     pub fn hash(&self) -> H256 {
         crate::h256_from_sp_core(
-            ("evm-inbound", self).using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded)),
+            ("evm-inbound", self).using_encoded(sp_runtime::traits::Keccak256::hash),
         )
     }
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct StatusReport<MaxMessages: Get<u32>> {
@@ -315,20 +258,14 @@ pub struct StatusReport<MaxMessages: Get<u32>> {
 impl<MaxMessages: Get<u32>> StatusReport<MaxMessages> {
     pub fn hash(&self) -> H256 {
         crate::h256_from_sp_core(
-            ("evm-status-report", self)
-                .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded)),
+            ("evm-status-report", self).using_encoded(sp_runtime::traits::Keccak256::hash),
         )
     }
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct BaseFeeUpdate {
@@ -341,8 +278,7 @@ pub struct BaseFeeUpdate {
 impl BaseFeeUpdate {
     pub fn hash(&self) -> H256 {
         crate::h256_from_sp_core(
-            ("base-fee-update", self)
-                .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded)),
+            ("base-fee-update", self).using_encoded(sp_runtime::traits::Keccak256::hash),
         )
     }
 }

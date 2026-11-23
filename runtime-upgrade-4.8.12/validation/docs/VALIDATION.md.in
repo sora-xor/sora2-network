@@ -1,10 +1,36 @@
-# SORA 4.8.12 fee and lending-retirement validation
+# SORA 4.8.12 payout-batch, fee and lending-retirement validation
 
 Candidate SHA-256: `{{CANDIDATE_SHA256}}` ({{CANDIDATE_BYTES}} bytes).
 Source tree: `{{SOURCE_TREE}}`; reviewed base: `{{SOURCE_BASE}}`.
 Fresh native evidence records **{{NATIVE_PASSED}} passed**, zero failed,
 **{{NATIVE_IGNORED}} existing ignored**, across thirteen affected suites, including
 **{{RUNTIME_REGRESSIONS}}** runtime fee-policy regressions.
+
+## Validator payout batch pricing
+
+**Validator payout batches now use 1% of the normal base-and-weight fee**, rounded up, with a floor of one existing direct-payout fee per submitted payout. Eligible calls are nonempty, flat `utility.batch`, `utility.batchAll` and `utility.forceBatch` containing only `staking.payoutStakers` or `staking.payoutStakersByPage`. Normal actual-weight refunds use the same formula. Length fees, tips, fee multipliers and full block-weight reservations remain intact. Mixed, nested, empty and XOR-less wrapped batches retain normal pricing. This changes real chain charges; it is not an API-only correction. The complete batch fee still depends on its size, execution weight and the live multiplier.
+
+Native Executive regressions cover eligible batch forms, direct and paged payouts,
+full dispatch-weight accounting, real transaction signatures, paid failure/replay,
+atomic rollback, fee-query parity and normal actual-weight correction. The exact
+candidate Wasm repeats batch success, refunds and excluded shapes against the
+pinned deployed baseline. The fixture records synthetic state, quoted fees, actual
+fee events and balance changes. It is local evidence rather than a public payout.
+No fixed 10-XOR cap or USD price is promised by this percentage-based policy.
+
+The following exact-Wasm examples use synthetic pages with 16 nominators each,
+the pinned XOR fee multiplier **{{PAYOUT_FIXTURE_MULTIPLIER}}**, and zero tip.
+The ordinary-price column applies the same observed actual weight to the normal
+fee formula; it is a counterfactual comparison, not a replay of an old runtime.
+Amounts are rounded to nine decimal places for display; JSON evidence retains
+integer base units. These examples do not quote the user's actual validator set.
+
+{{PAYOUT_BATCH_EXAMPLES}}
+
+A separate strict comparison to the sealed pre-batch candidate `de7173a9...`
+permits no metadata additions or changes to existing encodings or constants.
+The current feature-runtime metadata receives the same check, while the existing
+cumulative retirement comparison remains enforced against its earlier baseline.
 
 ## Source and native execution
 
@@ -46,6 +72,11 @@ must all finish successfully.
 The pinned public snapshot supplies deployed code, metadata and state. Local
 Chopsticks installs only the candidate code before upgrade initialization and
 a timestamp. Checks preserve staking claims/ledgers and native XOR issuance.
+The report-fee fixture selects spendable XOR after staking freezes. If the bounded
+public account sample cannot fund a report and replay, explicit synthetic-fixture
+mode supplements a local payer after the upgrade-preservation checks. It records
+the exact account write and matching native issuance delta; frozen funds and nonce
+remain intact. This local funding is not a public-chain balance or transaction.
 Report rehearsal covers all four report methods, paid duplicate/wrapped failures,
 unsigned admission/application rejection and disabled unsigned submission APIs.
 Independent event checks match actual fee events to balance changes.
@@ -86,7 +117,7 @@ passing. `paidMigrationSuccessAndFailure` and
 
 ## Compatibility and chain specs
 
-Deployed spec 132 comparison strictly preserves existing pallet/call/event/error
+Deployed spec {{BASELINE_SPEC}} comparison strictly preserves existing pallet/call/event/error
 indices, SCALE shapes, storage, signed extensions and runtime APIs, allowing the
 reviewed additions and runtime-version constant change. Host interfaces and
 memory compatibility retain their existing executor limitations.

@@ -1,0 +1,22 @@
+{
+  "originalLockSha256": "45351520f33542c5048458c55182480c4cbab33d5e14574f1c2128ac35ebd176",
+  "failedResolvedLockSha256": "3e79eb1d45dfac0799417f93eef02ccd497a8ba7f5bb8368b13a8cb31a08cb65",
+  "recorderManifestSha256": "8ebfe8de6103a697183a4266c9d5ae4a9fc687cfa186a085ab8a31c9c4c816da",
+  "allowedHostPackagesSha256": "79d075629349543de37c55fb25d8cfba5c3c33d1e6ebc7a69c46c4af21ce7931",
+  "originalPackageCount": 1388,
+  "addedPackageCount": 5,
+  "sourceCopies": {
+    "/private/tmp/sora-nexus-native-recorder-hashi-source-v1": {
+      "RECORDER-SOURCE-FILES.json": "908240113ddb34b6e0ee1ced178511437cf31baa5f96ef56f424ca43dd9015fe",
+      "RECORDER-ENGINE-BINDING.json": "043c7efb93deb75602f878a6d41f31629481a4a33d0c1ce9edd5a1ee2c609da0",
+      "utils/native-operation-recorder/src/binding.rs": "fd32d6135258e5422740a119027b238b63a6efd3954d4b7ef2c480576c788017",
+      "RECORDER-ORIGINAL-build.json": "f3a04043592274d97b962001cdc04bff534a0e38e15ba16bbbd2964897592ed0"
+    },
+    "/private/tmp/sora-nexus-native-recorder-mixed-v1": {
+      "RECORDER-SOURCE-FILES.json": "7386329491a6d73087a35c90e96253c86593a607666b4a1350b81ca6a47d8902",
+      "RECORDER-ENGINE-BINDING.json": "63d209f2cde41e441a71572c3e9a574607354259c317fa4677901667baafa40e",
+      "utils/native-operation-recorder/src/binding.rs": "294855b1c0c3a815404a92de63ab32ef94be906032f6efe1477142703f38fc8c",
+      "RECORDER-ORIGINAL-build.json": "e8a2d6b50dd786f0d28050e47feda210f73426ec070f6024bb172c02323dd307"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+--- a/tests/ansi_escape.rs
++++ b/tests/ansi_escape.rs
+@@ -0,0 +1,42 @@
++// SPDX-License-Identifier: Apache-2.0
++// SORA Nexus regression coverage for RUSTSEC-2025-0055.
++
++#![cfg(feature = "std")]
++
++use std::{
++	io::{self, Write},
++	sync::{Arc, Mutex},
++};
++
++struct LogWriter(Arc<Mutex<Vec<u8>>>);
++
++impl Write for LogWriter {
++	fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
++		self.0.lock().unwrap().extend_from_slice(bytes);
++		Ok(bytes.len())
++	}
++
++	fn flush(&mut self) -> io::Result<()> {
++		Ok(())
++	}
++}
++
++#[test]
++fn log_fields_escape_untrusted_ansi() {
++	let captured = Arc::new(Mutex::new(Vec::new()));
++	let writer = captured.clone();
++	let subscriber = tracing_subscriber::fmt()
++		.without_time()
++		.with_ansi(false)
++		.with_writer(move || LogWriter(writer.clone()))
++		.finish();
++
++	tracing::subscriber::with_default(subscriber, || {
++		tracing::warn!("{}", "untrusted message \x1b]0;injected-title\x07\x1b[2J");
++	});
++
++	let output = String::from_utf8(captured.lock().unwrap().clone()).unwrap();
++	assert!(output.contains("untrusted message"), "{output:?}");
++	assert!(output.contains("injected-title"), "{output:?}");
++	assert!(!output.contains('\x1b'), "raw terminal escape in log: {output:?}");
++}

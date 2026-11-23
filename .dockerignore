@@ -15,3 +15,11 @@ LICENSE
 rustfmt.toml
 db*
 .env
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.hypothesis
+
+# Native Python source builds require their declared package metadata.
+!misc/runtime_upgrade/vendor/native/*/README.md
+!misc/runtime_upgrade/vendor/native/*/LICENSE

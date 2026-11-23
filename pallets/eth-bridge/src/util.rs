@@ -35,7 +35,6 @@ use codec::{Decode, FullCodec};
 use common::prelude::Balance;
 use common::BalancePrecision;
 use core::convert::TryFrom;
-use core::iter;
 use ethabi::Token;
 use ethereum_types::U256;
 use frame_support::dispatch::{DispatchResult, PostDispatchInfo};
@@ -174,7 +173,7 @@ impl<T: Config> Decoder<T> {
         mut f: F,
     ) -> Result<Vec<U>, Error<T>> {
         let mut decoder = Decoder::<T>::new(self.next_array()?);
-        iter::repeat(())
+        (0..decoder.tokens.len())
             .map(|_| f(&mut decoder))
             .collect::<Result<Vec<_>, _>>()
     }
@@ -184,6 +183,10 @@ impl<T: Config> Decoder<T> {
         let rs = self.next_array_map(|d| d.next_h256().map(|x| x.0))?;
         let ss = self.next_array_map(|d| d.next_h256().map(|x| x.0))?;
         let vs = self.next_array_map(|d| d.next_u8())?;
+        ensure!(
+            rs.len() == ss.len() && rs.len() == vs.len(),
+            Error::<T>::InvalidArray
+        );
         Ok(rs
             .into_iter()
             .zip(ss)

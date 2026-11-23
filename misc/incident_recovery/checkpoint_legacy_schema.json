@@ -1,0 +1,498 @@
+{
+  "schema": "sora-nexus-checkpoint-legacy-schema-v1",
+  "checkpoint": 28191817,
+  "checkpointHash": "0x7f7c253fa72f32e7b03f32bdc9ae456fd7174fb131b689be6d876006124129f0",
+  "metadataBlake2": "0x0c1d4bf5c3bc5037ad854932443c94faae6c327ecf1f38b3e77d38668cc2b4b8",
+  "metadataSha256": "70fb15b7f598a58fc71a174af66df68b9136a2e87ec51dcd56aa279165cd6ba4",
+  "originalTypeCount": 1050,
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/KalitaAlexey/substrate/d74fde5256aa12b695cdd3981e52b38f937117bf/frame/democracy/src/lib.rs",
+      "file": "frame__democracy__src__lib.rs",
+      "sha256": "da444837129b2a2d749f7773c49edfffc33d8f07aa3229f729f23d1c67c1b22d",
+      "id": "frame__democracy__src__lib.rs"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/KalitaAlexey/substrate/d74fde5256aa12b695cdd3981e52b38f937117bf/frame/authorship/src/lib.rs",
+      "file": "frame__authorship__src__lib.rs",
+      "sha256": "d164bae8be856411572719e57e9ddcdb1e69f4b51125bc8feed9eb8a8f75a169",
+      "id": "frame__authorship__src__lib.rs"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/KalitaAlexey/substrate/d74fde5256aa12b695cdd3981e52b38f937117bf/frame/system/src/lib.rs",
+      "file": "frame__system__src__lib.rs",
+      "sha256": "859a7b3389c714353199c21c9c30d94a6af28d788e0c0ede9fce09a0fc117b5a",
+      "id": "frame__system__src__lib.rs"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/KalitaAlexey/substrate/d74fde5256aa12b695cdd3981e52b38f937117bf/frame/support/src/traits.rs",
+      "file": "frame__support__src__traits.rs",
+      "sha256": "e47d2e214af0ef5b5de1ca91aa6fdfec9781070ffc08948fb79427c8076af2c2",
+      "id": "frame__support__src__traits.rs"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/KalitaAlexey/substrate/d74fde5256aa12b695cdd3981e52b38f937117bf/frame/staking/src/lib.rs",
+      "file": "frame__staking__src__lib.rs",
+      "sha256": "b4e4d18f8e41d3d912270794feaf0c7d95f5621abe6bae3c153e6d95014145af",
+      "id": "frame__staking__src__lib.rs"
+    },
+    {
+      "id": "referral-rename-parent",
+      "repository": "sora2-network",
+      "revision": "fa81c149c87ddbfb929e6415c553d19f28221500^",
+      "path": "pallets/referral-system/src/lib.rs",
+      "sha256": "56b6d78d48a2b7ea5710b2611e36bb8c79f71aaf4dcdc52a1b7ca46ed8bbaa20"
+    },
+    {
+      "id": "deployed-migrations",
+      "repository": "sora2-network",
+      "revision": "36c466398e3f2760e8ab44fdb89de796f5b0dd99",
+      "path": "runtime/src/migrations.rs",
+      "sha256": "893d4682a56d3d60c557c9abd96a09561835a2874a33bb7e172f7b4168f59ef9"
+    },
+    {
+      "id": "deployed-babe",
+      "repository": "sora2-network",
+      "revision": "36c466398e3f2760e8ab44fdb89de796f5b0dd99",
+      "path": "runtime/src/babe_config.rs",
+      "sha256": "cf0e0bb4a2a43b0fca058e90737b77edf2666c534ea7a031191d9d8b7c7c1a64"
+    },
+    {
+      "id": "historical-session",
+      "revision": "e3737178ec726cffe506c907263aaaa417893fd0",
+      "path": "substrate/frame/session/src/historical/mod.rs",
+      "sha256": "d986831e093fe979be02a7386d5330933a43f4649783e19e3f0b8c80c3bf51c3"
+    },
+    {
+      "id": "legacy-custom-staking",
+      "url": "https://raw.githubusercontent.com/soramitsu/sora2-frame-pallets/d4fce2636bcf079d11979cab21c843f7dd2743bc/staking/src/lib.rs",
+      "sha256": "c4f849fddb68062f03a0c2e53138151c24912a75afabe0d76f1a0856fd54a456",
+      "lockProvenance": "sora2-network d166ccda5:Cargo.lock pallet-staking 3.1.0"
+    }
+  ],
+  "types": [
+    {
+      "id": 1050,
+      "name": "LegacyOpaqueBytes",
+      "kind": "sequence",
+      "type": 2
+    },
+    {
+      "id": 1051,
+      "name": "LegacyHistoricalRoot",
+      "kind": "tuple",
+      "fields": [
+        13,
+        4
+      ]
+    },
+    {
+      "id": 1052,
+      "name": "LegacyHistoricalRange",
+      "kind": "tuple",
+      "fields": [
+        4,
+        4
+      ]
+    },
+    {
+      "id": 1053,
+      "name": "LegacyPalletVersion",
+      "kind": "composite",
+      "fields": [
+        {
+          "name": "major",
+          "type": 295
+        },
+        {
+          "name": "minor",
+          "type": 2
+        },
+        {
+          "name": "patch",
+          "type": 2
+        }
+      ]
+    },
+    {
+      "id": 1054,
+      "name": "LegacyOptionBlock",
+      "kind": "variant",
+      "variants": [
+        {
+          "name": "None",
+          "index": 0,
+          "fields": []
+        },
+        {
+          "name": "Some",
+          "index": 1,
+          "fields": [
+            {
+              "name": null,
+              "type": 4
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 1055,
+      "name": "LegacyDemocracyPreimageStatus",
+      "kind": "variant",
+      "variants": [
+        {
+          "name": "Missing",
+          "index": 0,
+          "fields": [
+            {
+              "name": null,
+              "type": 4
+            }
+          ]
+        },
+        {
+          "name": "Available",
+          "index": 1,
+          "fields": [
+            {
+              "name": "data",
+              "type": 1050
+            },
+            {
+              "name": "provider",
+              "type": 0
+            },
+            {
+              "name": "deposit",
+              "type": 6
+            },
+            {
+              "name": "since",
+              "type": 4
+            },
+            {
+              "name": "expiry",
+              "type": 1054
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 1056,
+      "name": "LegacyDemocracyRelease",
+      "kind": "variant",
+      "variants": [
+        {
+          "name": "V1",
+          "index": 0,
+          "fields": []
+        }
+      ]
+    },
+    {
+      "id": 1057,
+      "name": "LegacyOptionAuthor",
+      "kind": "variant",
+      "variants": [
+        {
+          "name": "None",
+          "index": 0,
+          "fields": []
+        },
+        {
+          "name": "Some",
+          "index": 1,
+          "fields": [
+            {
+              "name": null,
+              "type": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 1058,
+      "name": "LegacyUncleEntryItem",
+      "kind": "variant",
+      "variants": [
+        {
+          "name": "InclusionHeight",
+          "index": 0,
+          "fields": [
+            {
+              "name": null,
+              "type": 4
+            }
+          ]
+        },
+        {
+          "name": "Uncle",
+          "index": 1,
+          "fields": [
+            {
+              "name": null,
+              "type": 13
+            },
+            {
+              "name": null,
+              "type": 1057
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 1059,
+      "name": "LegacyUncles",
+      "kind": "sequence",
+      "type": 1058
+    },
+    {
+      "id": 1060,
+      "name": "LegacyDuration",
+      "kind": "composite",
+      "fields": [
+        {
+          "name": "seconds",
+          "type": 12
+        },
+        {
+          "name": "nanoseconds",
+          "type": 4
+        }
+      ]
+    }
+  ],
+  "storage": [
+    {
+      "trie": "top",
+      "name": "ReferralSystem.Referrers",
+      "prefix": "0x51dc3b09cf0f07338d9fb659eed91ccdc515c65cd3572b74595f74033f80e0fa",
+      "keyTypes": [
+        0
+      ],
+      "hashers": [
+        "Blake2_128Concat"
+      ],
+      "valueType": 0,
+      "source": "referral-rename-parent",
+      "disposition": "manual",
+      "reason": "Legacy referral control pointer: suspend mapped-owner or compromised-referrer grants with exact consumer-count accounting; never classify as historical-only."
+    },
+    {
+      "trie": "top",
+      "name": "Historical.HistoricalSessions",
+      "prefix": "0x2f85f1e1378cb2d7b83adbaf0b5869c298ef7dc060436e4ed803af07632b89b6",
+      "keyTypes": [
+        4
+      ],
+      "hashers": [
+        "Twox64Concat"
+      ],
+      "valueType": 1051,
+      "source": "historical-session",
+      "disposition": "retain_historical",
+      "reason": "Immutable historical session ownership-proof root and validator count; preserve bytes."
+    },
+    {
+      "trie": "top",
+      "name": "Historical.StoredRange",
+      "prefix": "0x2f85f1e1378cb2d7b83adbaf0b5869c2ff3ae12770bea2e48d9bde7385e7a25f",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 1052,
+      "source": "historical-session",
+      "disposition": "retain_historical",
+      "reason": "Historical root range; preserve bytes and historical proof availability."
+    },
+    {
+      "trie": "top",
+      "name": "Session.HistoricalSessions",
+      "prefix": "0xcec5070d609dd3497f72bde07fc96ba098ef7dc060436e4ed803af07632b89b6",
+      "keyTypes": [
+        4
+      ],
+      "hashers": [
+        "Twox64Concat"
+      ],
+      "valueType": 1051,
+      "source": "historical-session",
+      "disposition": "retain_historical",
+      "reason": "Immutable historical session ownership-proof root and validator count; preserve bytes."
+    },
+    {
+      "trie": "top",
+      "name": "Session.StoredRange",
+      "prefix": "0xcec5070d609dd3497f72bde07fc96ba0ff3ae12770bea2e48d9bde7385e7a25f",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 1052,
+      "source": "historical-session",
+      "disposition": "retain_historical",
+      "reason": "Historical root range; preserve bytes and historical proof availability."
+    },
+    {
+      "trie": "top",
+      "name": "Faucet.:__PALLET_VERSION__:",
+      "prefix": "0x152b3490153351f705ff958e67c0f511878d434d6125b40443fe11fd292d13a4",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 1053,
+      "source": "frame__support__src__traits.rs",
+      "disposition": "retain_historical",
+      "reason": "Old pallet version marker; no ownership or financial fields."
+    },
+    {
+      "trie": "top",
+      "name": "ReferralSystem.:__PALLET_VERSION__:",
+      "prefix": "0x51dc3b09cf0f07338d9fb659eed91ccd878d434d6125b40443fe11fd292d13a4",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 1053,
+      "source": "frame__support__src__traits.rs",
+      "disposition": "retain_historical",
+      "reason": "Old pallet version marker; no ownership or financial fields."
+    },
+    {
+      "trie": "top",
+      "name": "Sudo.:__PALLET_VERSION__:",
+      "prefix": "0x5c0d1176a568c1f92944340dbfed9e9c878d434d6125b40443fe11fd292d13a4",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 1053,
+      "source": "frame__support__src__traits.rs",
+      "disposition": "retain_historical",
+      "reason": "Old pallet version marker; no ownership or financial fields."
+    },
+    {
+      "trie": "top",
+      "name": "Babe.MainnetPlainConfigRepairV1",
+      "prefix": "0x1cb6f36e027abb2091cfb5110ab5087f69d646ed62163e7bbeec206d356c550f",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 8,
+      "source": "deployed-babe",
+      "disposition": "retain_historical",
+      "reason": "One-time BABE configuration repair marker."
+    },
+    {
+      "trie": "top",
+      "name": "System.UpgradedToDualRefCount",
+      "prefix": "0x26aa394eea5630e07c48ae0c9558cef7c21aab032aaa6e946ca50ad39ab66603",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 8,
+      "source": "frame__system__src__lib.rs",
+      "disposition": "retain_historical",
+      "reason": "Completed historical account reference-count migration marker."
+    },
+    {
+      "trie": "top",
+      "name": "Democracy.Preimages",
+      "prefix": "0xf2794c22e353e9a839f12faab03a911bf68967d635641a7087e53f2bff1ecad3",
+      "keyTypes": [
+        13
+      ],
+      "hashers": [
+        "Identity"
+      ],
+      "valueType": 1055,
+      "source": "frame__democracy__src__lib.rs",
+      "disposition": "manual",
+      "reason": "Opaque historical call bytes must never be decoded as current calls; provider/deposit references require specific pending-authorization and reserve disposition."
+    },
+    {
+      "trie": "top",
+      "name": "Democracy.StorageVersion",
+      "prefix": "0xf2794c22e353e9a839f12faab03a911b308ce9615de0775a82f8a94dc3d285a1",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 1056,
+      "source": "frame__democracy__src__lib.rs",
+      "disposition": "retain_historical",
+      "reason": "Historical Democracy release marker (V1)."
+    },
+    {
+      "trie": "top",
+      "name": "Authorship.Uncles",
+      "prefix": "0xd57bce545fb382c34570e5dfbf338f5ea36180b5cfb9f6541f8849df92a6ec93",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 1059,
+      "source": "frame__authorship__src__lib.rs",
+      "disposition": "retain_historical",
+      "reason": "Historical author evidence: preserve old AccountIds as evidence, not mutable ownership."
+    },
+    {
+      "trie": "top",
+      "name": "RuntimeMigration.ethereum_xor_thischain_add_asset_queued",
+      "prefix": "0x72756e74696d653a6d6967726174696f6e733a657468657265756d5f786f725f74686973636861696e5f6164645f61737365745f717565756564",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 8,
+      "source": "deployed-migrations",
+      "disposition": "retain_historical",
+      "reason": "Completed exact deployed-runtime migration boolean; preserve marker."
+    },
+    {
+      "trie": "top",
+      "name": "RuntimeMigration.staking_reward_points_stash_remapped",
+      "prefix": "0x72756e74696d653a6d6967726174696f6e733a7374616b696e675f7265776172645f706f696e74735f73746173685f72656d6170706564",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 8,
+      "source": "deployed-migrations",
+      "disposition": "retain_historical",
+      "reason": "Completed exact deployed-runtime migration boolean; preserve marker."
+    },
+    {
+      "trie": "top",
+      "name": "RuntimeMigration.val_staking_rewards_published",
+      "prefix": "0x72756e74696d653a6d6967726174696f6e733a76616c5f7374616b696e675f726577617264735f7075626c6973686564",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 8,
+      "source": "deployed-migrations",
+      "disposition": "retain_historical",
+      "reason": "Completed exact deployed-runtime migration boolean; preserve marker."
+    },
+    {
+      "trie": "top",
+      "name": "RuntimeMigration.xor_tbcd_reward_denomination_repaired",
+      "prefix": "0x72756e74696d653a6d6967726174696f6e733a786f725f746263645f7265776172645f64656e6f6d696e6174696f6e5f7265706169726564",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 8,
+      "source": "deployed-migrations",
+      "disposition": "retain_historical",
+      "reason": "Completed exact deployed-runtime migration boolean; preserve marker."
+    },
+    {
+      "trie": "top",
+      "name": "Staking.EraValBurned",
+      "prefix": "0x5f3e4907f716ac89b6347d15ececedca16adc7877102fdc25cba38f97a8c1c8f",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 6,
+      "source": "legacy-custom-staking",
+      "disposition": "retain_historical",
+      "reason": "Historical aggregate burned-VAL reward input; preserve without burning issuance again."
+    },
+    {
+      "trie": "top",
+      "name": "Staking.TimeSinceGenesis",
+      "prefix": "0x5f3e4907f716ac89b6347d15ececedca1a9208f2261bf8b8357c4c77b5bc9625",
+      "keyTypes": [],
+      "hashers": [],
+      "valueType": 1060,
+      "source": "legacy-custom-staking",
+      "disposition": "retain_historical",
+      "reason": "Historical staking reward curve clock; preserve exact seconds/nanoseconds, with nanos < 1e9."
+    }
+  ],
+  "unresolved": [],
+  "productionReady": false
+}

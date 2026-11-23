@@ -1,0 +1,259 @@
+{
+  "date": "2026-10-24",
+  "audit_node": "26.12.1",
+  "npm": "11.20.0",
+  "execution_node": "24.22.1",
+  "graphs": [
+    {
+      "graph": "4.8.9",
+      "source": {
+        "manifest_sha256": "202542aa34fd5528d41cc43f07ea2fdfdfc673e5373e48a6136f85b102d1013f",
+        "lockfile_sha256": "0b16f71062d59690e333b17eff901255f8f37afa43abd42fa983830aaaffb49f",
+        "package_records": 90,
+        "relocated_records": 0,
+        "local_packages": [
+          "vendor/chopsticks-core",
+          "vendor/chopsticks-executor",
+          "vendor/fetch-blob",
+          "vendor/polkadot-rpc-provider",
+          "vendor/polkadot-wasm-crypto-js",
+          "vendor/polkadot-wasm-crypto-wasm"
+        ]
+      },
+      "audit": {
+        "auditReportVersion": 2,
+        "vulnerabilities": {},
+        "metadata": {
+          "vulnerabilities": {
+            "info": 0,
+            "low": 0,
+            "moderate": 0,
+            "high": 0,
+            "critical": 0,
+            "total": 0
+          },
+          "dependencies": {
+            "prod": 91,
+            "dev": 0,
+            "optional": 0,
+            "peer": 0,
+            "peerOptional": 0,
+            "total": 90
+          }
+        }
+      }
+    },
+    {
+      "graph": "4.8.10",
+      "source": {
+        "manifest_sha256": "fa7b17ba3cb3f2a7755db75d75cd0675ad9c994acb818ceecd6cc2b7559499f9",
+        "lockfile_sha256": "4ca1b5192950cc30b9cbb8a252401c04b201e224bb7d407965de94d69f5da759",
+        "package_records": 90,
+        "relocated_records": 0,
+        "local_packages": [
+          "vendor/chopsticks-core",
+          "vendor/chopsticks-executor",
+          "vendor/fetch-blob",
+          "vendor/polkadot-rpc-provider",
+          "vendor/polkadot-wasm-crypto-js",
+          "vendor/polkadot-wasm-crypto-wasm"
+        ]
+      },
+      "audit": {
+        "auditReportVersion": 2,
+        "vulnerabilities": {},
+        "metadata": {
+          "vulnerabilities": {
+            "info": 0,
+            "low": 0,
+            "moderate": 0,
+            "high": 0,
+            "critical": 0,
+            "total": 0
+          },
+          "dependencies": {
+            "prod": 91,
+            "dev": 0,
+            "optional": 0,
+            "peer": 0,
+            "peerOptional": 0,
+            "total": 90
+          }
+        }
+      }
+    },
+    {
+      "graph": "4.8.11",
+      "source": {
+        "manifest_sha256": "36a8d33a64d568632a515d1d7fc14d1b13f4c9a3cc2b08a1d21f977c48672919",
+        "lockfile_sha256": "ade61ab4b9d0806429259d7c2c4a8d0d2e751d01645cb40b9dedfced9b024cdb",
+        "package_records": 90,
+        "relocated_records": 0,
+        "local_packages": [
+          "vendor/chopsticks-core",
+          "vendor/chopsticks-executor",
+          "vendor/fetch-blob",
+          "vendor/polkadot-rpc-provider",
+          "vendor/polkadot-wasm-crypto-js",
+          "vendor/polkadot-wasm-crypto-wasm"
+        ]
+      },
+      "audit": {
+        "auditReportVersion": 2,
+        "vulnerabilities": {},
+        "metadata": {
+          "vulnerabilities": {
+            "info": 0,
+            "low": 0,
+            "moderate": 0,
+            "high": 0,
+            "critical": 0,
+            "total": 0
+          },
+          "dependencies": {
+            "prod": 91,
+            "dev": 0,
+            "optional": 0,
+            "peer": 0,
+            "peerOptional": 0,
+            "total": 90
+          }
+        }
+      }
+    },
+    {
+      "graph": "4.8.12",
+      "source": {
+        "manifest_sha256": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0",
+        "lockfile_sha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+        "package_records": 90,
+        "relocated_records": 0,
+        "local_packages": [
+          "vendor/chopsticks-core",
+          "vendor/chopsticks-executor",
+          "vendor/fetch-blob",
+          "vendor/polkadot-rpc-provider",
+          "vendor/polkadot-wasm-crypto-js",
+          "vendor/polkadot-wasm-crypto-wasm"
+        ]
+      },
+      "audit": {
+        "auditReportVersion": 2,
+        "vulnerabilities": {},
+        "metadata": {
+          "vulnerabilities": {
+            "info": 0,
+            "low": 0,
+            "moderate": 0,
+            "high": 0,
+            "critical": 0,
+            "total": 0
+          },
+          "dependencies": {
+            "prod": 91,
+            "dev": 0,
+            "optional": 0,
+            "peer": 0,
+            "peerOptional": 0,
+            "total": 90
+          }
+        }
+      }
+    },
+    {
+      "graph": "frontend",
+      "source": {
+        "manifest_sha256": "9a3f13eedf8770631ac66bbc1a2e854017c95f05bb8c59b2aada1e10862ce438",
+        "lockfile_sha256": "e6583f7d2c1af7096e13ffbace805f373efc9af8cead5f43175ac6aad82a20cf",
+        "package_records": 51,
+        "relocated_records": 0,
+        "local_packages": [
+          "vendor/fetch-blob",
+          "vendor/polkadot-rpc-provider",
+          "vendor/polkadot-wasm-crypto-js",
+          "vendor/polkadot-wasm-crypto-wasm"
+        ]
+      },
+      "audit": {
+        "auditReportVersion": 2,
+        "vulnerabilities": {},
+        "metadata": {
+          "vulnerabilities": {
+            "info": 0,
+            "low": 0,
+            "moderate": 0,
+            "high": 0,
+            "critical": 0,
+            "total": 0
+          },
+          "dependencies": {
+            "prod": 52,
+            "dev": 0,
+            "optional": 0,
+            "peer": 0,
+            "peerOptional": 0,
+            "total": 51
+          }
+        }
+      }
+    }
+  ],
+  "validation": {
+    "audit_staging_unit_tests": 7,
+    "installed_schema_and_rpc_tests": 6,
+    "installed_crypto_provider_tests": 7,
+    "installed_fetch_blob_tests": 3,
+    "frontend_reproductions": 3,
+    "typescript_declarations": "strict compilation passed, including original injected substrate-connect interface",
+    "provider_javascript": "All 40 runtime JavaScript files are byte-identical to published 16.5.6.",
+    "npm_ci": "passed, scripts disabled, no deprecation notices",
+    "installed_native_assets": "All 14 executor and 18 crypto assets are byte-identical to the final canonical Linux x86_64 builds.",
+    "executor_source_inputs": 161,
+    "crypto_source_inputs": 17,
+    "copied_checkout_rebuild": "Canonical Linux x86_64 independent checkout, Cargo cache and target: all 14 executor and 18 crypto assets reproduced byte-for-byte; the documented read-only container helper --check also passed.",
+    "executor_smoke": "passed CJS and ESM state roots, proofs, malformed input and decompression-bomb rejection, callback, Core_version and arithmetic execution",
+    "current_runtime": "compressed and uncompressed metadata and executed Core_version pass, spec_version134/transaction_version131, no storage writes or RPC",
+    "crypto_differential_assertions": 2928,
+    "crypto_offline_security_assertions": 2619,
+    "crypto_public_functions": 32,
+    "crypto_compatibility_evidence": "../../vendor/polkadot-wasm-crypto/tests/compatibility-evidence.json",
+    "crypto_compatibility_evidence_sha256": "02b7049c0aa0a547b74c45500cdc46fedc5daa81c0ab7a259cbae059f8fd9e12",
+    "reviewed_package_guard": "Operational project paths require exact canonical direct pins and installed endpoints; removed/registry pins, missing/duplicate packages, wrong local paths and retired bundles are rejected.",
+    "guard_source_sha256": "831766d961313b2aadb0edfe6244b508d78a12b6609f71f86440998990025bd5",
+    "guard_tests_sha256": "1ef50f72b04c242d83193b293dd09b5ebb94430d291c775fd4de7940bf169262",
+    "integration_execution_nodes": [
+      "24.22.1",
+      "26.12.1"
+    ],
+    "frontend_final_assets": "Fresh Node.js 24 installation: all 18 crypto assets match canonical Linux Wasm 7f08ea9227b0d72df0953194994c54a56a34a7135a43690eb6c3f4867a4c316f; all 3 reproductions pass.",
+    "canonical_wasm_rebuild_evidence": "wasm-rebuild-2026-10-24.json",
+    "canonical_wasm_rebuild_evidence_sha256": "f0b875cf7c1fc1d9cbddf06f6550280b1614dd94fc44f09d916bbe9aecb9ef89"
+  },
+  "reviewed_native_bundles": {
+    "executor": {
+      "wasm_sha256": "e58f725beeb705f1b79234046ea2f12b5b6a73f9b8851980b0d7895252c41966",
+      "wasm_bytes": 2723362,
+      "cargo_lock": "vendor/chopsticks-executor/Cargo.lock",
+      "canonical_host": "x86_64-unknown-linux-gnu",
+      "rustc_commit": "7189d39d9ce936881b8132c6addeaf3e295cd455"
+    },
+    "crypto": {
+      "wasm_sha256": "7f08ea9227b0d72df0953194994c54a56a34a7135a43690eb6c3f4867a4c316f",
+      "wasm_bytes": 676030,
+      "cargo_lock": "vendor/polkadot-wasm-crypto/Cargo.lock",
+      "canonical_host": "x86_64-unknown-linux-gnu",
+      "rustc_commit": "7189d39d9ce936881b8132c6addeaf3e295cd455"
+    }
+  },
+  "retired_packages": [
+    "@substrate/connect",
+    "smoldot",
+    "@polkadot/wasm-crypto-asmjs",
+    "@polkadot/wasm-crypto-init",
+    "@polkadot/wasm-bridge",
+    "node-domexception"
+  ],
+  "remaining_upstream_deprecations": [],
+  "native_closure_review": "Both actually used Node-tooling Rust/Wasm bundles rebuilt from separately audited locked source; unused vulnerable embedded light-client bundle removed. This is not a claim that all arbitrary browser/UMD entrypoints or future optional integrations are audited.",
+  "execution_host": "macOS aarch64, executing canonical Linux-built portable Wasm under Node.js 24.22.1"
+}

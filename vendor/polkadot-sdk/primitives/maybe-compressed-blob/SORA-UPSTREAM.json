@@ -1,0 +1,23 @@
+{
+  "upstream_commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "source_path": "substrate/primitives/maybe-compressed-blob",
+  "upstream_files": {
+    "Cargo.toml": {
+      "sha256": "4b782ed2a46fdd0cfa472a92cfa6ab7b3ab3789cfa7639ca8a9349c55cf6fa8d",
+      "bytes": 451
+    },
+    "README.md": {
+      "sha256": "1f457cd75ad44317150b54608b70045051d597a4e8165663fde7f1f0b16424dd",
+      "bytes": 92
+    },
+    "src/lib.rs": {
+      "sha256": "0788af16aea8313f274f235f7b1150c2fe27825f755ec4f64a71c83722e3e614",
+      "bytes": 6020
+    }
+  },
+  "license_source": "substrate/LICENSE-APACHE2",
+  "license_sha256": "e93d18cb209947d5e75300c9cd9043e1e680034bcd7df0635e1012cc8d8311ab",
+  "materialized_upstream_manifest_sha256": "1b00bfd46a1a6a3299448254f0ce53815d928ee7e655f6bb72da35a96c1da686",
+  "local_manifest_sha256": "4ed29fcdad071d15b960aa2eea302d95220c39d6fe3ec9559a671244d0c1a60f",
+  "rust_source_changes": false
+}

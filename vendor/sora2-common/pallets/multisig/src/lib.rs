@@ -52,7 +52,7 @@ mod benchmarking;
 mod tests;
 pub mod weights;
 
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use frame_support::{
     dispatch::{DispatchResultWithPostInfo, GetDispatchInfo, PostDispatchInfo},
     traits::{Currency, Get, ReservableCurrency},
@@ -70,7 +70,8 @@ use sp_io::hashing::blake2_256;
 use sp_runtime::DispatchError;
 use sp_runtime::{
     traits::{Dispatchable, Zero},
-    Percent};
+    Percent,
+};
 use sp_runtime::{Deserialize, Serialize};
 use sp_std::prelude::*;
 
@@ -659,7 +660,7 @@ pub mod pallet {
 }
 
 /// Represents height on either Thischain of Sidechain.
-#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, Debug, TypeInfo)]
+#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, Debug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum MultiChainHeight<BlockNumber> {
     Thischain(BlockNumber),
@@ -675,7 +676,9 @@ impl<BlockNumber: Default> Default for MultiChainHeight<BlockNumber> {
 /// A global extrinsic index, formed as the extrinsic index within a block, together with that
 /// block's height. This allows a transaction in which a multisig operation of a particular
 /// composite was created to be uniquely identified.
-#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, Default, Debug, TypeInfo)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, Default, Debug, TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BridgeTimepoint<BlockNumber> {
     /// The height of the chain at the point in time.
@@ -878,7 +881,7 @@ impl<T: Config> Pallet<T> {
             if let Some(call) = maybe_approved_call {
                 // verify weight
                 ensure!(
-                    max_weight.all_gte(call.get_dispatch_info().weight),
+                    max_weight.all_gte(call.get_dispatch_info().total_weight()),
                     Error::<T>::WeightTooLow
                 );
                 <Multisigs<T>>::remove(&id, call_hash);

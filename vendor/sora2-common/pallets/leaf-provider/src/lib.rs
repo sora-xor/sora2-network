@@ -34,6 +34,9 @@
 
 pub use pallet::*;
 
+#[cfg(test)]
+mod tests;
+
 /// Subject for randomness.
 pub const RANDOMNESS_SUBJECT: &[u8] = b"beefy-leaf-extra";
 

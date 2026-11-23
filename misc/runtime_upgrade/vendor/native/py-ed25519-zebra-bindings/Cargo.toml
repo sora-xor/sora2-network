@@ -1,0 +1,24 @@
+[package]
+name = "py-ed25519-zebra-bindings"
+description = "Python bindings for the ed25519-zebra RUST crate"
+authors=["JAMdot Technologies"]
+version = "1.3.0"
+repository = "https://github.com/polkascan/py-ed25519-zebra-bindings"
+homepage = "https://github.com/polkascan/py-ed25519-zebra-bindings"
+license = "Apache-2.0"
+readme = "README.md"
+edition = "2021"
+
+[dependencies]
+ed25519-zebra = { version = "4.1.0", default-features = false}
+
+[lib]
+name = "ed25519_zebra"
+crate-type = ["cdylib"]
+
+[dependencies.pyo3]
+version = "0.29.2"
+features = ["extension-module"]
+
+# These Python extensions build independently of the blockchain workspace.
+[workspace]

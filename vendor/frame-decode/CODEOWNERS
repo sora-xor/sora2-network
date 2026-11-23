@@ -1,0 +1,5 @@
+# main codeowner @paritytech/tools-team
+* @paritytech/tools-team
+
+# CI
+/.github/ @paritytech/ci @paritytech/tools-team

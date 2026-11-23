@@ -51,6 +51,224 @@ use staging_xcm::v3::{Junction::Parachain, Junctions::X2, MultiLocation};
 use traits::MultiCurrency;
 
 #[test]
+fn app_routes_discover_assets_and_refund_sidechain_tokens() {
+    use bridge_types::traits::BridgeApp;
+    use bridge_types::types::BridgeAppInfo;
+    new_tester().execute_with(|| {
+        let network = SubNetworkId::Kusama;
+        let invalid = bridge_types::GenericNetworkId::EVMLegacy(0);
+        assert!(ParachainApp::is_asset_supported(
+            network.into(),
+            AssetId::Xor
+        ));
+        assert!(!ParachainApp::is_asset_supported(invalid, AssetId::Xor));
+        assert!(!ParachainApp::is_asset_supported(
+            network.into(),
+            AssetId::Eth
+        ));
+        assert_eq!(
+            ParachainApp::list_apps(),
+            vec![BridgeAppInfo::Sub(network.into())]
+        );
+        assert_eq!(ParachainApp::list_supported_assets(network.into()).len(), 2);
+        assert!(ParachainApp::list_supported_assets(invalid).is_empty());
+        let location = VersionedMultiLocation::V3(MultiLocation::new(
+            1,
+            X2(
+                Parachain(PARA_A),
+                Junction::AccountId32 {
+                    network: None,
+                    id: Keyring::Bob.into(),
+                },
+            ),
+        ));
+        assert_noop!(
+            ParachainApp::transfer(
+                invalid,
+                AssetId::Xor,
+                Keyring::Alice.into(),
+                location.clone(),
+                100
+            ),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_noop!(
+            ParachainApp::refund(
+                invalid,
+                H256::zero(),
+                Keyring::Alice.into(),
+                AssetId::Xor,
+                100
+            ),
+            Error::<Test>::InvalidNetwork
+        );
+        assert_noop!(
+            ParachainApp::refund(
+                network.into(),
+                H256::zero(),
+                Keyring::Alice.into(),
+                AssetId::Eth,
+                100
+            ),
+            Error::<Test>::TokenIsNotRegistered
+        );
+        assert_ok!(ParachainApp::refund(
+            network.into(),
+            H256::zero(),
+            Keyring::Alice.into(),
+            AssetId::Custom(1),
+            100
+        ));
+        assert_eq!(
+            Currencies::total_balance(AssetId::Custom(1), &Keyring::Alice.into()),
+            100
+        );
+        assert_ok!(ParachainApp::transfer(
+            network.into(),
+            AssetId::Xor,
+            Keyring::Alice.into(),
+            location,
+            100
+        ));
+        let id = H256::repeat_byte(6);
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(network.into(), id),
+            &[1],
+        );
+        assert_noop!(
+            ParachainApp::refund(
+                network.into(),
+                id,
+                Keyring::Alice.into(),
+                AssetId::Custom(1),
+                100
+            ),
+            sp_runtime::DispatchError::Other("recovery outgoing quarantine")
+        );
+        assert_eq!(
+            ParachainApp::is_asset_supported_weight(),
+            frame_support::weights::Weight::zero()
+        );
+        assert_eq!(
+            ParachainApp::refund_weight(),
+            <() as crate::WeightInfo>::refund()
+        );
+        assert_eq!(
+            ParachainApp::transfer_weight(),
+            <() as crate::WeightInfo>::burn()
+        );
+    });
+}
+
+#[test]
+fn minimum_xcm_amount_validates_precision_positive_amount_and_origin() {
+    new_tester().execute_with(|| {
+        assert_noop!(
+            ParachainApp::set_minimum_xcm_incoming_asset_count(
+                RuntimeOrigin::signed(Keyring::Alice.into()),
+                SubNetworkId::Kusama,
+                AssetId::Xor,
+                100
+            ),
+            sp_runtime::DispatchError::BadOrigin
+        );
+        assert_noop!(
+            ParachainApp::set_minimum_xcm_incoming_asset_count(
+                RuntimeOrigin::root(),
+                SubNetworkId::Kusama,
+                AssetId::Eth,
+                100
+            ),
+            Error::<Test>::UnknownPrecision
+        );
+        assert_noop!(
+            ParachainApp::set_minimum_xcm_incoming_asset_count(
+                RuntimeOrigin::root(),
+                SubNetworkId::Kusama,
+                AssetId::Xor,
+                0
+            ),
+            Error::<Test>::WrongAmount
+        );
+        assert_ok!(ParachainApp::set_minimum_xcm_incoming_asset_count(
+            RuntimeOrigin::root(),
+            SubNetworkId::Kusama,
+            AssetId::Xor,
+            100
+        ));
+    });
+}
+
+#[test]
+fn bridge_call_conversion_and_xcm_statuses_preserve_payload() {
+    use bridge_types::substrate::{ParachainAppCall, XCMAppTransferStatus};
+    let id = H256::repeat_byte(3);
+    let transfer: crate::Call<Test> = ParachainAppCall::Transfer {
+        asset_id: H256::zero(),
+        recipient: Keyring::Alice.into(),
+        sender: None,
+        amount: 20,
+    }
+    .into();
+    assert_eq!(
+        transfer,
+        crate::Call::<Test>::mint {
+            asset_id: AssetId::Xor,
+            recipient: Keyring::Alice.into(),
+            sender: None,
+            amount: 20
+        }
+    );
+    let registration: crate::Call<Test> = ParachainAppCall::FinalizeAssetRegistration {
+        asset_id: H256::zero(),
+        asset_kind: AssetKind::Thischain,
+    }
+    .into();
+    assert_eq!(
+        registration,
+        crate::Call::<Test>::finalize_asset_registration {
+            asset_id: AssetId::Xor,
+            asset_kind: AssetKind::Thischain
+        }
+    );
+    new_tester().execute_with(|| {
+        for status in [
+            XCMAppTransferStatus::Success,
+            XCMAppTransferStatus::XCMTransferError,
+        ] {
+            let call: crate::Call<Test> = ParachainAppCall::ReportXCMTransferResult {
+                message_id: id,
+                transfer_status: status.clone(),
+            }
+            .into();
+            assert_eq!(
+                call,
+                crate::Call::<Test>::update_transaction_status {
+                    message_id: id,
+                    transfer_status: status.clone()
+                }
+            );
+            let origin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
+                SubNetworkId::Kusama,
+                H256::zero(),
+                bridge_types::GenericTimepoint::Sora(1),
+                (),
+            ))
+            .into();
+            assert_ok!(ParachainApp::update_transaction_status(origin, id, status));
+        }
+        assert_noop!(
+            ParachainApp::update_transaction_status(
+                RuntimeOrigin::signed(Keyring::Alice.into()),
+                id,
+                XCMAppTransferStatus::Success
+            ),
+            sp_runtime::DispatchError::BadOrigin
+        );
+    });
+}
+
+#[test]
 fn it_works_mint() {
     new_tester().execute_with(|| {
         let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
@@ -235,7 +453,7 @@ fn it_fails_burn_invalid_destination_params() {
                 origin.clone().into(),
                 network_id,
                 asset_id,
-                VersionedMultiLocation::V2(staging_xcm::v2::MultiLocation::default()),
+                VersionedMultiLocation::V4(staging_xcm::v4::Location::default()),
                 amount
             ),
             Error::<Test>::InvalidDestinationParams
@@ -707,5 +925,80 @@ fn it_works_remove_assetid_paraid() {
             PARA_A,
             asset_id,
         ));
+    });
+}
+
+#[test]
+fn registration_and_quarantine_guards_leave_assets_unchanged() {
+    new_tester().execute_with(|| {
+        let network = SubNetworkId::Kusama;
+        let id = H256::repeat_byte(63);
+        let origin = || {
+            dispatch::RawOrigin::new(BridgeOriginOutput::new(
+                network,
+                id,
+                bridge_types::GenericTimepoint::Sora(1),
+                (),
+            ))
+            .into()
+        };
+        assert_noop!(
+            ParachainApp::finalize_asset_registration(origin(), AssetId::Eth, AssetKind::Sidechain),
+            Error::<Test>::TokenIsNotRegistered
+        );
+        assert_noop!(
+            ParachainApp::register_thischain_asset(
+                RuntimeOrigin::root(),
+                network,
+                AssetId::Xor,
+                PARENT_PARACHAIN_ASSET,
+                vec![],
+                1
+            ),
+            Error::<Test>::TokenAlreadyRegistered
+        );
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(network.into(), id),
+            &[1],
+        );
+        assert_noop!(
+            ParachainApp::mint(origin(), AssetId::Xor, None, Keyring::Alice.into(), 1),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            ParachainApp::burn(
+                RuntimeOrigin::signed(Keyring::Alice.into()),
+                network,
+                AssetId::Xor,
+                VersionedMultiLocation::V3(MultiLocation::new(
+                    0,
+                    X1(Junction::AccountId32 {
+                        network: None,
+                        id: Keyring::Bob.into()
+                    })
+                )),
+                1
+            ),
+            Error::<Test>::InvalidDestinationParams
+        );
+    });
+}
+
+#[test]
+fn genesis_preserves_registered_asset_kind_per_network() {
+    use frame_support::traits::BuildGenesisConfig;
+    new_tester_no_registered_assets().execute_with(|| {
+        crate::GenesisConfig::<Test> {
+            assets: vec![(SubNetworkId::Kusama, AssetId::Eth, AssetKind::Sidechain)],
+        }
+        .build();
+        assert_eq!(
+            crate::AssetKinds::<Test>::get(SubNetworkId::Kusama, AssetId::Eth),
+            Some(AssetKind::Sidechain)
+        );
+        assert_eq!(
+            crate::AssetKinds::<Test>::get(SubNetworkId::Mainnet, AssetId::Eth),
+            None
+        );
     });
 }

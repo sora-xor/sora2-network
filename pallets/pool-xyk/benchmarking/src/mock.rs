@@ -43,7 +43,7 @@ use common::{
 };
 use currencies::BasicCurrencyAdapter;
 
-use frame_support::traits::{ConstU32, GenesisBuild};
+use frame_support::traits::ConstU32;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 

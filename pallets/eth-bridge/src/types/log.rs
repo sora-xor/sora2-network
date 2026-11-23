@@ -62,6 +62,18 @@ pub struct Log {
 }
 
 impl Log {
+    /// Match a scanned event to its receipt independently of optional RPC annotations.
+    pub(crate) fn same_event(&self, other: &Self) -> bool {
+        self.address == other.address
+            && self.topics == other.topics
+            && self.data == other.data
+            && self.transaction_hash == other.transaction_hash
+            && self.block_number == other.block_number
+            && self.block_hash == other.block_hash
+            && self.transaction_index == other.transaction_index
+            && self.log_index == other.log_index
+    }
+
     /// Returns true if the log has been removed.
     pub fn is_removed(&self) -> bool {
         match self.removed {
@@ -178,6 +190,7 @@ impl FilterBuilder {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use crate::types::log::{Bytes, Log};
     use crate::types::{EthAddress, H160, H256};

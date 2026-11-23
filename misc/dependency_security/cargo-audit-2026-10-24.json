@@ -1,0 +1,353 @@
+{
+  "review_date": "2026-10-24",
+  "tool": "cargo-audit 0.22.1",
+  "advisory_database": "https://github.com/RustSec/advisory-db",
+  "advisory_database_commit": "21d909e4c8bd4e14c7aea58bf980c881a0053ab1",
+  "advisory_count": 1352,
+  "remote_ref_verified": "HEAD equals origin/main after final git fetch",
+  "command": "cargo audit --db /tmp/sora2-rustsec-advisory-db --no-fetch --deny warnings --file LOCKFILE --json",
+  "ignore": [],
+  "locks": {
+    "Cargo.lock": {
+      "lockfile_sha256": "486493ff039e24d7d1dff8b98dcdf788d7ee000002afa5100ef0fe0ebd56a49f",
+      "audit_evidence_sha256": "860cff863f47074c4a2400beff178221971d27cd1cb1389bc7a367b1cafe7a90",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 1420
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    },
+    "misc/farming_snapshot/convert/Cargo.lock": {
+      "lockfile_sha256": "fe0fa790bf389910f6669ecbcbf091d8d1fabdbe1d866cc5d3a67b7e92d88116",
+      "audit_evidence_sha256": "2c9ffe82232eeacf4bd8606160666c5b205f2fa82cd7bf1b3a7f02d36fd38a29",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 242
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    },
+    "misc/rewards_snapshot/get_lp_tokens/Cargo.lock": {
+      "lockfile_sha256": "754fd576afce602af8f4d1b33a93caa59947bdc7328adc8979e27db3bae43175",
+      "audit_evidence_sha256": "ec8dd3e76a9f5dbf14c705d163fb1d8eac03d209675d324cf7ae70b2197b4a70",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 180
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    },
+    "vendor/sora2-common/Cargo.lock": {
+      "lockfile_sha256": "8fcb449a892ce5dba82f4bcfa3aa0d949c2f802f093b5f17cb31686c6af48d24",
+      "audit_evidence_sha256": "0ef98b31ce9553ed9545e25f815969f90f425c4c4ac6b566f8c9ceaa86342201",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 507
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    },
+    "misc/runtime_upgrade/vendor/native/py-bip39-bindings/Cargo.lock": {
+      "lockfile_sha256": "e426344ea7809223cccf32dfafc18543c5b9b897372f47ba591e3b598a01978b",
+      "audit_evidence_sha256": "07e3fcc314e7e7132a4a21c41d74db173f674d6465306232592f9cdd60a8699a",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 50
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    },
+    "misc/runtime_upgrade/vendor/native/py-ed25519-zebra-bindings/Cargo.lock": {
+      "lockfile_sha256": "65d84a5a23dddf54019fdca8f8245431752dd01fda976b056d314efc5869f8a6",
+      "audit_evidence_sha256": "6e60e72d25db2cbbd0382b9f44a36b235b65dcf9a8f31db1c4b4ea2cc35ccd09",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 36
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    },
+    "misc/runtime_upgrade/vendor/native/py-sr25519-bindings/Cargo.lock": {
+      "lockfile_sha256": "f1e7837d57a582717c1418af1bd1ca450eaf1121aeaf7b28054c77a81ded85bf",
+      "audit_evidence_sha256": "56077036594cb743e3f6444f1f9dc13c9a2ef74f763043e6ebd42afa3c5cd132",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 54
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    },
+    "misc/runtime_upgrade/vendor/native/pydantic-core/Cargo.lock": {
+      "lockfile_sha256": "e9f18888c4ab4e38bbfcceb7760c58786bd966fda9964d3f10af654f4e685777",
+      "audit_evidence_sha256": "eb143b86585e348a1e65e4e9c2c44deb0a635f07642f85450425d8a91756e5fc",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 99
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    },
+    "vendor/chopsticks-executor/Cargo.lock": {
+      "lockfile_sha256": "cbdf80db91af71a4d13366b086f4c71d3de69638f3d3263cfea14c5cb983d7f5",
+      "audit_evidence_sha256": "fe28628ecd4bda05ce1ef3644121a3831be08fd43c4da9012ab52f1c02607d69",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 322
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    },
+    "vendor/polkadot-wasm-crypto/Cargo.lock": {
+      "lockfile_sha256": "b823a26da7a4c0ab9e9b7a4042059712596531366de54dadbbfac12b8857ab91",
+      "audit_evidence_sha256": "695fc0cc6c376d5d3d8526638001c64337622001593a569f81c9ff3cbfc93edc",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 115
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    },
+    "vendor/tikv-jemalloc-ctl-0.6.1/Cargo.lock": {
+      "lockfile_sha256": "09a8b44510139edae0213e44d2bd0eb5792787da4f26ae9ccec3d063378fb82c",
+      "audit_evidence_sha256": "5a856f0afa664124c468d02fdabd24dbdcb4f4c179c4efc0114997cd7475f39e",
+      "audit": {
+        "database": {
+          "advisory-count": 1352,
+          "last-commit": null,
+          "last-updated": null
+        },
+        "lockfile": {
+          "dependency-count": 8
+        },
+        "settings": {
+          "target_arch": [],
+          "target_os": [],
+          "severity": null,
+          "ignore": [],
+          "informational_warnings": [
+            "unmaintained",
+            "unsound",
+            "notice"
+          ]
+        },
+        "vulnerabilities": {
+          "found": false,
+          "count": 0,
+          "list": []
+        },
+        "warnings": {}
+      }
+    }
+  }
+}

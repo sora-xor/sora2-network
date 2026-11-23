@@ -1,0 +1,62 @@
+[package]
+name = "frame-decode"
+version = "0.18.1"
+edition = "2024"
+description = "Decode extrinsics and storage from Substrate based chains"
+license = "Apache-2.0"
+repository = "https://github.com/paritytech/frame-decode"
+documentation = "https://docs.rs/frame-decode"
+homepage = "https://www.parity.io/"
+
+[features]
+default = ["std", "legacy", "legacy-types", "error-tracing"]
+
+# Require std environment.
+std = [
+    "frame-metadata/std",
+    "parity-scale-codec/std",
+    "scale-info/std",
+    "sp-crypto-hashing/std"
+]
+
+# When decoding fails, return a detailed trace of what went wrong.
+# This requires scale-value so can be disabled to avoid the extra dep(s).
+error-tracing = [
+    "dep:scale-value"
+]
+
+# Enable decoding of historic metadata.
+legacy = [
+    "frame-metadata/legacy",
+    "dep:scale-info-legacy"
+]
+
+# Provide legacy types.
+legacy-types = [
+    "legacy",
+    "dep:serde-saphyr"
+]
+
+[dependencies]
+frame-metadata = { version = "23.0.0", features = ["current"], default-features = false }
+parity-scale-codec = { version = "3.6.12", default-features = false }
+scale-decode = { version = "0.16.0", default-features = false }
+scale-encode = { version = "0.10.1", default-features = false }
+scale-info = { version = "2.11.4", default-features = false }
+scale-info-legacy = { version = "0.4.0", default-features = false, optional = true }
+scale-type-resolver = "0.2.0"
+scale-value = { version = "0.18.0", default-features = false, optional = true }
+sp-crypto-hashing = { version = "0.1.0", default-features = false }
+serde-saphyr = { version = "2.0.0", optional = true }
+thiserror = { version = "2", default-features = false }
+
+[dev-dependencies]
+hex = "0.4.3"
+serde-saphyr = "2.0.0"
+serde_json = "1"
+scale-value = "0.18.0"
+scale-info-legacy = "0.4.0"
+scale-encode = { version = "0.10.1", features = ["derive"] }
+
+[workspace]
+members = [".", "frame-decode-tester"]

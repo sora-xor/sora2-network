@@ -60,7 +60,8 @@ use framenode_chain_spec::ext;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
-use sp_core::{sr25519, twox_128, Pair as _};
+use sp_core::{sr25519, Pair as _};
+use sp_io::hashing::twox_128;
 use sp_runtime::generic;
 use sp_runtime::traits::{Dispatchable, SignedExtension};
 use sp_runtime::{AccountId32, DispatchError, FixedPointNumber, FixedU128};
@@ -247,6 +248,7 @@ fn length_fee(len: usize) -> Balance {
 fn signed_extra() -> SignedExtra {
     let charge_tx_payment = charge_tx_payment_extension();
     (
+        frame_system::AuthorizeCall::new(),
         frame_system::CheckSpecVersion::<Runtime>::new(),
         frame_system::CheckTxVersion::<Runtime>::new(),
         frame_system::CheckGenesis::<Runtime>::new(),

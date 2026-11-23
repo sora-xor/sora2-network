@@ -47,26 +47,38 @@ detect_llvm_libdir() {
   fi
 
   if [ -n "${LLVM_CONFIG_PATH:-}" ] && [ -x "${LLVM_CONFIG_PATH}" ]; then
-    "${LLVM_CONFIG_PATH}" --libdir
-    return 0
-  fi
-
-  if command -v llvm-config >/dev/null 2>&1; then
-    llvm-config --libdir
-    return 0
-  fi
-
-  if command -v brew >/dev/null 2>&1; then
-    brew_prefix=$(brew --prefix llvm 2>/dev/null || true)
-    if [ -n "${brew_prefix}" ] && has_libclang "${brew_prefix}/lib"; then
-      printf '%s\n' "${brew_prefix}/lib"
+    if config_libdir=$("${LLVM_CONFIG_PATH}" --libdir) && has_libclang "${config_libdir}"; then
+      printf '%s\n' "${config_libdir}"
       return 0
     fi
   fi
 
+  if command -v llvm-config >/dev/null 2>&1; then
+    if config_libdir=$(llvm-config --libdir) && has_libclang "${config_libdir}"; then
+      printf '%s\n' "${config_libdir}"
+      return 0
+    fi
+  fi
+
+  if command -v brew >/dev/null 2>&1; then
+    for formula in llvm llvm@22 llvm@21 llvm@20 llvm@19 llvm@18; do
+      brew_prefix=$(brew --prefix "$formula" 2>/dev/null || true)
+      if [ -n "${brew_prefix}" ] && has_libclang "${brew_prefix}/lib"; then
+        printf '%s\n' "${brew_prefix}/lib"
+        return 0
+      fi
+    done
+  fi
+
   for libdir in \
     /opt/homebrew/opt/llvm/lib \
+    /opt/homebrew/opt/llvm@22/lib \
     /usr/local/opt/llvm/lib \
+    /usr/local/opt/llvm@22/lib \
+    /usr/lib/llvm-22/lib \
+    /usr/lib/llvm-21/lib \
+    /usr/lib/llvm-20/lib \
+    /usr/lib/llvm-19/lib \
     /usr/lib/llvm-18/lib \
     /usr/lib/llvm-17/lib \
     /usr/lib/llvm-16/lib \
@@ -85,10 +97,14 @@ detect_llvm_libdir() {
 if llvm_libdir=$(detect_llvm_libdir); then
   export LIBCLANG_PATH="${llvm_libdir}"
 
-  if [ -z "${LLVM_CONFIG_PATH:-}" ] && command -v brew >/dev/null 2>&1; then
-    brew_prefix=$(brew --prefix llvm 2>/dev/null || true)
-    if [ -n "${brew_prefix}" ] && [ -x "${brew_prefix}/bin/llvm-config" ]; then
-      export LLVM_CONFIG_PATH="${brew_prefix}/bin/llvm-config"
+  if [ -z "${LLVM_CONFIG_PATH:-}" ] || [ ! -x "${LLVM_CONFIG_PATH}" ] \
+    || ! configured_libdir=$("${LLVM_CONFIG_PATH}" --libdir 2>/dev/null) \
+    || ! has_libclang "${configured_libdir}"; then
+    # Keep llvm-config paired with the selected library, including versioned
+    # Homebrew installations; an unrelated default may report another LLVM.
+    selected_llvm_config="$(dirname -- "${llvm_libdir}")/bin/llvm-config"
+    if [ -x "${selected_llvm_config}" ]; then
+      export LLVM_CONFIG_PATH="${selected_llvm_config}"
     fi
   fi
 

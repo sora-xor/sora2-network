@@ -39,6 +39,7 @@ use crate::util::serialize;
 use crate::{
     types, BridgeContractAddress, Config, Error, NodeParams, Pallet, DEPOSIT_TOPIC,
     HTTP_REQUEST_TIMEOUT_SECS, STORAGE_ETH_NODE_PARAMS, STORAGE_SUB_NODE_URL_KEY, SUB_NODE_URL,
+    WITHDRAWAL_TOPIC,
 };
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -383,6 +384,25 @@ impl<T: Config> Pallet<T> {
         Ok(tx_receipt)
     }
 
+    /// Load a mined transfer receipt. Helper contracts can call the bridge, so
+    /// callers verify the emitting bridge and event within the receipt.
+    pub(crate) fn load_transfer_receipt(
+        hash: H256,
+        network_id: T::NetworkId,
+    ) -> Result<TransactionReceipt, Error<T>> {
+        let hash = types::H256(hash.0);
+        let receipt = Self::eth_json_rpc_request::<_, TransactionReceipt>(
+            "eth_getTransactionReceipt",
+            &vec![hash],
+            network_id,
+        )?;
+        frame_support::ensure!(
+            receipt.transaction_hash == hash && receipt.block_number.is_some(),
+            Error::<T>::JsonDeserializationError
+        );
+        Ok(receipt)
+    }
+
     /// Loads a Sidechain transaction receipt by the hash and ensures that it came from a known contract.
     pub fn load_tx_receipt(
         hash: H256,
@@ -394,6 +414,13 @@ impl<T: Config> Pallet<T> {
             &vec![hash],
             network_id,
         )?;
+        if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) {
+            // RPC inconsistencies are retryable; they are not failed transactions.
+            frame_support::ensure!(
+                tx_receipt.transaction_hash == hash && tx_receipt.block_number.is_some(),
+                Error::<T>::JsonDeserializationError
+            );
+        }
         let to = tx_receipt
             .to
             .map(|x| H160(x.0))
@@ -443,6 +470,23 @@ impl<T: Config> Pallet<T> {
         from_block: u64,
         to_block: u64,
     ) -> Result<Vec<Log>, Error<T>> {
+        Self::load_bridge_logs(
+            network_id,
+            from_block,
+            to_block,
+            vec![
+                types::H256(DEPOSIT_TOPIC.0),
+                types::H256(WITHDRAWAL_TOPIC.0),
+            ],
+        )
+    }
+
+    pub(super) fn load_bridge_logs(
+        network_id: T::NetworkId,
+        from_block: u64,
+        to_block: u64,
+        topics: Vec<types::H256>,
+    ) -> Result<Vec<Log>, Error<T>> {
         trace!(
             "Loading transfer logs from block {:?} to block {:?}",
             from_block,
@@ -451,7 +495,7 @@ impl<T: Config> Pallet<T> {
         Self::eth_json_rpc_request(
             "eth_getLogs",
             &[FilterBuilder::default()
-                .topics(Some(vec![types::H256(DEPOSIT_TOPIC.0)]), None, None, None)
+                .topics(Some(topics), None, None, None)
                 .from_block(BlockNumber::Number(from_block.into()))
                 .to_block(BlockNumber::Number(to_block.into()))
                 .address(vec![types::H160(

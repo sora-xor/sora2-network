@@ -1,7 +1,7 @@
 // This file is part of the SORA network and Polkaswap app.
 // SPDX-License-Identifier: BSD-4-Clause
 
-use crate::{AccountId, Historical, ImOnline, ImOnlineId, Offences, Runtime, Session};
+use crate::{AccountId, ImOnline, ImOnlineId, Offences, Runtime, Session};
 use codec::Encode;
 use frame_support::{
     traits::OneSessionHandler,
@@ -127,7 +127,7 @@ pub(crate) fn refresh_exposure_work() -> Weight {
     let mut max_validators = 0;
     for &era in &context.eras {
         reads = reads.saturating_add(1);
-        if pallet_staking::ErasStakers::<Runtime>::iter_key_prefix(era)
+        if pallet_staking::legacy::ErasStakers::<Runtime>::iter_key_prefix(era)
             .next()
             .is_some()
         {
@@ -241,31 +241,30 @@ impl OneSessionHandler<AccountId> for LivenessImOnline {
     }
 }
 
-/// Staking applies financial penalties, while equivocation reporters below
-/// explicitly retain consensus disabling. Offline reports must not disable a
-/// returning author while the outgoing session is being finalized.
-pub struct SlashOnlySessionInterface;
+struct BorrowedOffence<'a, O>(&'a O);
 
-impl pallet_staking::SessionInterface<AccountId> for SlashOnlySessionInterface {
-    fn report_offence(_validator: AccountId, _severity: OffenceSeverity) {}
-
-    fn validators() -> Vec<AccountId> {
-        Session::validators()
-    }
-
-    fn prune_historical_up_to(up_to: SessionIndex) {
-        Historical::prune_up_to(up_to);
-    }
+fn effective_offenders(mut offenders: Vec<Identification>) -> Vec<Identification> {
+    crate::incident_recovery::resolve_authenticated_accounts(offenders.iter_mut().flat_map(
+        |(owner, exposure)| {
+            core::iter::once(owner).chain(exposure.others.iter_mut().map(|entry| &mut entry.who))
+        },
+    ))
+    .expect("authenticated offence requires the verified recovery identity map");
+    offenders
 }
 
-struct BorrowedOffence<'a, O>(&'a O);
+fn effective_reporters(mut reporters: Vec<AccountId>) -> Vec<AccountId> {
+    crate::incident_recovery::resolve_authenticated_accounts(reporters.iter_mut())
+        .expect("authenticated reporters require the verified recovery identity map");
+    reporters
+}
 
 impl<O: Offence<Identification>> Offence<Identification> for BorrowedOffence<'_, O> {
     const ID: sp_staking::offence::Kind = O::ID;
-    type TimeSlot = O::TimeSlot;
+    type Slot = O::Slot;
 
     fn offenders(&self) -> Vec<Identification> {
-        self.0.offenders()
+        effective_offenders(self.0.offenders())
     }
 
     fn session_index(&self) -> SessionIndex {
@@ -276,8 +275,8 @@ impl<O: Offence<Identification>> Offence<Identification> for BorrowedOffence<'_,
         self.0.validator_set_count()
     }
 
-    fn time_slot(&self) -> Self::TimeSlot {
-        self.0.time_slot()
+    fn slot(&self) -> Self::Slot {
+        self.0.slot()
     }
 
     fn slash_fraction(&self, offenders_count: u32) -> sp_runtime::Perbill {
@@ -294,15 +293,18 @@ impl<O: Offence<Identification>> ReportOffence<AccountId, Identification, O>
 {
     fn report_offence(reporters: Vec<AccountId>, offence: O) -> Result<(), OffenceError> {
         <Offences as ReportOffence<AccountId, Identification, BorrowedOffence<'_, O>>>::report_offence(
-            reporters,
+            effective_reporters(reporters),
             BorrowedOffence(&offence),
         )?;
 
         let Some(active_era) = pallet_staking::ActiveEra::<Runtime>::get() else {
             return Ok(());
         };
-        let active_era_start =
-            pallet_staking::ErasStartSessionIndex::<Runtime>::get(active_era.index).unwrap_or(0);
+        let active_era_start = pallet_staking::BondedEras::<Runtime>::get()
+            .iter()
+            .find(|(era, _)| *era == active_era.index)
+            .map(|(_, session)| *session)
+            .unwrap_or(0);
         // Historical offences still slash their original exposure, but must not
         // disable validators for an offence outside the active era.
         if offence.session_index() < active_era_start {
@@ -311,15 +313,13 @@ impl<O: Offence<Identification>> ReportOffence<AccountId, Identification, O>
 
         // Offences recalculates severity for all concurrent offenders whenever
         // one new report arrives. Replay that complete set in the same order.
-        let concurrent = pallet_offences::ConcurrentReportsIndex::<Runtime>::get(
-            O::ID,
-            offence.time_slot().encode(),
-        )
-        .into_iter()
-        .filter_map(pallet_offences::Reports::<Runtime>::get)
-        .collect::<Vec<_>>();
+        let concurrent =
+            pallet_offences::ConcurrentReportsIndex::<Runtime>::get(O::ID, offence.slot().encode())
+                .into_iter()
+                .filter_map(pallet_offences::Reports::<Runtime>::get)
+                .collect::<Vec<_>>();
         let severity = OffenceSeverity(offence.slash_fraction(concurrent.len() as u32));
-        let invulnerables = pallet_staking::Invulnerables::<Runtime>::get();
+        let invulnerables = pallet_staking::legacy::Invulnerables::<Runtime>::get();
         for details in concurrent {
             let validator = details.offender.0;
             if !invulnerables.contains(&validator) {
@@ -329,9 +329,10 @@ impl<O: Offence<Identification>> ReportOffence<AccountId, Identification, O>
         Ok(())
     }
 
-    fn is_known_offence(offenders: &[Identification], time_slot: &O::TimeSlot) -> bool {
+    fn is_known_offence(offenders: &[Identification], time_slot: &O::Slot) -> bool {
         <Offences as ReportOffence<AccountId, Identification, O>>::is_known_offence(
-            offenders, time_slot,
+            &effective_offenders(offenders.to_vec()),
+            time_slot,
         )
     }
 }
@@ -372,7 +373,7 @@ impl EquivocationWeights {
         let mut largest_queue = 0u64;
         let mut all_queue_bytes = 0u64;
         for era in &execution_eras {
-            let key = pallet_staking::UnappliedSlashes::<Runtime>::hashed_key_for(era);
+            let key = pallet_staking::legacy::UnappliedSlashes::<Runtime>::hashed_key_for(era);
             // Obtain the encoded length without decoding an unbounded queue.
             // Probe live state: this value can grow between session boundaries.
             let bytes = u64::from(sp_io::storage::read(&key, &mut [], 0).unwrap_or(0));
@@ -465,6 +466,15 @@ impl EquivocationWeights {
             .saturating_add(Self::disabled_history(validators))
             // Cache plus live session/active/planned/retained-era context reads.
             .saturating_add(db.reads(9))
+            // Identity canonicalization precedes report hashing and deduplication.
+            // Static binary searches require no per-identity storage reads.
+            .saturating_add(db.reads(5))
+            .saturating_add(Weight::from_parts(
+                participants
+                    .saturating_add(u64::from(validators))
+                    .saturating_mul(6 * WEIGHT_REF_TIME_PER_MICROS),
+                256,
+            ))
             .saturating_add(Weight::from_parts(0, 16_384))
             .saturating_add(Self::queued_payloads(
                 context,
@@ -540,6 +550,7 @@ impl ReportOffence<AccountId, Identification, OfflineOffence> for MajorityOfflin
         reporters: Vec<AccountId>,
         mut offence: OfflineOffence,
     ) -> Result<(), OffenceError> {
+        offence.offenders = effective_offenders(offence.offenders);
         let validators = Session::validators();
         // The session-ending hook runs before the session and disabled set rotate.
         // Do not apply current-session history to an inconsistent report.
@@ -588,13 +599,15 @@ impl ReportOffence<AccountId, Identification, OfflineOffence> for MajorityOfflin
         // Preserve the upstream fraction, deduplication and deferred-slash handling.
         // For 13 of 25 validators, the existing offline fraction is 7%.
         <Offences as ReportOffence<AccountId, Identification, OfflineOffence>>::report_offence(
-            reporters, offence,
+            effective_reporters(reporters),
+            offence,
         )
     }
 
     fn is_known_offence(offenders: &[Identification], time_slot: &SessionIndex) -> bool {
         <Offences as ReportOffence<AccountId, Identification, OfflineOffence>>::is_known_offence(
-            offenders, time_slot,
+            &effective_offenders(offenders.to_vec()),
+            time_slot,
         )
     }
 }

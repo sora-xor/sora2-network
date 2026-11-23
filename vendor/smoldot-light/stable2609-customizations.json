@@ -1,0 +1,21 @@
+{
+  "upstreamCrate": "smoldot-light",
+  "upstreamVersion": "1.3.2",
+  "upstreamArchiveSha256": "f5ae693a7dec686bb80f97a78e42bf96aec196776dba8b2ab11b16445c7268f1",
+  "upstreamCommit": "5fe9121f81a58454542ac69a44c4d73f00f30283",
+  "sourcePatch": "stable2609-customizations.patch",
+  "sourcePatchSha256": "2e6bf373262888587675f29a3e36c22e56d95398882ce4f46c02a49488eeda73",
+  "sourcePatchReplay": "passed",
+  "changedTextFiles": [
+    {
+      "path": "Cargo.toml",
+      "upstreamSha256": "3d02bdbf8074a9907560cc8e0edb83ea7398bf7a2bd9e006e0151dd547c6e3ba",
+      "localSha256": "1c9cf99ea4eab7ed35357f2a018e7d3db8839272ffb68b9b3c6a1de0c5c723b8"
+    }
+  ],
+  "restoredFixtures": [],
+  "omittedUpstreamFiles": [
+    "Cargo.lock"
+  ],
+  "fixtureProvenance": null
+}

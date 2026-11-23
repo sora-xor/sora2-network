@@ -1,0 +1,42 @@
+{
+  "name": "@acala-network/chopsticks-executor",
+  "description": "Chopsticks executor",
+  "version": "1.5.2",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AcalaNetwork/chopsticks"
+  },
+  "scripts": {
+    "clean": "rm -rf pkg dist",
+    "wasm": "node scripts/build-reviewed.mjs",
+    "build": "node scripts/build-reviewed.mjs",
+    "verify-artifacts": "python3 scripts/verify-artifacts.py"
+  },
+  "dependencies": {
+    "@polkadot/util": "^14.0.1",
+    "@polkadot/wasm-util": "^7.4.1"
+  },
+  "devDependencies": {
+    "@swc/core": "1.16.20",
+    "fflate": "0.8.2"
+  },
+  "files": [
+    "dist/esm/**",
+    "dist/cjs/**",
+    "build-provenance.json",
+    "SORA-PATCH.md",
+    "smoldot/LICENSE",
+    "SORA-LICENSE"
+  ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "exports": {
+    ".": {
+      "module": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  }
+}

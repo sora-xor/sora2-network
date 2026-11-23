@@ -1,0 +1,15 @@
+{
+  "upstream_commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "source_path": "substrate/primitives/maybe-compressed-blob",
+  "differences": [
+    {
+      "path": [
+        "dependencies",
+        "zstd",
+        "version"
+      ],
+      "upstream": "0.12.4",
+      "local": "0.14.3"
+    }
+  ]
+}

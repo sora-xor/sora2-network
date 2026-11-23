@@ -1,0 +1,33 @@
+{
+  "distribution": "substrate-interface",
+  "version": "1.8.1",
+  "artifact": "substrate_interface-1.8.1-py3-none-any.whl",
+  "url": "https://files.pythonhosted.org/packages/c7/2e/d6e2bb34473bfc8b6e915a21ee1a5dbf67c57dff8abea407e4e46cee5d83/substrate_interface-1.8.1-py3-none-any.whl",
+  "sha256": "07737b0dc86fb8962ec09c3518577556534f9ffa58ef1164fc70ffe8a5c54837",
+  "upstream": "https://github.com/JAMdotTech/py-polkadot-sdk",
+  "included": "Python sources only; the governance CLI supports HTTP/WebSocket RPC and explicitly rejects unused light-client transport",
+  "upstream_files": {
+    "substrateinterface/__init__.py": "839662e58d263c9146ca8090774f3e575047cd9f7cd01875a6baa20dace9afee",
+    "substrateinterface/base.py": "de49bb92f21c3f75d8ad58a39a8010ab5563194a6ac28f3febed45e3a9b52793",
+    "substrateinterface/constants.py": "666c920b90f3db70d8f12535865bd4fb0cdd12363dd4f75371cfb231955437bb",
+    "substrateinterface/contracts.py": "e3a202b4ade15919797c17a68fcab6c2e064862b496d618f3d307a0a4143ddfb",
+    "substrateinterface/exceptions.py": "49edfe21a479de8ca084f46a6a52c2a91002427eab75fb4d978ae7860b5e40f6",
+    "substrateinterface/extensions.py": "bc057f45736bc8478fdc9dd67b3a2a8d1558649c651259f52ed570be69633d44",
+    "substrateinterface/interfaces.py": "080e89b06e0929dfa9848e670c042dbc87522470f9722745e45a5120122ca4a8",
+    "substrateinterface/key.py": "b6cffc210b7662c11b310a758cf81c6b3173a0f6fa96687eb3f2ee8645db65fa",
+    "substrateinterface/keypair.py": "60391e7184d5131d1a6ea70c56b5d020b5395bf79fc35ec9ad0acd0c6f0fcb69",
+    "substrateinterface/storage.py": "5b498d4efebc32e563fe70f8170cc56be27efa53487a4304fa54d3f00b2ad0e3",
+    "substrateinterface/transport/__init__.py": "33cd20c68b63d80e27581f573ccfdaac059bfba7b5d336fe4b73ee46768987d6",
+    "substrateinterface/transport/base.py": "6ac01e8c0340491ff10596128113cb34d203856c343fbb7f7407412bfbbed8ef",
+    "substrateinterface/transport/http.py": "95e3c95ee7c51c138192d70986af6c3425309eff596451327d45c272415190db",
+    "substrateinterface/transport/smoldot.py": "83b4975f07086dff0fb800fb51e487279087161201601ea0e8720554651641aa",
+    "substrateinterface/transport/websocket.py": "79e45e39d27c93abbee70c7780859713ada3690edaeedb5e09f6ca02722856ca",
+    "substrateinterface/utils/__init__.py": "96906b9a40a62dbfff3e1926148689a66e03379a9b4602b09c208c961ad72e67",
+    "substrateinterface/utils/caching.py": "824b18b6a51030529280c96ee1ed107ac433cef319504ad66885fbd324384a00",
+    "substrateinterface/utils/ecdsa_helpers.py": "eab94eb48a9b962c6a53dab77dc3ac1f82b35a52e9425a17ab483c325a42bead",
+    "substrateinterface/utils/encrypted_json.py": "a41721069b09d45acd59ad76d69055cdb149a6735a2bfedce48d265498f5ec6d",
+    "substrateinterface/utils/hasher.py": "2d8f2abb96b3f777e2e5e78df8c67a7000e70096a7b06f44d885af1a54a1e4e9",
+    "substrateinterface/utils/ss58.py": "eb2a78d1d2ea694eb1be11950f02ab05b90a267ad53bd78706ecd0b44033fa2b"
+  },
+  "native_dependency_review": "native-dependency-review.json"
+}

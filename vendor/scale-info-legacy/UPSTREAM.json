@@ -1,0 +1,51 @@
+{
+  "crate": "scale-info-legacy",
+  "version": "0.4.2",
+  "registryUrl": "https://crates.io/api/v1/crates/scale-info-legacy/0.4.2",
+  "archiveSha256": "d972ce93a4f81efc40fce251e992faf99ecb090c02bcbd3614e213991038c181",
+  "sourceGit": "eca231a8bafda769cb90a6a682cecc779a56bca9",
+  "customizations": [
+    {
+      "path": "Cargo.toml",
+      "upstreamSha256": "7f570914577fe2cf234aa92420cb0e445507b422fa0ccab1ad461e72195a9330",
+      "localSha256": "7e5c662bed89929942c94defd58d5d3d9f4438b450b473c1d8125226d52ea3a0"
+    },
+    {
+      "path": "Cargo.toml.orig",
+      "upstreamSha256": "cc28cde78de42ee9c22622ab176ff865375ded3cea3d3d10d4dcdd17c802cc50",
+      "localSha256": "ae176252d298e450c3df8099e5004b1ea0db25fbb36ce532975eb1d0d1e807bf"
+    },
+    {
+      "path": "src/chain_types.rs",
+      "upstreamSha256": "1a1868175d7a92d1aa941cdecea05f51a0d1289c2c3db7e4a473da6ccf85f585",
+      "localSha256": "f8c60cbe5d676755efd1f1eacfc34ed647ddc47d9a55dd060a4302e103e97791"
+    },
+    {
+      "path": "src/insert_name.rs",
+      "upstreamSha256": "8f65022bc9822bb4331ab9268f8d15665c04714cc6926976294a51cbfe68467f",
+      "localSha256": "40c306137d0c9ff7e33bda594dafb1f45dda79f903fb9f806682794bf024391b"
+    },
+    {
+      "path": "src/lookup_name.rs",
+      "upstreamSha256": "ea73e4fb30233d997bfcfad0a69cda53bf39a5debf9c1c00274287d481e7e006",
+      "localSha256": "827ef062603cc20fec25ddfabeaf6e4b53954333bc24e89738e748dc27e5d13b"
+    },
+    {
+      "path": "src/test_utils.rs",
+      "upstreamSha256": "0147d7c91b4bb53516fa0654c92b6c5fd4202f5541fbac17e1964ce4941b9005",
+      "localSha256": "ab40f648200156e9a6c8979ce97a7d03283223067eaf240305896f70da9727aa"
+    },
+    {
+      "path": "src/type_registry.rs",
+      "upstreamSha256": "2c0f1780700468ff980c769025fb746ce2f3bba2b983b5918f8b90e25c3838e5",
+      "localSha256": "9c2be4710c22a39b392ad2239636131c1811e128f419505d5c4f6dc0678b4355"
+    },
+    {
+      "path": "src/type_registry_set.rs",
+      "upstreamSha256": "4e1f70f89d1fca873b25c4396455569f39937b91749d3daade945c827a5afb7d",
+      "localSha256": "b888f6a8aad11a720ab0838bd1ee85cea81f4e2e422092c377d7c5e4d4852c7f"
+    }
+  ],
+  "patchSha256": "8cdac02a3821f546925b9f2960eecc984b20a0762146e6fdc808eec3905d6199",
+  "patchReplayPassed": true
+}

@@ -356,19 +356,11 @@ mod tests {
             .expect("Failed to buy XOR.");
 
             assert_eq!(
-                MBCPool::sell_price(
-                    &XOR,
-                    &VAL,
-                    QuoteAmount::with_desired_input(Balance::max_value()),
-                ),
+                MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_input(Balance::MAX),),
                 Ok(fixed_u256!(0.799999999999999999)),
             );
             assert_noop!(
-                MBCPool::sell_price(
-                    &XOR,
-                    &VAL,
-                    QuoteAmount::with_desired_output(Balance::max_value()),
-                ),
+                MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_output(Balance::MAX),),
                 Error::<Runtime>::NotEnoughReserves,
             );
             assert_eq!(
@@ -385,19 +377,11 @@ mod tests {
             );
 
             assert_eq!(
-                MBCPool::buy_price(
-                    &XOR,
-                    &VAL,
-                    QuoteAmount::with_desired_input(Balance::max_value()),
-                ),
+                MBCPool::buy_price(&XOR, &VAL, QuoteAmount::with_desired_input(Balance::MAX),),
                 Ok(fixed_u256!(66643.297975935543753806)),
             );
             assert_eq!(
-                MBCPool::buy_price(
-                    &XOR,
-                    &VAL,
-                    QuoteAmount::with_desired_output(Balance::max_value()),
-                ),
+                MBCPool::buy_price(&XOR, &VAL, QuoteAmount::with_desired_output(Balance::MAX),),
                 Ok(fixed_u256!(
                     2605995006049927390016066959760470220.257682547449143111
                 ))
@@ -577,7 +561,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -641,7 +625,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &TBCD,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -705,7 +689,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &TBCD,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -769,7 +753,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &TBCD,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -868,7 +852,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1000), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -980,7 +964,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1000), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1000), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -1080,7 +1064,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(0.000000000001), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(0.000000000001), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -1249,7 +1233,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    SwapAmount::with_desired_output(amount.into(), Balance::max_value()),
+                    SwapAmount::with_desired_output(amount.into(), Balance::MAX),
                 );
                 TransactionOutcome::Rollback(whole_outcome)
             });
@@ -1263,10 +1247,7 @@ mod tests {
                         &DEXId::Polkaswap.into(),
                         &VAL,
                         &XOR,
-                        SwapAmount::with_desired_output(
-                            (amount / parts).into(),
-                            Balance::max_value(),
-                        ),
+                        SwapAmount::with_desired_output((amount / parts).into(), Balance::MAX),
                     )
                     .unwrap()
                 })
@@ -1760,7 +1741,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::MAX),
             )
             .unwrap();
             let val_balance_b = Assets::free_balance(&VAL, &alice()).unwrap();
@@ -1810,7 +1791,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::MAX),
             )
             .unwrap();
             let val_balance_d = Assets::free_balance(&VAL, &alice()).unwrap();
@@ -1889,7 +1870,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &TBCD,
                 &XOR,
-                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::MAX),
             )
             .unwrap();
             let val_balance_b = Assets::free_balance(&TBCD, &alice()).unwrap();
@@ -1939,7 +1920,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &TBCD,
                 &XOR,
-                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::MAX),
             )
             .unwrap();
             let tbcd_balance_d = Assets::free_balance(&TBCD, &alice()).unwrap();
@@ -2853,7 +2834,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -2976,7 +2957,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -3149,7 +3130,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -3166,7 +3147,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -3183,7 +3164,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(1), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -3299,7 +3280,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(100000000), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -3351,7 +3332,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(100), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -3463,7 +3444,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(100000000), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(100000000), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -3483,7 +3464,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
+                    SwapAmount::with_desired_output(balance!(100), Balance::MAX),
                 )
                 .unwrap()
                 .0,
@@ -3776,7 +3757,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::MAX),
             )
             .unwrap();
             assert_eq!(quote_outcome_b.amount, balance!(1107.192203724646374562));
@@ -3844,7 +3825,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::MAX),
             )
             .unwrap();
             assert_eq!(quote_outcome_d.amount, balance!(0.249731351108007183));
@@ -3971,7 +3952,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::MAX),
             )
             .unwrap();
             assert_eq!(quote_outcome_b.amount, balance!(81508.213505580992097736));
@@ -4039,7 +4020,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::MAX),
             )
             .unwrap();
             assert_eq!(quote_outcome_d.amount, balance!(1681.732720328623106924));

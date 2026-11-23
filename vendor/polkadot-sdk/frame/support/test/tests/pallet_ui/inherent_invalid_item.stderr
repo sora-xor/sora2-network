@@ -1,0 +1,5 @@
+error: Invalid pallet::inherent, expected impl<..> ProvideInherent for Pallet<..>
+  --> tests/pallet_ui/inherent_invalid_item.rs:36:2
+   |
+36 |     impl Foo {}
+   |     ^^^^

@@ -1,0 +1,11 @@
+error: Invalid genesis builder: expected `BuildGenesisConfig`
+  --> tests/pallet_ui/genesis_invalid_generic.rs:36:7
+   |
+36 |     impl GenesisBuild for GenesisConfig {}
+   |          ^^^^^^^^^^^^
+
+error: expected `BuildGenesisConfig`
+  --> tests/pallet_ui/genesis_invalid_generic.rs:36:7
+   |
+36 |     impl GenesisBuild for GenesisConfig {}
+   |          ^^^^^^^^^^^^

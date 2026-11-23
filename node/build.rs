@@ -78,6 +78,9 @@ fn impl_version() -> String {
 }
 
 fn main() {
+    // The SDK runtime-interface macro emits this cfg in the consuming crate.
+    // Register its name without enabling runtime-only code in the native node.
+    println!("cargo:rustc-check-cfg=cfg(substrate_runtime)");
     println!(
         "cargo:rustc-env=SUBSTRATE_CLI_IMPL_VERSION={}",
         impl_version()

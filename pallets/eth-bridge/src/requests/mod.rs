@@ -166,6 +166,10 @@ impl<T: Config> OutgoingRequest<T> {
     /// Checks that the request can be initiated (e.g., verifies that an account has
     /// sufficient funds for transfer).
     fn validate(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(
+            self.network_id(),
+            OffchainRequest::outgoing(self.clone()).hash(),
+        )?;
         match self {
             OutgoingRequest::Transfer(request) => request.validate(),
             OutgoingRequest::AddAsset(request) => request.validate(),
@@ -180,6 +184,7 @@ impl<T: Config> OutgoingRequest<T> {
     }
 
     fn prepare(&self, tx_hash: H256) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(self.network_id(), tx_hash)?;
         match self {
             OutgoingRequest::Transfer(request) => request.prepare(tx_hash),
             OutgoingRequest::AddAsset(request) => request.prepare(()),
@@ -194,6 +199,7 @@ impl<T: Config> OutgoingRequest<T> {
     }
 
     pub(crate) fn finalize(&self, tx_hash: H256) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(self.network_id(), tx_hash)?;
         match self {
             OutgoingRequest::Transfer(request) => request.finalize(tx_hash),
             OutgoingRequest::AddAsset(request) => request.finalize(),
@@ -208,6 +214,10 @@ impl<T: Config> OutgoingRequest<T> {
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(
+            self.network_id(),
+            OffchainRequest::outgoing(self.clone()).hash(),
+        )?;
         match self {
             OutgoingRequest::Transfer(request) => request.cancel(),
             OutgoingRequest::AddAsset(request) => request.cancel(),
@@ -466,7 +476,7 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::Transfer(request) => request.validate(),
             IncomingRequest::AddToken(request) => request.validate(),
             IncomingRequest::ChangePeers(_request) => Ok(()),
-            IncomingRequest::CancelOutgoingRequest(_request) => Ok(()),
+            IncomingRequest::CancelOutgoingRequest(request) => request.validate(),
             IncomingRequest::MarkAsDone(request) => request.validate(),
             IncomingRequest::PrepareForMigration(_request) => Ok(()),
             IncomingRequest::Migrate(_request) => Ok(()),
@@ -545,21 +555,40 @@ impl<T: Config> IncomingRequest<T> {
     pub fn check_existence(&self) -> Result<bool, Error<T>> {
         let network_id = self.network_id();
         match self {
-            IncomingRequest::CancelOutgoingRequest(request) => {
-                let hash = request.tx_hash;
-                let tx_receipt = Pallet::<T>::load_tx_receipt(hash, network_id)?;
-                if tx_receipt.is_approved() {
-                    return Ok(false);
-                }
-                let tx = Pallet::<T>::load_tx(hash, network_id)?;
+            IncomingRequest::Transfer(request)
+                if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) =>
+            {
+                let receipt = Pallet::<T>::load_transfer_receipt(request.tx_hash, network_id)
+                    .map_err(|error| {
+                        // A missing receipt can reject an unauthenticated public
+                        // hint, but cannot authorize aborting a prepared monetary
+                        // request. Preserve transport retries and hold all other
+                        // unavailable receipt evidence for reconciliation.
+                        if error.should_retry() {
+                            error
+                        } else {
+                            Error::<T>::JsonDeserializationError
+                        }
+                    })?;
+                let load = LoadIncomingTransactionRequest::new(
+                    request.author.clone(),
+                    request.tx_hash,
+                    request.timepoint,
+                    IncomingTransactionRequestKind::Transfer,
+                    network_id,
+                );
+                let canonical = Pallet::<T>::parse_attributed_transfer(receipt, load, None)
+                    .map_err(|_| Error::<T>::JsonDeserializationError)?;
+                // Compare all economic fields and the signer before approving
+                // finalization. Never rewrite a retained zero-sender request/hash.
                 ensure!(
-                    tx_receipt
-                        .gas_used
-                        .map(|used| used != tx.gas)
-                        .unwrap_or(false),
-                    Error::<T>::TransactionMightHaveFailedDueToGasLimit
+                    canonical.encode() == self.encode(),
+                    Error::<T>::JsonDeserializationError
                 );
                 Ok(true)
+            }
+            IncomingRequest::CancelOutgoingRequest(_) => {
+                Err(Error::<T>::PublicApprovalsRequireSettlement)
             }
             IncomingRequest::MarkAsDone(request) => {
                 Pallet::<T>::load_is_used(request.outgoing_request_hash, request.network_id)
@@ -635,6 +664,10 @@ impl<T: Config> LoadIncomingRequest<T> {
             Self::Meta(request, _) => {
                 match request.kind {
                     IncomingMetaRequestKind::MarkAsDone => {
+                        crate::recovery::ensure_outgoing_active::<T>(
+                            request.network_id,
+                            request.hash,
+                        )?;
                         ensure!(
                             !Pallet::<T>::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
                                 request.network_id,
@@ -795,7 +828,7 @@ impl<T: Config> OffchainRequest<T> {
     }
 
     /// The request's timepoint.
-    pub(crate) fn timepoint(&self) -> Timepoint<T> {
+    pub fn timepoint(&self) -> Timepoint<T> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.timepoint(),
             OffchainRequest::LoadIncoming(request) => request.timepoint(),
@@ -815,6 +848,7 @@ impl<T: Config> OffchainRequest<T> {
     /// Checks that the request can be initiated (e.g., verifies that an account has
     /// sufficient funds for transfer).
     pub(crate) fn validate(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(self)?;
         match self {
             OffchainRequest::Outgoing(request, _) => request.validate(),
             OffchainRequest::LoadIncoming(request) => request.validate(),
@@ -824,6 +858,7 @@ impl<T: Config> OffchainRequest<T> {
 
     /// Performs additional state changes for the request (e.g., reserves funds for a transfer).
     pub(crate) fn prepare(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(self)?;
         match self {
             OffchainRequest::Outgoing(request, tx_hash) => request.prepare(*tx_hash),
             OffchainRequest::LoadIncoming(request) => request.prepare(),
@@ -833,6 +868,7 @@ impl<T: Config> OffchainRequest<T> {
 
     /// Undos the state changes done in the `prepare` function.
     pub fn cancel(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(self)?;
         match self {
             OffchainRequest::Outgoing(request, _) => request.cancel(),
             OffchainRequest::LoadIncoming(request) => request.cancel(),
@@ -841,6 +877,7 @@ impl<T: Config> OffchainRequest<T> {
     }
 
     pub fn finalize(&self) -> DispatchResult {
+        crate::recovery::ensure_request_active::<T>(self)?;
         match self {
             OffchainRequest::Outgoing(r, tx_hash) => r.finalize(*tx_hash),
             OffchainRequest::Incoming(r, _) => r.finalize().map(|_| ()),
@@ -978,7 +1015,8 @@ pub enum RequestStatus {
     ApprovalsReady,
     Failed(DispatchError),
     Done,
-    /// Request is broken. Tried to abort with the first error but got another one when cancelling.
+    /// Request is broken: cancellation failed, or outgoing finalization failed
+    /// after public approvals (second error is PublicApprovalsRequireSettlement).
     Broken(DispatchError, DispatchError),
 }
 
@@ -1000,3 +1038,8 @@ impl AssetKind {
         self == &Self::Thischain || self == &Self::SidechainOwned
     }
 }
+
+#[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[path = "../tests/coverage_encoded_requests.rs"]
+mod coverage_encoded_requests;

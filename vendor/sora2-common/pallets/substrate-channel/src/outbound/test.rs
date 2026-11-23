@@ -33,10 +33,45 @@ use crate::outbound::*;
 use bridge_types::{
     substrate::Commitment, traits::OutboundChannel, types::GenericCommitmentWithBlock, SubNetworkId,
 };
-use frame_support::{assert_noop, assert_ok, traits::Hooks};
+use frame_support::{
+    assert_noop, assert_ok,
+    traits::{Get, Hooks},
+};
 use frame_system::RawOrigin;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::{AccountId32, BoundedVec, DispatchError};
+
+#[test]
+fn response_reservation_rejects_quarantined_future_slots_and_nonce_exhaustion() {
+    new_tester().execute_with(|| {
+        let network = BASE_NETWORK_ID;
+        assert!(BridgeOutboundChannel::can_queue_messages(network, 2));
+        let id =
+            bridge_types::types::MessageId::batched(ThisNetworkId::get(), network.into(), 1, 1)
+                .hash();
+        let key = bridge_types::recovery::message_key(network.into(), id);
+        sp_io::storage::set(&key, &[1]);
+        assert!(BridgeOutboundChannel::can_queue_messages(network, 1));
+        assert!(!BridgeOutboundChannel::can_queue_messages(network, 2));
+        sp_io::storage::clear(&key);
+        let key = bridge_types::recovery::batch_key(1, network.into(), 1);
+        sp_io::storage::set(&key, &[1]);
+        assert!(!BridgeOutboundChannel::can_queue_messages(network, 1));
+        sp_io::storage::clear(&key);
+        ChannelNonces::<Test>::insert(network, u64::MAX);
+        assert!(!BridgeOutboundChannel::can_queue_messages(network, 1));
+    });
+}
+
+#[test]
+fn missing_interval_uses_ten_blocks() {
+    new_tester().execute_with(|| {
+        Interval::<Test>::kill();
+        assert_eq!(BridgeOutboundChannel::interval(), 10);
+        BridgeOutboundChannel::on_initialize(9);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+    });
+}
 
 #[test]
 fn test_submit() {
@@ -206,4 +241,166 @@ fn test_on_finalize() {
             })
         );
     });
+}
+
+#[test]
+fn unfinished_recovery_preserves_queued_messages_and_nonces_without_committing() {
+    new_tester().execute_with(|| {
+        let origin = RawOrigin::Signed(Keyring::Bob.to_account_id());
+        assert_ok!(BridgeOutboundChannel::submit(
+            BASE_NETWORK_ID,
+            &origin,
+            &[0, 1, 2],
+            ()
+        ));
+        let queue = MessageQueues::<Test>::get(BASE_NETWORK_ID);
+        crate::recovery::install_test_recovery();
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
+        assert_noop!(
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID, &origin, &[3], ()),
+            Error::<Test>::RecoveryHalted
+        );
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        BridgeOutboundChannel::on_finalize(10);
+        assert_eq!(MessageQueues::<Test>::get(BASE_NETWORK_ID), queue);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        assert!(LatestCommitment::<Test>::get(BASE_NETWORK_ID).is_none());
+    });
+}
+
+#[test]
+fn permanent_batch_quarantine_survives_global_halt_removal() {
+    new_tester().execute_with(|| {
+        let origin = RawOrigin::Signed(Keyring::Bob.to_account_id());
+        assert_ok!(BridgeOutboundChannel::submit(
+            BASE_NETWORK_ID,
+            &origin,
+            &[0, 1, 2],
+            ()
+        ));
+        let queue = MessageQueues::<Test>::get(BASE_NETWORK_ID);
+        sp_io::storage::set(
+            &bridge_types::recovery::batch_key(1, BASE_NETWORK_ID.into(), 1),
+            &[1],
+        );
+        crate::recovery::install_completed_test_recovery();
+        sp_io::storage::clear(crate::recovery::HALT_KEY);
+        assert_noop!(
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID, &origin, &[3], ()),
+            Error::<Test>::RecoveryHalted
+        );
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        BridgeOutboundChannel::on_finalize(10);
+        assert_eq!(MessageQueues::<Test>::get(BASE_NETWORK_ID), queue);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        assert!(LatestCommitment::<Test>::get(BASE_NETWORK_ID).is_none());
+        // The tombstone is the reason commit is blocked, not recovery state.
+        sp_io::storage::clear(&bridge_types::recovery::batch_key(
+            1,
+            BASE_NETWORK_ID.into(),
+            1,
+        ));
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
+        assert!(MessageQueues::<Test>::get(BASE_NETWORK_ID).is_empty());
+    });
+}
+
+#[test]
+fn policy_weight_reservation_and_commit_hooks_preserve_interval_behavior() {
+    new_tester().execute_with(|| {
+        assert_eq!(
+            BridgeOutboundChannel::on_initialize(1),
+            bridge_types::recovery::completion_weight::<Test>(2).saturating_add(
+                <<Test as frame_system::Config>::DbWeight as Get<
+                    frame_support::weights::RuntimeDbWeight,
+                >>::get()
+                .reads(3)
+            )
+        );
+        let base =
+            <BridgeOutboundChannel as OutboundChannel<SubNetworkId, AccountId, ()>>::submit_weight(
+            );
+        crate::recovery::install_completed_test_recovery();
+        let policy =
+            <BridgeOutboundChannel as OutboundChannel<SubNetworkId, AccountId, ()>>::submit_weight(
+            );
+        assert!(policy.ref_time() > base.ref_time());
+        assert!(policy.proof_size() > base.proof_size());
+        assert_ok!(BridgeOutboundChannel::submit(
+            BASE_NETWORK_ID,
+            &RawOrigin::Root,
+            &[1, 2],
+            ()
+        ));
+        assert_eq!(
+            BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID).len(),
+            1
+        );
+        BridgeOutboundChannel::on_initialize(1);
+        BridgeOutboundChannel::on_finalize(1);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        BridgeOutboundChannel::on_initialize(10);
+        BridgeOutboundChannel::on_finalize(10);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 1);
+        crate::recovery::install_test_recovery();
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        BridgeOutboundChannel::on_initialize(20);
+        assert!(BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID).is_empty());
+    });
+}
+
+#[test]
+fn individual_message_quarantine_and_nonce_exhaustion_preserve_the_queue() {
+    new_tester().execute_with(|| {
+        let id =
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID, &RawOrigin::Root, &[1], ()).unwrap();
+        let queue = BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID);
+        sp_io::storage::set(
+            &bridge_types::recovery::message_key(BASE_NETWORK_ID.into(), id),
+            &[1],
+        );
+        assert_noop!(
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID, &RawOrigin::Root, &[2], ()),
+            Error::<Test>::RecoveryHalted
+        );
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(
+            BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID),
+            queue
+        );
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        ChannelNonces::<Test>::insert(BASE_NETWORK_ID, u64::MAX);
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        assert_eq!(
+            BridgeOutboundChannel::recovery_queue(BASE_NETWORK_ID),
+            queue
+        );
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), u64::MAX);
+    });
+}
+
+#[test]
+fn committed_message_count_reserves_each_notifier_recovery_check() {
+    use frame_support::traits::Hooks;
+    let measure = |count: u32| {
+        new_tester().execute_with(|| {
+            crate::recovery::install_completed_test_recovery();
+            for _ in 0..count {
+                assert_ok!(BridgeOutboundChannel::submit(
+                    BASE_NETWORK_ID,
+                    &RawOrigin::Root,
+                    &[1],
+                    ()
+                ));
+            }
+            BridgeOutboundChannel::on_initialize(10)
+        })
+    };
+    let one = measure(1);
+    let two = measure(2);
+    let additional = two.saturating_sub(one);
+    // An extra notification must reserve a complete lifecycle read/proof bound.
+    assert!(bridge_types::recovery::completion_weight::<Test>(1).all_lte(additional));
 }

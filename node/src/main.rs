@@ -43,12 +43,28 @@ mod service;
 mod babe_epoch_repair;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+mod bridge_bootstrap_policy;
+mod bridge_local_quarantine;
+mod bridge_priority_manifest;
+mod bridge_priority_scan;
+mod bridge_scan_cursor;
 mod cli;
 mod command;
 mod data_feed_metrics;
 mod eth_bridge_metrics;
 #[cfg(feature = "private-net")]
 mod fork_off;
+mod guardian_halt;
+// This fixture uses mainnet genesis; the mainnet release harness still executes
+// the actual-Wasm gate independently of private-network feature checks.
+#[cfg(all(test, not(feature = "private-net")))]
+mod bridge_priority_wasm_tests;
+#[cfg(all(test, not(feature = "private-net")))]
+mod ocw_only_halt_wasm_tests;
+mod recovery;
+mod recovery_acknowledgement;
+mod recovery_evidence;
+mod recovery_hashi;
 mod rpc;
 
 #[allow(

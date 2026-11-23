@@ -1,0 +1,5 @@
+error: Invalid pallet::storage, invalid number of generic generic arguments, expect more that 0 generic arguments.
+  --> tests/pallet_ui/storage_value_no_generic.rs:36:16
+   |
+36 |     type Foo<T> = StorageValue;
+   |                   ^^^^^^^^^^^^

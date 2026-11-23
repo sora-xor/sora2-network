@@ -1,0 +1,5 @@
+error: Invalid duplicated attribute
+  --> tests/pallet_ui/duplicate_call_attr.rs:39:12
+   |
+39 |     #[pallet::call]
+   |               ^^^^

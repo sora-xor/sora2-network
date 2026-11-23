@@ -32,7 +32,7 @@ use crate::{Config, Error, MomentOf};
 
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use common::{AccountIdOf, Balance, BoundedString};
-use derivative::Derivative;
+use derive_where::derive_where;
 use frame_support::ensure;
 use frame_support::sp_runtime::Permill;
 use frame_support::traits::Time;
@@ -128,15 +128,15 @@ pub struct Score<T: Config> {
     pub by_auditor: AccountIdOf<T>,
 }
 
-#[derive(Debug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
-#[derivative(Clone, PartialEq, Eq)]
+#[derive(Debug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive_where(Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct CropReceiptContent<T: Config> {
     pub json: BoundedString<T::MaxCropReceiptContentSize>,
 }
 
-#[derive(Debug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
-#[derivative(Clone, PartialEq, Eq)]
+#[derive(Debug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
+#[derive_where(Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct CropReceipt<T: Config> {
     pub owner: AccountIdOf<T>,

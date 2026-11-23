@@ -105,14 +105,16 @@ run_clippy() {
         fi
     fi
 
-    local args=(clippy --locked --all-targets "${selection[@]}")
+    local args=(clippy --locked --keep-going --all-targets "${selection[@]}")
     if [[ "$json" == true ]]; then
         args+=(--message-format=json)
     fi
     args+=(-- -D warnings)
 
     printf 'Running Clippy (%s)\n' "$selected_mode" >&2
-    SKIP_WASM_BUILD=1 cargo "${args[@]}"
+    # Set loader paths immediately before Cargo: macOS strips DYLD_* when an
+    # outer LLVM wrapper starts this script through the system shell.
+    SKIP_WASM_BUILD=1 "$repo_root/scripts/with_llvm_env.sh" cargo "${args[@]}"
 }
 
 modes=("$mode")

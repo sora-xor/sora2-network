@@ -1,0 +1,16 @@
+{
+  "upstreamTag": "polkadot-stable2609",
+  "upstreamCommit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "upstreamPath": "substrate/frame/benchmarking",
+  "sourcePatch": "stable2609-customizations.patch",
+  "sourcePatchSha256": "5414596b5f2bc26ac9dfe504c65f7f12c30068d359a53fc191bb06795f79bf9a",
+  "upstreamManifestSha256": "d6523056ad470ba300108a9d66fd8b3fd029238ac182a12b8740ee909725820c",
+  "sourcePatchReplay": "passed",
+  "changedSourceFiles": [
+    {
+      "path": ".rustfmt.toml",
+      "upstreamSha256": null,
+      "localSha256": "2399ff0882e8ddb91c159aeb13c91a38e63255fb85d8d9ffe8daf655c4100332"
+    }
+  ]
+}

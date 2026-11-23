@@ -57,8 +57,10 @@ use sp_std::convert::TryFrom;
     MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+#[derive(Default)]
 #[repr(u8)]
 pub enum ComicAssetId {
+    #[default]
     GoldenTicket,
     AppleTree,
     Apple,
@@ -120,12 +122,6 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::KARMA => Table,
             PredefinedAssetId::PRUSD => Pan,
         }
-    }
-}
-
-impl Default for ComicAssetId {
-    fn default() -> Self {
-        Self::GoldenTicket
     }
 }
 
@@ -367,6 +363,7 @@ macro_rules! mock_bridge_multisig_config {
         }
         impl bridge_multisig::Config for $runtime {
             type CallFilter = frame_support::traits::Everything;
+            type OperationFilter = ();
 
             type MaxPendingOperations = frame_support::traits::ConstU32<128>;
             type MaxCallBytes = frame_support::traits::ConstU32<16384>;
@@ -1112,6 +1109,7 @@ macro_rules! mock_proxy_config {
     ($runtime:ty) => {
         impl proxy::Config for $runtime {
             type AccountIdConverter = sp_runtime::traits::Identity;
+            type RefundAccountResolver = ();
             type FAApp = FungibleApp;
             type HashiBridge = ();
             type LiberlandApp = ();
