@@ -268,6 +268,23 @@ While the plan is armed, every Hashi signature and local pool submission,
 including later retries, requires the pinned runtime and contract. Retire a
 completed or stale plan by removing the option on a normal reviewed restart.
 
+To also follow new deposits, set the format to `eth-deposit-priority-follow-v1`
+and add `reconciledThrough`, the last Ethereum block in the reconciled range.
+List any unsettled deposit blocks from that range in `blocks`, or use an empty
+array if every deposit has settled. Pin the exact file
+digest on each peer. The secondary cursor starts at the next block and persists
+under this manifest's digest. Changing the file starts a new secondary cursor.
+
+Every other worker pass is reserved for ordinary history. The remaining passes
+share the listed blocks and the forward scan. Ordinary forward passes cover up
+to 16 blocks. After a provider limit expires, spec 142 may probe up to 30 blocks
+once before resuming its ordinary range. The node saves the progress reported by
+the runtime after a clean worker release. Unavailable or contradictory receipt evidence pauses
+advancement. Spec 142 waits for 30 Ethereum confirmations and checks the receipt
+against the observed log. An Ethereum reorganization deeper than that window
+requires reconciliation against the canonical chain. Track each deposit's
+finalized SORA v2 import to establish delivery.
+
 ### Local restart after completed recovery
 
 The corrected node logs the completed recovery context digest while its HASHI worker
